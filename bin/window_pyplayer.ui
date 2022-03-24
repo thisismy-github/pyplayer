@@ -1,0 +1,1307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>757</width>
+    <height>551</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>PyPlayer</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout" columnstretch="2,0,0,0">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <property name="verticalSpacing">
+     <number>0</number>
+    </property>
+    <item row="0" column="0" colspan="4">
+     <widget class="QVideoPlayer" name="vlc" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>256</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>757</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuRecent">
+     <property name="title">
+      <string>Recent files...</string>
+     </property>
+    </widget>
+    <addaction name="actionOpen"/>
+    <addaction name="menuRecent"/>
+    <addaction name="actionOpenMediaLocation"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSaveAs"/>
+    <addaction name="separator"/>
+    <addaction name="actionStop"/>
+    <addaction name="actionMinimize"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionSettings"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoop"/>
+    <addaction name="separator"/>
+    <addaction name="actionMarkDeleted"/>
+    <addaction name="actionEmptyRecycleBin"/>
+    <addaction name="actionDeleteImmediately"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionCheckForUpdates"/>
+    <addaction name="separator"/>
+    <addaction name="actionViewLog"/>
+    <addaction name="actionViewInstallFolder"/>
+    <addaction name="separator"/>
+    <addaction name="actionAboutQt"/>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuAudio">
+    <property name="title">
+     <string>Audio</string>
+    </property>
+    <widget class="QMenu" name="menuAudioTracks">
+     <property name="title">
+      <string>Audio Tracks</string>
+     </property>
+    </widget>
+    <addaction name="menuAudioTracks"/>
+    <addaction name="separator"/>
+    <addaction name="actionAmplifyVolume"/>
+    <addaction name="actionReplaceAudio"/>
+    <addaction name="actionAddAudioTrack"/>
+    <addaction name="actionRemoveAudio"/>
+   </widget>
+   <widget class="QMenu" name="menuVideo">
+    <property name="title">
+     <string>Video</string>
+    </property>
+    <widget class="QMenu" name="menuConcatenate">
+     <property name="title">
+      <string>Concatenate</string>
+     </property>
+     <addaction name="actionCatBefore"/>
+     <addaction name="actionCatAfter"/>
+     <addaction name="separator"/>
+     <addaction name="actionCatAny"/>
+     <addaction name="actionCatNone"/>
+    </widget>
+    <widget class="QMenu" name="menuRotate">
+     <property name="title">
+      <string>Rotate/Flip</string>
+     </property>
+     <addaction name="actionRotate90"/>
+     <addaction name="actionRotate180"/>
+     <addaction name="actionRotate270"/>
+     <addaction name="actionFlipVertically"/>
+     <addaction name="actionFlipHorizontally"/>
+    </widget>
+    <widget class="QMenu" name="menuSubtitles">
+     <property name="title">
+      <string>Subtitle Tracks</string>
+     </property>
+     <addaction name="actionAddSubtitleFile"/>
+    </widget>
+    <widget class="QMenu" name="menuVideoTracks">
+     <property name="title">
+      <string>Video Tracks</string>
+     </property>
+    </widget>
+    <widget class="QMenu" name="menuFade">
+     <property name="title">
+      <string>Fade</string>
+     </property>
+     <addaction name="actionFadeDisable"/>
+     <addaction name="separator"/>
+     <addaction name="actionFadeBoth"/>
+     <addaction name="actionFadeVideo"/>
+     <addaction name="actionFadeAudio"/>
+    </widget>
+    <addaction name="menuSubtitles"/>
+    <addaction name="menuVideoTracks"/>
+    <addaction name="separator"/>
+    <addaction name="actionSnapshot"/>
+    <addaction name="actionQuickSnapshot"/>
+    <addaction name="separator"/>
+    <addaction name="menuConcatenate"/>
+    <addaction name="menuRotate"/>
+    <addaction name="menuFade"/>
+    <addaction name="actionCrop"/>
+    <addaction name="actionRemoveVideo"/>
+    <addaction name="actionResize"/>
+   </widget>
+   <widget class="QMenu" name="menuWindow">
+    <property name="title">
+     <string>Window</string>
+    </property>
+    <addaction name="actionFullscreen"/>
+    <addaction name="separator"/>
+    <addaction name="actionShowMenuBar"/>
+    <addaction name="actionShowStatusBar"/>
+    <addaction name="actionShowProgressBar"/>
+    <addaction name="actionShowAdvancedControls"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuVideo"/>
+   <addaction name="menuAudio"/>
+   <addaction name="menuWindow"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="font">
+    <font>
+     <family>Microsoft YaHei UI</family>
+     <pointsize>7</pointsize>
+    </font>
+   </property>
+  </widget>
+  <widget class="QDockWidgetPassthrough" name="dockControls">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::NoDockWidgetArea</set>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>8</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>7</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>7</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QFrame" name="frameProgress">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+         <horstretch>255</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <property name="spacing">
+         <number>3</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLineEdit" name="current_time_lineedit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>48</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="cursor">
+           <cursorShape>ArrowCursor</cursorShape>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::ClickFocus</enum>
+          </property>
+          <property name="text">
+           <string notr="true">--:--</string>
+          </property>
+          <property name="maxLength">
+           <number>12</number>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QVideoSlider" name="progress_slider">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>20</height>
+           </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::ClickFocus</enum>
+          </property>
+          <property name="toolTipDuration">
+           <number>2500</number>
+          </property>
+          <property name="maximum">
+           <number>999</number>
+          </property>
+          <property name="pageStep">
+           <number>50</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="invertedControls">
+           <bool>true</bool>
+          </property>
+          <property name="tickPosition">
+           <enum>QSlider::TicksBelow</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="max_time_label">
+          <property name="minimumSize">
+           <size>
+            <width>48</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>--:--</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDraggableWindowFrame" name="frameAdvancedControls">
+       <property name="minimumSize">
+        <size>
+         <width>40</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>46</height>
+        </size>
+       </property>
+       <layout class="QGridLayout" name="advanced_layout">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
+        <item row="0" column="3">
+         <layout class="QGridLayout" name="gridLayout_6">
+          <property name="bottomMargin">
+           <number>1</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>3</number>
+          </property>
+          <item row="1" column="0">
+           <widget class="QPushButton" name="prev_video_button">
+            <property name="minimumSize">
+             <size>
+              <width>20</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>20</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>SimSun-ExtB</family>
+             </font>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Plays the previous valid media file in the current folder.</string>
+            </property>
+            <property name="text">
+             <string>&lt;&lt;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1" colspan="2">
+           <widget class="QLineEdit" name="output_lineedit">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>120</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>No media is currently playing.</string>
+            </property>
+            <property name="maxLength">
+             <number>155</number>
+            </property>
+            <property name="placeholderText">
+             <string notr="true">Output name</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="4">
+           <layout class="QHBoxLayout" name="hlayoutToolButtons">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QToolButton" name="toolButtonOpenMediaLocation">
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="text">
+               <string notr="true">📂</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="toolButtonMarkDeleted">
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="text">
+               <string notr="true">❌</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="toolButtonSnapshot">
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="text">
+               <string notr="true">📷</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="toolButtonLoop">
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>11</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="text">
+               <string notr="true">🔁</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item row="1" column="3">
+           <widget class="QPushButton" name="next_video_button">
+            <property name="minimumSize">
+             <size>
+              <width>20</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>20</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>SimSun-ExtB</family>
+             </font>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Plays the next valid media file in the current folder.</string>
+            </property>
+            <property name="text">
+             <string notr="true">&gt;&gt;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="5" colspan="2">
+         <widget class="QFrame" name="frameQuickChecks">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QCheckBox" name="checkDeleteOriginal">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>13</height>
+              </size>
+             </property>
+             <property name="focusPolicy">
+              <enum>Qt::ClickFocus</enum>
+             </property>
+             <property name="toolTip">
+              <string notr="true">Tristate:
+
+Partially checked - videos will be marked
+for deletion after saving an edit.
+
+Fully checked - videos will be immediately
+deleted after successfully saving an edit.
+
+Note: File deletion/recycling
+is dependent on your settings.</string>
+             </property>
+             <property name="text">
+              <string notr="true">Delete originals</string>
+             </property>
+             <property name="tristate">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkSkipMarked">
+             <property name="minimumSize">
+              <size>
+               <width>103</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>13</height>
+              </size>
+             </property>
+             <property name="focusPolicy">
+              <enum>Qt::ClickFocus</enum>
+             </property>
+             <property name="toolTip">
+              <string notr="true">If checked, using the next/previous video buttons will
+skip over files that have been marked for deletion.</string>
+             </property>
+             <property name="text">
+              <string notr="true">Skip marked files</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="checkAutoplay">
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>13</height>
+              </size>
+             </property>
+             <property name="focusPolicy">
+              <enum>Qt::ClickFocus</enum>
+             </property>
+             <property name="toolTip">
+              <string notr="true">If checked, the next valid media file in the current folder will
+automatically play upon completion of the current media.</string>
+             </property>
+             <property name="text">
+              <string notr="true">Autoplay</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_3">
+          <property name="horizontalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="1">
+           <layout class="QGridLayout" name="gridLayout_2">
+            <property name="spacing">
+             <number>2</number>
+            </property>
+            <item row="1" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QSpinBoxPassthrough" name="hour_spin">
+                <property name="minimumSize">
+                 <size>
+                  <width>26</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>33</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBoxPassthrough" name="minute_spin">
+                <property name="minimumSize">
+                 <size>
+                  <width>33</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>33</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+                <property name="maximum">
+                 <number>59</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBoxPassthrough" name="second_spin">
+                <property name="minimumSize">
+                 <size>
+                  <width>33</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>33</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+                <property name="maximum">
+                 <number>59</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="2" column="0">
+             <widget class="QSpinBoxPassthrough" name="frame_spin">
+              <property name="minimumSize">
+               <size>
+                <width>98</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="prefix">
+               <string notr="true">Frame: </string>
+              </property>
+              <property name="maximum">
+               <number>0</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0">
+           <widget class="QPushButton" name="pause_button">
+            <property name="minimumSize">
+             <size>
+              <width>28</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>28</width>
+              <height>28</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="text">
+             <string>𝗜𝗜</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="2">
+         <widget class="Line" name="advancedControlsLine">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="trim_start_button">
+            <property name="minimumSize">
+             <size>
+              <width>32</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>95</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="text">
+             <string notr="true">Start</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="trim_end_button">
+            <property name="minimumSize">
+             <size>
+              <width>32</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>95</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="text">
+             <string notr="true">End</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="10">
+         <widget class="QSlider" name="volume_slider">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>22</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::ClickFocus</enum>
+          </property>
+          <property name="toolTip">
+           <string notr="true">100%</string>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="singleStep">
+           <number>5</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionSaveAs">
+   <property name="text">
+    <string>Save as...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::QuitRole</enum>
+   </property>
+  </action>
+  <action name="actionSettings">
+   <property name="text">
+    <string>Settings</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::PreferencesRole</enum>
+   </property>
+  </action>
+  <action name="actionRemoveVideo">
+   <property name="text">
+    <string>Remove video</string>
+   </property>
+  </action>
+  <action name="actionRemoveAudio">
+   <property name="text">
+    <string>Remove audio</string>
+   </property>
+  </action>
+  <action name="actionReplaceAudio">
+   <property name="text">
+    <string>Replace audio</string>
+   </property>
+  </action>
+  <action name="actionAmplifyVolume">
+   <property name="text">
+    <string>Amplify audio</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About...</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::AboutRole</enum>
+   </property>
+  </action>
+  <action name="actionCatAny">
+   <property name="text">
+    <string>Any clips</string>
+   </property>
+  </action>
+  <action name="actionCatBefore">
+   <property name="text">
+    <string>Before this clip</string>
+   </property>
+  </action>
+  <action name="actionCatAfter">
+   <property name="text">
+    <string>After this clip</string>
+   </property>
+  </action>
+  <action name="actionOpenMediaLocation">
+   <property name="text">
+    <string>Media location</string>
+   </property>
+   <property name="toolTip">
+    <string>Open media location</string>
+   </property>
+  </action>
+  <action name="actionCatNone">
+   <property name="text">
+    <string>No clips</string>
+   </property>
+  </action>
+  <action name="actionAddAudioTrack">
+   <property name="text">
+    <string>Add audio track</string>
+   </property>
+  </action>
+  <action name="actionCrop">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Crop video</string>
+   </property>
+  </action>
+  <action name="actionMarkDeleted">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Mark media for deletion</string>
+   </property>
+   <property name="iconText">
+    <string notr="true">Mark media for deletion</string>
+   </property>
+   <property name="toolTip">
+    <string notr="true">Mark media for future deletion.
+0 files are currently marked for deletion.
+
+Shortcuts:
+Shift + click: Show deletion-confirmation prompt.
+Ctrl + click: Immediately delete current media.
+
+Right-click for more options. Deletion-confirmation
+prompt is shown on exit if any files are marked.</string>
+   </property>
+  </action>
+  <action name="actionEmptyRecycleBin">
+   <property name="text">
+    <string>Delete all marked media</string>
+   </property>
+  </action>
+  <action name="actionViewLog">
+   <property name="text">
+    <string>View log</string>
+   </property>
+  </action>
+  <action name="actionShowStatusBar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Status Bar</string>
+   </property>
+  </action>
+  <action name="actionShowMenuBar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Menu Bar</string>
+   </property>
+  </action>
+  <action name="actionShowAdvancedControls">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Advanced Controls</string>
+   </property>
+  </action>
+  <action name="actionFullscreen">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Fullscreen</string>
+   </property>
+  </action>
+  <action name="actionShowProgressBar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Progress Bar</string>
+   </property>
+  </action>
+  <action name="actionSnapshot">
+   <property name="text">
+    <string>Snapshot</string>
+   </property>
+  </action>
+  <action name="actionQuickSnapshot">
+   <property name="text">
+    <string>Quick snapshot</string>
+   </property>
+   <property name="toolTip">
+    <string>Takes a screenshot of the current media at its current position.
+
+Ctrl + click: Opens size and save-file dialogs for your snapshot.
+Shift + click: Opens the most recent snapshot.
+
+Right-click for more options.</string>
+   </property>
+  </action>
+  <action name="actionDeleteImmediately">
+   <property name="text">
+    <string>Immediately delete current media</string>
+   </property>
+  </action>
+  <action name="actionLoop">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Loop</string>
+   </property>
+   <property name="toolTip">
+    <string>If checked, media loops upon completion — even with autoplay enabled.</string>
+   </property>
+  </action>
+  <action name="actionRotate90">
+   <property name="text">
+    <string>90° clockwise</string>
+   </property>
+  </action>
+  <action name="actionRotate180">
+   <property name="text">
+    <string>180° clockwise</string>
+   </property>
+  </action>
+  <action name="actionRotate270">
+   <property name="text">
+    <string>270° clockwise</string>
+   </property>
+  </action>
+  <action name="actionFlipHorizontally">
+   <property name="text">
+    <string>Horizontal flip (mirrored left-to-right)</string>
+   </property>
+  </action>
+  <action name="actionFlipVertically">
+   <property name="text">
+    <string>Vertical flip (180° + reversed)</string>
+   </property>
+  </action>
+  <action name="actionAddSubtitleFile">
+   <property name="text">
+    <string>Add subtitle file</string>
+   </property>
+  </action>
+  <action name="actionwtf">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>wtf</string>
+   </property>
+  </action>
+  <action name="actionStop">
+   <property name="text">
+    <string>Stop player</string>
+   </property>
+  </action>
+  <action name="actionAboutQt">
+   <property name="text">
+    <string>About Qt...</string>
+   </property>
+  </action>
+  <action name="actionMinimize">
+   <property name="text">
+    <string>Minimize to tray</string>
+   </property>
+  </action>
+  <action name="actionViewInstallFolder">
+   <property name="text">
+    <string>View install folder</string>
+   </property>
+  </action>
+  <action name="actionFadeVideo">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Fade video only</string>
+   </property>
+  </action>
+  <action name="actionFadeAudio">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Fade audio only</string>
+   </property>
+  </action>
+  <action name="actionFadeBoth">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Fade both</string>
+   </property>
+  </action>
+  <action name="actionFadeDisable">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Disable</string>
+   </property>
+  </action>
+  <action name="actionResize">
+   <property name="text">
+    <string>Resize</string>
+   </property>
+  </action>
+  <action name="actionCheckForUpdates">
+   <property name="text">
+    <string>Check for updates</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QVideoPlayer</class>
+   <extends>QWidget</extends>
+   <header>widgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QVideoSlider</class>
+   <extends>QSlider</extends>
+   <header>widgets</header>
+  </customwidget>
+  <customwidget>
+   <class>QSpinBoxPassthrough</class>
+   <extends>QSpinBox</extends>
+   <header>widgets</header>
+  </customwidget>
+  <customwidget>
+   <class>QDraggableWindowFrame</class>
+   <extends>QFrame</extends>
+   <header>widgets</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QDockWidgetPassthrough</class>
+   <extends>QDockWidget</extends>
+   <header>widgets</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>pause_button</tabstop>
+  <tabstop>trim_start_button</tabstop>
+  <tabstop>trim_end_button</tabstop>
+  <tabstop>prev_video_button</tabstop>
+  <tabstop>next_video_button</tabstop>
+  <tabstop>output_lineedit</tabstop>
+  <tabstop>hour_spin</tabstop>
+  <tabstop>minute_spin</tabstop>
+  <tabstop>second_spin</tabstop>
+  <tabstop>frame_spin</tabstop>
+  <tabstop>volume_slider</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

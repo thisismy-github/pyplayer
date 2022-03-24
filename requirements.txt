@@ -1,0 +1,10 @@
+colour
+filetype
+pid
+pillow
+pyinstaller
+PyQt5
+python-vlc
+requests
+sanitize_filename
+send2trash
