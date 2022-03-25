@@ -12,6 +12,7 @@ from traceback import format_exc
 
 
 logger = logging.getLogger('update.py')
+HYPERLINK = f'<a href="{constants.REPOSITORY_URL}/releases/latest">latest release on Github here</a>'
 
 
 def get_later_version_string(a, b):     # https://stackoverflow.com/questions/11887762/how-do-i-compare-version-numbers-in-python
@@ -46,44 +47,43 @@ def check_for_update(self):
         latest_version_url = response.url.rstrip('/')
         latest_version = latest_version_url.split('/')[-1].lstrip('v')
 
-        current_version_parts = constants.VERSION.split()
-        name, current_version = current_version_parts[0], current_version_parts[1]
+        current_version = constants.VERSION.split()[1]
         logger.info(f'Latest version: {latest_version} | Current version: {current_version}')
 
         if len(latest_version) != len(current_version):
-            logger.warning('Github release URL could not be parsed correctly.')
-            return qthelpers.getPopup(title='Update URL mismatch',
-                                      icon=QMessageBox.Warning,
-                                      text='The Github\'s release URL has an unexpected format.',
-                                      textInformative='There could have been an error while checking, or perhaps newer versions use a '
-                                                      'different naming scheme. You can manually check the latest release on Github '
-                                                      f'<a href="{release_url}">here</a>.').exec()
+            self.log('Github release URL could not be parsed correctly.')
+            return self._handle_updates_signal.emit(
+                dict(failed=True),
+                dict(title='Update URL mismatch',
+                     icon=QMessageBox.Warning,
+                     text=f'The update URL on Github has an unexpected format. \nGithub version: "{latest_version}"\nCurrent version: "{current_version}"',
+                     textInformative='Newer versions might use a different naming scheme, or perhaps '
+                                     f'there was an error while checking. You can manually check the {HYPERLINK}.')
+            )
 
         if get_later_version_string(latest_version, current_version) != current_version:    # latest version is more recent than current version
             if sys.platform == 'win32':                                                     # TODO Windows only for now
-                choice = qthelpers.getPopup(title=f'Update {latest_version} available',
-                                            icon=QMessageBox.Information,
-                                            buttons=(QMessageBox.Yes | QMessageBox.No),     # | QMessageBox.Ignore
-                                            text=f'An update is available on Github ({current_version} -> {latest_version}).',
-                                            textInformative=f'You can manually view the latest release on Github '
-                                                            f'<a href="{release_url}">here</a>.\n'
-                                                            'Click "Yes" to download and install this update (PyPlayer will restart automatically), '
-                                                            'or click "Ignore" to skip this update.').exec()
-                if choice == QMessageBox.Yes:
-                    filename = f'{name}_{latest_version}.zip'
-                    download_url = f'{latest_version_url.replace("/tags/", "/download/")}/{filename}'
-                    download_path = os.path.join(constants.TEMP_DIR, filename)
-                    download_update(self, latest_version, download_url, download_path)
+                return self._handle_updates_signal.emit(
+                    dict(latest_version_url=latest_version_url),
+                    dict(title=f'Update {latest_version} available',
+                         icon=QMessageBox.Information,
+                         buttons=(QMessageBox.Yes | QMessageBox.No),        # | QMessageBox.Ignore
+                         text=f'An update is available on Github ({current_version} -> {latest_version}).',
+                         textInformative='You can manually view the '
+                                         f'{HYPERLINK}.\n Click "Yes" '
+                                         'to download and install this update (PyPlayer will restart automatically).')
+                )
             else:                                                           # non-windows version of popup (no auto-updater yet)
-                return qthelpers.getPopup(title=f'Update {latest_version} available',
-                                          icon=QMessageBox.Information,
-                                          text=f'An update is available on Github ({current_version} -> {latest_version}).',
-                                          textInformative=f'You can manually view the latest release on Github '
-                                                          f'<a href="{release_url}">here</a>.\n').exec()
-        else: self.log('You\'re using the latest version!')
+                return self._handle_updates_signal.emit(
+                    dict(latest_version_url=latest_version_url),
+                    dict(title=f'Update {latest_version} available',
+                         icon=QMessageBox.Information,
+                         text=f'An update is available on Github ({current_version} -> {latest_version}).',
+                         textInformative=f'You can download the {HYPERLINK}.')
+                )
+        else: self.log('You\'re up to date!')
     except: self.log(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
-    self.checking_for_updates = False
-    self.dialog_settings.buttonCheckForUpdates.setText('Check for updates')
+    self._handle_updates_signal.emit(None, None)                            # call empty signal to perform cleanup
 
 
 def download_update(self, latest_version, download_url, download_path):
@@ -106,6 +106,7 @@ def download_update(self, latest_version, download_url, download_path):
                 downloaded += len(chunk)
                 self.save_progress_bar.setValue(downloaded / total_size)
                 self.save_progress_bar.setFormat(f'{downloaded / 1048576:.2f}/{total_size / 1048576:.2f} %p%')
+                self.app.processEvents()                    # manually update GUI during download, since this is not a thread
         self.save_progress_bar.setFormat('Update downloaded, restarting...')
         logger.info('Download successful, preparing updater-utility...')
 
@@ -145,14 +146,13 @@ def download_update(self, latest_version, download_url, download_path):
         return qtstart.exit(self)
     except:
         logger.warning(f'(!) Could not download latest version. New naming format? Missing updater? {format_exc()}')
-        release_url = f'{constants.REPOSITORY_URL}/releases/latest'
-        qthelpers.getPopup(title='Update download failed',
+        qthelpers.getPopup(title='Update download failed',                  # download_update does not occur inside a thread, so this is safe
                            icon=QMessageBox.Warning,
                            text=f'Update {latest_version} failed to install.',
                            textInformative='There could have been an error while creating the download link, '
                                            'the download may have failed, the update utility may be missing, '
                                            'or perhaps newer versions use a different format for updating.\n\n'
-                                           f'You can manually download the latest release on Github <a href="{release_url}">here</a>.',
+                                           f'You can manually download the {HYPERLINK}.',
                            textDetailed=format_exc()).exec()
         self.statusbar.setVisible(self.actionShowStatusBar.isChecked())     # restore statusbar to original state if update failed
         self.save_progress_bar.setMaximum(0)                                # set progress bar's maximum to 0 to restore indeterminate style
@@ -175,9 +175,8 @@ def validate_update(self, update_report):
             qthelpers.getPopup(title='Update failed',
                                icon=QMessageBox.Warning,
                                text='The attempted update failed while unpacking.',
-                               textInformative='If needed, you can manually download the latest version from Github '
-                                               f'<a href="{constants.REPOSITORY_URL}/releases/latest">here</a>.',
+                               textInformative=f'If needed, you can manually download the {HYPERLINK}.',
                                textDetailed=status).exec()
     try: os.remove(update_report)
     except: logger.warning('Failed to delete update report after validation.')
-    logger.info(f'Update validated.')
+    logger.info('Update validated.')

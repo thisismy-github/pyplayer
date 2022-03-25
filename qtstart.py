@@ -212,6 +212,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.update_title_signal.connect(self.update_title)
     self.show_save_progress_signal.connect(self.save_progress_bar.setVisible)
     self.disable_crop_mode_signal.connect(self.disable_crop_mode)
+    self._handle_updates_signal.connect(self._handle_updates)
     self.log_signal.connect(self.log_slot)
     self.log = self.log_signal.emit
 

@@ -225,7 +225,7 @@ from qthelpers import TRIGGER, addPathSuffix
 from PyQt5 import QtCore, QtGui
 from PyQt5 import QtWidgets as QtW
 #from PyQt5.Qt import QWIDGETSIZE_MAX   # <- this library adds FOUR MB of ram usage, used in set_fullscreen
-from bin.videoeditor_window import Ui_MainWindow
+from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 
 import os
@@ -355,7 +355,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     fast_start_open_signal = QtCore.pyqtSignal(str)
     show_save_progress_signal = QtCore.pyqtSignal(bool)
     disable_crop_mode_signal = QtCore.pyqtSignal()
-    refresh_vlc_winid_signal = QtCore.pyqtSignal()
+    _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
 
     def __init__(self, app, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1354,7 +1354,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -i "{audio}" {the_important_part} "{dest}"', dest)
                 elif mime == 'audio': intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -i "{audio}" -filter_complex amix=inputs=2 "{dest}"', dest)
                 else: intermediate_file = ffmpeg(intermediate_file, f'-loop 1 -i "%tp" -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest "{dest}"', dest)
-            if op_remove_track is not None:                 # NOTE: This can degrade audio quality slightly. 
+            if op_remove_track is not None:                 # NOTE: This can degrade audio quality slightly.
                 self.log(f'{op_remove_track.title()}-track removal requested.')
                 intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" {"-q:a 0 -map a" if op_remove_track == "video" else "-c copy -an"} "{dest}"', dest)
             if op_amplify_audio is not None:
@@ -2084,7 +2084,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 update.validate_update(self, update_report)
 
         if not _launch or settings.checkAutoUpdateCheck.isChecked():
-            try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%D'))
+            try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string -> seconds needs %x
             except: last_check_time_seconds = 0
             if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < gettime():
                 self.log('Checking for updates...')
@@ -2093,9 +2093,41 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 import update
                 Thread(target=update.check_for_update, args=(self,)).start()
+                #update.check_for_update(self)
 
-                cfg.lastupdatecheck = strftime('%#D', localtime())
+                cfg.lastupdatecheck = strftime('%#D', localtime())                      # seconds -> string needs %D
                 settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck}')
+
+
+    def _handle_updates(self, results: dict, popup_kwargs: dict):
+        ''' A slot for update.check_for_update which cleans up and handles the results of an update
+            check, if any, in a thread-safe manner. `results` is a dict containing either 'failed'
+            to represent that there was an unusual error that could still indicate a pending update
+            (mismatched URL format on Github, for example), or 'latest_version_url'. `popup_kwargs`
+            are the keyword-arguments needed to construct the relevant QMessageBox. '''
+        try:
+            logging.info(f'Cleaning up after update check. results={results}')
+            if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
+                if 'failed' in results: return qthelpers.getPopup(**popup_kwargs).exec()
+
+                # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
+                if sys.platform == 'win32':
+                    choice = qthelpers.getPopup(**popup_kwargs).exec()
+                    if choice == QtW.QMessageBox.Yes:
+                        import update
+                        name = constants.VERSION.split()[0]
+                        latest_version_url = results['latest_version_url']
+                        latest_version = latest_version_url.split('/')[-1].lstrip('v')
+
+                        filename = f'{name}_{latest_version}.zip'
+                        download_url = f'{latest_version_url.replace("/tags/", "/download/")}/{filename}'
+                        download_path = os.path.join(constants.TEMP_DIR, filename)
+                        #Thread(target=update.download_update, args=(self, latest_version, download_url, download_path)).start()
+                        update.download_update(self, latest_version, download_url, download_path)
+                else: return qthelpers.getPopup(**popup_kwargs).exec()      # non-windows version of popup
+        finally:
+            self.checking_for_updates = False
+            self.dialog_settings.buttonCheckForUpdates.setText('Check for updates')
 
 
     def swap_slider_styles(self):
