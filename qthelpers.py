@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
+from PyQt5.QtCore import Qt
 import os
 import time
 import win32gui
@@ -96,7 +97,7 @@ def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedA
     msg.setDefaultButton(defaultButton)
     msg.setWindowModality(int(modal))
     msg.setWindowOpacity(opacity)
-    msg.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)    # allows copy/paste of popup text
+    msg.setTextInteractionFlags(Qt.TextSelectableByMouse)    # allows copy/paste of popup text
     if isinstance(windowIcon, str):                                 # windowIcon (the titlebar icon) is a filepath
         if os.path.exists(windowIcon): msg.setWindowIcon(QtGui.QIcon(windowIcon))
         else:   # icon is the name of a Qt icon -> https://www.pythonguis.com/faq/built-in-qicons-pyqt/
@@ -133,14 +134,14 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
         def __init__(self, parent, **kwargs):
             super().__init__(parent)
             if 'delete' in kwargs: kwargs['deleteOnClose'] = kwargs['delete']   # accept both 'delete' and 'deleteOnClose'
-            self.setAttribute(QtCore.Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
+            self.setAttribute(Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
             self.setWindowModality(int(kwargs.get('modal', 1)))
             self.setParent(parent)
             self.setupUi(self)
     return QPersistentDialog(parent, **kwargs)
 
 def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size=None, fixedSize=None,
-              opacity=1.0, modal=True, flags=QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint):
+              opacity=1.0, modal=True, flags=Qt.WindowCloseButtonHint):
     ''' Returns a temporary dialog, designed to be finished manually. Uses an on-the-fly subclass called QDialogHybrid
         which serves to add QMessageBox-style functionality to the dialog, allowing easy standard-button access, as
         opposed to the 1 or 0 QDialogBox normally returns. QDialogHyrbid adds the methods dialog.select(choice) and
@@ -268,7 +269,7 @@ def comboRenameItem(comboWidget, lineEdit):
         lineEdit.show()             # show lineEdit to rename
         lineEdit.setText(comboWidget.currentText())   # start with original name
         lineEdit.selectAll()        # start with text selected
-        lineEdit.setFocus(QtCore.Qt.NoFocusReason)   # grab focus to type immediately
+        lineEdit.setFocus(Qt.NoFocusReason)   # grab focus to type immediately
     else:                           # rename finished
         newName = lineEdit.text()
         if newName:                 # if the lineEdit is blank, don't change the name

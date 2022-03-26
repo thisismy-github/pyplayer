@@ -11,14 +11,14 @@ import time
 
 # ---------------------
 
-VERSION = 'pyplayer 0.1.0 beta'
+VERSION = 'pyplayer 0.1.1 beta'
 REPOSITORY_URL = 'https://github.com/thisismy-github/pyplayer'
 SCRIPT_START_TIME = time.time()
 
 # ---------------------
 
 IS_COMPILED = getattr(sys, 'frozen', False)
-SCRIPT_PATH = os.path.realpath(__file__)
+SCRIPT_PATH = sys.executable if IS_COMPILED else os.path.realpath(__file__)
 CWD = os.path.dirname(SCRIPT_PATH)
 
 BIN_DIR = os.path.join(CWD, 'bin')

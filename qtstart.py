@@ -2,7 +2,8 @@
     This file might be removed in the future, since it slightly overcomplicates things.
     thisismy-github 3/14/22 '''
 
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtGui
+from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets as QtW
 import config
 import constants
@@ -183,8 +184,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minussubtitledelay': lambda: increment_subtitle_delay(-50),
         'cyclesubtitles':     self.cycle_subtitle_track,
         'markdeleted':        lambda: self.actionMarkDeleted.activate(qthelpers.TRIGGER),
-        'deleteimmediately':  lambda: self.mark_for_deletion(modifiers=QtCore.Qt.ControlModifier),
-        'snapshot':           lambda: self.snapshot(modifiers=QtCore.Qt.ControlModifier),
+        'deleteimmediately':  lambda: self.mark_for_deletion(modifiers=Qt.ControlModifier),
+        'snapshot':           lambda: self.snapshot(modifiers=Qt.ControlModifier),
         'quicksnapshot':      self.snapshot,
     }
     self.shortcuts = {action_name: (QtW.QShortcut(self, context=3), QtW.QShortcut(self, context=3)) for action_name in shortcut_actions}
@@ -229,13 +230,13 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionSettings.triggered.connect(self.dialog_settings.exec)
     self.actionLoop.triggered.connect(lambda: self.toolButtonLoop.setText('↺'))
     self.actionMarkDeleted.triggered.connect(self.mark_for_deletion)
-    self.actionDeleteImmediately.triggered.connect(lambda: self.mark_for_deletion(modifiers=QtCore.Qt.ControlModifier))
+    self.actionDeleteImmediately.triggered.connect(lambda: self.mark_for_deletion(modifiers=Qt.ControlModifier))
     self.actionEmptyRecycleBin.triggered.connect(self.show_delete_prompt)
     self.menuConcatenate.triggered.connect(self.concatenate)
     self.menuVideoTracks.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuVideoTracks))
     self.menuSubtitles.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuSubtitles))
     self.actionAddSubtitleFile.triggered.connect(self.browse_subtitle_file)
-    self.actionSnapshot.triggered.connect(lambda: self.snapshot(modifiers=QtCore.Qt.ControlModifier))
+    self.actionSnapshot.triggered.connect(lambda: self.snapshot(modifiers=Qt.ControlModifier))
     self.actionQuickSnapshot.triggered.connect(self.snapshot)
     self.menuRotate.triggered.connect(self.rotate_video)
     self.actionCrop.triggered.connect(self.set_crop_mode)

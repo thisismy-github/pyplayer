@@ -223,6 +223,7 @@ import qthelpers
 from qthelpers import TRIGGER, addPathSuffix
 
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets as QtW
 #from PyQt5.Qt import QWIDGETSIZE_MAX   # <- this library adds FOUR MB of ram usage, used in set_fullscreen
 from bin.window_pyplayer import Ui_MainWindow
@@ -361,10 +362,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         super().__init__(*args, **kwargs)
         self.app = app
         self.setupUi(self)
-        self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)  # this allows easier clicking off of lineEdits
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # this allows easier clicking off of lineEdits
         self.save_progress_bar = QtW.QProgressBar(self.statusbar)
         self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog)
-        self.dialog_settings.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
         qtstart.connect_widget_signals(self)
         self.icon = (QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'logo.ico')))
         self.setWindowIcon(self.icon)
@@ -434,7 +435,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         for spin in (self.hour_spin, self.minute_spin, self.second_spin, self.frame_spin): spin.setProxyWidget(self)
         self.save_progress_bar.setMaximum(0)
         self.save_progress_bar.setMaximumHeight(16)
-        self.save_progress_bar.setTextVisible(False)
+        self.save_progress_bar.setFormat('Saving...')
+        self.save_progress_bar.setAlignment(Qt.AlignCenter)
         self.save_progress_bar.setSizePolicy(QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Expanding)
         self.save_progress_bar.hide()
 
@@ -603,7 +605,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         #self.refresh_vlc_winid_signal.emit()
 
         # strangely, closing/reopening the window applies an alignment to our QVideoPlayer/QWidget (very bad)
-        self.gridLayout.setAlignment(self.vlc, QtCore.Qt.Alignment())   # reset alignment to nothing
+        self.gridLayout.setAlignment(self.vlc, Qt.Alignment())   # reset alignment to nothing
 
         s = self.dialog_settings
         if event.spontaneous():
@@ -671,7 +673,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def wheelEvent(self, event: QtGui.QWheelEvent):
         add = event.angleDelta().y() > 0
         mod = event.modifiers()                             # just modifiers instead of keyboardModifiers here for some reason
-        if mod & QtCore.Qt.ControlModifier:                 # add more scrolling modifiers and show options like drag/drop does TODO
+        if mod & Qt.ControlModifier:                 # add more scrolling modifiers and show options like drag/drop does TODO
             self.set_playback_speed(self.player.get_rate() + (0.1 if add else -0.1))
             self.update_title_signal.emit()
         else: self.increment_volume(self.volumeScrollIncrement() if add else -self.volumeScrollIncrement())
@@ -700,15 +702,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     primary.activated.emit()
         self.shortcut_bandaid_fix = False
 
-        # handle individual keys. TODO: change these to their enums? (70 -> QtCore.Qt.Key.Key_F)
+        # handle individual keys. TODO: change these to their enums? (70 -> Qt.Key.Key_F)
         if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.activate(TRIGGER)   # esc (fullscreen only)
 
         # emulate menubar shortcuts when menubar is not visible (which disables shortcuts for some reason)
         elif not self.menubar.isVisible():
-            if mod & QtCore.Qt.ControlModifier:
+            if mod & Qt.ControlModifier:
                 if key == 79: self.actionOpen.activate(TRIGGER)                                             # ctrl + o (open)
                 elif key == 83:
-                    if mod & QtCore.Qt.ShiftModifier: self.actionSaveAs.activate(TRIGGER)                   # ctrl + shift + s (save as)
+                    if mod & Qt.ShiftModifier: self.actionSaveAs.activate(TRIGGER)                   # ctrl + shift + s (save as)
                     else: self.actionSave.activate(TRIGGER)                                                 # ctrl + s (save)
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{text}"')
 
@@ -1107,8 +1109,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 excess_height = self.height() - self.vlc.height()
 
                 if self.vwidth > screen_size.width() or self.vheight > screen_size.height():
-                    screen_size.scale(screen_size.width(), int(screen_size.height() * 0.75), QtCore.Qt.KeepAspectRatio)
-                    new_size = self.vsize.scaled(screen_size, QtCore.Qt.KeepAspectRatio)
+                    screen_size.scale(screen_size.width(), int(screen_size.height() * 0.75), Qt.KeepAspectRatio)
+                    new_size = self.vsize.scaled(screen_size, Qt.KeepAspectRatio)
                     new_size.setHeight(new_size.height() + excess_height)
                     self.resize(new_size)
                 else: self.resize(self.vwidth, self.vheight + excess_height)
@@ -1435,7 +1437,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     os.remove(dest)
                     raise AssertionError('(!) Media saved without error, but is completely empty. Likely an ffmpeg error.')
 
-                if delete_after_save == FULL_DELETE: self.mark_for_deletion(modifiers=QtCore.Qt.ControlModifier)
+                if delete_after_save == FULL_DELETE: self.mark_for_deletion(modifiers=Qt.ControlModifier)
                 else:                                       # we either don't want to delete or we want to only mark it for now
                     if dest == video:                       # destination has same name as original video, but we don't want to delete it (yet)
                         temp_name = addPathSuffix(video, '_original', unique=True)
@@ -1769,7 +1771,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if dialog.checkOpen.isChecked(): self.open(output)
             if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
             elif dialog.checkDelete.checkState() == 2:
-                for file in files: self.mark_for_deletion(file=file, modifiers=QtCore.Qt.ControlModifier)
+                for file in files: self.mark_for_deletion(file=file, modifiers=Qt.ControlModifier)
         except: logging.error(f'(!) CONCATENATION FAILED: {format_exc()}')
         finally:
             try:
@@ -1814,7 +1816,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def amplify_audio(self):            # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
         if self.mime_type == 'image': return self.statusbar.showMessage('Well that would just be silly, wouldn\'t it?', 10000)
-        dialog = qthelpers.getDialog(title='Amplify Audio', icon='SP_MediaVolume', fixedSize=(125, 105))   # TODO this won't close automatically
+        dialog = qthelpers.getDialog(title='Amplify Audio', fixedSize=(125, 105), flags=Qt.Tool)   # TODO this won't close automatically
 
         layout = QtW.QVBoxLayout(dialog)
         label = QtW.QLabel('Input desired volume \n(applies on save):', dialog)
@@ -1910,14 +1912,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         is_video = self.mime_type == 'video'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.max_time_label.text()
-        dialog = qthelpers.getDialog(title=f'Input desired {"size" if is_video else "length"}', icon='SP_FileDialogStart', fixedSize=(0, 0))   # TODO this won't close automatically
+        dialog = qthelpers.getDialog(title=f'Input desired {"size" if is_video else "length"}', fixedSize=(0, 0), flags=Qt.Tool)   # TODO this won't close automatically
 
         layout = QtW.QVBoxLayout(dialog)
         form = QtW.QFormLayout()
         label = QtW.QLabel(dialog)
         if is_video: label.setText('If width AND height are 0,\nthe native resolution is used.\n\nIf width OR height are 0,\nnative aspect-ratio is used.\n\nSupports percentages,\nsuch as 50%.')
         else: label.setText('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.')
-        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setAlignment(Qt.AlignCenter)
 
         wline = QtW.QLineEdit('0' if is_video else max_time_string, dialog)
         wbutton = QtW.QPushButton('Width:' if is_video else 'Length:', dialog)
@@ -2008,7 +2010,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # group box and its own layout
             group = QtW.QGroupBox(f'The following files will be {"recycled. Recycle?" if recycle else "permanently deleted. Delete?"}', dialog)
-            group.setAlignment(QtCore.Qt.AlignHCenter)
+            group.setAlignment(Qt.AlignHCenter)
             groupLayout = QtW.QVBoxLayout(group)
             layout.addWidget(group)
 
@@ -2078,7 +2080,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck or "never"}')
             settings.labelCurrentVersion.setText(f'Current version: {constants.VERSION}')
             settings.labelGithub.setText(settings.labelGithub.text().replace('?url', f'{constants.REPOSITORY_URL}/releases/latest'))
-            update_report = 'update_report.txt'
+            update_report = os.path.join(constants.TEMP_DIR, 'update_report.txt')
             if os.path.exists(update_report):
                 import update
                 update.validate_update(self, update_report)
@@ -2107,11 +2109,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             are the keyword-arguments needed to construct the relevant QMessageBox. '''
         try:
             logging.info(f'Cleaning up after update check. results={results}')
+            settings_were_open = self.dialog_settings.isVisible()                       # hide the always-on-top settings while we show popups
+            if settings_were_open: self.dialog_settings.hide()
             if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
                 if 'failed' in results: return qthelpers.getPopup(**popup_kwargs).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
-                if sys.platform == 'win32':
+                if constants.IS_COMPILED and sys.platform == 'win32':
                     choice = qthelpers.getPopup(**popup_kwargs).exec()
                     if choice == QtW.QMessageBox.Yes:
                         import update
@@ -2120,14 +2124,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         latest_version = latest_version_url.split('/')[-1].lstrip('v')
 
                         filename = f'{name}_{latest_version}.zip'
-                        download_url = f'{latest_version_url.replace("/tags/", "/download/")}/{filename}'
+                        download_url = f'{latest_version_url.replace("/tag/", "/download/")}/{filename}'
                         download_path = os.path.join(constants.TEMP_DIR, filename)
                         #Thread(target=update.download_update, args=(self, latest_version, download_url, download_path)).start()
                         update.download_update(self, latest_version, download_url, download_path)
-                else: return qthelpers.getPopup(**popup_kwargs).exec()      # non-windows version of popup
+                else: return qthelpers.getPopup(**popup_kwargs).exec()                  # non-windows version of popup
         finally:
             self.checking_for_updates = False
             self.dialog_settings.buttonCheckForUpdates.setText('Check for updates')
+            if settings_were_open: self.dialog_settings.show()                          # restore settings if they were originally open
 
 
     def swap_slider_styles(self):
@@ -2275,10 +2280,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 }
                 vlc.text_y_offsets = {P.TOP_LEFT: -8, P.TOP_RIGHT: -8, P.BOTTOM_LEFT: 14, P.BOTTOM_RIGHT: 14}
                 vlc.cursors = {
-                    0: QtCore.Qt.SizeFDiagCursor,
-                    1: QtCore.Qt.SizeBDiagCursor,
-                    2: QtCore.Qt.SizeBDiagCursor,
-                    3: QtCore.Qt.SizeFDiagCursor
+                    0: Qt.SizeFDiagCursor,
+                    1: Qt.SizeBDiagCursor,
+                    2: Qt.SizeBDiagCursor,
+                    3: Qt.SizeFDiagCursor
                 }
 
             if not vlc.crop_frames:
@@ -2321,7 +2326,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def snap_to_player_size(self, from_open=False, _recusive=False):
         if not self.isMaximized() and not self.isFullScreen() and self.mime_type == 'video':    # TODO if we figure out cover-art, get rid of mime_type condition
             vlc_size = self.vlc.size()
-            expected_size = self.vsize.scaled(vlc_size, QtCore.Qt.KeepAspectRatio)
+            expected_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
             void_width = vlc_size.width() - expected_size.width()
             void_height = vlc_size.height() - expected_size.height()
 
@@ -2332,7 +2337,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 void = round((void_width if void_width else void_height) / 2)
 
                 # TODO +28 here or window gets smaller when switching between videos with different ratios
-                expected_size.scale(expected_size.width() + round(void * ratio), expected_size.height() + round(void / ratio) + 28, QtCore.Qt.KeepAspectRatio)
+                expected_size.scale(expected_size.width() + round(void * ratio), expected_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
                 true_height = expected_size.height() + self.height() - self.vlc.height()
                 if expected_size != vlc_size: self.resize(expected_size.width(), true_height)
                 return self.snap_to_player_size(_recusive=True)
@@ -2543,7 +2548,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info(f'Marking file {file} for deletion: {checked}')
         mod = app.keyboardModifiers() if modifiers is None else modifiers
 
-        if file and mod & QtCore.Qt.ControlModifier:                            # ctrl pressed -> immediately delete video
+        if file and mod & Qt.ControlModifier:                            # ctrl pressed -> immediately delete video
             doomed_video = file
             self.cycle_media(next=self.last_cycle_was_forward)                  # cycle video before deleting
             try:
@@ -2559,7 +2564,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except ValueError: pass
             except Exception as error: logging.warning(f'Error deleting file {doomed_video} - {type(error)}: {error}')
 
-        elif mod & QtCore.Qt.ShiftModifier: self.show_delete_prompt()           # shift pressed -> show deletion prompt
+        elif mod & Qt.ShiftModifier: self.show_delete_prompt()           # shift pressed -> show deletion prompt
         elif checked and file: self.marked_for_deletion.add(file)
         elif not checked:
             try: self.marked_for_deletion.remove(file)
@@ -2584,7 +2589,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             d_set = self.dialog_settings
             if d_set.checkSnapshotPause.isChecked(): self.player.set_pause(True)                            # pause video if desired
             mod = app.keyboardModifiers() if modifiers is None else modifiers
-            if (self.mime_type != 'video' or not self.video) and not mod & QtCore.Qt.ShiftModifier: return  # ensure video is playing or shift is pressed
+            if (self.mime_type != 'video' or not self.video) and not mod & Qt.ShiftModifier: return  # ensure video is playing or shift is pressed
 
             # no modifiers OR crop mode enabled -> quick snapshot, no dialogs TODO: maybe add default width/height scale settings
             if not mod:
@@ -2620,7 +2625,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 elif format == 'JPEG': self.convert_snapshot_to_jpeg(path)
 
             # ctrl pressed -> show resize + save-file dialog
-            elif mod & QtCore.Qt.ControlModifier:
+            elif mod & Qt.ControlModifier:
                 self.player.set_pause(True)                         # only needed if checkSnapshotPause is False
                 try:
                     # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
@@ -2687,7 +2692,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 finally: self.player.set_pause(False or self.is_paused)         # only needed if checkSnapshotPause is False
 
             # shift pressed -> open last snapshot (not in explorer)
-            elif mod & QtCore.Qt.ShiftModifier:
+            elif mod & Qt.ShiftModifier:
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 else: os.system(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')

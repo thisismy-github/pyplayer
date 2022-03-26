@@ -2,10 +2,11 @@ import qtstart
 import constants
 import qthelpers
 
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMessageBox, QApplication
 import os
 import sys
+import time
 import logging
 import subprocess
 from traceback import format_exc
@@ -56,34 +57,35 @@ def check_for_update(self):
                 dict(failed=True),
                 dict(title='Update URL mismatch',
                      icon=QMessageBox.Warning,
-                     text=f'The update URL on Github has an unexpected format. \nGithub version: "{latest_version}"\nCurrent version: "{current_version}"',
+                     text=f'The URL for the latest release on Github has an unexpected format.\n\nGithub version: "{latest_version}"\nCurrent version: "{current_version}"',
                      textInformative='Newer versions might use a different naming scheme, or perhaps '
                                      f'there was an error while checking. You can manually check the {HYPERLINK}.')
             )
 
         if get_later_version_string(latest_version, current_version) != current_version:    # latest version is more recent than current version
-            if sys.platform == 'win32':                                                     # TODO Windows only for now
+            if constants.IS_COMPILED and sys.platform == 'win32':           # TODO Windows only for now (and no auto-updating directly from the script)
                 return self._handle_updates_signal.emit(
                     dict(latest_version_url=latest_version_url),
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
                          buttons=(QMessageBox.Yes | QMessageBox.No),        # | QMessageBox.Ignore
-                         text=f'An update is available on Github ({current_version} -> {latest_version}).',
-                         textInformative='You can manually view the '
-                                         f'{HYPERLINK}.\n Click "Yes" '
-                                         'to download and install this update (PyPlayer will restart automatically).')
+                         text=f'An update is available on Github ({current_version} -> {latest_version}). '
+                              'Would you\nlike to download and install this update automatically?',
+                         textInformative=f'You can manually view the {HYPERLINK}.')
                 )
             else:                                                           # non-windows version of popup (no auto-updater yet)
+                if constants.IS_COMPILED: reason = 'Auto-updating is currently only available on Windows.<br><br>'      # \n breaks hyperlinks
+                else: reason = 'Because you\'re running directly from the script, auto-updating is disbaled.<br><br>'   # \n breaks hyperlinks
                 return self._handle_updates_signal.emit(
                     dict(latest_version_url=latest_version_url),
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
                          text=f'An update is available on Github ({current_version} -> {latest_version}).',
-                         textInformative=f'You can download the {HYPERLINK}.')
+                         textInformative=f'{reason}You can view the {HYPERLINK}.')
                 )
         else: self.log('You\'re up to date!')
     except: self.log(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
-    self._handle_updates_signal.emit(None, None)                            # call empty signal to perform cleanup
+    self._handle_updates_signal.emit({}, {})                                # call empty signal to perform cleanup
 
 
 def download_update(self, latest_version, download_url, download_path):
@@ -96,21 +98,31 @@ def download_update(self, latest_version, download_url, download_path):
         downloaded = 0
 
         self.save_progress_bar.setMaximum(100)
-        self.save_progress_bar.setAlignment(QtCore.Qt.AlignCenter)
-        self.show_save_progress_signal.emit(True)
+        self.save_progress_bar.setVisible(True)
         self.statusbar.setVisible(True)
+        mb_per_chunk = 3
 
         with open(download_path, 'wb') as file:
-            for chunk in download_response.iter_content(chunk_size=1048576):     # 1048576 = 1024 * 1024
+            logging.info(f'Downloading {total_size / 1048576:.2f}mb')
+            chunk_size = mb_per_chunk * (1024 * 1024)
+            start_time = time.time()
+            for chunk in download_response.iter_content(chunk_size=chunk_size):
                 file.write(chunk)
                 downloaded += len(chunk)
-                self.save_progress_bar.setValue(downloaded / total_size)
-                self.save_progress_bar.setFormat(f'{downloaded / 1048576:.2f}/{total_size / 1048576:.2f} %p%')
-                self.app.processEvents()                    # manually update GUI during download, since this is not a thread
-        self.save_progress_bar.setFormat('Update downloaded, restarting...')
-        logger.info('Download successful, preparing updater-utility...')
+                percent = (downloaded / total_size) * 100
+                self.save_progress_bar.setValue(percent)
+
+                message = f'{percent:.0f}% ({downloaded / 1048576:.0f}mb/{total_size / 1048576:.2f}mb)'
+                self.statusbar.showMessage(message)
+                self.save_progress_bar.setFormat(message)
+                QApplication.processEvents()                # manually update GUI since this is not taking place in a thread
+
+        message = f'Update downloaded after {time.time() - start_time:.1f} seconds, restarting...'
+        self.log(message)
+        self.save_progress_bar.setFormat(message)
 
         # send exit-signals to all PyPlayer instances through their PID files
+        logger.info('Sending EXIT-signals to any other active PyPlayer instances...')
         pid_files = []
         for file in os.listdir(constants.TEMP_DIR):
             if file[-4:] == '.pid':
@@ -120,7 +132,7 @@ def download_update(self, latest_version, download_url, download_path):
                     logger.info(f'Active PyPlayer instance detected through PID file {pid_file}')
                     pid_files.append(f'"{pid_file}"')
                     pid = file[:-4]
-                    if pid == os.getpid(): continue         # do not send exit-signal to ourselves
+                    if pid == str(os.getpid()): continue    # do not send exit-signal to ourselves (but still append to pid_files)
                     cmdpath = os.path.join(constants.TEMP_DIR, f'cmd.{pid}.txt')
                     with open(cmdpath, 'wb') as txt:
                         txt.write('EXIT'.encode())          # normal cmdfiles are encoded
@@ -129,41 +141,62 @@ def download_update(self, latest_version, download_url, download_path):
 
         # copy existing updater utility to temporary path so it can be replaced during the update
         import shutil
-        original_updater_path = 'updater.exe' if constants.IS_COMPILED else os.path.join(constants.BIN_DIR, 'updater.py')
-        active_updater_path = qthelpers.addPathSuffix(original_updater_path, '_active', unique=True)
+        original_updater_path = os.path.join(constants.CWD, 'updater.exe')  # IS_COMPILED is assumed here
+        active_updater_path = qthelpers.getUniquePath(os.path.join(constants.TEMP_DIR, 'updater_active.exe'))
         logger.info(f'Copying updater-utility to temporary path ({active_updater_path})')
         shutil.copy2(original_updater_path, active_updater_path)
 
         # run updater utility and exit current PyPlayer instance
+        args = []
+        if self.video or qtstart.args.file: args.append(f'"{self.video or qtstart.args.file}"')
+        if qtstart.args.play_and_exit: args.append('"--play-and-exit"')
+        cmd_args = f' {" ".join(args)}' if args else ''
+        add_to_report = f'{constants.VERSION.split()[1]} -> {latest_version}\n"{active_updater_path}"'
+
         logger.info('PyPlayer closing, updater-utility starting...')
-        file, play_and_exit = self.video if self.video else qtstart.args.file, qtstart.args.play_and_exit
-        cmd_args = f'\"{file if file else ""}\" {play_and_exit if play_and_exit else ""}'
-        subprocess.Popen(f'{active_updater_path} '
-                         f'--zip {download_path} '                          # the zip file we want the updater to unpack
-                         f'--cmd "{constants.SCRIPT_PATH} {cmd_args}" '     # the command the updater should run to restart us
-                         f'--lock-files {" ".join(pid_files)} '             # tell updater to wait for each PID file to be deleted
-                         f'--add-to-report "{active_updater_path}"')        # add temp-updater's path to report so we can delete it after
+        updater_cmd = (f'{active_updater_path} '
+                       f'--zip {download_path} '                        # the zip file we want the updater to unpack
+                       f'--destination {constants.CWD} '                # the destination to unzip the file to
+                       f'--cmd "{constants.SCRIPT_PATH}{cmd_args}" '    # the command the updater should run to restart us
+                       f'--lock-files {" ".join(pid_files)} '           # tell updater to wait for each PID file to be deleted
+                       f'--add-to-report {add_to_report}')              # add versions and temp-updater's path to report
+        logger.info(updater_cmd)
+        subprocess.Popen(updater_cmd)
         return qtstart.exit(self)
     except:
         logger.warning(f'(!) Could not download latest version. New naming format? Missing updater? {format_exc()}')
+
+        updater_removal_failed = ''
+        download_removal_failed = ''
+        if os.path.exists(active_updater_path):
+            try: os.remove(active_updater_path)
+            except: updater_removal_failed = f'Additionally, the temporary update-utility file at {active_updater_path} could not be deleted.<br><br>'
+        if os.path.exists(download_path):
+            try: os.remove(download_path)
+            except: download_removal_failed = f'Additionally, the downloaded .zip file at {download_path} could not be deleted.<br><br>'
+
         qthelpers.getPopup(title='Update download failed',                  # download_update does not occur inside a thread, so this is safe
                            icon=QMessageBox.Warning,
                            text=f'Update {latest_version} failed to install.',
                            textInformative='There could have been an error while creating the download link, '
                                            'the download may have failed, the update utility may be missing, '
-                                           'or perhaps newer versions use a different format for updating.\n\n'
-                                           f'You can manually download the {HYPERLINK}.',
-                           textDetailed=format_exc()).exec()
+                                           'or perhaps newer versions use a different format for updating.<br><br>'   # \n breaks hyperlinks
+                                           f'{updater_removal_failed}{download_removal_failed}'
+                                           f'You can still manually download the {HYPERLINK}.',
+                           textDetailed=format_exc(),
+                           textDetailedAutoOpen=True).exec()
+
         self.statusbar.setVisible(self.actionShowStatusBar.isChecked())     # restore statusbar to original state if update failed
         self.save_progress_bar.setMaximum(0)                                # set progress bar's maximum to 0 to restore indeterminate style
-        return self.show_save_progress_signal.emit(False)                   # hide progress bar if update failed
+        self.save_progress_bar.setFormat('Saving...')                       # reset progress bar to default text
+        return self.save_progress_bar.setVisible(False)                     # hide progress bar if update failed
 
 
 def validate_update(self, update_report):
     logger.info(f'Update report detected at {update_report}, validating...')
     with open(update_report) as report:
         lines = tuple(line.strip() for line in report)
-        active_updater_path, download_path, status = lines[:3]
+        version_change, active_updater_path, download_path, status = lines
 
         try: os.remove(active_updater_path)
         except: self.log(f'Could not clean up temporary updater after update: {download_path}')
@@ -176,7 +209,9 @@ def validate_update(self, update_report):
                                icon=QMessageBox.Warning,
                                text='The attempted update failed while unpacking.',
                                textInformative=f'If needed, you can manually download the {HYPERLINK}.',
-                               textDetailed=status).exec()
+                               textDetailed=status,
+                               textDetailedAutoOpen=True).exec()
     try: os.remove(update_report)
     except: logger.warning('Failed to delete update report after validation.')
     logger.info('Update validated.')
+    self.log(f'Update from {version_change} successful.')
