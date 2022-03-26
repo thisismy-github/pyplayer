@@ -11,7 +11,7 @@ import time
 
 # ---------------------
 
-VERSION = 'pyplayer 0.1.1 beta'
+VERSION = 'pyplayer 0.1.2 beta'
 REPOSITORY_URL = 'https://github.com/thisismy-github/pyplayer'
 SCRIPT_START_TIME = time.time()
 

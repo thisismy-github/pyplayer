@@ -27,7 +27,7 @@ parser.add_argument('--zip', help='The zip file to unpack')
 parser.add_argument('--destination', default=CWD, help='The destination to unpack the zip file')
 parser.add_argument('--cmd', help='The command to run after unpacking')
 parser.add_argument('--lock-files', nargs='*', default=None, help='File(s) that must be deleted before unpacking, typically PID files')
-parser.add_argument('--add-to-report', nargs='?', default=None, help='Data to always include at the top of the report file')
+parser.add_argument('--add-to-report', nargs='*', default=None, help='Data to always include at the top of the report file')
 parser.add_argument('--report-path', default=os.path.join(CWD, 'update_report.txt'), help='Path/name of the report file that will be generated')
 parser.add_argument('--delete', action=argparse.BooleanOptionalAction, default=False, help='Delete the zip file after successfully unpacking')
 args = parser.parse_args()
@@ -53,7 +53,7 @@ except Exception as error:
 
 
 with open(args.report_path, 'w') as report:
-    if args.add_to_report: report.write(f'{args.add_to_report}\n')
+    for line in args.add_to_report: report.write(f'{line}\n')
     report.write(f'{args.zip}\n')
     if report_text: report.write(report_text)
 
