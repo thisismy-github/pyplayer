@@ -43,6 +43,7 @@ QMenuBar::item::pressed {
 QProgressBar {
 	background-color: transparent;
 	border-color: black;
+	color: white;
 }
 
 QPushButton, QToolButton {
