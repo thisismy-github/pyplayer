@@ -151,7 +151,7 @@ def download_update(self, latest_version, download_url, download_path):
         if self.video or qtstart.args.file: args.append(f'"{self.video or qtstart.args.file}"')
         if qtstart.args.play_and_exit: args.append('"--play-and-exit"')
         cmd_args = f' {" ".join(args)}' if args else ''
-        add_to_report = f'{constants.VERSION.split()[1]} -> {latest_version}\n"{active_updater_path}"'
+        add_to_report = f'"{constants.VERSION.split()[1]} -> {latest_version}" "{active_updater_path}"'
 
         logger.info('PyPlayer closing, updater-utility starting...')
         updater_cmd = (f'{active_updater_path} '
