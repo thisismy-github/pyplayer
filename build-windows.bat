@@ -11,3 +11,9 @@ copy .\executable\compiled\updater.exe .\executable\compiled\release\updater.exe
 
 @RD /S /Q ".\executable\compiled\launcher"
 del ".\executable\compiled\updater.exe"
+
+del ".\executable\compiled\release\Qt5Network.dll"
+del ".\executable\compiled\release\Qt5Qml.dll"
+del ".\executable\compiled\release\Qt5QmlModels.dll"
+del ".\executable\compiled\release\Qt5Quick.dll"
+del ".\executable\compiled\release\Qt5WebSockets.dll"
