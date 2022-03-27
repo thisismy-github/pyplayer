@@ -56,7 +56,7 @@
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>File</string>
+     <string>&amp;File</string>
     </property>
     <widget class="QMenu" name="menuRecent">
      <property name="title">
@@ -76,11 +76,12 @@
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
-     <string>Edit</string>
+     <string>&amp;Edit</string>
     </property>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
     <addaction name="actionLoop"/>
+    <addaction name="actionAutoplay"/>
     <addaction name="separator"/>
     <addaction name="actionMarkDeleted"/>
     <addaction name="actionEmptyRecycleBin"/>
@@ -88,7 +89,7 @@
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
-     <string>Help</string>
+     <string>&amp;Help</string>
     </property>
     <addaction name="actionCheckForUpdates"/>
     <addaction name="separator"/>
@@ -100,7 +101,7 @@
    </widget>
    <widget class="QMenu" name="menuAudio">
     <property name="title">
-     <string>Audio</string>
+     <string>&amp;Audio</string>
     </property>
     <widget class="QMenu" name="menuAudioTracks">
      <property name="title">
@@ -116,7 +117,7 @@
    </widget>
    <widget class="QMenu" name="menuVideo">
     <property name="title">
-     <string>Video</string>
+     <string>&amp;Video</string>
     </property>
     <widget class="QMenu" name="menuConcatenate">
      <property name="title">
@@ -174,7 +175,7 @@
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
-     <string>Window</string>
+     <string>&amp;Window</string>
     </property>
     <addaction name="actionFullscreen"/>
     <addaction name="separator"/>
@@ -247,16 +248,16 @@
          <number>0</number>
         </property>
         <property name="topMargin">
-         <number>0</number>
+         <number>2</number>
         </property>
         <property name="rightMargin">
          <number>0</number>
         </property>
         <property name="bottomMargin">
-         <number>0</number>
+         <number>2</number>
         </property>
         <item>
-         <widget class="QLineEdit" name="current_time_lineedit">
+         <widget class="QLineEdit" name="lineCurrentTime">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -266,7 +267,7 @@
           <property name="maximumSize">
            <size>
             <width>48</width>
-            <height>16777215</height>
+            <height>16</height>
            </size>
           </property>
           <property name="cursor">
@@ -287,24 +288,18 @@
          </widget>
         </item>
         <item>
-         <widget class="QVideoSlider" name="progress_slider">
+         <widget class="QVideoSlider" name="sliderProgress">
           <property name="enabled">
            <bool>false</bool>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>20</height>
-           </size>
           </property>
           <property name="maximumSize">
            <size>
             <width>16777215</width>
-            <height>20</height>
+            <height>16</height>
            </size>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::ClickFocus</enum>
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="toolTipDuration">
            <number>2500</number>
@@ -327,11 +322,17 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="max_time_label">
+         <widget class="QLabel" name="labelMaxTime">
           <property name="minimumSize">
            <size>
             <width>48</width>
             <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16</height>
            </size>
           </property>
           <property name="text">
@@ -356,7 +357,7 @@
        <property name="maximumSize">
         <size>
          <width>16777215</width>
-         <height>46</height>
+         <height>44</height>
         </size>
        </property>
        <layout class="QGridLayout" name="advanced_layout">
@@ -378,10 +379,10 @@
            <number>1</number>
           </property>
           <property name="verticalSpacing">
-           <number>3</number>
+           <number>1</number>
           </property>
           <item row="1" column="0">
-           <widget class="QPushButton" name="prev_video_button">
+           <widget class="QPushButton" name="buttonPrevious">
             <property name="minimumSize">
              <size>
               <width>20</width>
@@ -400,7 +401,7 @@
              </font>
             </property>
             <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
+             <enum>Qt::NoFocus</enum>
             </property>
             <property name="toolTip">
              <string>Plays the previous valid media file in the current folder.</string>
@@ -411,7 +412,7 @@
            </widget>
           </item>
           <item row="1" column="1" colspan="2">
-           <widget class="QLineEdit" name="output_lineedit">
+           <widget class="QLineEdit" name="lineOutput">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -439,7 +440,7 @@
            </widget>
           </item>
           <item row="0" column="0" colspan="4">
-           <layout class="QHBoxLayout" name="hlayoutToolButtons">
+           <layout class="QHBoxLayout" name="hlayoutQuickButtons">
             <property name="spacing">
              <number>6</number>
             </property>
@@ -450,7 +451,7 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QToolButton" name="toolButtonOpenMediaLocation">
+             <widget class="QPushButton" name="buttonOpenMediaLocation">
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -463,7 +464,10 @@
                </font>
               </property>
               <property name="focusPolicy">
-               <enum>Qt::ClickFocus</enum>
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Open media location</string>
               </property>
               <property name="text">
                <string notr="true">📂</string>
@@ -471,7 +475,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="toolButtonMarkDeleted">
+             <widget class="QPushButton" name="buttonMarkDeleted">
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -484,7 +488,18 @@
                </font>
               </property>
               <property name="focusPolicy">
-               <enum>Qt::ClickFocus</enum>
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Mark media for future deletion.
+0 files are currently marked for deletion.
+
+Shortcuts:
+Shift + click: Show deletion-confirmation prompt.
+Ctrl + click: Immediately delete current media.
+
+Right-click for more options. Deletion-confirmation
+prompt is shown on exit if any files are marked.</string>
               </property>
               <property name="text">
                <string notr="true">❌</string>
@@ -495,7 +510,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="toolButtonSnapshot">
+             <widget class="QPushButton" name="buttonSnapshot">
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -508,7 +523,15 @@
                </font>
               </property>
               <property name="focusPolicy">
-               <enum>Qt::ClickFocus</enum>
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Takes a screenshot of the current media at its current position.
+
+Ctrl + click: Opens size and save-file dialogs for your snapshot.
+Shift + click: Opens the most recent snapshot.
+
+Right-click for more options.</string>
               </property>
               <property name="text">
                <string notr="true">📷</string>
@@ -519,7 +542,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="toolButtonLoop">
+             <widget class="QPushButton" name="buttonLoop">
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -532,10 +555,43 @@
                </font>
               </property>
               <property name="focusPolicy">
-               <enum>Qt::ClickFocus</enum>
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>If checked, media loops upon completion — even with autoplay enabled.</string>
               </property>
               <property name="text">
-               <string notr="true">🔁</string>
+               <string notr="true"/>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="buttonAutoplay">
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>9</pointsize>
+                <weight>50</weight>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>If checked, the next valid media file in the current folder will
+automatically play upon completion of the current media.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
               </property>
               <property name="checkable">
                <bool>true</bool>
@@ -558,7 +614,7 @@
            </layout>
           </item>
           <item row="1" column="3">
-           <widget class="QPushButton" name="next_video_button">
+           <widget class="QPushButton" name="buttonNext">
             <property name="minimumSize">
              <size>
               <width>20</width>
@@ -577,7 +633,7 @@
              </font>
             </property>
             <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
+             <enum>Qt::NoFocus</enum>
             </property>
             <property name="toolTip">
              <string>Plays the next valid media file in the current folder.</string>
@@ -591,9 +647,21 @@
         </item>
         <item row="0" column="5" colspan="2">
          <widget class="QFrame" name="frameQuickChecks">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>38</height>
+           </size>
+          </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <property name="spacing">
-            <number>0</number>
+            <number>2</number>
            </property>
            <property name="topMargin">
             <number>0</number>
@@ -601,6 +669,19 @@
            <property name="bottomMargin">
             <number>0</number>
            </property>
+           <item>
+            <spacer name="verticalSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
            <item>
             <widget class="QCheckBox" name="checkDeleteOriginal">
              <property name="maximumSize">
@@ -610,7 +691,7 @@
               </size>
              </property>
              <property name="focusPolicy">
-              <enum>Qt::ClickFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="toolTip">
               <string notr="true">Tristate:
@@ -647,7 +728,7 @@ is dependent on your settings.</string>
               </size>
              </property>
              <property name="focusPolicy">
-              <enum>Qt::ClickFocus</enum>
+              <enum>Qt::NoFocus</enum>
              </property>
              <property name="toolTip">
               <string notr="true">If checked, using the next/previous video buttons will
@@ -655,26 +736,6 @@ skip over files that have been marked for deletion.</string>
              </property>
              <property name="text">
               <string notr="true">Skip marked files</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkAutoplay">
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>13</height>
-              </size>
-             </property>
-             <property name="focusPolicy">
-              <enum>Qt::ClickFocus</enum>
-             </property>
-             <property name="toolTip">
-              <string notr="true">If checked, the next valid media file in the current folder will
-automatically play upon completion of the current media.</string>
-             </property>
-             <property name="text">
-              <string notr="true">Autoplay</string>
              </property>
             </widget>
            </item>
@@ -694,7 +755,7 @@ automatically play upon completion of the current media.</string>
             <item row="1" column="0">
              <layout class="QHBoxLayout" name="horizontalLayout_2">
               <item>
-               <widget class="QSpinBoxPassthrough" name="hour_spin">
+               <widget class="QSpinBoxPassthrough" name="spinHour">
                 <property name="minimumSize">
                  <size>
                   <width>26</width>
@@ -713,7 +774,7 @@ automatically play upon completion of the current media.</string>
                </widget>
               </item>
               <item>
-               <widget class="QSpinBoxPassthrough" name="minute_spin">
+               <widget class="QSpinBoxPassthrough" name="spinMinute">
                 <property name="minimumSize">
                  <size>
                   <width>33</width>
@@ -735,7 +796,7 @@ automatically play upon completion of the current media.</string>
                </widget>
               </item>
               <item>
-               <widget class="QSpinBoxPassthrough" name="second_spin">
+               <widget class="QSpinBoxPassthrough" name="spinSecond">
                 <property name="minimumSize">
                  <size>
                   <width>33</width>
@@ -759,7 +820,7 @@ automatically play upon completion of the current media.</string>
              </layout>
             </item>
             <item row="2" column="0">
-             <widget class="QSpinBoxPassthrough" name="frame_spin">
+             <widget class="QSpinBoxPassthrough" name="spinFrame">
               <property name="minimumSize">
                <size>
                 <width>98</width>
@@ -783,7 +844,7 @@ automatically play upon completion of the current media.</string>
            </layout>
           </item>
           <item row="0" column="0">
-           <widget class="QPushButton" name="pause_button">
+           <widget class="QPushButton" name="buttonPause">
             <property name="minimumSize">
              <size>
               <width>28</width>
@@ -821,10 +882,10 @@ automatically play upon completion of the current media.</string>
         <item row="0" column="1">
          <layout class="QVBoxLayout" name="verticalLayout">
           <property name="spacing">
-           <number>0</number>
+           <number>1</number>
           </property>
           <item>
-           <widget class="QPushButton" name="trim_start_button">
+           <widget class="QPushButton" name="buttonTrimStart">
             <property name="minimumSize">
              <size>
               <width>32</width>
@@ -838,7 +899,7 @@ automatically play upon completion of the current media.</string>
              </size>
             </property>
             <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
+             <enum>Qt::NoFocus</enum>
             </property>
             <property name="text">
              <string notr="true">Start</string>
@@ -849,7 +910,7 @@ automatically play upon completion of the current media.</string>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="trim_end_button">
+           <widget class="QPushButton" name="buttonTrimEnd">
             <property name="minimumSize">
              <size>
               <width>32</width>
@@ -863,7 +924,7 @@ automatically play upon completion of the current media.</string>
              </size>
             </property>
             <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
+             <enum>Qt::NoFocus</enum>
             </property>
             <property name="text">
              <string notr="true">End</string>
@@ -876,7 +937,7 @@ automatically play upon completion of the current media.</string>
          </layout>
         </item>
         <item row="0" column="10">
-         <widget class="QSlider" name="volume_slider">
+         <widget class="QSlider" name="sliderVolume">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
             <horstretch>0</horstretch>
@@ -890,7 +951,7 @@ automatically play upon completion of the current media.</string>
            </size>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::ClickFocus</enum>
+           <enum>Qt::NoFocus</enum>
           </property>
           <property name="toolTip">
            <string notr="true">100%</string>
@@ -1015,9 +1076,6 @@ automatically play upon completion of the current media.</string>
    <property name="text">
     <string>Media location</string>
    </property>
-   <property name="toolTip">
-    <string>Open media location</string>
-   </property>
   </action>
   <action name="actionCatNone">
    <property name="text">
@@ -1046,17 +1104,6 @@ automatically play upon completion of the current media.</string>
    </property>
    <property name="iconText">
     <string notr="true">Mark media for deletion</string>
-   </property>
-   <property name="toolTip">
-    <string notr="true">Mark media for future deletion.
-0 files are currently marked for deletion.
-
-Shortcuts:
-Shift + click: Show deletion-confirmation prompt.
-Ctrl + click: Immediately delete current media.
-
-Right-click for more options. Deletion-confirmation
-prompt is shown on exit if any files are marked.</string>
    </property>
   </action>
   <action name="actionEmptyRecycleBin">
@@ -1130,14 +1177,6 @@ prompt is shown on exit if any files are marked.</string>
    <property name="text">
     <string>Quick snapshot</string>
    </property>
-   <property name="toolTip">
-    <string>Takes a screenshot of the current media at its current position.
-
-Ctrl + click: Opens size and save-file dialogs for your snapshot.
-Shift + click: Opens the most recent snapshot.
-
-Right-click for more options.</string>
-   </property>
   </action>
   <action name="actionDeleteImmediately">
    <property name="text">
@@ -1150,9 +1189,6 @@ Right-click for more options.</string>
    </property>
    <property name="text">
     <string>Loop</string>
-   </property>
-   <property name="toolTip">
-    <string>If checked, media loops upon completion — even with autoplay enabled.</string>
    </property>
   </action>
   <action name="actionRotate90">
@@ -1258,6 +1294,14 @@ Right-click for more options.</string>
     <string>Check for updates</string>
    </property>
   </action>
+  <action name="actionAutoplay">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Autoplay</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -1290,17 +1334,17 @@ Right-click for more options.</string>
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>pause_button</tabstop>
-  <tabstop>trim_start_button</tabstop>
-  <tabstop>trim_end_button</tabstop>
-  <tabstop>prev_video_button</tabstop>
-  <tabstop>next_video_button</tabstop>
-  <tabstop>output_lineedit</tabstop>
-  <tabstop>hour_spin</tabstop>
-  <tabstop>minute_spin</tabstop>
-  <tabstop>second_spin</tabstop>
-  <tabstop>frame_spin</tabstop>
-  <tabstop>volume_slider</tabstop>
+  <tabstop>buttonPause</tabstop>
+  <tabstop>buttonTrimStart</tabstop>
+  <tabstop>buttonTrimEnd</tabstop>
+  <tabstop>buttonPrevious</tabstop>
+  <tabstop>buttonNext</tabstop>
+  <tabstop>lineOutput</tabstop>
+  <tabstop>spinHour</tabstop>
+  <tabstop>spinMinute</tabstop>
+  <tabstop>spinSecond</tabstop>
+  <tabstop>spinFrame</tabstop>
+  <tabstop>sliderVolume</tabstop>
  </tabstops>
  <resources/>
  <connections/>

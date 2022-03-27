@@ -57,7 +57,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-69</y>
+        <y>0</y>
         <width>334</width>
         <height>1447</height>
        </rect>
@@ -94,7 +94,7 @@
                 <number>2</number>
                </property>
                <item>
-                <widget class="QComboBox" name="theme_combo">
+                <widget class="QComboBox" name="comboThemes">
                  <property name="toolTip">
                   <string notr="true">The currently applied theme. Themes are stored in your installation directory's &quot;themes&quot; folder as .json, .css, .qss, or .txt files.</string>
                  </property>
@@ -109,7 +109,7 @@
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="theme_refresh_button">
+                <widget class="QPushButton" name="buttonRefreshThemes">
                  <property name="maximumSize">
                   <size>
                    <width>22</width>
@@ -137,7 +137,7 @@
               </layout>
              </item>
              <item row="1" column="0">
-              <widget class="QLabel" name="windowTitleLabel">
+              <widget class="QLabel" name="label_49">
                <property name="toolTip">
                 <string>The format to use for setting the title of the window. The
 following variables are replaced with their corresponding values:
@@ -209,14 +209,14 @@ Leave blank to always save unspecified videos to their source folder.</string>
                 <number>2</number>
                </property>
                <item>
-                <widget class="QLineEdit" name="lineDefaultPath">
+                <widget class="QLineEdit" name="lineDefaultOutputPath">
                  <property name="placeholderText">
                   <string notr="true">Same as source media</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="default_path_browse">
+                <widget class="QPushButton" name="buttonBrowseDefaultOutputPath">
                  <property name="minimumSize">
                   <size>
                    <width>22</width>
@@ -1213,7 +1213,7 @@ visible as a visual cue once the current media finishes.</string>
                  </layout>
                 </item>
                 <item row="1" column="0">
-                 <widget class="QLabel" name="snapshotNameFormatLabel">
+                 <widget class="QLabel" name="label_47">
                   <property name="toolTip">
                    <string>The format to use for naming snapshots. The following variables are replaced with their corresponding values:
 
@@ -1248,7 +1248,7 @@ visible as a visual cue once the current media finishes.</string>
                  </widget>
                 </item>
                 <item row="2" column="0">
-                 <widget class="QLabel" name="snapshotNameFormatLabel_2">
+                 <widget class="QLabel" name="label_45">
                   <property name="toolTip">
                    <string>The format to use for the ?date variable in snapshot names.
 Formatting is based on strftime formatting. Hover over the ?
@@ -1330,7 +1330,7 @@ button to see most (but not all) of the available format codes.</string>
                  </layout>
                 </item>
                 <item row="3" column="0">
-                 <widget class="QLabel" name="imageFormatLabel">
+                 <widget class="QLabel" name="label_48">
                   <property name="text">
                    <string>Snapshot Image Format</string>
                   </property>
@@ -1354,7 +1354,7 @@ button to see most (but not all) of the available format codes.</string>
                  </widget>
                 </item>
                 <item row="4" column="0">
-                 <widget class="QLabel" name="snapshotJPEGQualityLabel">
+                 <widget class="QLabel" name="label_46">
                   <property name="toolTip">
                    <string>The quality to use for JPEG-format snapshots.</string>
                   </property>
