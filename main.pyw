@@ -1992,7 +1992,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dialog_about = qthelpers.getDialogFromUiClass(Ui_aboutDialog, modal=False, deleteOnClose=True)
         dialog_about.labelLogo.setPixmap(QtGui.QPixmap(os.path.join(constants.RESOURCE_DIR, 'logo_filled.png')))
         dialog_about.labelVersion.setText(dialog_about.labelVersion.text().replace('?version', constants.VERSION))
+
+        settings_were_open = self.dialog_settings.isVisible()   # hide the always-on-top settings while we show popups
+        if settings_were_open: self.dialog_settings.hide()
         dialog_about.exec()
+        if settings_were_open: self.dialog_settings.show()      # restore settings if they were originally open
+
         del dialog_about
         gc.collect(generation=2)
 
