@@ -905,7 +905,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def cycle_media(self, *args, next: bool = True):    # *args to capture unused signal args
         ''' Cycles through the files in the current media's folder using listdir and looks for the next
             openable, non-hidden file. If the folder has no other openable files, nothing happens. '''
-        if self.video is None: return self.log('No media is currently playing.')    # TODO remember last media's folder?
+        if self.video is None: return self.statusbar.showMessage('No media is playing.', 10000)    # TODO remember last media's folder?
         logging.info(f'Getting {"next" if next else "previous"} media file...')
 
         video_name, video_dir, files = get_listdir(self.video)
@@ -2540,7 +2540,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
 
 
-    def mark_for_deletion(self, checked: bool, file=None, modifiers=None):
+    def mark_for_deletion(self, checked: bool = False, file=None, modifiers=None):
+        if not self.video:
+            if checked: self.actionMarkDeleted.trigger()
+            return self.statusbar.showMessage('No media is playing.', 10000)
         file = file or self.video
         logging.info(f'Marking file {file} for deletion: {checked}')
         mod = app.keyboardModifiers() if modifiers is None else modifiers
@@ -2558,14 +2561,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.log(f'File {doomed_video} deleted successfully.')
                 self.marked_for_deletion.remove(doomed_video)
                 if file in self.recent_videos: self.recent_videos.remove(file)  # remove file from recent videos list if needed
-            except ValueError: pass
+            except (ValueError, KeyError): pass
             except Exception as error: logging.warning(f'Error deleting file {doomed_video} - {type(error)}: {error}')
 
         elif mod & Qt.ShiftModifier: self.show_delete_prompt()                  # shift pressed -> show deletion prompt
         elif checked and file: self.marked_for_deletion.add(file)
         elif not checked:
             try: self.marked_for_deletion.remove(file)
-            except ValueError: pass
+            except (ValueError, KeyError): pass
+            except: self.log(f'(!) MARK_FOR_DELETION FAILED: {format_exc()}')
         tooltip_count_string = f'{len(self.marked_for_deletion)} file{"s" if len(self.marked_for_deletion) == 1 else ""}'
         self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', tooltip_count_string))
 
