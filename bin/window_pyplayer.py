@@ -22,7 +22,7 @@ class Ui_MainWindow(object):
         self.gridLayout.setVerticalSpacing(0)
         self.gridLayout.setObjectName("gridLayout")
         self.vlc = QVideoPlayer(self.centralwidget)
-        self.vlc.setMinimumSize(QtCore.QSize(256, 0))
+        self.vlc.setMinimumSize(QtCore.QSize(254, 0))
         self.vlc.setAcceptDrops(True)
         self.vlc.setObjectName("vlc")
         self.gridLayout.addWidget(self.vlc, 0, 0, 1, 4)

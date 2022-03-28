@@ -34,7 +34,7 @@
      <widget class="QVideoPlayer" name="vlc" native="true">
       <property name="minimumSize">
        <size>
-        <width>256</width>
+        <width>254</width>
         <height>0</height>
        </size>
       </property>
