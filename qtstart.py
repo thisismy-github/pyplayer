@@ -158,7 +158,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
 
     def toggle_loop():
         self.log_on_screen(f'Looping {"disabled" if self.actionLoop.isChecked() else "enabled"}', marq_key='Loop', log=False),
-        self.actionLoop.activate(qthelpers.TRIGGER)
+        self.actionLoop.trigger()
 
     shortcut_actions = {      # NOTE: having empty rows in tabKeys's formLayout (in QtDesigner) causes actions below empty rows to not work
         'pause':              self.pause,
@@ -175,15 +175,15 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'plusvolumeboost':    increment_volume_boost,
         'minusvolumeboost':   lambda: increment_volume_boost(-0.5),
         'mute':               self.toggle_mute,
-        'fullscreen':         lambda: self.actionFullscreen.activate(qthelpers.TRIGGER),
-        'crop':               lambda: self.actionCrop.activate(qthelpers.TRIGGER),
+        'fullscreen':         self.actionFullscreen.trigger,
+        'crop':               self.actionCrop.trigger,
         'loop':               toggle_loop,
         'nextmedia':          self.cycle_media,
         'previousmedia':      lambda: self.cycle_media(next=False),
         'plussubtitledelay':  increment_subtitle_delay,
         'minussubtitledelay': lambda: increment_subtitle_delay(-50),
         'cyclesubtitles':     self.cycle_subtitle_track,
-        'markdeleted':        lambda: self.actionMarkDeleted.activate(qthelpers.TRIGGER),
+        'markdeleted':        self.actionMarkDeleted.trigger,
         'deleteimmediately':  lambda: self.mark_for_deletion(modifiers=Qt.ControlModifier),
         'snapshot':           lambda: self.snapshot(modifiers=Qt.ControlModifier),
         'quicksnapshot':      self.snapshot,

@@ -562,7 +562,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
         ''' Triggers GUI's fullscreen action after double-clicking the player. '''
-        if event.button() == Qt.LeftButton: self.parent.actionFullscreen.activate(qthelpers.TRIGGER)
+        if event.button() == Qt.LeftButton: self.parent.actionFullscreen.trigger()
 
 
     def leaveEvent(self, event: QtCore.QEvent):
@@ -1386,7 +1386,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 #
 #    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
 #        ''' Triggers GUI's toggle_fullscreen action after double-clicking the player. '''
-#        if event.button() == Qt.LeftButton: self.parent.actionFullscreen.activate(qthelpers.TRIGGER)
+#        if event.button() == Qt.LeftButton: self.parent.actionFullscreen.trigger()
 #
 #
 #    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):         # accept drag if dragging files (requires self.setAcceptDrops(True))

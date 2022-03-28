@@ -8,12 +8,6 @@ import win32con
 from traceback import format_exc
 
 # ---------------------
-# Aliases & constants
-# ---------------------
-TRIGGER = QtWidgets.QAction.ActionEvent.Trigger
-
-
-# ---------------------
 # Misc
 # ---------------------
 def getUniquePath(path: str, start: int = 2, key: str = None, zeros: int = 0, strict: bool = False) -> str:

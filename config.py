@@ -25,7 +25,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     gui.resize(*load('size', '871,600', ',', int, tuple))
     gui.move(*load('pos', f'{screen.width() / 2 - (gui.width() / 2):.0f},{screen.height() / 2 - (gui.height() / 2):.0f}', ',', int, tuple))
     if load('fullscreen', False):  # load fullscreen and last maximized state
-        gui.actionFullscreen.activate(qthelpers.TRIGGER)
+        gui.actionFullscreen.trigger()
         gui.was_maximized = load('maximized', False)
     elif load('maximized', False): gui.showMaximized()
     gui.app.setStyle(str(load('windowstyle', 'WindowsVista')))

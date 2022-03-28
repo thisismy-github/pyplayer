@@ -220,7 +220,7 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from qthelpers import TRIGGER, addPathSuffix
+from qthelpers import addPathSuffix
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
@@ -693,15 +693,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.shortcut_bandaid_fix = False
 
         # handle individual keys. TODO: change these to their enums? (70 -> Qt.Key.Key_F)
-        if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.activate(TRIGGER)   # esc (fullscreen only)
+        if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.trigger()   # esc (fullscreen only)
 
         # emulate menubar shortcuts when menubar is not visible (which disables shortcuts for some reason)
         elif not self.menubar.isVisible():
             if mod & Qt.ControlModifier:
-                if key == 79: self.actionOpen.activate(TRIGGER)                                             # ctrl + o (open)
+                if key == 79: self.actionOpen.trigger()                                             # ctrl + o (open)
                 elif key == 83:
-                    if mod & Qt.ShiftModifier: self.actionSaveAs.activate(TRIGGER)                   # ctrl + shift + s (save as)
-                    else: self.actionSave.activate(TRIGGER)                                                 # ctrl + s (save)
+                    if mod & Qt.ShiftModifier: self.actionSaveAs.trigger()                   # ctrl + shift + s (save as)
+                    else: self.actionSave.trigger()                                                 # ctrl + s (save)
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{text}"')
 
 
@@ -711,7 +711,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         key = event.key()
         if key == 16777251 and not self.vlc.dragdrop_in_progress:   # alt (ignore this if we're dragging files since alt affects that)
-            self.actionShowMenuBar.activate(TRIGGER)                # manually trigger actions to keep the menus & widgets consistent
+            self.actionShowMenuBar.trigger()                # manually trigger actions to keep the menus & widgets consistent
         else: super().keyReleaseEvent(event)
         logging.debug(f'RELEASED key={key} text="{event.text()}"')
 
@@ -2221,12 +2221,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def set_crop_mode(self, on):     # https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
         if not self.video or self.mime_type == 'audio':     # reset crop mode if no video is playing
-            return self.actionCrop.activate(TRIGGER) if on else None
+            return self.actionCrop.trigger() if on else None
         if not on: self.disable_crop_mode()
         else:
             vlc = self.vlc
             if self.actionShowMenuBar.isChecked():
-                self.actionShowMenuBar.activate(TRIGGER)    # can't just set to False and reuse actionShowMenuBar.isChecked()...
+                self.actionShowMenuBar.trigger()    # can't just set to False and reuse actionShowMenuBar.isChecked()...
                 self.menubar_visible_before_crop = True     # ...since set_menubar_visible() is more involved than just doing setVisible
             else: self.menubar_visible_before_crop = False
 
@@ -2302,8 +2302,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.actionCrop.setChecked(False)
         self.vlc.setToolTip('')
         if self.menubar_visible_before_crop:
-            self.actionShowMenuBar.activate(TRIGGER)
-            #self.actionShowMenuBar.setChecked(True)
+            self.actionShowMenuBar.trigger()
             self.menubar.setVisible(True)
             self.menubar_visible_before_crop = False
         for view in self.vlc.crop_frames:
