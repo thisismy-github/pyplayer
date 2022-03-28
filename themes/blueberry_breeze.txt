@@ -72,8 +72,8 @@ QPushButton::checked, QToolButton::checked {
 	min-width: 28px;
 }
 
-QPushButton#pause_button { border-radius: 14px; padding-top: -1px; color: rgba(80, 180, 230, 200); }
-QPushButton::pressed#trim_start_button, QPushButton::pressed#trim_end_button  { background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(0, 0, 47, 255)); }
+QPushButton#buttonPause { border-radius: 14px; padding-top: -1px; color: rgba(80, 180, 230, 200); }
+QPushButton::pressed#buttonTrimStart, QPushButton::pressed#buttonTrimEnd  { background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(0, 0, 47, 255)); }
 
 QSpinBox {
 	border: 1px solid rgb(37, 37, 37);

@@ -166,8 +166,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minus5seconds':      lambda: self.navigate(forward=False, seconds=5),
         'plus10seconds':      lambda: self.navigate(forward=True, seconds=10),
         'minus10seconds':     lambda: self.navigate(forward=False, seconds=10),
-        'plusframe':          self.frame_spin.stepUp,
-        'minusframe':         self.frame_spin.stepDown,
+        'plusframe':          self.spinFrame.stepUp,
+        'minusframe':         self.spinFrame.stepDown,
         'plusspeed':          lambda: self.set_playback_speed(self.playback_speed + 0.05),
         'minusspeed':         lambda: self.set_playback_speed(self.playback_speed - 0.05),
         'plus5volume':        lambda: self.increment_volume(5),
@@ -217,8 +217,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.log_signal.connect(self.log_slot)
     self.log = self.log_signal.emit
 
-    self.volume_slider.valueChanged.connect(self.set_volume)
-    self.pause_button.clicked.connect(self.pause)
+    self.sliderVolume.valueChanged.connect(self.set_volume)
+    self.buttonPause.clicked.connect(self.pause)
     self.actionOpen.triggered.connect(self.open)
     self.menuRecent.aboutToShow.connect(self.refresh_recent_menu)
     self.actionOpenMediaLocation.triggered.connect(lambda: subprocess.Popen(f'explorer /select,"{os.path.abspath(self.video if self.video else config.cfg.lastdir)}"', shell=True))
@@ -228,7 +228,9 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionMinimize.triggered.connect(self.close)
     self.actionExit.triggered.connect(lambda: exit(self))
     self.actionSettings.triggered.connect(self.dialog_settings.exec)
-    self.actionLoop.triggered.connect(lambda: self.toolButtonLoop.setText('↺'))
+    self.actionLoop.triggered.connect(self.buttonLoop.setChecked)
+    self.actionAutoplay.triggered.connect(self.buttonAutoplay.setChecked)
+    self.actionMarkDeleted.triggered.connect(self.buttonMarkDeleted.setChecked)
     self.actionMarkDeleted.triggered.connect(self.mark_for_deletion)
     self.actionDeleteImmediately.triggered.connect(lambda: self.mark_for_deletion(modifiers=Qt.ControlModifier))
     self.actionEmptyRecycleBin.triggered.connect(self.show_delete_prompt)
@@ -258,23 +260,29 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionAboutQt.triggered.connect(lambda: QtW.QMessageBox.aboutQt(None, 'About Qt'))
     self.actionAbout.triggered.connect(self.show_about_dialog)
     #self.check_clamp.stateChanged.connect(self.clamp)
-    self.output_lineedit.returnPressed.connect(self.save)
-    self.current_time_lineedit.returnPressed.connect(self.manually_update_current_time)
-    self.hour_spin.valueChanged.connect(self.update_time_spins)
-    self.minute_spin.valueChanged.connect(self.update_time_spins)
-    self.second_spin.valueChanged.connect(self.update_time_spins)
-    self.frame_spin.valueChanged.connect(self.update_frame_spin)
-    self.progress_slider.actionTriggered.connect(self.page_step_slider)
-    self.trim_start_button.toggled.connect(self.set_trim_start)
-    self.trim_end_button.toggled.connect(self.set_trim_end)
-    self.next_video_button.clicked.connect(self.cycle_media)
-    self.prev_video_button.clicked.connect(lambda: self.cycle_media(next=False))
+    self.lineOutput.returnPressed.connect(self.save)
+    self.lineCurrentTime.returnPressed.connect(self.manually_update_current_time)
+    self.spinHour.valueChanged.connect(self.update_time_spins)
+    self.spinMinute.valueChanged.connect(self.update_time_spins)
+    self.spinSecond.valueChanged.connect(self.update_time_spins)
+    self.spinFrame.valueChanged.connect(self.update_frame_spin)
+    self.sliderProgress.actionTriggered.connect(self.page_step_slider)
+
+    self.buttonTrimStart.toggled.connect(self.set_trim_start)
+    self.buttonTrimEnd.toggled.connect(self.set_trim_end)
+    self.buttonNext.clicked.connect(self.cycle_media)
+    self.buttonPrevious.clicked.connect(lambda: self.cycle_media(next=False))
+    self.buttonOpenMediaLocation.clicked.connect(self.actionOpenMediaLocation.trigger)
+    self.buttonMarkDeleted.clicked.connect(self.actionMarkDeleted.trigger)
+    self.buttonSnapshot.clicked.connect(self.actionSnapshot.trigger)
+    self.buttonLoop.clicked.connect(self.actionLoop.trigger)
+    self.buttonAutoplay.clicked.connect(self.actionAutoplay.trigger)
 
     settings = self.dialog_settings
     settings.accepted.connect(self.update_title)
-    settings.theme_combo.currentTextChanged.connect(self.set_theme)
-    settings.theme_refresh_button.clicked.connect(self.refresh_theme_combo)
-    settings.default_path_browse.clicked.connect(self.browse_default_path_output)
+    settings.comboThemes.currentTextChanged.connect(self.set_theme)
+    settings.buttonRefreshThemes.clicked.connect(self.refresh_theme_combo)
+    settings.buttonBrowseDefaultOutputPath.clicked.connect(self.browse_default_path_output)
     settings.default_snapshot_path_browse.clicked.connect(self.browse_default_snapshot_path_output)
     settings.buttonHoverFontColor.clicked.connect(self.open_color_picker)
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)

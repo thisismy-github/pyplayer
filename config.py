@@ -36,7 +36,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     load('lastdir', '.')
     load('last_snapshot_path')
     load('last_snapshot_folder', '%USERPROFILE%\\Pictures')
-    cfg.loadQt(gui.volume_slider, children=False)
+    cfg.loadQt(gui.sliderVolume, children=False)
     gui.checkDeleteOriginal.setCheckState(load('checkDeleteOriginal', 1))
     cfg.loadQt(gui.frameQuickChecks)
     load('ffmpegwarningignored', False)
@@ -44,9 +44,9 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     gui.recent_videos = [file for file in load('recent_videos', '', ',') if os.path.exists(file)][-10:]
 
     cfg.setSection('settings')
-    cfg.loadQt(settings.tabGeneral, ignore=('theme_combo',))
+    cfg.loadQt(settings.tabGeneral, ignore=('comboThemes',))
     hoverfontcolor = load('hoverfontcolor', '255,255,255', ',', int, tuple, fill_with_defaults=True, default=255)
-    gui.progress_slider.hover_font_color = QtGui.QColor(*hoverfontcolor)
+    gui.sliderProgress.hover_font_color = QtGui.QColor(*hoverfontcolor)
     settings.buttonHoverFontColor.setToolTip(str(hoverfontcolor))
     settings.buttonHoverFontColor.setStyleSheet('QPushButton {background-color: rgb' + str(hoverfontcolor) + ';border: 1px solid black;}')
     del hoverfontcolor
@@ -96,7 +96,7 @@ def saveConfig(gui, filename: str = None):
     save('recent_videos', gui.recent_videos, delimiter=',')
 
     cfg.setSection('settings')
-    save('hoverfontcolor', gui.progress_slider.hover_font_color.getRgb(), delimiter=',')
+    save('hoverfontcolor', gui.sliderProgress.hover_font_color.getRgb(), delimiter=',')
 
     cfg.setSection('keys')
     for widget in qthelpers.formGetItemsInColumn(gui.dialog_settings.tabKeys.layout(), 1):
