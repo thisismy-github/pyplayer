@@ -424,13 +424,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         #self.vlc.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.restart_signal.emit())
         self.sliderProgress.parent = self
         self.sliderProgress.update_parent_progress = self.set_and_update_progress
-        self.sliderVolume.keyPressEvent = self.keyPressEvent                       # pass volume_slider key presses directly to GUI_Instance
+        self.sliderVolume.keyPressEvent = self.keyPressEvent                        # pass sliderVolume key presses directly to GUI_Instance
         self.sliderVolume.keyReleaseEvent = self.keyReleaseEvent
         self.sliderProgress.cfg = self.dialog_settings
-        self.sliderProgress.dragEnterEvent = self.vlc.dragEnterEvent               # reuse player's drag-and-drop code for slider
+        self.sliderProgress.dragEnterEvent = self.vlc.dragEnterEvent                # reuse player's drag-and-drop code for slider
         self.sliderProgress.dropEvent = self.vlc.dropEvent
         self.dockControls.setTitleBarWidget(QtW.QWidget(self.dockControls))         # disables QDockWidget's unique titlebar
         self.dockControls.leaveEvent = self.leaveEvent                              # ensures leaving dockControls hides cursor/controls in fullscreen
+        self.dockControls.resizeEvent = self.dockControlsResizeEvent                # ensures dockControls correctly hides/shows widgets in fullscreen
         self.frameAdvancedControls.setDragTarget(self)
         for spin in (self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame): spin.setProxyWidget(self)
         self.save_progress_bar.setMaximum(0)
@@ -626,18 +627,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def resizeEvent(self, event: QtGui.QResizeEvent):
         self.last_window_size = event.oldSize()
 
-        # make UI more compact as window size shrinks
-        width = event.size().width()
-        self.frameQuickChecks.setVisible(width >= 528)                      # hide checkboxes at <= 500 pixels wide TODO this shouldn't be a frame, should it?
-        self.advancedControlsLine.setVisible(width >= 394)                  # hide aesthetic line-separator at <= 394 pixels wide
-        self.hlayoutQuickButtons.setSpacing(2 if width <= 331 else 6)       # reduce spacing between tool buttons at <= 331 pixels wide
-        self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)        # reduce output lineEdit (but retain usability) at <= 350 pixels wide
 
-        if width <= 307:    # hide start/end trim buttons and snapshot button at <= 307 pixels wide
+    def dockControlsResizeEvent(self, event: QtGui.QResizeEvent):
+        ''' Makes UI controls more compact as the size of the controls shrinks. '''
+        width = event.size().width()
+        self.frameQuickChecks.setVisible(width >= 528)                  # hide checkboxes at <= 500 pixels wide TODO this shouldn't be a frame, should it?
+        self.advancedControlsLine.setVisible(width >= 394)              # hide aesthetic line-separator at <= 394 pixels wide
+        self.hlayoutQuickButtons.setSpacing(2 if width <= 331 else 6)   # reduce spacing between tool buttons at <= 331 pixels wide
+        self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)    # reduce output lineEdit (but retain usability) at <= 350 pixels wide
+
+        if width <= 307:    # hide trim/snapshot buttons at <= 307 pixels wide
             self.buttonTrimStart.setVisible(False)
             self.buttonTrimEnd.setVisible(False)
             self.buttonSnapshot.setVisible(False)
-        else:               # restore start/end trim buttons and snapshot button
+        else:               # restore trim/snapshot buttons
             self.buttonTrimStart.setVisible(True)
             self.buttonTrimEnd.setVisible(True)
             self.buttonSnapshot.setVisible(True)
