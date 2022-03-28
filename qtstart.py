@@ -106,7 +106,7 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
         if reason == QtW.QSystemTrayIcon.Trigger: return show(self)
         if reason == QtW.QSystemTrayIcon.MiddleClick: return exit(self)
 
-    tray = QtW.QSystemTrayIcon(self.icon)
+    tray = QtW.QSystemTrayIcon(self.icons['window'])
     tray.setToolTip('PyPlayer')
     tray.setVisible(True)
     tray.activated.connect(handle_click)
@@ -137,8 +137,6 @@ def after_show_setup(self: QtW.QMainWindow):
                 logging.error(format_exc())
     Thread(target=self.fast_start_interface_thread, daemon=True).start()
     self.update_title_signal.emit()
-    #self.icon = Qtself.QIcon(os.path.join(CWD, 'bin', 'icon.ico'))   # loading QIcons is a very resource-intensive task
-    #app.setWindowIcon(self.icon)
     connect_shortcuts(self)
 
 

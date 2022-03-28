@@ -367,9 +367,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog)
         self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
         qtstart.connect_widget_signals(self)
-        self.icon = (QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'logo.ico')))
-        self.setWindowIcon(self.icon)
-        app.setWindowIcon(self.icon)
+        self.icons = {
+            'window': QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'logo.ico')),
+            'loop': QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'loop.png')),
+            'autoplay': QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'autoplay.png')),
+        }
+        self.setWindowIcon(self.icons['window'])
+        app.setWindowIcon(self.icons['window'])
 
 
     def setup(self):
@@ -450,6 +454,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonTrimEnd.contextMenuEvent = self.fadeContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
+        self.buttonLoop.setIcon(self.icons['loop'])
+        self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
         # aliases for speed
         #self.player = self.vlc.player                  # these are set while resetting Instance (TODO: which we don't do anymore)
