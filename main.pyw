@@ -901,6 +901,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if special_widgets: theme['special_widgets'] = special_widgets
             except Exception as error: logging.warning(f'Theme \'{theme["name"]}\' failed to load with the following error - {type(error)}: {error}.')
 
+        # adjust UI spacing to match theme
+        opt = QtW.QStyleOptionSlider()
+        self.sliderProgress.initStyleOption(opt)
+        groove_rect = self.sliderProgress.style().subControlRect(QtW.QStyle.CC_Slider, opt, QtW.QStyle.SC_SliderGroove, self.sliderProgress)
+        handle_rect = self.sliderProgress.style().subControlRect(QtW.QStyle.CC_Slider, opt, QtW.QStyle.SC_SliderHandle, self.sliderProgress)
+        self.frameProgress.setMaximumHeight(max(16, groove_rect.height() + 6, handle_rect.height() + 6))    # frameProgress needs +4 pixels, and +2 pixels of padding
+
 
     # -------------------------------
     # >>> BASIC VIDEO OPERATIONS <<<
@@ -1234,7 +1241,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.log_on_screen(f'File renamed to {new_name}', 2500, marq_key='Save')
             self.lineOutput.setText('')                 # clear lineedit after successful rename (same as in open())
             self.lineOutput.setPlaceholderText(os.path.basename(new_name))
-            self.lineOutput.setToolTip(f'{new_name}\n\nEnter a new name and press enter to rename this file.')
+            self.lineOutput.setToolTip(f'{new_name}\nEnter a new name and press enter to rename this file.')
         except: self.log(f'RENAME FAILED: {format_exc()}')
         self.vlc.play(self.video)                                               # replay (no need for full-scale open())
         self.set_player_position(self.get_progess_slider() / self.frame_count)  # set VLC back to current position
