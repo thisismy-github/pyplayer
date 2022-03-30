@@ -2336,17 +2336,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def disable_crop_mode(self):
-        self.log('Crop mode disabled.')
-        self.actionCrop.setChecked(False)
-        self.vlc.setToolTip('')
+        for view in self.vlc.crop_frames:
+            view.setVisible(False)
+            view.setMouseTracking(False)
         if self.menubar_visible_before_crop:
             self.actionShowMenuBar.trigger()
             self.menubar.setVisible(True)
             self.menubar_visible_before_crop = False
-        for view in self.vlc.crop_frames:
-            view.setVisible(False)
-            view.setMouseTracking(False)
-        while app.overrideCursor(): app.restoreOverrideCursor()             # reset cursor
+        self.vlc.setToolTip('')                                     # clear crop-size tooltip
+        self.vlc.dragging = None                                    # clear crop-drag
+        self.vlc.panning = False                                    # clear crop-pan
+        while app.overrideCursor(): app.restoreOverrideCursor()     # reset cursor
+        self.actionCrop.setChecked(False)
+        self.log('Crop mode disabled.')
 
 
     def snap_to_player_size(self, from_open=False, _recusive=False):
