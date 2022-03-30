@@ -943,7 +943,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             if video_index == original_video_index: return self.log('This is the only playable file in the current folder.')
             if self.checkSkipMarked.isChecked() and file in self.marked_for_deletion: continue
-            if self.open(file, from_cycle=True) != -1: return   # if new video can't be opened, -1 is returned -> keep going
+            if self.open(file, _from_cycle=True) != -1: return   # if new video can't be opened, -1 is returned -> keep going
 
 
     def parse_media_file(self, file, mime='video', _recursive=False):
@@ -1005,16 +1005,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.parsed = True
 
 
-    def open(self, file=None, raise_window=True, focus_window=True, from_cycle=False):
+    def open(self, file=None, raise_window=True, focus_window=True, _from_cycle=False, _from_dir=False):
         ''' Current iteration: III '''
         try:
             if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
             if not file or file == self.locked_video: return
-            if from_cycle and self.dialog_settings.checkIgnoreRaiseWithAutoplay.isChecked():
+            if _from_cycle and self.dialog_settings.checkIgnoreRaiseWithAutoplay.isChecked():
                 raise_window = False                # file is being played by cycle_media, which may be called by autoplay.
                 focus_window = False                # ignore raise/focus settings if desired (we don't need to check if autoplay is enabled)
             file = os.path.abspath(file)
 
+            # if `file` is actually a directory -> open first valid, non-hidden file and enable Autoplay
+            if os.path.isdir(file):
+                if _from_dir: return -1             # avoid recursively opening directories
+                for filename in os.listdir(file):
+                    filename = os.path.join(file, filename)
+
+                    if not os.stat(file).st_file_attributes & 2 and self.open(filename, _from_dir=True) != -1:  # 2 -> stat.FILE_ATTRIBUTE_HIDDEN
+                        self.actionAutoplay.setChecked(True)    # https://stackoverflow.com/questions/284115/cross-platform-hidden-file-detection
+                        self.log(f'Opened {filename} from folder {file} and enabled Autoplay.')
+                        return
+                else: return self.log(f'No files in {file} were playable.')
+
+            # get mime type of file
             try:
                 filetype_data = filetype.guess(file)    # 'EXTENSION', 'MIME', 'extension', 'mime'
                 mime, self.true_extension = filetype_data.mime.split('/')
@@ -1026,6 +1039,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')    # .guess() errors out in rare circumstances
                 return -1
 
+            # attempt to actually play and parse file
             if not self.vlc.play(file): return      # immediately attempt to play video once we know it might be valid
             self.parsed = False                     # keep track of parse just in case this ends up actually being a video, so we can avoid re-parsing it later
             if mime != 'video':                     # parse key details from media file if it isn't a video

@@ -117,23 +117,15 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
 # GUI Setup
 # ---------------------
 def after_show_setup(self: QtW.QMainWindow):
-    if args.file:                           # TODO should this stay in __init__ or here?
+    if args.file:
         if not os.path.exists(args.file): self.log(f'Command-line file {args.file} does not exist.')
-        elif os.path.isdir(args.file):      # args.file is actually just a folder
-            for filename in os.listdir(args.file):
-                file = os.path.join(args.file, filename)
-                if not os.stat(file).st_file_attributes & 2 and self.open(file) != -1:  # 2 -> stat.FILE_ATTRIBUTE_HIDDEN. do not use hidden files as the first file
-                    self.checkAutoplay.setChecked(True)                                 # https://stackoverflow.com/questions/284115/cross-platform-hidden-file-detection
-                    self.log(f'Opened {file} from folder {args.file} and enabled Autoplay.')
-                    break
-            else: self.log(f'No files in {args.file} were playable.')
-        else:                               # args.file is (presumably) a media file
+        else:
             try:
-                logging.info(f'Opening pre-selected video: {args.file}')
+                logging.info(f'Opening pre-selected path: {args.file}')
                 self.open(args.file)
-                self.log(f'Command-line file opened: {args.file}')
+                self.log(f'Command-line path opened: {args.file}')
             except:
-                self.log(f'Failed to open pre-selected video: {args.file}')
+                self.log(f'Failed to open pre-selected path: {args.file}')
                 logging.error(format_exc())
     Thread(target=self.fast_start_interface_thread, daemon=True).start()
     self.update_title_signal.emit()
