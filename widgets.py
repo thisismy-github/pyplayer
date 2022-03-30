@@ -807,18 +807,25 @@ class QVideoSlider(QtW.QSlider):
             to grab the handle, instead allowing it to move freely until the mouse is moved, ensuring a snappier
             experience when clicking the progress bar. Does not emit the sliderPressed signal. '''
         if event.button() == Qt.LeftButton:
-            frame = self.pixelPosToRangeValue(event.pos())
-            self.update_parent_progress(frame)
+            pos = event.pos()
+            frame = self.pixelPosToRangeValue(pos)
+            if self.parent.minimum < frame < self.parent.maximum:
+                self.update_parent_progress(frame)
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
             if self.clamp_minimum or self.clamp_maximum:        # ^ alternate solution by finding points inside QPolygons
-                excess = max(3, self.maximum() / 100)
-                if self.clamp_minimum and self.parent.minimum - excess < frame < self.parent.minimum + excess:
-                    self.grabbing_clamp_minimum = True
-                    self.grabbing_clamp_maximum = False
-                elif self.clamp_maximum and self.parent.maximum - excess < frame < self.parent.maximum + excess:
-                    self.grabbing_clamp_minimum = False
-                    self.grabbing_clamp_maximum = True
+                radius = 12                                     # 12 pixel radius for the handle
+                if self.clamp_minimum:
+                    min_pos = self.rangeValueToPixelPos(self.parent.minimum)
+                    if min_pos - radius < pos.x() < min_pos + radius:
+                        self.grabbing_clamp_minimum = True
+                        self.grabbing_clamp_maximum = False
+                        return                                  # return to skip repeating process for maximum
+                if self.clamp_maximum:
+                    max_pos = self.rangeValueToPixelPos(self.parent.maximum)
+                    if max_pos - radius < pos.x() < max_pos + radius:
+                        self.grabbing_clamp_minimum = False
+                        self.grabbing_clamp_maximum = True
             #if abs(delta) > 0.025: self.setValue(new_value)    # only change if difference between new/old positions is greater than 2.5%
 
 
@@ -827,7 +834,7 @@ class QVideoSlider(QtW.QSlider):
             the player position. Does not emit the sliderMoved signal. Does not require setMouseTracking(True),
             as mouse-tracking only applies to firing mouseMoveEvent without holding a button. '''
         frame = self.pixelPosToRangeValue(event.pos())          # get frame
-        if app.mouseButtons() == Qt.LeftButton:          # abnormal mousePressEvent implementation, so event.button() is incorrect
+        if app.mouseButtons() == Qt.LeftButton:                 # abnormal mousePressEvent implementation, so event.button() is incorrect
             self.update_parent_progress(frame)                  # "grab" handle
             self.parent.player.set_pause(True)                  # pause player while scrubbing
             self.last_mouseover_time = 0                        # reset last mouseover time to stop drawing timestamp immediately
@@ -844,9 +851,12 @@ class QVideoSlider(QtW.QSlider):
         self.grabbing_clamp_maximum = False
         #if 0 <= event.x() <= self.width() and 0 <= event.y() <= self.height():
         if self.underMouse(): self.last_mouseover_time = time.time()    # resume drawing timestamp after release
+        frame = self.pixelPosToRangeValue(event.pos())                  # get frame
+        if frame < self.parent.minimum: self.update_parent_progress(self.parent.minimum)
+        elif frame > self.parent.maximum: self.update_parent_progress(self.parent.maximum)
 
 
-    def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:    # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
+    def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:          # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
         ''' Auto-magically detects the correct value to set the handle to based on a given `pos`.
             Works with horizontal and vertical sliders, with or without stylesheets. '''
         try:
