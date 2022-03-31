@@ -468,10 +468,14 @@ first media file you open.</string>
              <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSnapOnResize">
                <property name="toolTip">
-                <string>Tristate:
+                <string>Hold Shift while resizing to always shrink the window.
+Hold Ctrl while resizing to trigger the opposite behavior (snap
+while snap is disabled, or don't snap while snap is enabled).
 
-Fully checked: window will always snap to the media's native
-aspect ratio after resizing, so that no black bars appear.
+Tristate:
+
+Fully checked: window will snap to the media's native aspect
+ratio after resizing, so that no black bars appear.
 
 Partially checked (experimental): window will have a choppy
 animated transition while snapping. This was discovered by

@@ -1184,10 +1184,14 @@ class Ui_settingsDialog(object):
 "Partially checked - the window will only be resized for the\n"
 "first media file you open."))
         self.checkSnapOnOpen.setText(_translate("settingsDialog", "Snap to media\'s native aspect ratio on open (tristate)"))
-        self.checkSnapOnResize.setToolTip(_translate("settingsDialog", "Tristate:\n"
+        self.checkSnapOnResize.setToolTip(_translate("settingsDialog", "Hold Shift while resizing to always shrink the window.\n"
+"Hold Ctrl while resizing to trigger the opposite behavior (snap\n"
+"while snap is disabled, or don\'t snap while snap is enabled).\n"
 "\n"
-"Fully checked: window will always snap to the media\'s native\n"
-"aspect ratio after resizing, so that no black bars appear.\n"
+"Tristate:\n"
+"\n"
+"Fully checked: window will snap to the media\'s native aspect\n"
+"ratio after resizing, so that no black bars appear.\n"
 "\n"
 "Partially checked (experimental): window will have a choppy\n"
 "animated transition while snapping. This was discovered by\n"

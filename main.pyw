@@ -656,10 +656,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def timerEvent(self, event: QtCore.QTimerEvent):
+        ''' The base timeout event, used for adjusting the window's aspect ratio after a resize. '''
         if self.timer_id_resize_snap is not None:
             self.killTimer(self.timer_id_resize_snap)
             self.timer_id_resize_snap = None
-            self.snap_to_player_size()
+            shrink = app.keyboardModifiers() & Qt.ShiftModifier
+            force_instant_resize = self.dialog_settings.checkSnapOnResize.checkState() == 0
+            self.snap_to_player_size(shrink=shrink, force_instant_resize=force_instant_resize)
         if event: return super().timerEvent(event)
 
 
@@ -1138,7 +1141,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.resize(new_size)
                 else: self.resize(self.vwidth, self.vheight + excess_height)
             elif snap_on_open_state and not (snap_on_open_state == 1 and self.first_video_fully_loaded):
-                self.snap_to_player_size(from_open=True)
+                self.snap_to_player_size(force_instant_resize=True)
 
             self.update_title_signal.emit()
             if self.dialog_settings.checkTextOnOpen.isChecked(): self.show_text(os.path.basename(self.video), 1000)
@@ -2351,24 +2354,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.log('Crop mode disabled.')
 
 
-    def snap_to_player_size(self, from_open=False, _recusive=False):
+    def snap_to_player_size(self, shrink=False, force_instant_resize=False):
         if not self.isMaximized() and not self.isFullScreen() and self.mime_type == 'video':    # TODO if we figure out cover-art, get rid of mime_type condition
             vlc_size = self.vlc.size()
             expected_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
             void_width = vlc_size.width() - expected_size.width()
             void_height = vlc_size.height() - expected_size.height()
 
-            # default instant snap. if you skip this block, the window will shrink to match the size. this block tries to mitigate this and provide...
-            # ...a more balanced resize by running this function twice - once to resize it bigger than needed, then again to shrink it back down
-            if from_open or self.dialog_settings.checkSnapOnResize.checkState() == 2 and not _recusive:
-                ratio = self.vwidth / self.vheight
-                void = round((void_width if void_width else void_height) / 2)
+            # default instant snap. normally this shrinks the window, but to mitigate this and have a more balanced...
+            # ...resize, we snap twice - once to resize it bigger than needed, then again to shrink it back down
+            if force_instant_resize or self.dialog_settings.checkSnapOnResize.checkState() == 2:
+                if not shrink:      # to shrink the window, just skip this -> shrinking is the default behavior
+                    ratio = self.vwidth / self.vheight
+                    void = round((void_width if void_width else void_height) / 2)
 
-                # TODO +28 here or window gets smaller when switching between videos with different ratios
-                expected_size.scale(expected_size.width() + round(void * ratio), expected_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
-                true_height = expected_size.height() + self.height() - self.vlc.height()
-                if expected_size != vlc_size: self.resize(expected_size.width(), true_height)
-                return self.snap_to_player_size(_recusive=True)
+                    # TODO +28 here or window gets smaller when switching between videos with different ratios
+                    expected_size.scale(expected_size.width() + round(void * ratio), expected_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
+                    true_height = expected_size.height() + self.height() - self.vlc.height()
+                    if expected_size != vlc_size: self.resize(expected_size.width(), true_height)
+                    return self.snap_to_player_size(shrink=True)    # snap again, but shrink this time
 
             # experimental animated snap (discovered by accident)
             else:

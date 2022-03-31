@@ -420,9 +420,13 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         super().resizeEvent(event)
 
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
-        if self.parent.dialog_settings.checkSnapOnResize.checkState() and self.parent.first_video_fully_loaded:
-            if self.parent.timer_id_resize_snap: self.parent.killTimer(self.parent.timer_id_resize_snap)
-            self.parent.timer_id_resize_snap = self.parent.startTimer(150, Qt.CoarseTimer)
+        if self.parent.first_video_fully_loaded:
+            checked = self.parent.dialog_settings.checkSnapOnResize.checkState()
+            reverse_behavior = app.keyboardModifiers() & Qt.ControlModifier
+            start_snap_timer = checked and not reverse_behavior or not checked and reverse_behavior
+            if start_snap_timer:    # only snap if snap is enabled OR it's disabled but ctrl is held while resizing
+                if self.parent.timer_id_resize_snap: self.parent.killTimer(self.parent.timer_id_resize_snap)
+                self.parent.timer_id_resize_snap = self.parent.startTimer(150, Qt.CoarseTimer)
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
