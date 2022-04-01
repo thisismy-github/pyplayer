@@ -641,17 +641,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Makes UI controls more compact as the size of the controls shrinks. '''
         width = event.size().width()
         self.frameQuickChecks.setVisible(width >= 528)                  # hide checkboxes at <= 500 pixels wide TODO this shouldn't be a frame, should it?
-        self.advancedControlsLine.setVisible(width >= 394)              # hide aesthetic line-separator at <= 394 pixels wide
-        self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)    # reduce output lineEdit (but retain usability) at <= 350 pixels wide
+        self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)    # reduce output lineEdit (but retain usability)
+        self.advancedControlsLine.setVisible(width >= 357)              # hide aesthetic line-separator
+        self.hlayoutQuickButtons.setSpacing(2 if width <= 394 else 6)   # reduce spacing between buttons
+        self.buttonTrimStart.setMinimumWidth(32 if width <= 347 else 44)
 
-        if width <= 331:    # hide trim/snapshot buttons, reduce quick-button spacing at <= 331 pixels wide
-            self.hlayoutQuickButtons.setSpacing(2)
+        if width <= 335:    # hide trim/snapshot buttons, reduce quick-button spacing
             self.buttonTrimStart.setVisible(False)
             self.buttonTrimEnd.setVisible(False)
             self.buttonMarkDeleted.setVisible(False)
             self.buttonSnapshot.setVisible(False)
         else:               # restore trim/snapshot buttons and quick-button spacing
-            self.hlayoutQuickButtons.setSpacing(6)
             self.buttonTrimStart.setVisible(True)
             self.buttonTrimEnd.setVisible(True)
             self.buttonMarkDeleted.setVisible(True)
