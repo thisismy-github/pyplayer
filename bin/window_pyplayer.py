@@ -215,7 +215,7 @@ class Ui_MainWindow(object):
         self.buttonPrevious.setFocusPolicy(QtCore.Qt.NoFocus)
         self.buttonPrevious.setObjectName("buttonPrevious")
         self.gridLayout_6.addWidget(self.buttonPrevious, 1, 0, 1, 1)
-        self.lineOutput = QtWidgets.QLineEdit(self.frameAdvancedControls)
+        self.lineOutput = QLineEditPassthrough(self.frameAdvancedControls)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -683,7 +683,7 @@ class Ui_MainWindow(object):
 "Note: Some formats cannot be trimmed without re-encoding and\n"
 "will default to high-precision trimming regardless. If you still\n"
 "encounter corrupted trims, switch to high-precision manually."))
-from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
+from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
 
 
 if __name__ == "__main__":

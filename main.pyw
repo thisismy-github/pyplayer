@@ -438,6 +438,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.dockControls.leaveEvent = self.leaveEvent                              # ensures leaving dockControls hides cursor/controls in fullscreen
         self.dockControls.resizeEvent = self.dockControlsResizeEvent                # ensures dockControls correctly hides/shows widgets in fullscreen
         self.frameAdvancedControls.setDragTarget(self)
+        self.lineOutput.setIgnoreAll(False)
         for spin in (self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame): spin.setProxyWidget(self)
         self.save_progress_bar.setMaximum(0)
         self.save_progress_bar.setMaximumHeight(16)

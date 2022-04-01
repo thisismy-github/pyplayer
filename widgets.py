@@ -1167,6 +1167,8 @@ class QWidgetPassthrough(QtW.QWidget):
     ''' QWidget which passes desired keypresses to its parent. Specific characters can be ignored,
         and specific categories (such as letters, integers, and punctuation) can be toggled. The
         option to automatically clear focus when Esc is pressed is also included. '''
+    base = QtW.QWidget      # TODO semi-bandaid fix. without this, we can't access the correct keyPressEvent in subclasses(...?)
+
     def __init__(self, *args, proxy=None, escClearsFocus=True, alpha=True, punctuation=True, numeric=False, ignored=tuple(), **kwargs):
         super().__init__(*args, **kwargs)       # normally these kwargs are True, False, False, False
         self.escClearsFocus = escClearsFocus
@@ -1197,6 +1199,11 @@ class QWidgetPassthrough(QtW.QWidget):
         if self._proxyWidgetIsParent:
             self._proxyWidget = parent
 
+    def setIgnoreAll(self, ignore: bool):
+        self.ignoreAlpha = ignore
+        self.ignorePunctuation = ignore
+        self.ignoreNumeric = ignore
+
     def setEscClearsFocus(self, state: bool): self.escClearsFocus = state
     def setIgnoreAlpha(self, ignore: bool): self.ignoreAlpha = ignore
     def setIgnorePunctuation(self, ignore: bool): self.ignorePunctuation = ignore
@@ -1207,20 +1214,20 @@ class QWidgetPassthrough(QtW.QWidget):
         key = event.key()
         if self.escClearsFocus and key == 16777216: return self.clearFocus()    # esc (clear focus)
         text = event.text()
-        if any((key in self.ignoredKeys,    # TODO this was original "if text and any..." why was char in there?
+        if any((key in self.ignoredKeys,
                 self.ignoreAlpha and text.isalpha(),
                 self.ignorePunctuation and text in '!"#$%&\'()*+, -./:;<=>?@[\\]^_`{|}~',
                 self.ignoreNumeric and text.isnumeric())):
             self._proxyWidget.shortcut_bandaid_fix = True   # TODO this is a workaround for QShortcuts refusing to work through this widget. no QShortcut...
             return self._proxyWidget.keyPressEvent(event)   # ...contexts work. I might replace the QShortcuts with a simpler system, or I may leave it like this.
-        return super().keyPressEvent(event)
+        return self.base.keyPressEvent(self, event)
 
 
 
 
-class QSpinBoxPassthrough(QtW.QSpinBox, QWidgetPassthrough): ...
-class QDockWidgetPassthrough(QtW.QDockWidget, QWidgetPassthrough): ...
-
+class QSpinBoxPassthrough(QtW.QSpinBox, QWidgetPassthrough): base = QtW.QSpinBox
+class QDockWidgetPassthrough(QtW.QDockWidget, QWidgetPassthrough): base = QtW.QDockWidget
+class QLineEditPassthrough(QtW.QLineEdit, QWidgetPassthrough): base = QtW.QLineEdit
 
 
 
