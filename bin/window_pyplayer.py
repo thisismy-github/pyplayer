@@ -53,8 +53,9 @@ class Ui_MainWindow(object):
         self.menuSubtitles.setObjectName("menuSubtitles")
         self.menuVideoTracks = QtWidgets.QMenu(self.menuVideo)
         self.menuVideoTracks.setObjectName("menuVideoTracks")
-        self.menuFade = QtWidgets.QMenu(self.menuVideo)
-        self.menuFade.setObjectName("menuFade")
+        self.menuTrimMode = QtWidgets.QMenu(self.menuVideo)
+        self.menuTrimMode.setToolTipsVisible(True)
+        self.menuTrimMode.setObjectName("menuTrimMode")
         self.menuWindow = QtWidgets.QMenu(self.menubar)
         self.menuWindow.setObjectName("menuWindow")
         MainWindow.setMenuBar(self.menubar)
@@ -130,7 +131,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.setSpacing(2)
         self.verticalLayout.setObjectName("verticalLayout")
         self.buttonTrimStart = QtWidgets.QPushButton(self.frameAdvancedControls)
-        self.buttonTrimStart.setMinimumSize(QtCore.QSize(32, 18))
+        self.buttonTrimStart.setMinimumSize(QtCore.QSize(44, 18))
         self.buttonTrimStart.setMaximumSize(QtCore.QSize(95, 16777215))
         self.buttonTrimStart.setFocusPolicy(QtCore.Qt.NoFocus)
         self.buttonTrimStart.setText("Start")
@@ -138,7 +139,7 @@ class Ui_MainWindow(object):
         self.buttonTrimStart.setObjectName("buttonTrimStart")
         self.verticalLayout.addWidget(self.buttonTrimStart)
         self.buttonTrimEnd = QtWidgets.QPushButton(self.frameAdvancedControls)
-        self.buttonTrimEnd.setMinimumSize(QtCore.QSize(32, 18))
+        self.buttonTrimEnd.setMinimumSize(QtCore.QSize(0, 18))
         self.buttonTrimEnd.setMaximumSize(QtCore.QSize(95, 16777215))
         self.buttonTrimEnd.setFocusPolicy(QtCore.Qt.NoFocus)
         self.buttonTrimEnd.setText("End")
@@ -466,10 +467,9 @@ class Ui_MainWindow(object):
         self.actionFadeBoth = QtWidgets.QAction(MainWindow)
         self.actionFadeBoth.setCheckable(True)
         self.actionFadeBoth.setObjectName("actionFadeBoth")
-        self.actionFadeDisable = QtWidgets.QAction(MainWindow)
-        self.actionFadeDisable.setCheckable(True)
-        self.actionFadeDisable.setChecked(True)
-        self.actionFadeDisable.setObjectName("actionFadeDisable")
+        self.actionTrimAuto = QtWidgets.QAction(MainWindow)
+        self.actionTrimAuto.setCheckable(True)
+        self.actionTrimAuto.setObjectName("actionTrimAuto")
         self.actionResize = QtWidgets.QAction(MainWindow)
         self.actionResize.setObjectName("actionResize")
         self.actionCheckForUpdates = QtWidgets.QAction(MainWindow)
@@ -477,6 +477,10 @@ class Ui_MainWindow(object):
         self.actionAutoplay = QtWidgets.QAction(MainWindow)
         self.actionAutoplay.setCheckable(True)
         self.actionAutoplay.setObjectName("actionAutoplay")
+        self.actionTrimPrecise = QtWidgets.QAction(MainWindow)
+        self.actionTrimPrecise.setCheckable(True)
+        self.actionTrimPrecise.setChecked(True)
+        self.actionTrimPrecise.setObjectName("actionTrimPrecise")
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
         self.menuFile.addAction(self.actionOpenMediaLocation)
@@ -519,11 +523,12 @@ class Ui_MainWindow(object):
         self.menuRotate.addAction(self.actionFlipVertically)
         self.menuRotate.addAction(self.actionFlipHorizontally)
         self.menuSubtitles.addAction(self.actionAddSubtitleFile)
-        self.menuFade.addAction(self.actionFadeDisable)
-        self.menuFade.addSeparator()
-        self.menuFade.addAction(self.actionFadeBoth)
-        self.menuFade.addAction(self.actionFadeVideo)
-        self.menuFade.addAction(self.actionFadeAudio)
+        self.menuTrimMode.addAction(self.actionTrimAuto)
+        self.menuTrimMode.addAction(self.actionTrimPrecise)
+        self.menuTrimMode.addSeparator()
+        self.menuTrimMode.addAction(self.actionFadeBoth)
+        self.menuTrimMode.addAction(self.actionFadeVideo)
+        self.menuTrimMode.addAction(self.actionFadeAudio)
         self.menuVideo.addAction(self.menuSubtitles.menuAction())
         self.menuVideo.addAction(self.menuVideoTracks.menuAction())
         self.menuVideo.addSeparator()
@@ -532,7 +537,7 @@ class Ui_MainWindow(object):
         self.menuVideo.addSeparator()
         self.menuVideo.addAction(self.menuConcatenate.menuAction())
         self.menuVideo.addAction(self.menuRotate.menuAction())
-        self.menuVideo.addAction(self.menuFade.menuAction())
+        self.menuVideo.addAction(self.menuTrimMode.menuAction())
         self.menuVideo.addAction(self.actionCrop)
         self.menuVideo.addAction(self.actionRemoveVideo)
         self.menuVideo.addAction(self.actionResize)
@@ -575,9 +580,17 @@ class Ui_MainWindow(object):
         self.menuRotate.setTitle(_translate("MainWindow", "Rotate/Flip"))
         self.menuSubtitles.setTitle(_translate("MainWindow", "Subtitle Tracks"))
         self.menuVideoTracks.setTitle(_translate("MainWindow", "Video Tracks"))
-        self.menuFade.setTitle(_translate("MainWindow", "Fade"))
+        self.menuTrimMode.setTitle(_translate("MainWindow", "Trim/Fade"))
         self.menuWindow.setTitle(_translate("MainWindow", "&Window"))
         self.labelMaxTime.setText(_translate("MainWindow", "--:--"))
+        self.buttonTrimStart.setToolTip(_translate("MainWindow", "Click to set the starting position of a trim/\n"
+"the point where the intro fade will stop.\n"
+"\n"
+"Right-click for more options."))
+        self.buttonTrimEnd.setToolTip(_translate("MainWindow", "Click to set the ending position of a trim/\n"
+"the point where the outro fade will stop.\n"
+"\n"
+"Right-click for more options."))
         self.buttonPause.setText(_translate("MainWindow", "𝗜𝗜"))
         self.buttonPrevious.setToolTip(_translate("MainWindow", "Plays the previous valid media file in the current folder."))
         self.buttonPrevious.setText(_translate("MainWindow", "<<"))
@@ -648,10 +661,28 @@ class Ui_MainWindow(object):
         self.actionFadeVideo.setText(_translate("MainWindow", "Fade video only"))
         self.actionFadeAudio.setText(_translate("MainWindow", "Fade audio only"))
         self.actionFadeBoth.setText(_translate("MainWindow", "Fade both"))
-        self.actionFadeDisable.setText(_translate("MainWindow", "Disable"))
+        self.actionTrimAuto.setText(_translate("MainWindow", "Auto trim"))
+        self.actionTrimAuto.setToolTip(_translate("MainWindow", "If checked, certain formats such as MP4 files will have the starts\n"
+"trims moved to the nearest keyframe (keyframes vary from file to\n"
+"file). This is a nearly instant operation for most compatible files.\n"
+"\n"
+"Note: Some formats cannot be trimmed without re-encoding and\n"
+"will default to high-precision trimming regardless. If you still\n"
+"encounter corrupted trims, switch to high-precision manually.\n"
+"\n"
+"Note 2: Keyframe trimming only introduces inaccuracy to the\n"
+"start of a trim. The end of a trim will always be accurate."))
         self.actionResize.setText(_translate("MainWindow", "Resize"))
         self.actionCheckForUpdates.setText(_translate("MainWindow", "Check for updates"))
         self.actionAutoplay.setText(_translate("MainWindow", "Autoplay"))
+        self.actionTrimPrecise.setText(_translate("MainWindow", "Precise trim (slow)"))
+        self.actionTrimPrecise.setToolTip(_translate("MainWindow", "If checked, trimmed videos will ALWAYS be re-encoded to ensure 100%\n"
+"accuracy at the start of the trim. Re-encoding is intensive and can take\n"
+"nearly twice as long as the trimmed clip\'s length for some formats.\n"
+"\n"
+"Note: Some formats cannot be trimmed without re-encoding and\n"
+"will default to high-precision trimming regardless. If you still\n"
+"encounter corrupted trims, switch to high-precision manually."))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
 
 

@@ -418,10 +418,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.playback_speed = 1.0
 
         # misc setup
+        self.is_trim_mode = lambda: self.trim_mode_action_group.checkedAction() in (self.actionTrimAuto, self.actionTrimPrecise)
         self.increment_volume = lambda inc: self.sliderVolume.setValue(self.get_volume_slider() + inc)
         self.statusbar.addPermanentWidget(self.save_progress_bar)                   # TODO could QWIDGETMAXSIZE be used to span the widget across the entire statusbar?
         self.menuRecent.setToolTipsVisible(True)
-        self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuFade)
+        self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuTrimMode)
         self.menuAudio.addAction(self.actionResize)
         self.vlc.parent = self
         self.vlc.reset_instance('--gain=6.0')
@@ -445,13 +446,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar.setSizePolicy(QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Expanding)
         self.save_progress_bar.hide()
 
-        self.fade_action_group = QtW.QActionGroup(self.menuFade)
-        for fade_action in (self.actionFadeDisable, self.actionFadeBoth, self.actionFadeVideo, self.actionFadeAudio): self.fade_action_group.addAction(fade_action)
-        self.fade_action_group.triggered.connect(self.set_fade_mode)
+        self.trim_mode_action_group = QtW.QActionGroup(self.menuTrimMode)
+        for fade_action in (self.actionTrimAuto, self.actionTrimPrecise,
+                            self.actionFadeBoth, self.actionFadeVideo, self.actionFadeAudio):
+            self.trim_mode_action_group.addAction(fade_action)
+        self.trim_mode_action_group.triggered.connect(self.set_trim_mode)
 
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
-        self.buttonTrimStart.contextMenuEvent = self.fadeContextMenuEvent
-        self.buttonTrimEnd.contextMenuEvent = self.fadeContextMenuEvent
+        self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
+        self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.buttonLoop.setIcon(self.icons['loop'])
@@ -713,25 +716,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # emulate menubar shortcuts when menubar is not visible (which disables shortcuts for some reason)
         elif not self.menubar.isVisible():
             if mod & Qt.ControlModifier:
-                if key == 79: self.actionOpen.trigger()                                             # ctrl + o (open)
+                if key == 79: self.actionOpen.trigger()                     # ctrl + o (open)
                 elif key == 83:
-                    if mod & Qt.ShiftModifier: self.actionSaveAs.trigger()                   # ctrl + shift + s (save as)
-                    else: self.actionSave.trigger()                                                 # ctrl + s (save)
+                    if mod & Qt.ShiftModifier: self.actionSaveAs.trigger()  # ctrl + shift + s (save as)
+                    else: self.actionSave.trigger()                         # ctrl + s (save)
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{text}"')
 
 
-    def keyReleaseEvent(self, event: QtGui.QKeyEvent):              # 3.10 match case
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent):                      # 3.10 match case
         editable = (self.lineOutput, self.lineCurrentTime, self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame)
-        if any(w.hasFocus() for w in editable): return              # TODO
+        if any(w.hasFocus() for w in editable): return                      # TODO
 
         key = event.key()
-        if key == 16777251 and not self.vlc.dragdrop_in_progress:   # alt (ignore this if we're dragging files since alt affects that)
-            self.actionShowMenuBar.trigger()                # manually trigger actions to keep the menus & widgets consistent
+        if key == 16777251 and not self.vlc.dragdrop_in_progress:           # alt (ignore this if we're dragging files since alt affects that)
+            self.actionShowMenuBar.trigger()                                # manually trigger actions to keep the menus & widgets consistent
         else: super().keyReleaseEvent(event)
         logging.debug(f'RELEASED key={key} text="{event.text()}"')
 
 
-    def contextMenuEvent(self, event: QtGui.QContextMenuEvent):                         # should these use QWidget.actions() instead of contextMenuEvent?
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent):             # should these use QWidget.actions() instead of contextMenuEvent?
         ''' Handles creating the context menu (right-click) for the main window. '''
         context = QtW.QMenu(self)
         if self.actionCrop.isChecked(): context.addAction(self.actionCrop)
@@ -755,16 +758,65 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
-    def pauseButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):              # should these use QWidget.actions() instead of contextMenuEvent?
+    def pauseButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
         context = QtW.QMenu(self)
         context.addAction(self.actionStop)
-        context.addAction('Restart', self.set_and_update_progress)                      # TODO this might have timing issues with update_thread
+        context.addAction('Restart', self.set_and_update_progress)          # TODO this might have timing issues with update_thread
         context.exec(event.globalPos())
 
 
-    def fadeContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+    def trimButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles creating the context menu (right-click) for the start/end trim buttons. Includes
+            the fade-mode menu, actions for instantly setting new start/end positions, and disabled
+            (grayed out) actions containing information about the current start/end positions. '''
+        if not self.video: return       # do not render context menu if no media is playing
+
+        is_trim_mode = self.is_trim_mode()
+        show_length_label = is_trim_mode and self.minimum or self.maximum != self.frame_count
+
+        # create disabled action for displaying start time
+        verb = 'Start' if is_trim_mode else 'Fade to'
+        if self.minimum:
+            h, m, s, ms = qthelpers.get_hms(self.minimum / self.frame_rate)
+            if self.duration < 3600: start_label_action = QtW.QAction(f'{verb} {m}:{s:02}.{ms:02} (frame {self.minimum})')
+            else: start_label_action = QtW.QAction(f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})')
+        else: start_label_action = QtW.QAction(f'{verb}: Disabled')
+        start_label_action.setEnabled(False)
+
+        # create disabled action for displaying end time
+        verb = 'End' if is_trim_mode else 'Fade from'
+        if self.maximum != self.frame_count:
+            h, m, s, ms = qthelpers.get_hms(self.maximum / self.frame_rate)
+            if self.duration < 3600: end_label_action = QtW.QAction(f'{verb}: {m}:{s:02}.{ms:02} (frame {self.maximum})')
+            else: end_label_action = QtW.QAction(f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})')
+        else: end_label_action = QtW.QAction(f'{verb}: Disabled')
+        end_label_action.setEnabled(False)
+
+        # create disabled action for displaying trim length, if applicable
+        if show_length_label:
+            frames = self.maximum - self.minimum
+            seconds = frames / self.frame_rate
+            h, m, s, ms = qthelpers.get_hms(seconds)
+            if seconds < 3600: length_label_action = QtW.QAction(f'Length: {m}:{s:02}.{ms:02} ({frames} frames)')
+            else: length_label_action = QtW.QAction(f'Length: {h}:{m:02}:{s:02} ({frames} frames)')
+            length_label_action.setEnabled(False)
+
+        # actions for force-setting start/end times
+        set_start_action = QtW.QAction('Set start to current position', self)
+        set_start_action.triggered.connect(lambda: self.set_trim_start(force=True))
+        set_end_action = QtW.QAction('Set end to current position', self)
+        set_end_action.triggered.connect(lambda: self.set_trim_end(force=True))
+
+        # create context menu
         context = QtW.QMenu(self)
-        context.addMenu(self.menuFade)
+        context.addAction(set_start_action)
+        context.addAction(set_end_action)
+        context.addSeparator()
+        context.addMenu(self.menuTrimMode)
+        context.addSeparator()
+        context.addAction(start_label_action)
+        context.addAction(end_label_action)
+        if show_length_label: context.addAction(length_label_action)
         context.exec(event.globalPos())
 
 
@@ -1300,7 +1352,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         vwidth, vheight = self.vwidth, self.vheight
 
         audio_tracks = self.player.audio_get_track_count()
-        fade = {self.actionFadeDisable: 'disable', self.actionFadeBoth: 'both', self.actionFadeVideo: 'video', self.actionFadeAudio: 'audio'}[self.fade_action_group.checkedAction()]
 
         delete_after_save = self.checkDeleteOriginal.checkState()       # what will we do to the media file after saving? (0, 1, or 2)
         MARK_DELETE = 1                                                 # checkState() values for delete_after_save
@@ -1400,9 +1451,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # trim -> https://trac.ffmpeg.org/wiki/Seeking TODO: -vf trim filter should be used in here
             if op_trim_start or op_trim_end:
-                if fade == 'disable':
-                    precise = self.dialog_settings.checkHighPrecisionTrim.isChecked() or self.true_extension in constants.SPECIAL_TRIM_EXTENSIONS
-                    self.log(f'{"Precise" if precise else "Imprecise"} trim requested.')
+                if self.is_trim_mode():
+                    precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.true_extension in constants.SPECIAL_TRIM_EXTENSIONS
+                    self.log(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
                     cmd_parameters = f' -c:v {"libx264" if precise else "copy"} -c:a {"aac" if precise else "copy -avoid_negative_ts make_zero"} '
                     trim_cmd_parts = []
                     if minimum > 0:           trim_cmd_parts.append(f'-ss {minimum / frame_rate}')
@@ -1412,8 +1463,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 else:
                     self.log('Fade requested (this is a time-consuming task).')     # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
+                    mode = {self.actionFadeBoth: 'both', self.actionFadeVideo: 'video', self.actionFadeAudio: 'audio'}[self.trim_mode_action_group.checkedAction()]
                     fade_cmd_parts = []                                             # TODO: fading out sometimes does not fully complete by a few frames
-                    if fade == 'video' or fade == 'both':
+                    if mode == 'video' or mode == 'both':
                         fade_parts = []
                         if minimum > 0:
                             seconds = minimum / frame_rate
@@ -1422,8 +1474,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             seconds = maximum / frame_rate
                             delta = duration - seconds
                             fade_parts.append(f'fade=t=out:st={seconds}:d={delta}')
-                        if fade_parts: fade_cmd_parts.append(f'-vf "{",".join(fade_parts)}{" -c:a copy" if fade != "both" else ""}"')
-                    if fade == 'audio' or fade == 'both':
+                        if fade_parts: fade_cmd_parts.append(f'-vf "{",".join(fade_parts)}{" -c:a copy" if mode != "both" else ""}"')
+                    if mode == 'audio' or mode == 'both':
                         fade_parts = []
                         if minimum > 0:
                             seconds = minimum / frame_rate
@@ -1432,7 +1484,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             seconds = maximum / frame_rate
                             delta = duration - seconds
                             fade_parts.append(f'afade=t=out:st={seconds}:d={delta}')
-                        if fade_parts: fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if fade != "both" and mime == "video" else ""}"')
+                        if fade_parts: fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
                     if fade_cmd_parts: intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" {" ".join(fade_cmd_parts)} "{dest}"', dest)
 
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
@@ -1647,18 +1699,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 except: logging.warning(f'Abnormal error while locking/setting/updating progress: {format_exc()}')
                 finally: self.lock_progress_updates = False
         except: pass                                            # ignore invalid inputs
-        finally: self.lineCurrentTime.clearFocus()        # clear focus after update no matter what
+        finally: self.lineCurrentTime.clearFocus()              # clear focus after update no matter what
 
 
     # ---------------------
     # >>> ffmpeg <<<
     # ---------------------
-    def set_trim_start(self):
+    def set_trim_start(self, *args, force=False):
         if not self.video:
             if self.buttonTrimStart.isChecked(): self.buttonTrimStart.setChecked(False)
             return
+        if force: self.buttonTrimStart.setChecked(True)         # force-check trim button, typically used from context menu
 
-        verb = 'Start' if self.fade_action_group.checkedAction() is self.actionFadeDisable else 'Fade to'
         if self.buttonTrimStart.isChecked():
             desired_minimum = self.get_progess_slider()
             if desired_minimum >= self.maximum:
@@ -1667,21 +1719,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.minimum = desired_minimum
 
             h, m, s, ms = qthelpers.get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
-            if self.duration < 3600: self.buttonTrimStart.setText(f'{verb} {m}:{s:02}.{ms:02}')
-            else: self.buttonTrimStart.setText(f'{verb} {h}:{m:02}:{s:02}')
+            if self.duration < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
+            else: self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_minimum = True
         else:
             self.minimum = self.sliderProgress.minimum()
-            self.buttonTrimStart.setText(verb)
+            self.buttonTrimStart.setText('Start' if self.is_trim_mode() else 'Fade to')
             self.sliderProgress.clamp_minimum = False
 
 
-    def set_trim_end(self):
+    def set_trim_end(self, *args, force=False):
         if not self.video:
             if self.buttonTrimEnd.isChecked(): self.buttonTrimEnd.setChecked(False)
             return
+        if force: self.buttonTrimEnd.setChecked(True)           # force-check trim button, typically used from context menu
 
-        verb = 'End' if self.fade_action_group.checkedAction() is self.actionFadeDisable else 'Fade from'
         if self.buttonTrimEnd.isChecked():
             desired_maximum = self.get_progess_slider()
             if desired_maximum <= self.minimum:
@@ -1689,23 +1741,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.log('You cannot set the end of your trim before the start of it.')
             self.maximum = desired_maximum
 
-            h, m, s, ms = qthelpers.get_hms(self.current_time)
-            if self.duration < 3600: self.buttonTrimEnd.setText(f'{verb} {m}:{s:02}.{ms:02}')
-            else: self.buttonTrimEnd.setText(f'{verb} {h}:{m:02}:{s:02}')
+            h, m, s, ms = qthelpers.get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
+            if self.duration < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
+            else: self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_maximum = True
         else:
             self.maximum = self.sliderProgress.maximum()
-            self.buttonTrimEnd.setText(verb)
+            self.buttonTrimEnd.setText('End' if self.is_trim_mode() else 'Fade from')
             self.sliderProgress.clamp_maximum = False
 
 
-    def set_fade_mode(self, action: QtW.QAction):
-        if action is self.actionFadeDisable:
+    def set_trim_mode(self, action: QtW.QAction):
+        if action in (self.actionTrimAuto, self.actionTrimPrecise):
             self.buttonTrimStart.setText(self.buttonTrimStart.text().replace('Fade to', 'Start'))
             self.buttonTrimEnd.setText(self.buttonTrimEnd.text().replace('Fade from', 'End'))
+            for button in (self.buttonTrimStart, self.buttonTrimEnd):
+                button.setToolTip(constants.TRIM_BUTTON_TOOLTIP_BASE.replace('?mode', 'trim'))
         else:
             self.buttonTrimStart.setText(self.buttonTrimStart.text().replace('Start', 'Fade to'))
             self.buttonTrimEnd.setText(self.buttonTrimEnd.text().replace('End', 'Fade from'))
+            for button in (self.buttonTrimStart, self.buttonTrimEnd):
+                button.setToolTip(constants.TRIM_BUTTON_TOOLTIP_BASE.replace('?mode', 'fade'))
 
 
     def concatenate(self, action: QtW.QAction, files=None):                             # TODO this is old and needs to be unified with the other edit methods
@@ -2234,7 +2290,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             muted = not bool(self.player.audio_get_mute())  # returns 1 or 0
             self.player.audio_set_mute(muted)
-            self.sliderVolume.setDisabled(muted)            # disabled if muted, enabled if not muted
+            self.sliderVolume.setEnabled(not muted)         # disabled if muted, enabled if not muted
             self.sliderVolume.setToolTip('Muted (M)' if muted else f'Unmuted ({self.get_volume_slider()}%)')
             if self.dialog_settings.checkTextOnMute.isChecked(): self.show_text('Muted (M)' if muted else f'Unmuted ({self.get_volume_slider()}%%)')
         except: logging.error(format_exc())

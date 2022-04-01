@@ -150,11 +150,15 @@
       <string>Video Tracks</string>
      </property>
     </widget>
-    <widget class="QMenu" name="menuFade">
+    <widget class="QMenu" name="menuTrimMode">
      <property name="title">
-      <string>Fade</string>
+      <string>Trim/Fade</string>
      </property>
-     <addaction name="actionFadeDisable"/>
+     <property name="toolTipsVisible">
+      <bool>true</bool>
+     </property>
+     <addaction name="actionTrimAuto"/>
+     <addaction name="actionTrimPrecise"/>
      <addaction name="separator"/>
      <addaction name="actionFadeBoth"/>
      <addaction name="actionFadeVideo"/>
@@ -168,7 +172,7 @@
     <addaction name="separator"/>
     <addaction name="menuConcatenate"/>
     <addaction name="menuRotate"/>
-    <addaction name="menuFade"/>
+    <addaction name="menuTrimMode"/>
     <addaction name="actionCrop"/>
     <addaction name="actionRemoveVideo"/>
     <addaction name="actionResize"/>
@@ -373,7 +377,7 @@
            <widget class="QPushButton" name="buttonTrimStart">
             <property name="minimumSize">
              <size>
-              <width>32</width>
+              <width>44</width>
               <height>18</height>
              </size>
             </property>
@@ -385,6 +389,12 @@
             </property>
             <property name="focusPolicy">
              <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Click to set the starting position of a trim/
+the point where the intro fade will stop.
+
+Right-click for more options.</string>
             </property>
             <property name="text">
              <string notr="true">Start</string>
@@ -398,7 +408,7 @@
            <widget class="QPushButton" name="buttonTrimEnd">
             <property name="minimumSize">
              <size>
-              <width>32</width>
+              <width>0</width>
               <height>18</height>
              </size>
             </property>
@@ -410,6 +420,12 @@
             </property>
             <property name="focusPolicy">
              <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Click to set the ending position of a trim/
+the point where the outro fade will stop.
+
+Right-click for more options.</string>
             </property>
             <property name="text">
              <string notr="true">End</string>
@@ -1287,15 +1303,24 @@ skip over files that have been marked for deletion.</string>
     <string>Fade both</string>
    </property>
   </action>
-  <action name="actionFadeDisable">
+  <action name="actionTrimAuto">
    <property name="checkable">
     <bool>true</bool>
    </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
    <property name="text">
-    <string>Disable</string>
+    <string>Auto trim</string>
+   </property>
+   <property name="toolTip">
+    <string>If checked, certain formats such as MP4 files will have the starts
+trims moved to the nearest keyframe (keyframes vary from file to
+file). This is a nearly instant operation for most compatible files.
+
+Note: Some formats cannot be trimmed without re-encoding and
+will default to high-precision trimming regardless. If you still
+encounter corrupted trims, switch to high-precision manually.
+
+Note 2: Keyframe trimming only introduces inaccuracy to the
+start of a trim. The end of a trim will always be accurate.</string>
    </property>
   </action>
   <action name="actionResize">
@@ -1314,6 +1339,26 @@ skip over files that have been marked for deletion.</string>
    </property>
    <property name="text">
     <string>Autoplay</string>
+   </property>
+  </action>
+  <action name="actionTrimPrecise">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Precise trim (slow)</string>
+   </property>
+   <property name="toolTip">
+    <string>If checked, trimmed videos will ALWAYS be re-encoded to ensure 100%
+accuracy at the start of the trim. Re-encoding is intensive and can take
+nearly twice as long as the trimmed clip's length for some formats.
+
+Note: Some formats cannot be trimmed without re-encoding and
+will default to high-precision trimming regardless. If you still
+encounter corrupted trims, switch to high-precision manually.</string>
    </property>
   </action>
  </widget>

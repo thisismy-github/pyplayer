@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>334</width>
-        <height>1447</height>
+        <height>1425</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -323,26 +323,6 @@ otherwise, the progress bar will fall behind and start to desync.</string>
               </widget>
              </item>
              <item row="6" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkHighPrecisionTrim">
-               <property name="toolTip">
-                <string>If checked, trimmed videos will always be re-encoded to ensure 100% accuracy
-at the start of the trim. Otherwise, certain formats, such as MP4 files, will have
-the starts of their videos trimmed to the nearest keyframe (which varies from
-video to video), as this is a nearly instant operation. Re-encoding is intensive
-and can take nearly twice as long as the trimmed clip's length for some formats.
-
-Note 1: Formats that cannot be instantly trimmed without
-re-encoding will default to high-precision trimming regardless.
-
-Note 2: Keyframe trimming only introduces inaccuracy to the
-start of a trim. The end of a trim will always be accurate.</string>
-               </property>
-               <property name="text">
-                <string>Always use high-precision trims (slow)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAlwaysSaveAs">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -360,7 +340,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default
@@ -376,7 +356,7 @@ folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
                 <string>If checked, the media player will completely stop
@@ -395,7 +375,7 @@ going to &quot;File-&gt;Stop Player&quot; in the menubar.</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationWrap">
                <property name="toolTip">
                 <string>If checked, using the arrow keys or J/L to navigate forwards or backwards in a video
@@ -411,7 +391,7 @@ Example: If you're at the end of a video and press ➞, you'll be placed back at
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationUnpause">
                <property name="toolTip">
                 <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
@@ -425,7 +405,7 @@ has finished will automatically unpause the media and resume playback.</string>
                </property>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkResizeOnOpen">
                <property name="toolTip">
                 <string>Tristate:
@@ -445,7 +425,7 @@ resized for the first media file you open.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSnapOnOpen">
                <property name="toolTip">
                 <string>Tristate:
@@ -465,7 +445,7 @@ first media file you open.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSnapOnResize">
                <property name="toolTip">
                 <string>Hold Shift while resizing to always shrink the window.
@@ -496,7 +476,7 @@ around for unwanted Qt/VLC behavior.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -511,7 +491,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -525,7 +505,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="17" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_8">
                <item>
                 <widget class="QCheckBox" name="checkMinimizePause">
@@ -550,7 +530,7 @@ but only if the media had not been paused prior to minimizing.</string>
                </item>
               </layout>
              </item>
-             <item row="18" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <widget class="QCheckBox" name="checkIgnoreRaiseWithAutoplay">
                <property name="toolTip">
                 <string>If checked, files that are opened through

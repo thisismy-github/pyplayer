@@ -44,6 +44,12 @@ SPECIAL_TRIM_EXTENSIONS = ('x-msvideo', 'quicktime', 'x-flv', 'webm', 'mpeg', 'o
 
 # ---------------------
 
+TRIM_BUTTON_TOOLTIP_BASE = '''Click to set the starting position of a trim/
+the point where the intro fade will stop.
+
+Currently in ?mode mode.
+Right-click for more options.'''
+
 MARK_DELETED_TOOLTIP_BASE = '''Mark media for future deletion.
 ?count are currently marked for deletion.
 
