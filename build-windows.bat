@@ -1,3 +1,7 @@
+:: This batch file compiles PyPlayer to an executable on Windows.
+:: Make sure you have all appropriate libraries in requirements.txt installed.
+:: Read the readme.txt in /executable for more information.
+
 pip install --upgrade pyinstaller
 
 pyinstaller executable/main.spec --noconfirm --distpath executable/compiled --workpath executable/build
