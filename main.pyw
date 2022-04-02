@@ -1137,7 +1137,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.buttonTrimEnd.setChecked(False)
             self.lineOutput.setText('')
             self.lineOutput.setPlaceholderText(os.path.basename(file))
-            self.lineOutput.setToolTip(f'{file}\n\nEnter a new name and press enter to rename this file.')
+            self.lineOutput.setToolTip(f'{file}\nEnter a new name and press enter to rename this file.')
 
             # update delete-action's QToolButton
             is_marked = file in self.marked_for_deletion
@@ -1329,6 +1329,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.setText('')                 # clear lineedit after successful rename (same as in open())
             self.lineOutput.setPlaceholderText(os.path.basename(new_name))
             self.lineOutput.setToolTip(f'{new_name}\nEnter a new name and press enter to rename this file.')
+            self.update_title_signal.emit()
         except: self.log(f'RENAME FAILED: {format_exc()}')
         self.vlc.play(self.video)                                               # replay (no need for full-scale open())
         self.set_player_position(self.get_progess_slider() / self.frame_count)  # set VLC back to current position
