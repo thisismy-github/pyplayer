@@ -1233,10 +1233,11 @@ class QLineEditPassthrough(QtW.QLineEdit, QWidgetPassthrough): base = QtW.QLineE
 
 
 class QDraggableWindowFrame(QtW.QFrame):
-    ''' Widget which moves a separate widget called the `dragTarget` while dragging on empty spaces. The target
+    ''' Widget which moves a separate widget called the `dragTarget` while dragging on empty spaces, if dragged using
+        `button`. If `button` is None, then any click on the widget will move the `dragTarget`. The target widget
         is moved relative to this widget, and does not move while fullscreen or maximized. If no `dragTarget` is
         specified, parent() is used instead, which persists through setParent() until a unique dragTarget is set. '''
-    def __init__(self, *args, dragTarget: QtW.QWidget = None, **kwargs):
+    def __init__(self, *args, dragTarget: QtW.QWidget = None, button: int = Qt.LeftButton, **kwargs):
         super().__init__(*args, **kwargs)
         if dragTarget:
             self._dragTarget = dragTarget
@@ -1244,6 +1245,7 @@ class QDraggableWindowFrame(QtW.QFrame):
         else:
             self._dragTarget = self.parent()
             self._dragTargetIsParent = True
+        self._button = button
         self._validDrag = False
         self._draggingOffset: QtCore.QPoint = None
 
@@ -1254,6 +1256,12 @@ class QDraggableWindowFrame(QtW.QFrame):
         ''' Manually sets `dragTarget`. The drag target is the `widget` that gets moved while dragging `self`. '''
         self._dragTarget = widget
         self._dragTargetIsParent = widget is self.parent()
+
+    def button(self):       # pointless, but consistent with Qt
+        return self._button
+
+    def setButton(self, button: int):
+        self._button = button
 
     def setParent(self, parent):
         ''' Captures setParent and sets `dragTarget` to the new `parent`
@@ -1266,7 +1274,8 @@ class QDraggableWindowFrame(QtW.QFrame):
         ''' Confirms that a mouse press is valid for dragging and obtains the offset between the click
             and the top-left corner of our target. Ignore clicks while our target is fullscreened or
             maximized. This event does not fire if we've clicked one of our child widgets. '''
-        self._validDrag = not self._dragTarget.isFullScreen() and not self._dragTarget.isMaximized()
+        valid_button = self._button is None or event.button() == self._button
+        self._validDrag = not self._dragTarget.isFullScreen() and not self._dragTarget.isMaximized() and valid_button
         self._draggingOffset = event.globalPos() - self._dragTarget.pos()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
@@ -1276,20 +1285,6 @@ class QDraggableWindowFrame(QtW.QFrame):
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         self._validDrag = False
-
-    #def __init__(self, *args, **kwargs):       # <- simplified methods originally intended for this project only, not sure if they're worth using
-    #    super().__init__(*args, **kwargs)
-    #    self._validDrag = False
-    #    self._draggingOffset: QtCore.QPoint = None
-
-    #def mousePressEvent(self, event: QtGui.QMouseEvent):
-    #    ''' Confirms that a mouse press is valid for dragging and obtains the offset between the  '''
-    #    self._validDrag = True  # mousePressEvent won't fire if we clicked a child widget
-    #    self._draggingOffset = event.globalPos() - self.parent().pos()
-
-    #def mouseMoveEvent(self, event: QtGui.QMouseEvent):
-    #    if not self._validDrag: return    # do not move window if we're dragging a child widget
-    #    self.parent().move(event.globalPos() - self._draggingOffset)
 
 
 # ------------------------------------------
