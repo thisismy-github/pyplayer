@@ -220,7 +220,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     # ---------------------
     # Cropping Utilities
     # ---------------------
-    def get_crop_point_index_in_range(self, pos: QtCore.QPoint, _range: int = 55):
+    def get_crop_point_index_in_range(self, pos: QtCore.QPoint, _range: int = 30, p=False):
         ''' Gets the index of the closest crop-corner to `pos`, if any are within `_range` pixels, otherwise None. '''
         min_dist = 1000
         min_point = None
@@ -233,7 +233,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         return None if min_dist > _range else self.selection.index(min_point)
 
 
-    def get_crop_edge_index_in_range(self, pos: QtCore.QPoint, _range: int = 25):
+    def get_crop_edge_index_in_range(self, pos: QtCore.QPoint, _range: int = 15):
         ''' Gets the closest crop-edge to `pos`, if any are within `_range` pixels, otherwise None. Returns
             the index of an associated corner for each edge. Left: 0, Top: 1, Right: 2, Bottom: 3. '''
         s = self.selection
@@ -432,11 +432,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         if not self.parent.actionCrop.isChecked(): return
         self.panning = False
-        pos = event.pos()
-        try:
+        pos = self.mapFromGlobal(QtGui.QCursor.pos())   # mousePressEvent's event.pos() appears to return incorrect values...
+        try:                                            # ...in certain areas, leading to bad offsets and mismatched selections
             self.dragging = self.get_crop_point_index_in_range(pos)
             if self.dragging is not None:
-                self.drag_axis_lock = None
+                self.drag_axis_lock = None              # reset axis lock before dragging corners
                 self.dragging_offset = pos - self.selection[self.dragging]
             else:
                 edge_index = self.get_crop_edge_index_in_range(pos)
@@ -450,6 +450,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                     self.dragging_offset = pos - self.selection[self.dragging]
                 elif self.crop_rect.contains(pos):
                     self.dragging = -1
+                    self.drag_axis_lock = None          # reset axis lock before panning
                     self.dragging_offset = pos - self.selection[0]
                     if app.overrideCursor() is None: app.setOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
                     else: app.changeOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
@@ -994,14 +995,14 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
             else: item_base = QtW.QListWidgetItem(self)
             item_base.setToolTip(file)
             self.setItemWidget(item_base, item_widget)
-            item_base.setSizeHint(QtCore.QSize(0, 64))   # default width/height is -1, but this is invalid. yeah.
+            item_base.setSizeHint(QtCore.QSize(0, 64))          # default width/height is -1, but this is invalid. yeah.
 
             # check if thumbnail actually existed or not
-            if not os.path.exists(thumbnail):       # check if thumbnail existed or not
+            if not os.path.exists(thumbnail):                   # check if thumbnail existed or not
                 thumbnails_needed.append((thumbnail, file, item_widget))
 
         # create threads to generate thumbnails
-        for thumbnail_needed in thumbnails_needed:
+        for thumbnail_needed in thumbnails_needed:              # TODO: there needs to be some way of cancelling these threads
             Thread(target=self.get_thumbnail, args=thumbnail_needed, daemon=True).start()
 
 
