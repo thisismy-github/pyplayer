@@ -45,6 +45,10 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
 
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, ignore=('comboThemes',))
+    for action in gui.trim_mode_action_group.actions():
+        action.setChecked(load(action.objectName(), False))
+    if not gui.trim_mode_action_group.checkedAction():  # none are checked (fresh config) -> check "Precise Trim"
+        gui.trim_mode_action_group.actions()[1].setChecked(True)
     hoverfontcolor = load('hoverfontcolor', '255,255,255', ',', int, tuple, fill_with_defaults=True, default=255)
     gui.sliderProgress.hover_font_color = QtGui.QColor(*hoverfontcolor)
     settings.buttonHoverFontColor.setToolTip(str(hoverfontcolor))
@@ -96,6 +100,8 @@ def saveConfig(gui, filename: str = None):
     save('recent_videos', gui.recent_videos, delimiter=',')
 
     cfg.setSection('settings')
+    for action in gui.trim_mode_action_group.actions():
+        save(action.objectName(), action.isChecked())
     save('hoverfontcolor', gui.sliderProgress.hover_font_color.getRgb(), delimiter=',')
 
     cfg.setSection('keys')
