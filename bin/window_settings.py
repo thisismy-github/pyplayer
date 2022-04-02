@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1425))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1447))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -162,7 +162,7 @@ class Ui_settingsDialog(object):
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.horizontalLayout_8 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
         self.checkMinimizePause = QtWidgets.QCheckBox(self.tabGeneral)
@@ -171,11 +171,16 @@ class Ui_settingsDialog(object):
         self.checkMinimizeRestore = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkMinimizeRestore.setObjectName("checkMinimizeRestore")
         self.horizontalLayout_8.addWidget(self.checkMinimizeRestore)
-        self.formLayout.setLayout(16, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
+        self.formLayout.setLayout(17, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
         self.checkIgnoreRaiseWithAutoplay = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkIgnoreRaiseWithAutoplay.setChecked(True)
         self.checkIgnoreRaiseWithAutoplay.setObjectName("checkIgnoreRaiseWithAutoplay")
-        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkIgnoreRaiseWithAutoplay)
+        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkIgnoreRaiseWithAutoplay)
+        self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkCycleRememberOriginalPath.setChecked(True)
+        self.checkCycleRememberOriginalPath.setTristate(True)
+        self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
+        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 5, -1, 5)
@@ -1201,6 +1206,18 @@ class Ui_settingsDialog(object):
         self.checkIgnoreRaiseWithAutoplay.setToolTip(_translate("settingsDialog", "If checked, files that are opened through\n"
 "autoplay will never raise or focus the window."))
         self.checkIgnoreRaiseWithAutoplay.setText(_translate("settingsDialog", "Ignore window-behavior settings while Autoplay is on"))
+        self.checkCycleRememberOriginalPath.setToolTip(_translate("settingsDialog", "Tristate:\n"
+"\n"
+"Fully checked: media that is renamed and/or edited will act\n"
+"as if it were in its original place when attempting to cycle to\n"
+"the next or previous media media file in the current folder.\n"
+"\n"
+"Partially checked: ditto, but only for renaming, not editing.\n"
+"\n"
+"Example: If there are 10 files in a folder, and you\'re playing\n"
+"file #5, but then rename it so that it becomes file #1, the\n"
+"next file that will play will still be file #6."))
+        self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior on drag-and-drop"))
         self.radioDrop.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will leave the window in its current position and focus-state."))
         self.radioDrop.setText(_translate("settingsDialog", "Do nothing "))

@@ -196,7 +196,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
 
 def connect_widget_signals(self: QtW.QMainWindow):
     self._open_signal.connect(self._open)
-    self.open_signal.connect(self.open)
+    self._save_open_signal.connect(lambda file, remember_old_file: self.open(file=file, remember_old_file=remember_old_file))
     self.fast_start_open_signal.connect(self.fast_start_open)
     self.restart_signal.connect(self.restart)
     self.update_progress_signal.connect(self.update_progress_slot)

@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>334</width>
-        <height>1425</height>
+        <height>1447</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -491,7 +491,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -505,7 +505,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_8">
                <item>
                 <widget class="QCheckBox" name="checkMinimizePause">
@@ -530,7 +530,7 @@ but only if the media had not been paused prior to minimizing.</string>
                </item>
               </layout>
              </item>
-             <item row="17" column="0" colspan="2">
+             <item row="18" column="0" colspan="2">
               <widget class="QCheckBox" name="checkIgnoreRaiseWithAutoplay">
                <property name="toolTip">
                 <string>If checked, files that are opened through
@@ -540,6 +540,32 @@ autoplay will never raise or focus the window.</string>
                 <string>Ignore window-behavior settings while Autoplay is on</string>
                </property>
                <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="15" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
+               <property name="toolTip">
+                <string>Tristate:
+
+Fully checked: media that is renamed and/or edited will act
+as if it were in its original place when attempting to cycle to
+the next or previous media media file in the current folder.
+
+Partially checked: ditto, but only for renaming, not editing.
+
+Example: If there are 10 files in a folder, and you're playing
+file #5, but then rename it so that it becomes file #1, the
+next file that will play will still be file #6.</string>
+               </property>
+               <property name="text">
+                <string>Cycle media based on file's original filepath (tristate)</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <property name="tristate">
                 <bool>true</bool>
                </property>
               </widget>

@@ -347,8 +347,8 @@ def get_listdir(file):
 # Main GUI
 # ---------------------
 class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
-    _open_signal = QtCore.pyqtSignal()      # Custom signals MUST be class variables
-    open_signal = QtCore.pyqtSignal(str)    # self.open() takes 3 bool arguments, but we don't need those
+    _open_signal = QtCore.pyqtSignal()                  # Custom signals MUST be class variables
+    _save_open_signal = QtCore.pyqtSignal(str, bool)    # file + bool for remembering previous file
     restart_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
     update_title_signal = QtCore.pyqtSignal()
@@ -396,8 +396,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.lock_fullscreen_ui = False
         self.menubar_visible_before_crop = False
         self.last_cycle_was_forward = True
+        self.last_cycle_index: int = None
 
         self.video: str = None
+        self.video_original_path: str = None
         self.recent_videos = []
         self.locked_video: str = None
         self.mime_type = 'image'    # defaults to 'image' since self.pause() is disabled for 'image' mime_types
@@ -974,12 +976,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.video is None: return self.statusbar.showMessage('No media is playing.', 10000)    # TODO remember last media's folder?
         logging.info(f'Getting {"next" if next else "previous"} media file...')
 
-        video_name, video_dir, files = get_listdir(self.video)
-        if video_name is None and files is None:
+        base_file = self.video_original_path if self.dialog_settings.checkCycleRememberOriginalPath.checkState() else self.video
+        media_name, media_dir, files = get_listdir(base_file)
+        if media_name is None and files is None:
             return self.log('This is the only media file in this folder.')
 
         self.last_cycle_was_forward = next
-        original_video_index = video_index = files.index(video_name)
+        if media_name in files: original_video_index = video_index = files.index(media_name)
+        elif self.last_cycle_index is not None: original_video_index = video_index = self.last_cycle_index
+        else:           # video was moved/renamed and never cycled, use human sorting to roughly determine where to start from
+            import re   # https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
+            test = lambda char: int(char) if char.isdigit() else char   # NOTE: Most OS's do not actually use pure human sorting
+            human_sort = lambda string: [test(c) for c in re.split(r'(\d+)', os.path.splitext(string)[0])]
+            restored_files = files.copy()
+            restored_files.append(media_name)
+            restored_files.sort(key=human_sort)
+            original_video_index = video_index = max(0, min(len(files), restored_files.index(media_name)) - 1)
+
         cycle_increment = 1 if next else -1
         while True:
             video_index += cycle_increment
@@ -991,15 +1004,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     video_index = len(files) - 1
 
             # if we've reached the original file or the new video opens successfully -> stop. skip to-be-deleted files (if desired).
-            file = os.path.abspath(os.path.join(video_dir, files[video_index]))
+            file = os.path.abspath(os.path.join(media_dir, files[video_index]))
             if os.stat(file).st_file_attributes & 2 and video_index != original_video_index:    # 2 -> stat.FILE_ATTRIBUTE_HIDDEN
                 logging.debug(f'File {file} at index {video_index} is hidden. Skipping.')       # https://stackoverflow.com/questions/284115/cross-platform-hidden-file-detection
-                continue                                    # skip hidden files (if they're not our original file)
+                continue                                        # skip hidden files (if they're not our original file)
             logging.debug(f'Checking {file} at index {video_index}')
 
             if video_index == original_video_index: return self.log('This is the only playable file in the current folder.')
             if self.checkSkipMarked.isChecked() and file in self.marked_for_deletion: continue
-            if self.open(file, _from_cycle=True) != -1: return   # if new video can't be opened, -1 is returned -> keep going
+            if self.open(file, _from_cycle=True) != -1:         # if new video can't be opened, -1 is returned -> keep going
+                self.last_cycle_index = video_index
+                return
 
 
     def parse_media_file(self, file, mime='video', _recursive=False):
@@ -1061,7 +1076,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.parsed = True
 
 
-    def open(self, file=None, raise_window=True, focus_window=True, _from_cycle=False, _from_dir=False):
+    def open(self, file=None, raise_window=True, focus_window=True, remember_old_file=False, _from_cycle=False, _from_dir=False):
         ''' Current iteration: III '''
         try:
             if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
@@ -1103,6 +1118,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
             self.video = file                       # video isn't corrupt or invalid -> set it as our new video (AFTER vlc.play())
+            if not remember_old_file or not self.video_original_path: self.video_original_path = file
 
             if file[-4:] != '.gif': self.log(f'Opening file {file}\n')
             else: self.log('Animated GIFs are not supported (just like in VLC).')
@@ -1154,6 +1170,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_paused = False                  # force_pause could be used here, but it is slightly more efficient this way
             self.set_pause_button_text('𝗜𝗜')
             if not self.first_video_fully_loaded: self.set_volume(self.get_volume_slider())  # force volume to quickly correct gain issue
+            self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
 
             if raise_window and not (self.isMaximized()):   # show_window unmaximizes windows (no effect on fullscreen windows)
                 try: qthelpers.show_window(self.winId(), focus_window)  # TODO add setting for leaving minimized windows alone? too much?
@@ -1526,7 +1543,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 if os.path.exists(final_dest): os.replace(dest, final_dest)
                 else: os.renames(dest, final_dest)
-                if self.video == video: self.open_signal.emit(final_dest)   # only open edited video if user hasn't opened something else TODO make this a setting
+
+                # only open edited video if user hasn't opened something else TODO make this a setting
+                if self.video == video: self._save_open_signal.emit(final_dest, self.dialog_settings.checkCycleRememberOriginalPath.checkState() == 2)
                 elif self.dialog_settings.checkTextOnSave.isChecked(): self.show_text(f'Changes saved to {final_dest}.')
                 self.log(f'Changes saved to {final_dest} after {gettime() - start:.1f} seconds.')
             else: return self.log('No changes have been made because the crop was the same size as the source media.')
