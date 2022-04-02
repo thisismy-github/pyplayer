@@ -14,9 +14,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_aboutDialog(object):
     def setupUi(self, aboutDialog):
         aboutDialog.setObjectName("aboutDialog")
-        aboutDialog.resize(388, 184)
-        aboutDialog.setMinimumSize(QtCore.QSize(388, 184))
-        aboutDialog.setMaximumSize(QtCore.QSize(388, 184))
+        aboutDialog.resize(392, 184)
+        aboutDialog.setMinimumSize(QtCore.QSize(392, 184))
+        aboutDialog.setMaximumSize(QtCore.QSize(392, 184))
         aboutDialog.setStyleSheet("QLabel { color: white; }\n"
 "QDialog {\n"
 "background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(50, 50, 50, 255), stop:1 rgba(85, 0, 0, 255));\n"
