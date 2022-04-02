@@ -608,7 +608,8 @@ class Ui_MainWindow(object):
         self.buttonSnapshot.setToolTip(_translate("MainWindow", "Takes a screenshot of the current media at its current position.\n"
 "\n"
 "Ctrl + click: Opens size and save-file dialogs for your snapshot.\n"
-"Shift + click: Opens the most recent snapshot.\n"
+"Shift + click: Opens the last snapshot in PyPlayer.\n"
+"Alt + click: Opens the last snapshot in your default program.\n"
 "\n"
 "Right-click for more options."))
         self.buttonLoop.setToolTip(_translate("MainWindow", "If checked, media loops upon completion — even with autoplay enabled."))

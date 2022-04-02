@@ -743,7 +743,8 @@ prompt is shown on exit if any files are marked.</string>
                <string>Takes a screenshot of the current media at its current position.
 
 Ctrl + click: Opens size and save-file dialogs for your snapshot.
-Shift + click: Opens the most recent snapshot.
+Shift + click: Opens the last snapshot in PyPlayer.
+Alt + click: Opens the last snapshot in your default program.
 
 Right-click for more options.</string>
               </property>

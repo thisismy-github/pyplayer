@@ -255,7 +255,7 @@ from tinytag import TinyTag
 # QCursor:            ['bitmap', 'hotSpot', 'mask', 'pixmap', 'pos', 'setPos', 'setShape', 'shape', 'swap']
 # QScreen:            [https://doc.qt.io/qt-5/qscreen.html -> size, availableSize, refreshRate, name, physicalSize, orientation (0 default, 2 landscape), primaryOrientation, nativeOrientation]
 # -->                 app.screens(), app.primaryScreen(), app.primaryScreenChanged.connect()
-# Qt.KeyboardModifiers | QApplication.keyboardModifiers()
+# Qt.KeyboardModifiers | QApplication.keyboardModifiers() | QApplication.queryKeyboardModifiers()
 # QColor F suffix is Float -> values are represented from 0-1. (getRgb() becomes getRgbF())
 # .encode(errors="ignore").decode(errors="ignore")
 # NOTE: self.childAt(x, y)
@@ -666,7 +666,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.timer_id_resize_snap is not None:
             self.killTimer(self.timer_id_resize_snap)
             self.timer_id_resize_snap = None
-            shrink = app.keyboardModifiers() & Qt.ShiftModifier
+            shrink = app.keyboardModifiers() & Qt.ShiftModifier     # TODO: would queryKeyboardModifiers be better?
             force_instant_resize = self.dialog_settings.checkSnapOnResize.checkState() == 0
             self.snap_to_player_size(shrink=shrink, force_instant_resize=force_instant_resize)
         if event: return super().timerEvent(event)
@@ -841,22 +841,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
             else: subprocess.Popen(f'explorer /select,"{cfg.last_snapshot_path}"', shell=True)
 
-        def open_last_screenshot():                             # this is just a copy of the version in self.snapshot()
-            if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-            else: os.system(cfg.last_snapshot_path)
-            self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
-
-        action1 = QtW.QAction('Open last snapshot')
-        action1.triggered.connect(open_last_screenshot)
-        action2 = QtW.QAction('Explore last snapshot')
-        action2.triggered.connect(explore_last_screenshot)
+        open_action1 = QtW.QAction('Open last snapshot (PyPlayer)')
+        open_action1.triggered.connect(lambda: self.snapshot(modifiers=Qt.ControlModifier))
+        open_action2 = QtW.QAction('Open last snapshot (default)')
+        open_action2.triggered.connect(lambda: self.snapshot(modifiers=Qt.AltModifier))
+        explore_action = QtW.QAction('Explore last snapshot')
+        explore_action.triggered.connect(explore_last_screenshot)
 
         context = QtW.QMenu(self)
-        context.addAction(action1)
-        context.addAction(action2)
+        context.addAction(open_action1)
+        context.addAction(open_action2)
+        context.addAction(explore_action)
         context.addSeparator()
-        context.addAction(self.actionQuickSnapshot)             # quick snapshot action
-        context.addAction(self.actionSnapshot)                  # regular snapshot action
+        context.addAction(self.actionQuickSnapshot)         # quick snapshot action
+        context.addAction(self.actionSnapshot)              # regular snapshot action
         context.exec(event.globalPos())
 
 
@@ -867,9 +865,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info('Loading themes...')
         self.themes = []
         for filename in os.listdir(constants.THEME_DIR):
-            if filename[-4:] in ('.qss', '.css', '.txt'):       # this isn't the best way to parse css, but it works well enough
+            if filename[-4:] in ('.qss', '.css', '.txt'):   # this isn't the best way to parse css, but it works well enough
                 getting_theme_data = False
-                theme = {                                       # default theme properties
+                theme = {                                   # default theme properties
                     'name': 'Unnamed Theme',
                     'description': 'Please add a "Theme {}" section to your stylesheet with name, description, and version strings specified.',
                     'version': '0',
@@ -883,7 +881,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     for line in theme['stylesheet'].split('\n'):
                         line = line.strip()
                         if getting_theme_data:
-                            if line[-1] == '}':                 # TODO assert theme properties? also this breaks if multiple {}'s are on one line
+                            if line[-1] == '}':             # TODO assert theme properties? also this breaks if multiple {}'s are on one line
                                 break
                             theme_info_lines.append(line)
                         if line.split()[0].rstrip('{') == 'Theme':
@@ -893,14 +891,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     for info in theme_info:
                         parts = info.split(':')
                         key, value = parts[0].strip().lower(), ':'.join(parts[1:]).strip().strip('"').strip("'")    # strip whitespace/quotes and cleanup key-value pair
-                        theme[key] = value                      # replace theme properties with info retrieved from top of theme file
+                        theme[key] = value                  # replace theme properties with info retrieved from top of theme file
                     self.themes.append(theme)
 
 
     def refresh_theme_combo(self, *args, restore_theme=True, set_theme=None):   # *args to capture unused signal args
         self.load_themes()
         comboThemes = self.dialog_settings.comboThemes
-        old_theme = comboThemes.currentText()                                   # save current theme's name
+        old_theme = comboThemes.currentText()               # save current theme's name
         for _ in range(comboThemes.count()): comboThemes.removeItem(1)
         for theme in self.themes:
             try:
@@ -924,7 +922,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def set_theme(self, theme_name):
         theme = self.get_theme(theme_name)
         logging.info(f'Setting theme to {theme.get("name") if theme else None}')
-        old_theme = self.get_theme(config.cfg.theme)            # config.cfg must be used because this is called before cfg is returned from config.py
+        old_theme = self.get_theme(config.cfg.theme)        # config.cfg must be used because this is called before cfg is returned from config.py
 
         # undo the QToolTip workaround mentioned below
         if old_theme is not None and old_theme['special_widgets']:
@@ -970,7 +968,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # -------------------------------
     # >>> BASIC VIDEO OPERATIONS <<<
     # -------------------------------
-    def cycle_media(self, *args, next: bool = True):    # *args to capture unused signal args
+    def cycle_media(self, *args, next: bool = True):        # *args to capture unused signal args
         ''' Cycles through the files in the current media's folder using listdir and looks for the next
             openable, non-hidden file. If the folder has no other openable files, nothing happens. '''
         if self.video is None: return self.statusbar.showMessage('No media is playing.', 10000)    # TODO remember last media's folder?
@@ -2699,12 +2697,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 `i_height` - the snapshot's height. '''
         try:
             d_set = self.dialog_settings
-            if d_set.checkSnapshotPause.isChecked(): self.player.set_pause(True)    # pause video if desired
+            if d_set.checkSnapshotPause.isChecked(): self.player.set_pause(True)    # pause video if desired (undone by finally statement)
             mod = app.keyboardModifiers() if modifiers is None else modifiers
-            if (self.mime_type != 'video' or not self.video) and not mod & Qt.ShiftModifier: return  # ensure video is playing or shift is pressed
 
-            # no modifiers OR crop mode enabled -> quick snapshot, no dialogs TODO: maybe add default width/height scale settings
+            # no modifiers -> quick snapshot, no dialogs TODO: maybe add default width/height scale settings
             if not mod:
+                if not self.video: return self.statusbar.showMessage('No video is playing.', 10000)
+                if self.mime_type != 'video':
+                    if self.mime_type == 'image' and self.actionCrop.isChecked(): return self.statusbar.showMessage('Images must be cropped directly, without snapshots.', 10000)
+                    else: return self.statusbar.showMessage('You can only take snapshots of a video.', 10000)
+
                 # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
                 name_format = d_set.lineSnapshotNameFormat.text().strip() or d_set.lineSnapshotNameFormat.placeholderText()
                 date_format = d_set.lineSnapshotDateFormat.text().strip() or d_set.lineSnapshotDateFormat.placeholderText()
@@ -2738,7 +2740,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # ctrl pressed -> show resize + save-file dialog
             elif mod & Qt.ControlModifier:
-                self.player.set_pause(True)                         # only needed if checkSnapshotPause is False
+                if not self.video: return self.statusbar.showMessage('No video is playing.', 10000)
+                if self.mime_type != 'video':
+                    if self.mime_type == 'image' and self.actionCrop.isChecked(): return self.statusbar.showMessage('Images must be cropped directly, without snapshots.', 10000)
+                    else: return self.statusbar.showMessage('You can only take snapshots of a video.', 10000)
+
+                self.player.set_pause(True)     # player may have already been paused earlier, but it DEFINITELY needs to be paused now
                 try:
                     # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
                     name_format = d_set.lineSnapshotNameFormat.text().strip() or d_set.lineSnapshotNameFormat.placeholderText()
@@ -2771,7 +2778,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     cfg.last_snapshot_folder = os.path.dirname(cfg.last_snapshot_path)
                     self.log(f'Snapshot saved to {path}')
 
-                    # crop final snapshot if desired
+                    # crop final snapshot if desired, taking into account the custom width/height
                     if self.actionCrop.isChecked():
                         from PIL import Image
                         logging.info('Cropping previously saved snapshot...')
@@ -2803,10 +2810,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
                 finally: self.player.set_pause(False or self.is_paused)     # only needed if checkSnapshotPause is False
 
-            # shift pressed -> open last snapshot (not in explorer)
+            # shift pressed -> open last snapshot in pyplayer (not in explorer)
             elif mod & Qt.ShiftModifier:
+                if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-                else: os.system(cfg.last_snapshot_path)
+                self.open(cfg.last_snapshot_path)
+                self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
+
+            # alt pressed -> open last snapshot in default program (not in explorer)
+            elif mod & Qt.AltModifier:
+                if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
+                if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
+                os.system(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
         except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
         finally: self.player.set_pause(False or self.is_paused)
@@ -2819,7 +2834,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.log(f'Saving JPEG snapshot at {jpeg_quality}% quality to {path}.')
         if image_data is None:
             from PIL import Image
-            image_data = Image(path)
+            image_data = Image.open(path)
         image_data.convert('RGB')
         image_data.save(path, quality=jpeg_quality)
 

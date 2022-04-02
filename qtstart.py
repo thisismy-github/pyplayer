@@ -264,7 +264,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.buttonPrevious.clicked.connect(lambda: self.cycle_media(next=False))
     self.buttonOpenMediaLocation.clicked.connect(self.actionOpenMediaLocation.trigger)
     self.buttonMarkDeleted.clicked.connect(self.actionMarkDeleted.trigger)
-    self.buttonSnapshot.clicked.connect(self.actionSnapshot.trigger)
+    self.buttonSnapshot.clicked.connect(self.actionQuickSnapshot.trigger)
     self.buttonLoop.clicked.connect(self.actionLoop.trigger)
     self.buttonAutoplay.clicked.connect(self.actionAutoplay.trigger)
 
