@@ -430,13 +430,26 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
-        if not self.parent.actionCrop.isChecked(): return
-        self.panning = False
-        pos = self.mapFromGlobal(QtGui.QCursor.pos())   # mousePressEvent's event.pos() appears to return incorrect values...
-        try:                                            # ...in certain areas, leading to bad offsets and mismatched selections
-            self.dragging = self.get_crop_point_index_in_range(pos)
+        ''' Handles grabbing crop points/edges in crop-mode, as well as detected the
+            forwards/backwards buttons and moving through the recent files list. '''
+        try:
+            if not self.parent.actionCrop.isChecked():      # no crop -> check for forward/backward buttons
+                # NOTE: recent_videos is least recent to most recent -> index 0 is the LEAST recent
+                if event.button() == Qt.BackButton or event.button() == Qt.ForwardButton:
+                    if self.parent.video not in self.parent.recent_videos: return
+                    current_index = self.parent.recent_videos.index(self.parent.video)
+                    new_index = current_index + (1 if event.button() == Qt.ForwardButton else -1)
+                    if 0 <= new_index <= len(self.parent.recent_videos) - 1:
+                        file = self.parent.recent_videos[new_index]
+                        self.parent.open(file, update_recent_list=False)
+                        self.parent.log(f'Opened recent file #{len(self.parent.recent_videos) - new_index}: {file}')
+                return  # TODO add forward/backwards functionality globally (not as easy as it sounds?)
+
+            self.panning = False
+            pos = self.mapFromGlobal(QtGui.QCursor.pos())            # mousePressEvent's event.pos() appears to return incorrect values...
+            self.dragging = self.get_crop_point_index_in_range(pos)  # ...in certain areas, leading to bad offsets and mismatched selections
             if self.dragging is not None:
-                self.drag_axis_lock = None              # reset axis lock before dragging corners
+                self.drag_axis_lock = None                  # reset axis lock before dragging corners
                 self.dragging_offset = pos - self.selection[self.dragging]
             else:
                 edge_index = self.get_crop_edge_index_in_range(pos)
@@ -448,25 +461,25 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                         self.dragging = 0 if edge_index < 2 else 3
                         self.drag_axis_lock = 1
                     self.dragging_offset = pos - self.selection[self.dragging]
-                elif self.crop_rect.contains(pos):
+                elif self.crop_rect.contains(pos):          # no corners/edges, but clicked inside crop rect -> panning
                     self.dragging = -1
-                    self.drag_axis_lock = None          # reset axis lock before panning
+                    self.drag_axis_lock = None              # reset axis lock before panning
                     self.dragging_offset = pos - self.selection[0]
                     if app.overrideCursor() is None: app.setOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
                     else: app.changeOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
             event.accept()
             self.update()
-        except: logging.warning(f'(!) Unexpected error while clicking crop points: {format_exc()}')
+        except: logging.warning(f'(!) Unexpected error while clicking QVideoPlayer: {format_exc()}')
         return super().mousePressEvent(event)
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         ''' Allows users to drag crop borders by their corners. '''
-        if not self.parent.actionCrop.isChecked():  # idle timeout is handled in QVideoSlider's paintEvent since it's constantly updated, unlike QVideoPlayer
+        if not self.parent.actionCrop.isChecked():          # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
             if self.parent.dialog_settings.checkHideIdleCursor.isChecked() and self.parent.video:
-                self.last_move_time = time.time()   # update move time if a video is playing and idle timeouts are enabled
-            else: self.last_move_time = 0           # otherwise, keep move time at 0
-            return event.ignore()                   # only handle idle timeouts if we're not cropping
+                self.last_move_time = time.time()           # update move time if a video is playing and idle timeouts are enabled
+            else: self.last_move_time = 0                   # otherwise, keep move time at 0
+            return event.ignore()                           # only handle idle timeouts if we're not cropping
         self.last_move_time = 0
         try:
             pos = self.mapFromGlobal(event.globalPos())     # event.pos() does not work. I have no explanation.

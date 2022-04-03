@@ -192,6 +192,7 @@ KNOWN ISSUES:
         player becomes slightly less responsive after repeatedly minimizing to system tray (noticable fraction-of-a-second delay when navigating)
         resizing videos doesn't actually stretch them? or... it does? very strange behavior with phantom black bars that differ from player to player
         rarely, concatenated videos will have a completely blank frame between clips, causing the theme background to appear for 1 frame
+        forwards/backwards buttons only work when pressed over the player
     Medium priority:
         output-name lineEdit's placeholder text becomes invisible after setting a theme and then changing focus
         resizing an audio file rarely stalls forever with no error (works upon retry)
@@ -1074,7 +1075,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.parsed = True
 
 
-    def open(self, file=None, raise_window=True, focus_window=True, remember_old_file=False, _from_cycle=False, _from_dir=False):
+    def open(self, file=None, raise_window=True, focus_window=True,
+             update_recent_list=True, remember_old_file=False,
+             _from_cycle=False, _from_dir=False):
         ''' Current iteration: III '''
         try:
             if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
@@ -1122,12 +1125,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: self.log('Animated GIFs are not supported (just like in VLC).')
 
             # update recent media list
-            if file in self.recent_videos:
-                self.recent_videos.append(self.recent_videos.pop(self.recent_videos.index(file)))
-            else:
-                self.recent_videos.append(file)
-                if len(self.recent_videos) > 10:
-                    self.recent_videos = self.recent_videos[-10:]
+            if update_recent_list:
+                if file in self.recent_videos:
+                    self.recent_videos.append(self.recent_videos.pop(self.recent_videos.index(file)))
+                else:
+                    self.recent_videos.append(file)
+                    if len(self.recent_videos) > 10:
+                        self.recent_videos = self.recent_videos[-10:]
 
             # misc cleanup/setup for new media
             self.operations = {}
