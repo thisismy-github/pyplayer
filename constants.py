@@ -27,7 +27,7 @@ THEME_DIR = os.path.join(CWD, 'themes')
 RESOURCE_DIR = os.path.join(THEME_DIR, 'resources')
 LOG_PATH = os.path.join(CWD, 'pyplayer.log')
 CONFIG_PATH = os.path.join(CWD, 'config.ini')
-PID_PATH = os.path.join(TEMP_DIR, str(os.getpid()))
+PID_PATH = os.path.join(TEMP_DIR, f'{os.getpid()}.pid')
 
 THUMBNAIL_DIR = os.path.join(TEMP_DIR, 'thumbnails')
 for _dir in (THEME_DIR, TEMP_DIR, THUMBNAIL_DIR):

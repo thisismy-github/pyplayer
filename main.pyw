@@ -2858,8 +2858,7 @@ if __name__ == "__main__":
         widgets.init_custom_widgets(cfg, app)                   # set config and app as global objects in widgets.py
         constants.verify_ffmpeg()                               # confirm/look for valid ffmpeg path if needed
 
-        from pid import PidFile
-        with PidFile(constants.PID_PATH):       # create PID file TODO: we could do this manually
+        with open(constants.PID_PATH, 'w'):     # create PID file
             gui.handle_updates(_launch=True)    # check for/download/validate pending updates
             qtstart.after_show_setup(gui)       # finish up any last second setup
             gc.collect(generation=2)            # final garbage collection before starting
@@ -2874,4 +2873,6 @@ if __name__ == "__main__":
             try: app.exec()
             except: logging.critical(f'(!) GUI FAILED TO EXECUTE: {format_exc()}')
             logging.info('Application execution has finished.')
+        try: os.remove(constants.PID_PATH)
+        except: logging.warning('(!) Failed to remove PID file:' + format_exc())
     except: logging.critical(f'(!) SCRIPT FAILED TO INITIALIZE: {format_exc()}')
