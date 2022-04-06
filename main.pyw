@@ -2203,9 +2203,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.checking_for_updates = True
                 self.dialog_settings.buttonCheckForUpdates.setText('Checking for updates...')
 
+                if constants.IS_COMPILED:   # if compiled, override cacert.pem path to get rid of pointless folder
+                    import certifi.core
+                    os.environ["REQUESTS_CA_BUNDLE"] = constants.CACERT_OVERRIDE_PATH
+                    certifi.core.where = lambda: constants.CACERT_OVERRIDE_PATH
+
                 import update
                 Thread(target=update.check_for_update, args=(self,)).start()
-                #update.check_for_update(self)
 
                 cfg.lastupdatecheck = strftime('%#D', localtime())                      # seconds -> string needs %D
                 settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck}')
