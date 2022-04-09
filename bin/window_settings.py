@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_settingsDialog(object):
     def setupUi(self, settingsDialog):
         settingsDialog.setObjectName("settingsDialog")
-        settingsDialog.resize(347, 730)
+        settingsDialog.resize(349, 730)
         settingsDialog.setMinimumSize(QtCore.QSize(347, 356))
         self.gridLayout = QtWidgets.QGridLayout(settingsDialog)
         self.gridLayout.setContentsMargins(0, 0, 0, 8)
@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1447))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1462))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -142,118 +142,81 @@ class Ui_settingsDialog(object):
         self.checkNavigationUnpause.setChecked(True)
         self.checkNavigationUnpause.setObjectName("checkNavigationUnpause")
         self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationUnpause)
-        self.checkResizeOnOpen = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkResizeOnOpen.setTristate(True)
-        self.checkResizeOnOpen.setObjectName("checkResizeOnOpen")
-        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkResizeOnOpen)
-        self.checkSnapOnOpen = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkSnapOnOpen.setTristate(True)
-        self.checkSnapOnOpen.setObjectName("checkSnapOnOpen")
-        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkSnapOnOpen)
-        self.checkSnapOnResize = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkSnapOnResize.setChecked(True)
-        self.checkSnapOnResize.setTristate(True)
-        self.checkSnapOnResize.setObjectName("checkSnapOnResize")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkSnapOnResize)
         self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkCycleRememberOriginalPath.setChecked(True)
+        self.checkCycleRememberOriginalPath.setTristate(True)
+        self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
+        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.horizontalLayout_8 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
         self.checkMinimizePause = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkMinimizePause.setObjectName("checkMinimizePause")
         self.horizontalLayout_8.addWidget(self.checkMinimizePause)
         self.checkMinimizeRestore = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkMinimizeRestore.setEnabled(False)
         self.checkMinimizeRestore.setObjectName("checkMinimizeRestore")
         self.horizontalLayout_8.addWidget(self.checkMinimizeRestore)
-        self.formLayout.setLayout(17, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
-        self.checkIgnoreRaiseWithAutoplay = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkIgnoreRaiseWithAutoplay.setChecked(True)
-        self.checkIgnoreRaiseWithAutoplay.setObjectName("checkIgnoreRaiseWithAutoplay")
-        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkIgnoreRaiseWithAutoplay)
-        self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkCycleRememberOriginalPath.setChecked(True)
-        self.checkCycleRememberOriginalPath.setTristate(True)
-        self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout.setLayout(14, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 5, -1, 5)
         self.verticalLayout.setSpacing(3)
         self.verticalLayout.setObjectName("verticalLayout")
         self.groupBox = QtWidgets.QGroupBox(self.tabGeneral)
-        self.groupBox.setAlignment(QtCore.Qt.AlignCenter)
-        self.groupBox.setFlat(True)
         self.groupBox.setObjectName("groupBox")
-        self.horizontalLayout_3 = QtWidgets.QHBoxLayout(self.groupBox)
-        self.horizontalLayout_3.setContentsMargins(3, 0, 3, 3)
-        self.horizontalLayout_3.setSpacing(3)
-        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.radioDrop = QtWidgets.QRadioButton(self.groupBox)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.radioDrop.sizePolicy().hasHeightForWidth())
-        self.radioDrop.setSizePolicy(sizePolicy)
-        self.radioDrop.setObjectName("radioDrop")
-        self.horizontalLayout_3.addWidget(self.radioDrop)
-        self.radioDropRaise = QtWidgets.QRadioButton(self.groupBox)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.radioDropRaise.sizePolicy().hasHeightForWidth())
-        self.radioDropRaise.setSizePolicy(sizePolicy)
-        self.radioDropRaise.setObjectName("radioDropRaise")
-        self.horizontalLayout_3.addWidget(self.radioDropRaise)
-        self.radioDropFocus = QtWidgets.QRadioButton(self.groupBox)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.radioDropFocus.sizePolicy().hasHeightForWidth())
-        self.radioDropFocus.setSizePolicy(sizePolicy)
-        self.radioDropFocus.setChecked(True)
-        self.radioDropFocus.setObjectName("radioDropFocus")
-        self.horizontalLayout_3.addWidget(self.radioDropFocus)
+        self.verticalLayout_7 = QtWidgets.QVBoxLayout(self.groupBox)
+        self.verticalLayout_7.setContentsMargins(9, 5, 0, 6)
+        self.verticalLayout_7.setSpacing(1)
+        self.verticalLayout_7.setObjectName("verticalLayout_7")
+        self.checkFocusDrop = QtWidgets.QCheckBox(self.groupBox)
+        self.checkFocusDrop.setChecked(True)
+        self.checkFocusDrop.setObjectName("checkFocusDrop")
+        self.verticalLayout_7.addWidget(self.checkFocusDrop)
+        self.checkFocusDoubleClick = QtWidgets.QCheckBox(self.groupBox)
+        self.checkFocusDoubleClick.setChecked(True)
+        self.checkFocusDoubleClick.setObjectName("checkFocusDoubleClick")
+        self.verticalLayout_7.addWidget(self.checkFocusDoubleClick)
+        self.verticalLayout_8 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_8.setContentsMargins(14, -1, -1, -1)
+        self.verticalLayout_8.setSpacing(0)
+        self.verticalLayout_8.setObjectName("verticalLayout_8")
+        self.checkFocusMinimized = QtWidgets.QCheckBox(self.groupBox)
+        self.checkFocusMinimized.setEnabled(False)
+        self.checkFocusMinimized.setChecked(True)
+        self.checkFocusMinimized.setObjectName("checkFocusMinimized")
+        self.verticalLayout_8.addWidget(self.checkFocusMinimized)
+        self.checkFocusMinimizedToTray = QtWidgets.QCheckBox(self.groupBox)
+        self.checkFocusMinimizedToTray.setEnabled(False)
+        self.checkFocusMinimizedToTray.setChecked(True)
+        self.checkFocusMinimizedToTray.setObjectName("checkFocusMinimizedToTray")
+        self.verticalLayout_8.addWidget(self.checkFocusMinimizedToTray)
+        self.verticalLayout_7.addLayout(self.verticalLayout_8)
+        self.checkIgnoreFocusWithAutoplay = QtWidgets.QCheckBox(self.groupBox)
+        self.checkIgnoreFocusWithAutoplay.setChecked(True)
+        self.checkIgnoreFocusWithAutoplay.setObjectName("checkIgnoreFocusWithAutoplay")
+        self.verticalLayout_7.addWidget(self.checkIgnoreFocusWithAutoplay)
+        self.checkSnapOnResize = QtWidgets.QCheckBox(self.groupBox)
+        self.checkSnapOnResize.setChecked(True)
+        self.checkSnapOnResize.setTristate(True)
+        self.checkSnapOnResize.setObjectName("checkSnapOnResize")
+        self.verticalLayout_7.addWidget(self.checkSnapOnResize)
+        self.checkSnapOnOpen = QtWidgets.QCheckBox(self.groupBox)
+        self.checkSnapOnOpen.setTristate(True)
+        self.checkSnapOnOpen.setObjectName("checkSnapOnOpen")
+        self.verticalLayout_7.addWidget(self.checkSnapOnOpen)
+        self.checkResizeOnOpen = QtWidgets.QCheckBox(self.groupBox)
+        self.checkResizeOnOpen.setTristate(True)
+        self.checkResizeOnOpen.setObjectName("checkResizeOnOpen")
+        self.verticalLayout_7.addWidget(self.checkResizeOnOpen)
         self.verticalLayout.addWidget(self.groupBox)
-        self.groupBox_2 = QtWidgets.QGroupBox(self.tabGeneral)
-        self.groupBox_2.setAlignment(QtCore.Qt.AlignCenter)
-        self.groupBox_2.setFlat(True)
-        self.groupBox_2.setObjectName("groupBox_2")
-        self.horizontalLayout_4 = QtWidgets.QHBoxLayout(self.groupBox_2)
-        self.horizontalLayout_4.setContentsMargins(3, 0, 3, 3)
-        self.horizontalLayout_4.setSpacing(3)
-        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.radioDoubleClick = QtWidgets.QRadioButton(self.groupBox_2)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.radioDoubleClick.sizePolicy().hasHeightForWidth())
-        self.radioDoubleClick.setSizePolicy(sizePolicy)
-        self.radioDoubleClick.setObjectName("radioDoubleClick")
-        self.horizontalLayout_4.addWidget(self.radioDoubleClick)
-        self.radioDoubleClickRaise = QtWidgets.QRadioButton(self.groupBox_2)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.radioDoubleClickRaise.sizePolicy().hasHeightForWidth())
-        self.radioDoubleClickRaise.setSizePolicy(sizePolicy)
-        self.radioDoubleClickRaise.setObjectName("radioDoubleClickRaise")
-        self.horizontalLayout_4.addWidget(self.radioDoubleClickRaise)
-        self.radioDoubleClickFocus = QtWidgets.QRadioButton(self.groupBox_2)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.radioDoubleClickFocus.sizePolicy().hasHeightForWidth())
-        self.radioDoubleClickFocus.setSizePolicy(sizePolicy)
-        self.radioDoubleClickFocus.setChecked(True)
-        self.radioDoubleClickFocus.setObjectName("radioDoubleClickFocus")
-        self.horizontalLayout_4.addWidget(self.radioDoubleClickFocus)
-        self.verticalLayout.addWidget(self.groupBox_2)
         self.verticalLayout_3.addLayout(self.verticalLayout)
         self.groupTray = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupTray.setCheckable(True)
@@ -1060,8 +1023,10 @@ class Ui_settingsDialog(object):
         self.comboSnapshotFormat.setCurrentIndex(1)
         self.buttonBox.accepted.connect(settingsDialog.accept)
         self.buttonBox.rejected.connect(settingsDialog.reject)
-        self.checkHideIdleCursor.clicked['bool'].connect(self.spinHideIdleCursorDuration.setEnabled)
-        self.checkMinimizePause.clicked['bool'].connect(self.checkMinimizeRestore.setEnabled)
+        self.checkHideIdleCursor.toggled['bool'].connect(self.spinHideIdleCursorDuration.setEnabled)
+        self.checkMinimizePause.toggled['bool'].connect(self.checkMinimizeRestore.setEnabled)
+        self.checkFocusDoubleClick.toggled['bool'].connect(self.checkFocusMinimized.setDisabled)
+        self.checkFocusDoubleClick.toggled['bool'].connect(self.checkFocusMinimizedToTray.setDisabled)
         QtCore.QMetaObject.connectSlotsByName(settingsDialog)
 
     def retranslateUi(self, settingsDialog):
@@ -1156,24 +1121,53 @@ class Ui_settingsDialog(object):
         self.checkNavigationUnpause.setToolTip(_translate("settingsDialog", "If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media\n"
 "has finished will automatically unpause the media and resume playback."))
         self.checkNavigationUnpause.setText(_translate("settingsDialog", "Navigating unpauses media after media has finished"))
-        self.checkResizeOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
+        self.checkAutoEnableSubtitles.setToolTip(_translate("settingsDialog", "If checked, subtitle tracks will be automatically\n"
+"enabled if they\'re available. This includes both\n"
+"pre-existing tracks and manually-added tracks."))
+        self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
+        self.checkCycleRememberOriginalPath.setToolTip(_translate("settingsDialog", "Tristate:\n"
 "\n"
-"Fully checked - the window will be immediately resized\n"
-"to match the media\'s native resolution upon opening it,\n"
-"as long as it\'s not larger than your screen.\n"
+"Fully checked: media that is renamed and/or edited will act\n"
+"as if it were in its original place when attempting to cycle to\n"
+"the next or previous media media file in the current folder.\n"
 "\n"
-"Partially checked - the window will only be\n"
-"resized for the first media file you open."))
-        self.checkResizeOnOpen.setText(_translate("settingsDialog", "Resize to media\'s native resolution on open (tristate)"))
-        self.checkSnapOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
+"Partially checked: ditto, but only for renaming, not editing.\n"
 "\n"
-"Fully checked - the window will be immediately resized\n"
-"to match the media\'s native aspect ratio upon opening it,\n"
-"without shrinking/enlarging to match the media\'s resolution.\n"
+"Example: If there are 10 files in a folder, and you\'re playing\n"
+"file #5, but then rename it so that it becomes file #1, the\n"
+"next file that will play will still be file #6."))
+        self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
+        self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
+"recycle bin instead of being immediately/permanently deleted."))
+        self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
+        self.checkMinimizePause.setToolTip(_translate("settingsDialog", "If checked, media will automatically pause when minimizing the window."))
+        self.checkMinimizePause.setText(_translate("settingsDialog", "Pause on minimize"))
+        self.checkMinimizeRestore.setToolTip(_translate("settingsDialog", "If checked, media will automatically unpause when restoring the window,\n"
+"but only if the media had not been paused prior to minimizing."))
+        self.checkMinimizeRestore.setText(_translate("settingsDialog", "Unpause on restore"))
+        self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
+        self.checkFocusDrop.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will raise the window\n"
+"and give it focus. This brings the window to the foreground and\n"
+"allows you to use keyboard shortcuts right away."))
+        self.checkFocusDrop.setText(_translate("settingsDialog", "Focus window on drag-and-drop"))
+        self.checkFocusDoubleClick.setToolTip(_translate("settingsDialog", "If checked, double-clicking media will raise the window and\n"
+"give it focus. This brings the window to the foreground and\n"
+"allows you to use keyboard shortcuts right away.\n"
 "\n"
-"Partially checked - the window will only be resized for the\n"
-"first media file you open."))
-        self.checkSnapOnOpen.setText(_translate("settingsDialog", "Snap to media\'s native aspect ratio on open (tristate)"))
+"Note: This only applies when this is the default program for\n"
+"the media you\'re opening, or you use the \"Open with\" dialog."))
+        self.checkFocusDoubleClick.setText(_translate("settingsDialog", "Focus window on double-click"))
+        self.checkFocusMinimized.setToolTip(_translate("settingsDialog", "If checked, the window will always raise and be given\n"
+"focus when opening media if the window is minimized\n"
+"to the taskbar."))
+        self.checkFocusMinimized.setText(_translate("settingsDialog", "...if minimized to taskbar"))
+        self.checkFocusMinimizedToTray.setToolTip(_translate("settingsDialog", "If checked, the window will always raise and be given\n"
+"focus when opening media if the window is minimized\n"
+"to the system tray."))
+        self.checkFocusMinimizedToTray.setText(_translate("settingsDialog", "...if minimized to system tray"))
+        self.checkIgnoreFocusWithAutoplay.setToolTip(_translate("settingsDialog", "If checked, files that are opened through\n"
+"autoplay will never raise or focus the window."))
+        self.checkIgnoreFocusWithAutoplay.setText(_translate("settingsDialog", "Ignore focus settings while Autoplay is on"))
         self.checkSnapOnResize.setToolTip(_translate("settingsDialog", "Hold Shift while resizing to always shrink the window.\n"
 "Hold Ctrl while resizing to trigger the opposite behavior (snap\n"
 "while snap is disabled, or don\'t snap while snap is enabled).\n"
@@ -1190,64 +1184,25 @@ class Ui_settingsDialog(object):
 "Note: The window will only correct itself once you\'ve stopped\n"
 "manually resizing it. This is intentional, and is done as a work-\n"
 "around for unwanted Qt/VLC behavior."))
-        self.checkSnapOnResize.setText(_translate("settingsDialog", "Snap to media\'s native aspect ratio on resize (tristate)"))
-        self.checkAutoEnableSubtitles.setToolTip(_translate("settingsDialog", "If checked, subtitle tracks will be automatically\n"
-"enabled if they\'re available. This includes both\n"
-"pre-existing tracks and manually-added tracks."))
-        self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
-        self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
-"recycle bin instead of being immediately/permanently deleted."))
-        self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
-        self.checkMinimizePause.setToolTip(_translate("settingsDialog", "If checked, media will automatically pause when minimizing the window."))
-        self.checkMinimizePause.setText(_translate("settingsDialog", "Pause on minimize"))
-        self.checkMinimizeRestore.setToolTip(_translate("settingsDialog", "If checked, media will automatically unpause when restoring the window,\n"
-"but only if the media had not been paused prior to minimizing."))
-        self.checkMinimizeRestore.setText(_translate("settingsDialog", "Unpause on restore"))
-        self.checkIgnoreRaiseWithAutoplay.setToolTip(_translate("settingsDialog", "If checked, files that are opened through\n"
-"autoplay will never raise or focus the window."))
-        self.checkIgnoreRaiseWithAutoplay.setText(_translate("settingsDialog", "Ignore window-behavior settings while Autoplay is on"))
-        self.checkCycleRememberOriginalPath.setToolTip(_translate("settingsDialog", "Tristate:\n"
+        self.checkSnapOnResize.setText(_translate("settingsDialog", "Snap to native aspect ratio on resize (tristate)"))
+        self.checkSnapOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
 "\n"
-"Fully checked: media that is renamed and/or edited will act\n"
-"as if it were in its original place when attempting to cycle to\n"
-"the next or previous media media file in the current folder.\n"
+"Fully checked - the window will be immediately resized\n"
+"to match the media\'s native aspect ratio upon opening it,\n"
+"without shrinking/enlarging to match the media\'s resolution.\n"
 "\n"
-"Partially checked: ditto, but only for renaming, not editing.\n"
+"Partially checked - the window will only be resized for the\n"
+"first media file you open."))
+        self.checkSnapOnOpen.setText(_translate("settingsDialog", "Snap to native aspect ratio on open (tristate)"))
+        self.checkResizeOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
 "\n"
-"Example: If there are 10 files in a folder, and you\'re playing\n"
-"file #5, but then rename it so that it becomes file #1, the\n"
-"next file that will play will still be file #6."))
-        self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
-        self.groupBox.setTitle(_translate("settingsDialog", "Window behavior on drag-and-drop"))
-        self.radioDrop.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will leave the window in its current position and focus-state."))
-        self.radioDrop.setText(_translate("settingsDialog", "Do nothing "))
-        self.radioDropRaise.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will raise the window.\n"
-"This brings the window to the foreground, if it wasn\'t already."))
-        self.radioDropRaise.setText(_translate("settingsDialog", "Raise to foreground "))
-        self.radioDropFocus.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will raise the window\n"
-"and give it focus. This brings the window to the foreground and\n"
-"allows you to use keyboard shortcuts right away."))
-        self.radioDropFocus.setText(_translate("settingsDialog", "Focus "))
-        self.groupBox_2.setTitle(_translate("settingsDialog", "Window behavior on double-click"))
-        self.radioDoubleClick.setToolTip(_translate("settingsDialog", "If checked, double-clicking media will leave the window in\n"
-"its current position and focus-state.\n"
+"Fully checked - the window will be immediately resized\n"
+"to match the media\'s native resolution upon opening it,\n"
+"as long as it\'s not larger than your screen.\n"
 "\n"
-"Note: This only applies when this is the default program for\n"
-"the media you\'re opening, or you use the \"Open with\" dialog."))
-        self.radioDoubleClick.setText(_translate("settingsDialog", "Do nothing "))
-        self.radioDoubleClickRaise.setToolTip(_translate("settingsDialog", "If checked, double-clicking media will raise the window.\n"
-"This brings the window to the foreground, if it wasn\'t already.\n"
-"\n"
-"Note: This only applies when this is the default program for\n"
-"the media you\'re opening, or you use the \"Open with\" dialog."))
-        self.radioDoubleClickRaise.setText(_translate("settingsDialog", "Raise to foreground "))
-        self.radioDoubleClickFocus.setToolTip(_translate("settingsDialog", "If checked, double-clicking media will raise the window and\n"
-"give it focus. This brings the window to the foreground and\n"
-"allows you to use keyboard shortcuts right away.\n"
-"\n"
-"Note: This only applies when this is the default program for\n"
-"the media you\'re opening, or you use the \"Open with\" dialog."))
-        self.radioDoubleClickFocus.setText(_translate("settingsDialog", "Focus "))
+"Partially checked - the window will only be\n"
+"resized for the first media file you open."))
+        self.checkResizeOnOpen.setText(_translate("settingsDialog", "Resize to native resolution on open (tristate)"))
         self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer to restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"

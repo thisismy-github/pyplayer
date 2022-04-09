@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>347</width>
+    <width>349</width>
     <height>730</height>
    </rect>
   </property>
@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>334</width>
-        <height>1447</height>
+        <height>1462</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -406,77 +406,6 @@ has finished will automatically unpause the media and resume playback.</string>
               </widget>
              </item>
              <item row="11" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkResizeOnOpen">
-               <property name="toolTip">
-                <string>Tristate:
-
-Fully checked - the window will be immediately resized
-to match the media's native resolution upon opening it,
-as long as it's not larger than your screen.
-
-Partially checked - the window will only be
-resized for the first media file you open.</string>
-               </property>
-               <property name="text">
-                <string>Resize to media's native resolution on open (tristate)</string>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="12" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkSnapOnOpen">
-               <property name="toolTip">
-                <string>Tristate:
-
-Fully checked - the window will be immediately resized
-to match the media's native aspect ratio upon opening it,
-without shrinking/enlarging to match the media's resolution.
-
-Partially checked - the window will only be resized for the
-first media file you open.</string>
-               </property>
-               <property name="text">
-                <string>Snap to media's native aspect ratio on open (tristate)</string>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="13" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkSnapOnResize">
-               <property name="toolTip">
-                <string>Hold Shift while resizing to always shrink the window.
-Hold Ctrl while resizing to trigger the opposite behavior (snap
-while snap is disabled, or don't snap while snap is enabled).
-
-Tristate:
-
-Fully checked: window will snap to the media's native aspect
-ratio after resizing, so that no black bars appear.
-
-Partially checked (experimental): window will have a choppy
-animated transition while snapping. This was discovered by
-accident, but I couldn't let it go to waste.
-
-Note: The window will only correct itself once you've stopped
-manually resizing it. This is intentional, and is done as a work-
-around for unwanted Qt/VLC behavior.</string>
-               </property>
-               <property name="text">
-                <string>Snap to media's native aspect ratio on resize (tristate)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -491,60 +420,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRecycleBin">
-               <property name="toolTip">
-                <string>If checked, files marked for deletion are sent to your computer's
-recycle bin instead of being immediately/permanently deleted.</string>
-               </property>
-               <property name="text">
-                <string>Deleted files are moved to recycle bin</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="17" column="0" colspan="2">
-              <layout class="QHBoxLayout" name="horizontalLayout_8">
-               <item>
-                <widget class="QCheckBox" name="checkMinimizePause">
-                 <property name="toolTip">
-                  <string>If checked, media will automatically pause when minimizing the window.</string>
-                 </property>
-                 <property name="text">
-                  <string>Pause on minimize</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="checkMinimizeRestore">
-                 <property name="toolTip">
-                  <string>If checked, media will automatically unpause when restoring the window,
-but only if the media had not been paused prior to minimizing.</string>
-                 </property>
-                 <property name="text">
-                  <string>Unpause on restore</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="18" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkIgnoreRaiseWithAutoplay">
-               <property name="toolTip">
-                <string>If checked, files that are opened through
-autoplay will never raise or focus the window.</string>
-               </property>
-               <property name="text">
-                <string>Ignore window-behavior settings while Autoplay is on</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="15" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -570,6 +446,48 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
+             <item row="13" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRecycleBin">
+               <property name="toolTip">
+                <string>If checked, files marked for deletion are sent to your computer's
+recycle bin instead of being immediately/permanently deleted.</string>
+               </property>
+               <property name="text">
+                <string>Deleted files are moved to recycle bin</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="14" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_8">
+               <item>
+                <widget class="QCheckBox" name="checkMinimizePause">
+                 <property name="toolTip">
+                  <string>If checked, media will automatically pause when minimizing the window.</string>
+                 </property>
+                 <property name="text">
+                  <string>Pause on minimize</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkMinimizeRestore">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="toolTip">
+                  <string>If checked, media will automatically unpause when restoring the window,
+but only if the media had not been paused prior to minimizing.</string>
+                 </property>
+                 <property name="text">
+                  <string>Unpause on restore</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
             </layout>
            </item>
            <item>
@@ -586,162 +504,41 @@ next file that will play will still be file #6.</string>
              <item>
               <widget class="QGroupBox" name="groupBox">
                <property name="title">
-                <string>Window behavior on drag-and-drop</string>
+                <string>Window behavior</string>
                </property>
-               <property name="alignment">
-                <set>Qt::AlignCenter</set>
-               </property>
-               <property name="flat">
-                <bool>true</bool>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <layout class="QVBoxLayout" name="verticalLayout_7">
                 <property name="spacing">
-                 <number>3</number>
+                 <number>1</number>
                 </property>
                 <property name="leftMargin">
-                 <number>3</number>
+                 <number>9</number>
                 </property>
                 <property name="topMargin">
-                 <number>0</number>
+                 <number>5</number>
                 </property>
                 <property name="rightMargin">
-                 <number>3</number>
+                 <number>0</number>
                 </property>
                 <property name="bottomMargin">
-                 <number>3</number>
+                 <number>6</number>
                 </property>
                 <item>
-                 <widget class="QRadioButton" name="radioDrop">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="toolTip">
-                   <string>If checked, dragging-and-dropping media will leave the window in its current position and focus-state.</string>
-                  </property>
-                  <property name="text">
-                   <string>Do nothing </string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="radioDropRaise">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="toolTip">
-                   <string>If checked, dragging-and-dropping media will raise the window.
-This brings the window to the foreground, if it wasn't already.</string>
-                  </property>
-                  <property name="text">
-                   <string>Raise to foreground </string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="radioDropFocus">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
+                 <widget class="QCheckBox" name="checkFocusDrop">
                   <property name="toolTip">
                    <string>If checked, dragging-and-dropping media will raise the window
 and give it focus. This brings the window to the foreground and
 allows you to use keyboard shortcuts right away.</string>
                   </property>
                   <property name="text">
-                   <string>Focus </string>
+                   <string>Focus window on drag-and-drop</string>
                   </property>
                   <property name="checked">
                    <bool>true</bool>
                   </property>
                  </widget>
                 </item>
-               </layout>
-              </widget>
-             </item>
-             <item>
-              <widget class="QGroupBox" name="groupBox_2">
-               <property name="title">
-                <string>Window behavior on double-click</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignCenter</set>
-               </property>
-               <property name="flat">
-                <bool>true</bool>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_4">
-                <property name="spacing">
-                 <number>3</number>
-                </property>
-                <property name="leftMargin">
-                 <number>3</number>
-                </property>
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="rightMargin">
-                 <number>3</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>3</number>
-                </property>
                 <item>
-                 <widget class="QRadioButton" name="radioDoubleClick">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="toolTip">
-                   <string>If checked, double-clicking media will leave the window in
-its current position and focus-state.
-
-Note: This only applies when this is the default program for
-the media you're opening, or you use the &quot;Open with&quot; dialog.</string>
-                  </property>
-                  <property name="text">
-                   <string>Do nothing </string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="radioDoubleClickRaise">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="toolTip">
-                   <string>If checked, double-clicking media will raise the window.
-This brings the window to the foreground, if it wasn't already.
-
-Note: This only applies when this is the default program for
-the media you're opening, or you use the &quot;Open with&quot; dialog.</string>
-                  </property>
-                  <property name="text">
-                   <string>Raise to foreground </string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="radioDoubleClickFocus">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
+                 <widget class="QCheckBox" name="checkFocusDoubleClick">
                   <property name="toolTip">
                    <string>If checked, double-clicking media will raise the window and
 give it focus. This brings the window to the foreground and
@@ -751,9 +548,140 @@ Note: This only applies when this is the default program for
 the media you're opening, or you use the &quot;Open with&quot; dialog.</string>
                   </property>
                   <property name="text">
-                   <string>Focus </string>
+                   <string>Focus window on double-click</string>
                   </property>
                   <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_8">
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
+                  <property name="leftMargin">
+                   <number>14</number>
+                  </property>
+                  <item>
+                   <widget class="QCheckBox" name="checkFocusMinimized">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>If checked, the window will always raise and be given
+focus when opening media if the window is minimized
+to the taskbar.</string>
+                    </property>
+                    <property name="text">
+                     <string>...if minimized to taskbar</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkFocusMinimizedToTray">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>If checked, the window will always raise and be given
+focus when opening media if the window is minimized
+to the system tray.</string>
+                    </property>
+                    <property name="text">
+                     <string>...if minimized to system tray</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkIgnoreFocusWithAutoplay">
+                  <property name="toolTip">
+                   <string>If checked, files that are opened through
+autoplay will never raise or focus the window.</string>
+                  </property>
+                  <property name="text">
+                   <string>Ignore focus settings while Autoplay is on</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkSnapOnResize">
+                  <property name="toolTip">
+                   <string>Hold Shift while resizing to always shrink the window.
+Hold Ctrl while resizing to trigger the opposite behavior (snap
+while snap is disabled, or don't snap while snap is enabled).
+
+Tristate:
+
+Fully checked: window will snap to the media's native aspect
+ratio after resizing, so that no black bars appear.
+
+Partially checked (experimental): window will have a choppy
+animated transition while snapping. This was discovered by
+accident, but I couldn't let it go to waste.
+
+Note: The window will only correct itself once you've stopped
+manually resizing it. This is intentional, and is done as a work-
+around for unwanted Qt/VLC behavior.</string>
+                  </property>
+                  <property name="text">
+                   <string>Snap to native aspect ratio on resize (tristate)</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <property name="tristate">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkSnapOnOpen">
+                  <property name="toolTip">
+                   <string>Tristate:
+
+Fully checked - the window will be immediately resized
+to match the media's native aspect ratio upon opening it,
+without shrinking/enlarging to match the media's resolution.
+
+Partially checked - the window will only be resized for the
+first media file you open.</string>
+                  </property>
+                  <property name="text">
+                   <string>Snap to native aspect ratio on open (tristate)</string>
+                  </property>
+                  <property name="tristate">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkResizeOnOpen">
+                  <property name="toolTip">
+                   <string>Tristate:
+
+Fully checked - the window will be immediately resized
+to match the media's native resolution upon opening it,
+as long as it's not larger than your screen.
+
+Partially checked - the window will only be
+resized for the first media file you open.</string>
+                  </property>
+                  <property name="text">
+                   <string>Resize to native resolution on open (tristate)</string>
+                  </property>
+                  <property name="tristate">
                    <bool>true</bool>
                   </property>
                  </widget>
@@ -2727,8 +2655,8 @@ the currently playing media's height.</string>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>272</x>
-     <y>815</y>
+     <x>278</x>
+     <y>721</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -2743,8 +2671,8 @@ the currently playing media's height.</string>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>305</x>
-     <y>815</y>
+     <x>311</x>
+     <y>721</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
@@ -2754,33 +2682,65 @@ the currently playing media's height.</string>
   </connection>
   <connection>
    <sender>checkHideIdleCursor</sender>
-   <signal>clicked(bool)</signal>
+   <signal>toggled(bool)</signal>
    <receiver>spinHideIdleCursorDuration</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>86</x>
-     <y>143</y>
+     <x>89</x>
+     <y>161</y>
     </hint>
     <hint type="destinationlabel">
-     <x>280</x>
-     <y>143</y>
+     <x>311</x>
+     <y>162</y>
     </hint>
    </hints>
   </connection>
   <connection>
    <sender>checkMinimizePause</sender>
-   <signal>clicked(bool)</signal>
+   <signal>toggled(bool)</signal>
    <receiver>checkMinimizeRestore</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>81</x>
-     <y>323</y>
+     <x>143</x>
+     <y>372</y>
     </hint>
     <hint type="destinationlabel">
-     <x>323</x>
-     <y>323</y>
+     <x>214</x>
+     <y>370</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkFocusDoubleClick</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkFocusMinimized</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>109</x>
+     <y>441</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>53</x>
+     <y>465</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkFocusDoubleClick</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkFocusMinimizedToTray</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>75</x>
+     <y>442</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>122</x>
+     <y>485</y>
     </hint>
    </hints>
   </connection>
