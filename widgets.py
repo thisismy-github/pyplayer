@@ -33,16 +33,31 @@ def init_custom_widgets(cfg_instance, app_instance):
 # ------------------------------------------
 class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/release/pyqt/doc/advanced/development.html <- relevant?
     def __init__(self, *args, **kwargs):
+        ''' TODO: vlc.Instance() arguments to check out:
+            --align={0 (Center), 1 (Left), 2 (Right), 4 (Top), 8 (Bottom), 5 (Top-Left), 6 (Top-Right), 9 (Bottom-Left), 10 (Bottom-Right)}
+            --audio-time-stretch, --no-audio-time-stretch   Enable time stretching audio (default enabled) <- disabled = pitch changes with playback speed
+            --gain=<float [0.000000 .. 8.000000]>           Audio gain
+            --volume-step=<float [1.000000 .. 256.000000]>  Audio output volume step
+            --marq-marquee, --sub-source=marq '''
         super().__init__(*args, **kwargs)
-        self.setAttribute(Qt.WA_StyledBackground, True)  # https://stackoverflow.com/questions/7276330/qt-stylesheet-for-custom-widget
+        self.setAttribute(Qt.WA_StyledBackground, True)     # https://stackoverflow.com/questions/7276330/qt-stylesheet-for-custom-widget
         self.setToolTipDuration(2000)
-        self.setMouseTracking(True)                             # required for detecting idle movement
+        self.setMouseTracking(True)                         # required for detecting idle movement
         self.setMinimumHeight(10)
 
-        self.instance = None
-        self.player = None
+        # setup VLC instance
+        self.instance = vlc.Instance(['--gain=6.0'])        # TODO allow ability to pass VLC arguments here?
+        self.player = self.instance.media_player_new()
         self.media = None
-        #self.reset_instance('--gain=8.0')
+        self.event_manager = self.player.event_manager()    # ↓ cannot use .emit as a callable ↓
+        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.parent.restart_signal.emit())
+
+        self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Enable, 1)
+        self.player.video_set_mouse_input(False)
+        self.player.video_set_key_input(False)
+        if sys.platform == "win32": self.player.set_hwnd(self.winId())                  # Windows
+        elif sys.platform.startswith('linux'): self.player.set_xwindow(self.winId())    # Linux (sometimes)
+        elif sys.platform == "darwin": self.player.set_nsobject(int(self.winId()))      # MacOS
 
         self.text = None
         self.last_text = None
@@ -77,51 +92,6 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.text_y_offsets: dict = None
 
 
-    def reset_instance(self, *args):    # TODO do not use -> works, but takes too long to create new Instances
-        ''' TODO: vlc.Instance() arguments to check out:
-            --align={0 (Center), 1 (Left), 2 (Right), 4 (Top), 8 (Bottom), 5 (Top-Left), 6 (Top-Right), 9 (Bottom-Left), 10 (Bottom-Right)}
-            --video-title=<string>                          Video title
-            --audio-time-stretch, --no-audio-time-stretch   Enable time stretching audio (default enabled) <- disabled = pitch changes with playback speed
-            --gain=<float [0.000000 .. 8.000000]>           Audio gain
-            --volume-step=<float [1.000000 .. 256.000000]>  Audio output volume step
-            --marq-marquee, --sub-source=marq
-        '''
-        if self.instance: self.instance.release()
-        if self.player: self.player.release()
-        if self.media: self.media.release()
-        #del self.instance
-        #del self.player
-        #del self.media
-        self.instance = None
-        self.player = None
-        self.media = None
-        gc.collect(generation=2)
-
-        self.instance = vlc.Instance(args)      # TODO allow ability to directly pass VLC arguments here
-        self.player = self.instance.media_player_new()
-        self.media = None
-        self.event_manager = self.player.event_manager()
-        #self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.parent.restart_signal.emit())
-        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self.mediaPlayerEndReachedEvent)
-
-        self.player.video_set_mouse_input(False)
-        self.player.video_set_key_input(False)
-        if sys.platform == "win32": self.player.set_hwnd(self.winId())                  # Windows
-        elif sys.platform.startswith('linux'): self.player.set_xwindow(self.winId())    # Linux (sometimes)
-        elif sys.platform == "darwin": self.player.set_nsobject(int(self.winId()))      # MacOS
-
-        # NOTE: this is what vlc.py claims... not true? -> "Marquee requires '--sub-source marq' in the Instance() call"
-        # TODO: marquees are supposed to be chainable -> https://wiki.videolan.org/Documentation:Modules/marq/
-        self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Enable, 1)
-        #    self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Timeout, 500)    # millisec, 0==forever
-        #    #self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Refresh, 3000)  # update marquee text periodically (doesn't always work)
-        #    #t = '%Y-%m-%d  %H:%M:%S'
-        self.parent.player = self.player
-        self.parent.show_text = self.show_text
-        self.parent.get_player_state = self.player.get_state
-        self.parent.set_player_position = self.player.set_position
-
-
     def play(self, file,  _error=False):
         try:
             #self.show_text(os.path.basename(file))
@@ -139,23 +109,37 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             return False
 
 
+    def reset_dragdrop_status(self):
+        ''' Quickly clears drag-and-drop related messages and properties. '''
+        self.parent.statusbar.clearMessage()
+        self.show_text('')
+        self.dragdrop_last_modifiers = None
+        self.dragdrop_in_progress = False
+
+
+    # ---------------------
+    # Marquees
+    # ---------------------
     def show_text(self, text: str, timeout: int = 350, position: int = None):
-        ''' WARNING: VLC supports format strings using % as described here: https://wiki.videolan.org/Documentation:Format_String/
-            However, due to an... "interesting" implementation, using a singular % outside of a format string causes VLC to lockup.
-            Escape all isolated % signs by using %% instead. $ is also supported, but not for marquees according to the documentation.
-            Valid `position`: 0 (Center), 1 (Left), 2 (Right), 4 (Top), 5 (Top-Left), 6 (Top-Right), 8 (Bottom), 9 (Bottom-Left), 10 (Bottom-Right) '''
-        if not self.parent.dialog_settings.groupText.isChecked(): return
+        ''' Displays marquee `text` on the player, for `timeout` milliseconds at `position`:
+            0 (Center), 1 (Left), 2 (Right), 4 (Top), 5 (Top-Left), 6 (Top-Right), 8 (Bottom), 9 (Bottom-Left), 10 (Bottom-Right)
+
+            TODO: marquees are supposed to be chainable -> https://wiki.videolan.org/Documentation:Modules/marq/
+            NOTE: vlc.py claims "Marquee requires '--sub-source marq' in the Instance() call" <- not true?
+            NOTE: VLC supports %-strings: https://wiki.videolan.org/Documentation:Format_String/
+                  Escape isolated % characters with %%. Use VideoMarqueeOption.Refresh to auto-update text on
+                  an interval. See the bottom of vlc.py for an example implementation of an on-screen clock. '''
+        if not self.parent.dialog_settings.groupText.isChecked(): return    # marquees are completely disabled -> return
         try:
-            if position is None: position = self.text_position
-            self.text = (text, timeout, position)           # used in text_fade_thread
+            if position is None: position = self.text_position  # reuse last position if needed
+            self.text = (text, timeout, position)               # self.text is read by text_fade_thread
             unique_settings = self.text != self.last_text
-            self.last_text = self.text                      # TODO: calling show_text very rapidly results in no fading (text still goes away on time, though)
+            self.last_text = self.text                          # TODO: calling show_text very rapidly results in no fading (text still goes away on time, though)
             self.text_fade_start_time = time.time() + self.parent.dialog_settings.spinTextFadeDelay.value()   # TODO this doesn't look right at low non-zero values (<0.5)
             self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, self.text_opacity)    # reset opacity to default (repetitive but sometimes necessary)
 
             if (timeout == 0 and not unique_settings) or self.parent.video is None: return          # avoid repetitive + pointless calls
             if unique_settings:                                                                     # avoid repetitive set_xyz() calls
-                #self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Timeout, timeout)
                 self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Position, position)
                 self.player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, text)             # set new text
             if not self.text_fade_thread_started:
@@ -167,16 +151,16 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     def text_fade_thread(self):
         while not self.parent.closed:
             now = time.time()
-            fade_time = self.text[1] / 1000                 # self.text[1] = timeout
+            fade_time = self.text[1] / 1000                     # self.text[1] = timeout
             if now >= self.text_fade_start_time and fade_time != 0:
                 if now <= self.text_fade_start_time + fade_time:
                     alpha = (self.text_fade_start_time + fade_time - now) * (self.text_opacity / fade_time)
                     self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, round(alpha))
                     time.sleep(0.005)
-                else:                                       # if we just finished fading, make sure no text is visible
+                else:                                           # if we just finished fading, make sure no text is visible
                     #self.player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, '')
                     self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, 0)
-                    self.text_fade_start_time = 9999999999  # set start_time to extreme number to limit
+                    self.text_fade_start_time = 9999999999      # set start_time to extreme number to limit
             else: time.sleep(0.5 if self.text_fade_start_time - now < 1 else 0.025)  # sleep less frequently if we're going to fade soon
 
 
@@ -207,14 +191,6 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
     def set_text_opacity(self, percent: int):
         self.text_opacity = round(255 * (percent / 100))
-
-
-    def reset_dragdrop_status(self):
-        ''' Quickly clears drag-and-drop related messages and properties. '''
-        self.parent.statusbar.clearMessage()
-        self.show_text('')
-        self.dragdrop_last_modifiers = None
-        self.dragdrop_in_progress = False
 
 
     # ---------------------
@@ -372,11 +348,6 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     # ---------------------
     # Events
     # ---------------------
-    def mediaPlayerEndReachedEvent(self, event):
-        self.parent.restart_signal.emit()
-        logging.info(f'VLC has reported vlc.EventType.MediaPlayerEndReached: {self.player.get_state()}')
-
-
     def paintEvent(self, event: QtGui.QPaintEvent):
         super().paintEvent(event)                           # TODO this line isn't actually needed?
         if not self.parent.actionCrop.isChecked(): return   # nothing else to paint if we're not cropping

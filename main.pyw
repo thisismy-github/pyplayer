@@ -428,8 +428,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuTrimMode)
         self.menuAudio.addAction(self.actionResize)
         self.vlc.parent = self
-        self.vlc.reset_instance('--gain=6.0')
-        #self.vlc.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.restart_signal.emit())
+        self.player = self.vlc.player
+        self.show_text = self.vlc.show_text
+        self.get_player_state = self.player.get_state
+        self.set_player_position = self.player.set_position
         self.sliderProgress.parent = self
         self.sliderProgress.update_parent_progress = self.set_and_update_progress
         self.sliderVolume.keyPressEvent = self.keyPressEvent                        # pass sliderVolume key presses directly to GUI_Instance
@@ -465,10 +467,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
         # aliases for speed
-        #self.player = self.vlc.player                  # these are set while resetting Instance (TODO: which we don't do anymore)
-        #self.show_text = self.vlc.show_text
-        #self.get_player_state = self.player.get_state
-        #self.set_player_position = self.player.set_position
         self.set_pause_button_text = self.buttonPause.setText
         #self.is_clamped = self.check_clamp.isChecked
         self.get_progess_slider = self.sliderProgress.value
@@ -594,15 +592,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def showEvent(self, event: QtGui.QShowEvent):       # 'spontaneous' -> restored by OS (e.g. clicked on taskbar icon)
         super().showEvent(event)
 
-        # refresh vlc Instance's player's winId
+        # refresh VLC instance's winId
         if sys.platform == 'win32': self.player.set_hwnd(self.vlc.winId())                  # Windows
         elif sys.platform.startswith('linux'): self.player.set_xwindow(self.vlc.winId())    # Linux (sometimes)
         elif sys.platform == 'darwin': self.player.set_nsobject(int(self.vlc.winId()))      # MacOS
-        #if self.shown_for_first_time:
-        #    self.vlc.reset_instance('--gain=8.0')
-        #self.shown_for_first_time = True
-        #self.vlc.reset_instance('--gain=8.0')
-        #self.refresh_vlc_winid_signal.emit()
 
         # strangely, closing/reopening the window applies an alignment to our QVideoPlayer/QWidget (very bad)
         self.gridLayout.setAlignment(self.vlc, Qt.Alignment())   # reset alignment to nothing
