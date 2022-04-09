@@ -22,7 +22,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     cfg.read(filename)
 
     cfg.setSection('window')
-    gui.resize(*load('size', '871,600', ',', int, tuple))
+    gui.resize(*load('size', '871,588', ',', int, tuple))
     gui.move(*load('pos', f'{screen.width() / 2 - (gui.width() / 2):.0f},{screen.height() / 2 - (gui.height() / 2):.0f}', ',', int, tuple))
     if load('fullscreen', False):  # load fullscreen and last maximized state
         gui.actionFullscreen.trigger()
@@ -46,9 +46,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, ignore=('comboThemes',))
     for action in gui.trim_mode_action_group.actions():
-        action.setChecked(load(action.objectName(), False))
-    if not gui.trim_mode_action_group.checkedAction():  # none are checked (fresh config) -> check "Precise Trim"
-        gui.trim_mode_action_group.actions()[1].setChecked(True)
+        action.setChecked(load(action.objectName(), action.isChecked()))
     hoverfontcolor = load('hoverfontcolor', '255,255,255', ',', int, tuple, fill_with_defaults=True, default=255)
     gui.sliderProgress.hover_font_color = QtGui.QColor(*hoverfontcolor)
     settings.buttonHoverFontColor.setToolTip(str(hoverfontcolor))
