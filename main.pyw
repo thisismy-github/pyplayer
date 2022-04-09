@@ -488,10 +488,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def fast_start_open(self, cmdpath):
         ''' Slot for handling cmd-files from the fast-start interface in a thread-safe manner. '''
         try:
-            if not self.isVisible(): qtstart.show(self)
-            settings = self.dialog_settings
-            window_focus = settings.radioDoubleClickFocus.isChecked()
-            window_raise = settings.radioDoubleClickRaise.isChecked() or window_focus
             with open(cmdpath, 'rb') as txt:            # paths are encoded, to support special characters
                 command = txt.readline().decode().strip()
                 if command == 'EXIT':
@@ -500,7 +496,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except: pass
                     qtstart.exit(self)
                 else:
-                    self.open(command, window_raise, window_focus)
+                    self.open(command, focus_window=self.dialog_settings.checkFocusDoubleClick.isChecked())
                     logging.info(f'(FS) Fast-start for {command} recieved and handled.')
         finally: self.fast_start_in_progress = False    # resume fast-start interface
 
@@ -615,9 +611,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if event.spontaneous():
             if not self.was_paused and s.checkMinimizePause.isChecked() and s.checkMinimizeRestore.isChecked():
                 self.force_pause(False)
-        else:
-            self.showNormal() if not self.was_maximized else self.showMaximized()
-            qthelpers.show_window(self.winId(), focus=True)
         gc.collect(generation=2)
 
 
@@ -1075,16 +1068,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.parsed = True
 
 
-    def open(self, file=None, raise_window=True, focus_window=True,
-             update_recent_list=True, remember_old_file=False,
+    def open(self, file=None, focus_window=True, update_recent_list=True, remember_old_file=False,
              _from_cycle=False, _from_dir=False):
         ''' Current iteration: III '''
         try:
             if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
             if not file or file == self.locked_video: return
-            if _from_cycle and self.dialog_settings.checkIgnoreRaiseWithAutoplay.isChecked():
-                raise_window = False                # file is being played by cycle_media, which may be called by autoplay.
-                focus_window = False                # ignore raise/focus settings if desired (we don't need to check if autoplay is enabled)
             file = os.path.abspath(file)
 
             # if `file` is actually a directory -> open first valid, non-hidden file and enable Autoplay
@@ -1174,9 +1163,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not self.first_video_fully_loaded: self.set_volume(self.get_volume_slider())  # force volume to quickly correct gain issue
             self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
 
-            if raise_window and not (self.isMaximized()):   # show_window unmaximizes windows (no effect on fullscreen windows)
-                try: qthelpers.show_window(self.winId(), focus_window)  # TODO add setting for leaving minimized windows alone? too much?
-                except: logging.warning(f'show_window experienced non-critical error: {format_exc()}')
+            # ignore/override focus settings if desired (don't need to check if autoplay is enabled)
+            if not self.isActiveWindow() and not (_from_cycle and self.dialog_settings.checkIgnoreFocusWithAutoplay.isChecked()):
+                if not focus_window:
+                    if self.isMinimized() and self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
+                    elif not self.isVisible():
+                        if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
+                        else: self.showMinimized()  # TODO this sometimes breaks VLC's size until player is stopped (putting vlc.play below fixes it... worth it?)
+                if focus_window: qthelpers.show_window(self)
         except: self.log(f'(!) OPEN FAILED: {format_exc()}')
 
 
@@ -1812,7 +1806,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.up.clicked.connect(dialog.videoList.move)
             dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
             dialog.browse.clicked.connect(lambda: self.browse_concatenate_output(dialog.output))
-            dialog.videoList.itemDoubleClicked.connect(lambda item: self.open(item.toolTip(), raise_window=False, focus_window=False))
+            dialog.videoList.itemDoubleClicked.connect(lambda item: self.open(item.toolTip(), focus_window=False))
 
             # getting videos
             if files is None:

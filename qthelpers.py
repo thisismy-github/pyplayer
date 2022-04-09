@@ -3,9 +3,6 @@ from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
 import os
 import time
-import win32gui
-import win32con
-from traceback import format_exc
 
 # ---------------------
 # Misc
@@ -47,21 +44,20 @@ def addPathSuffix(path: str, suffix: str, unique: bool = False) -> str:
     base, ext = os.path.splitext(path)
     return f'{base}{suffix}{ext}' if not unique else getUniquePath(f'{base}{suffix}{ext}')
 
-def file_in_PATH(file):
+def file_in_PATH(filename: str) -> str:
+    ''' Returns the full path to a `filename` if it exists in the user's PATH. '''
     for path in os.environ.get('path', '').split(';'):
         try:
-            if file in os.listdir(path):
+            if filename in os.listdir(path):
                 return path
         except: pass
 
-def show_window(HWND, focus=True):  # brings window to foreground - https://stackoverflow.com/questions/6312627/windows-7-how-to-bring-a-window-to-the-front-no-matter-what-other-window-has-fo
-    win32gui.ShowWindow(HWND, win32con.SW_RESTORE)
-    win32gui.SetWindowPos(HWND, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE + win32con.SWP_NOSIZE)
-    win32gui.SetWindowPos(HWND, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE + win32con.SWP_NOSIZE)
-    win32gui.SetWindowPos(HWND, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_SHOWWINDOW + win32con.SWP_NOMOVE + win32con.SWP_NOSIZE)
-    if focus:
-        try: win32gui.SetForegroundWindow(HWND)     # set window as active if it wasn't already (if desired)
-        except: print(f'(!) SHOW_WINDOW failed: {format_exc()}')
+def show_window(window: QtWidgets.QWidget) -> None:
+    ''' Shows, restores, raises, and activates a `window`. '''
+    if not window.isVisible(): window.show()
+    window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
+    window.raise_()
+    window.activateWindow()
 
 def get_hms(seconds: float) -> tuple:
     ''' Converts seconds to the hours, minutes, seconds, and milliseconds it represents. '''
@@ -304,8 +300,6 @@ def comboMoveItem(comboWidget, direction):
     #return items
 
 def tableGetAllRows(table):
-    #try:
-    #rows = []
     for row in range(table.rowCount()):
         items = []
         valid_row = False
@@ -315,9 +309,6 @@ def tableGetAllRows(table):
                 items.append(item.text())
             else: items.append(None)
         if valid_row: yield items
-        #rows.append(items)
-    #return rows
-    #except: print(traceback.format_exc())
 
 
 # ---------------------

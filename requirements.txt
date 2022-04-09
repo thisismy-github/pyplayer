@@ -4,7 +4,6 @@ pillow
 pyinstaller
 PyQt5
 python-vlc
-pywin32
 requests
 sanitize_filename
 send2trash

@@ -63,38 +63,17 @@ def exit(self: QtW.QMainWindow):
     logging.info('Configuration has been saved. Goodbye.')
 
 
-def show(self):
-    ''' Restores main window from tray icon. Main code is handled in GUI_Instance.showEvent, as manual show() calls are reported in
-        showEvent.spontaneous() as False, making them easy to detect. If showNormal/showMaximized is placed here, it refuses to maximize
-        for some reason. If called while window is already visible, focus is given to the window, unless it's maximized (see below). '''
-    logging.info(f'Showing manually, either from system tray or from launcher:\nwinId={int(self.winId())} isVisible={self.isVisible()} isMaximized={self.isMaximized()}')
-    if self.isVisible() and not self.isMaximized():     # this resets the maximized state?? -> just ignore maximized state for now
-        return qthelpers.show_window(self.winId(), focus=True)
-    self.show()
-    #if not self.isVisible():
-    #    if self.was_maximized: self.showMaximized()
-    #    else: self.showNormal()
-    #qthelpers.show_window(self.winId(), focus=True)
-
-
 def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
     ''' Generates the system tray icon. For a while I was using pystray because I genuinely forgot QSystemTrayIcon existed.
         QSystemTrayIcon has some issues, one being the fact that if placed in the "hidden icons" area on Windows, that area will
         close while the tray icon's context menu is open. That's not much of an issue with this very barebones tray icon, but it
         may become an issue if the tray icon is expanded upon. Pystray is still a decent (albeit heavy) fallback if necessary. '''
-
-    def show_settings():
-        ''' Displays the settings dialog. exec() and show_window don't play well together, so we call show_window first (which causes a blank
-            window to appear briefly) or the dialog will simply ignore the focus and end up in a glitched state until manually interacted with. '''
-        qthelpers.show_window(self.dialog_settings.winId(), focus=True)
-        self.dialog_settings.exec()
-
     def handle_click(reason: QtW.QSystemTrayIcon.ActivationReason):
         if reason == QtW.QSystemTrayIcon.Context:
             action_show = QtW.QAction('Show PyPlayer')
-            action_show.triggered.connect(lambda: show(self))
+            action_show.triggered.connect(lambda: qthelpers.show_window(self))
             action_settings = QtW.QAction('Settings')
-            action_settings.triggered.connect(show_settings)
+            action_settings.triggered.connect(self.dialog_settings.exec)
             action_exit = QtW.QAction('Exit')
             action_exit.triggered.connect(lambda: exit(self))
             menu = QtW.QMenu()
@@ -103,7 +82,7 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
             menu.addSeparator()
             menu.addAction(action_exit)
             return menu.exec(QtGui.QCursor.pos())
-        if reason == QtW.QSystemTrayIcon.Trigger: return show(self)
+        if reason == QtW.QSystemTrayIcon.Trigger: return qthelpers.show_window(self)
         if reason == QtW.QSystemTrayIcon.MiddleClick: return exit(self)
 
     tray = QtW.QSystemTrayIcon(self.icons['window'])

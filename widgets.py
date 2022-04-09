@@ -643,8 +643,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             Alt          -> Concatenates media file(s) to the start of the current media. '''
         self.reset_dragdrop_status()
         settings = self.parent.dialog_settings
-        window_focus = settings.radioDropFocus.isChecked()
-        window_raise = settings.radioDropRaise.isChecked() or window_focus
+        focus_window = settings.checkFocusDrop.isChecked()
         files = [url.toLocalFile() for url in event.mimeData().urls()]
 
         if self.parent.video:
@@ -660,8 +659,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             else:                                   # no modifiers pressed, check if subtitle files were dropped
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
                 if subtitle_files: self.parent.browse_subtitle_file(urls=subtitle_files)
-                else: self.parent.open(files[0], window_raise, window_focus)    # no modifiers, no subtitles -> play dropped file as media
-        else: self.parent.open(files[0], window_raise, window_focus)            # no video playing -> ignore modifiers and play dropped file
+                else: self.parent.open(files[0], focus_window=focus_window)    # no modifiers, no subtitles -> play dropped file as media
+        else: self.parent.open(files[0], focus_window=focus_window)            # no video playing -> ignore modifiers and play dropped file
         super().dropEvent(event)                    # run QWidget's built-in behavior
 
 
@@ -1469,8 +1468,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 #            Alt          -> Concatenates media to the start of the current media. '''
 #        #self.show_text('')
 #        settings = self.parent.dialog_settings
-#        window_raise = settings.radioDropRaise.isChecked() or settings.radioDropFocus.isChecked()
-#        window_focus = settings.radioDropFocus.isChecked()
+#        focus_window = settings.checkFocusDrop.isChecked()
 #        file = [url.toLocalFile() for url in event.mimeData().urls()][0]
 #        if self.parent.video:
 #            mod = event.keyboardModifiers()
@@ -1481,7 +1479,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 #            elif mod & Qt.ShiftModifier:       # shift (add audio track)
 #                if os.path.abspath(file) != self.parent.video: self.parent.add_audio_track(path=file)
 #                else: self.parent.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
-#            else: self.parent.open(file, window_raise, window_focus)  # video playing but no modifiers -> play dropped file
-#        else: self.parent.open(file, window_raise, window_focus)      # no video playing -> play dropped file
+#            else: self.parent.open(file, focus_window=focus_window)  # video playing but no modifiers -> play dropped file
+#        else: self.parent.open(file, focus_window=focus_window)      # no video playing -> play dropped file
 #        self.dragdrop_in_progress = False
 #        super().dropEvent(event)                    # run QWidget's built-in behavior
