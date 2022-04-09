@@ -10,7 +10,6 @@ r'''  >>> thisismygithub - 10/31/21 <<<
 
 icon sources/inspirations https://www.pinclipart.com/maxpin/hxThoo/ + https://www.hiclipart.com/free-transparent-background-png-clipart-vuclz
 https://youtu.be/P1qMAupb2_Y?t=2461 VLC devs talk about Qt problems -> making two windows actually behave as one?
-TODO: !!! ALL audio ends slightly early??? (this doesn't happen in VLC)
 TODO: audio with cover art not showing up (works in VLC, possibly something in docs for it?) https://github.com/devsnd/tinytag
 TODO: update boilerplate code with last_window_size/pos changes
 TODO: need a way to deal with VLC registry edits
@@ -113,7 +112,6 @@ TODO: "add subtitle file" but for video/audio tracks? (audio tracks supported, b
 TODO: pressing esc on QWidgetPassthrough clears focus, but sometimes clears focus on the entire window
 TODO: questions to ask on stackoverflow
         - does having a class permanently defined take up as much memory as a class temporarily defined in a function? (like qthelpers persistentDialog)
-        - audio cuts out ~1 second short
         - is there a way to make things like RTSS stop putting FPS counters over the player and marquees
         - native "save as..." prompt oddity with image files
         - getPopupYesNo/etc. *args and **kwargs with autocomplete
@@ -136,7 +134,6 @@ TODO: formats that still don't trim correctly after save() rewrite: 3gp, ogv, mp
 
 
 TODO: HIGH PRIORITY:
-audio cuts off 1 second before end (broken since VLC 2.2.8)
 lazy concatenate dialog seems to have a memory leak (it does not free up QVideoList's memory after deletion)
 
 TODO: MEDIUM PRIORITY:
@@ -206,7 +203,6 @@ KNOWN ISSUES:
         volume gain suddenly changes after extended use
         native "Save as..." prompt replaced by strange and extremely buggy Qt version if the first thing you open after launch is an image
         .3gp, .ogv, and .mpg files do not trim correctly
-        audio cuts off 1 second before end (broken since VLC 2.2.8)
         raise/focus settings are not 100% consistent
     Cannot reproduce consistently:
         player's current visible frame doesn't change when navigating (<- and ->) after video finishes until it's unpaused (used to never happen)

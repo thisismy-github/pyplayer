@@ -48,6 +48,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         # setup VLC instance
         self.instance = vlc.Instance(['--gain=6.0'])        # TODO allow ability to pass VLC arguments here?
         self.player = self.instance.media_player_new()
+        self.player.stop()                                  # stopping the player at any point fixes the audio-cutoff bug
         self.media = None
         self.event_manager = self.player.event_manager()    # ↓ cannot use .emit as a callable ↓
         self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.parent.restart_signal.emit())
