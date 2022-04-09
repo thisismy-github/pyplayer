@@ -1100,6 +1100,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')    # .guess() errors out in rare circumstances
                 return -1
 
+            # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
+            if not self.isVisible():                # we need to do this even if focus_window is True
+                was_minimzed_to_tray = True
+                self.showMinimized()                # minimize for now, we'll check if we need to focus later
+            else: was_minimzed_to_tray = False
+
             # attempt to actually play and parse file
             if not self.vlc.play(file): return      # immediately attempt to play video once we know it might be valid
             self.parsed = False                     # keep track of parse just in case this ends up actually being a video, so we can avoid re-parsing it later
@@ -1163,13 +1169,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not self.first_video_fully_loaded: self.set_volume(self.get_volume_slider())  # force volume to quickly correct gain issue
             self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
 
-            # ignore/override focus settings if desired (don't need to check if autoplay is enabled)
+            # focus window. if focus is disabled but window is minimized, check for special focus settings. ignore Autoplay focus if desired.
             if not self.isActiveWindow() and not (_from_cycle and self.dialog_settings.checkIgnoreFocusWithAutoplay.isChecked()):
                 if not focus_window:
-                    if self.isMinimized() and self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
-                    elif not self.isVisible():
-                        if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
-                        else: self.showMinimized()  # TODO this sometimes breaks VLC's size until player is stopped (putting vlc.play below fixes it... worth it?)
+                    if self.isMinimized():
+                        if was_minimzed_to_tray:    # check appropriate setting based on our original minimize state
+                            if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
+                        elif self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
                 if focus_window: qthelpers.show_window(self)
         except: self.log(f'(!) OPEN FAILED: {format_exc()}')
 
