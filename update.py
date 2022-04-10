@@ -63,7 +63,7 @@ def check_for_update(self):
             )
 
         if get_later_version_string(latest_version, current_version) != current_version:    # latest version is more recent than current version
-            if constants.IS_COMPILED and sys.platform == 'win32':           # TODO Windows only for now (and no auto-updating directly from the script)
+            if constants.IS_COMPILED and constants.PLATFORM == 'Windows':   # TODO Windows only for now (and no auto-updating directly from the script)
                 return self._handle_updates_signal.emit(
                     dict(latest_version_url=latest_version_url),
                     dict(title=f'Update {latest_version} available',

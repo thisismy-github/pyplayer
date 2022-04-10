@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
 import os
 import time
+import platform
 import subprocess
 
 # ---------------------
@@ -53,7 +54,6 @@ def openPath(path: str, explore: bool = False) -> None:
     try:
         if explore:                         # open in explorer with file/directory pre-selected
             path = os.path.dirname(path)    # set path to parent directory
-            import platform                 # platform.system() is called at runtime -> safer cross-platform support
             system = platform.system()      # couldn't find a way to pre-select files in Linux
             if system == 'Windows': return subprocess.Popen(f'explorer /select, "{path}"')
             elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')

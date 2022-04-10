@@ -48,17 +48,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         # setup VLC instance
         self.instance = vlc.Instance(['--gain=6.0'])        # TODO allow ability to pass VLC arguments here?
         self.player = self.instance.media_player_new()
-        self.player.stop()                                  # stopping the player at any point fixes the audio-cutoff bug
         self.media = None
-        self.event_manager = self.player.event_manager()    # ↓ cannot use .emit as a callable ↓
+        self.event_manager = self.player.event_manager()    # ↓ cannot use .emit as a callback ↓
         self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.parent.restart_signal.emit())
 
+        self.player.stop()                                  # stopping the player at any point fixes the audio-cutoff bug
+        self.player.video_set_key_input(False)              # pass VLC key events to widget
+        self.player.video_set_mouse_input(False)            # pass VLC mouse events to widget
         self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Enable, 1)
-        self.player.video_set_mouse_input(False)
-        self.player.video_set_key_input(False)
-        if sys.platform == "win32": self.player.set_hwnd(self.winId())                  # Windows
-        elif sys.platform.startswith('linux'): self.player.set_xwindow(self.winId())    # Linux (sometimes)
-        elif sys.platform == "darwin": self.player.set_nsobject(int(self.winId()))      # MacOS
 
         self.text = None
         self.last_text = None

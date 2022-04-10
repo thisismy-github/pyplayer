@@ -8,6 +8,7 @@ import qthelpers
 import os
 import sys
 import time
+import platform
 
 # ---------------------
 
@@ -18,6 +19,7 @@ REPOSITORY_URL = 'https://github.com/thisismy-github/pyplayer'
 
 SCRIPT_START_TIME = time.time()
 IS_COMPILED = getattr(sys, 'frozen', False)
+PLATFORM = platform.system()
 SCRIPT_PATH = sys.executable if IS_COMPILED else os.path.realpath(__file__)
 CWD = os.path.dirname(SCRIPT_PATH)
 

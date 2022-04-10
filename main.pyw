@@ -589,9 +589,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         super().showEvent(event)
 
         # refresh VLC instance's winId
-        if sys.platform == 'win32': self.player.set_hwnd(self.vlc.winId())                  # Windows
-        elif sys.platform.startswith('linux'): self.player.set_xwindow(self.vlc.winId())    # Linux (sometimes)
-        elif sys.platform == 'darwin': self.player.set_nsobject(int(self.vlc.winId()))      # MacOS
+        if constants.PLATFORM == 'Windows': self.player.set_hwnd(self.vlc.winId())              # Windows
+        elif constants.PLATFORM == 'Darwin': self.player.set_nsobject(int(self.vlc.winId()))    # MacOS
+        else: self.player.set_xwindow(self.vlc.winId())                                         # Linux (sometimes)
 
         # strangely, closing/reopening the window applies an alignment to our QVideoPlayer/QWidget (very bad)
         self.gridLayout.setAlignment(self.vlc, Qt.Alignment())   # reset alignment to nothing
@@ -2218,7 +2218,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if 'failed' in results: return qthelpers.getPopup(**popup_kwargs).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
-                if constants.IS_COMPILED and sys.platform == 'win32':
+                if constants.IS_COMPILED and constants.PLATFORM == 'Windows':
                     choice = qthelpers.getPopup(**popup_kwargs).exec()
                     if choice == QtW.QMessageBox.Yes:
                         import update
