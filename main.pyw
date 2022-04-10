@@ -417,6 +417,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.playback_speed = 1.0
 
         # misc setup
+        if constants.PLATFORM != 'Windows': self.is_hidden = lambda path: os.path.basename(path)[0] == '.'
+        else: self.is_hidden = lambda path: os.stat(path).st_file_attributes & 2
         self.is_trim_mode = lambda: self.trim_mode_action_group.checkedAction() in (self.actionTrimAuto, self.actionTrimPrecise)
         self.increment_volume = lambda inc: self.sliderVolume.setValue(self.get_volume_slider() + inc)
         self.statusbar.addPermanentWidget(self.save_progress_bar)                   # TODO could QWIDGETMAXSIZE be used to span the widget across the entire statusbar?
@@ -986,9 +988,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # if we've reached the original file or the new video opens successfully -> stop. skip to-be-deleted files (if desired).
             file = os.path.abspath(os.path.join(media_dir, files[video_index]))
-            if os.stat(file).st_file_attributes & 2 and video_index != original_video_index:    # 2 -> stat.FILE_ATTRIBUTE_HIDDEN
-                logging.debug(f'File {file} at index {video_index} is hidden. Skipping.')       # https://stackoverflow.com/questions/284115/cross-platform-hidden-file-detection
-                continue                                        # skip hidden files (if they're not our original file)
+            if self.is_hidden(file) and video_index != original_video_index:
+                logging.debug(f'File {file} at index {video_index} is hidden. Skipping.')
+                continue                                        # skip hidden files if they're not our original file
             logging.debug(f'Checking {file} at index {video_index}')
 
             if video_index == original_video_index: return self.log('This is the only playable file in the current folder.')
@@ -1069,17 +1071,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if os.path.isdir(file):
                 if _from_dir: return -1             # avoid recursively opening directories
                 for filename in os.listdir(file):
-                    filename = os.path.join(file, filename)
+                    path = os.path.join(file, filename)
 
-                    if not os.stat(file).st_file_attributes & 2 and self.open(filename, _from_dir=True) != -1:  # 2 -> stat.FILE_ATTRIBUTE_HIDDEN
-                        self.actionAutoplay.setChecked(True)    # https://stackoverflow.com/questions/284115/cross-platform-hidden-file-detection
+                    if not self.is_hidden(path) and self.open(path, _from_dir=True) != -1:
+                        self.actionAutoplay.setChecked(True)
                         self.log(f'Opened {filename} from folder {file} and enabled Autoplay.')
                         return
                 else: return self.log(f'No files in {file} were playable.')
 
             # get mime type of file
             try:
-                filetype_data = filetype.guess(file)    # 'EXTENSION', 'MIME', 'extension', 'mime'
+                filetype_data = filetype.guess(file)            # 'EXTENSION', 'MIME', 'extension', 'mime'
                 mime, self.true_extension = filetype_data.mime.split('/')
                 logging.info(f'Filetype data: {filetype_data} | Mime type: {mime} | Full mime: {filetype_data.mime} | True extension: {filetype_data.extension}')
                 if mime not in ('video', 'image', 'audio'):
