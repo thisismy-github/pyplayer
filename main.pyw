@@ -822,7 +822,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             each context menu, contextMenuEvent is replaced directly instead of subclassing the entire widget. '''
         def explore_last_screenshot():
             if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-            else: subprocess.Popen(f'explorer /select,"{cfg.last_snapshot_path}"', shell=True)
+            else: qthelpers.openPath(cfg.last_snapshot_path, explore=True)
 
         open_action1 = QtW.QAction('Open last snapshot (PyPlayer)')
         open_action1.triggered.connect(lambda: self.snapshot(modifiers=Qt.ControlModifier))
@@ -1861,7 +1861,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not os.path.exists(output): return self.log('(!) Concatenation failed. No files have been altered.')
 
             self.log(f'Concatenation saved to {output}.')
-            if dialog.checkExplore.isChecked(): subprocess.Popen(f'explorer /select,"{os.path.abspath(output)}"', shell=True)
+            if dialog.checkExplore.isChecked(): qthelpers.openPath(output, explore=True)
             if dialog.checkOpen.isChecked(): self.open(output)
             if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
             elif dialog.checkDelete.checkState() == 2:
@@ -2818,7 +2818,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif mod & Qt.AltModifier:
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-                os.system(cfg.last_snapshot_path)
+                qthelpers.openPath(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
         except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
         finally: self.player.set_pause(False or self.is_paused)

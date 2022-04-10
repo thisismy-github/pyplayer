@@ -948,7 +948,7 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
         action1 = QtW.QAction('Play')
         action1.triggered.connect(lambda: self.parent.open(item.toolTip()))
         action2 = QtW.QAction('Explore')
-        action2.triggered.connect(lambda: subprocess.Popen(f'explorer /select,"{os.path.abspath(item.toolTip())}"', shell=True))
+        action2.triggered.connect(lambda: qthelpers.openPath(item.toolTip(), explore=True))
         action3 = QtW.QAction('Remove')
         action3.triggered.connect(lambda: qthelpers.listRemoveSelected(self))
 

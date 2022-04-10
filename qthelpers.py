@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
 import os
 import time
+import subprocess
 
 # ---------------------
 # Misc
@@ -28,7 +29,7 @@ def getUniquePath(path: str, start: int = 2, key: str = None, zeros: int = 0, st
             version += 1
     else:                                       # no key -> use windows-style unique paths
         base, ext = os.path.splitext(path)
-        if os.path.exists(path):                # if path exists, check if the path is already using window-style names and adjust accordingly
+        if os.path.exists(path):                # if path exists, check if it's already using window-style names
             parts = base.split()
             if parts[-1][0] == '(' and parts[-1][-1] == ')' and parts[-1][1:-1].isnumeric():
                 base = ' '.join(parts[:-1])     # path is using window-style names, remove pre-existing version string from basename
@@ -43,6 +44,21 @@ def addPathSuffix(path: str, suffix: str, unique: bool = False) -> str:
         the new path will be run through getUniquePath with default arguments before returning. '''
     base, ext = os.path.splitext(path)
     return f'{base}{suffix}{ext}' if not unique else getUniquePath(f'{base}{suffix}{ext}')
+
+def openPath(path: str, explore: bool = False) -> None:
+    ''' Attempts to open a `path` with an appropriate application. If `explore` is True, `path`'s
+        parent directory is opened in a file explorer with `path` pre-selected (if possible). '''
+    path = os.path.abspath(path)
+    if not os.path.exists(path): return
+    try:
+        if explore:                         # open in explorer with file/directory pre-selected
+            path = os.path.dirname(path)    # set path to parent directory
+            import platform                 # platform.system() is called at runtime -> safer cross-platform support
+            system = platform.system()      # couldn't find a way to pre-select files in Linux
+            if system == 'Windows': return subprocess.Popen(f'explorer /select, "{path}"')
+            elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')
+    except: pass    # if any error occurs or system wasn't detected (Linux), use Qt to open the path normally
+    QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
 
 def file_in_PATH(filename: str) -> str:
     ''' Returns the full path to a `filename` if it exists in the user's PATH. '''
