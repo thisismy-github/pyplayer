@@ -456,6 +456,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.trim_mode_action_group.addAction(fade_action)
         self.trim_mode_action_group.triggered.connect(self.set_trim_mode)
 
+        self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
@@ -743,6 +744,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addMenu(self.menuVideo)
         context.addMenu(self.menuAudio)
         context.addMenu(self.menuHelp)
+        context.exec(event.globalPos())
+
+
+    def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        precision_action = QtW.QAction()
+        precision_action.setCheckable(True)
+        precision_action.setChecked(self.dialog_settings.checkHighPrecisionProgress.isChecked())
+        precision_action.setText(self.dialog_settings.checkHighPrecisionProgress.text())
+        precision_action.setToolTip(self.dialog_settings.checkHighPrecisionProgress.toolTip())
+        precision_action.toggled.connect(self.dialog_settings.checkHighPrecisionProgress.setChecked)
+
+        context = QtW.QMenu(self)
+        context.setToolTipsVisible(True)
+        context.addAction(precision_action)
         context.exec(event.globalPos())
 
 
