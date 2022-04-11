@@ -962,39 +962,40 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
 
         # create QVideoListItemWidgets on top of QListWidgetItems for each file
         thumbnails_needed = []
-        for file in files:
-            thumbnail_name = file.replace('/', '.').replace('\\', '.')
-            thumbnail = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
-            last_modified = time.strftime('%#m/%#d/%y | %#I:%M:%S%p', time.localtime(os.path.getmtime(file))).lower()
-            html = f'<html><head/><body><p style="line-height:0.5"><span style="font-family:Yu Gothic; font-size:12pt;">{os.path.basename(file)}</span></p><p><span style="color:#676767;">{last_modified}</span></p></body></html>'
-            item_widget = QVideoListItemWidget(self, thumbnail, html, file == self.parent.video)
+        for video in files:
+            thumbnail_name = qthelpers.getUniquePath(os.path.basename(video).replace('/', '.').replace('\\', '.'))
+            thumbnail_path = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
+            last_modified = time.strftime('%#m/%#d/%y | %#I:%M:%S%p', time.localtime(os.path.getmtime(video))).lower()
+            html = f'<html><head/><body><p style="line-height:0.5"><span style="font-family:Yu Gothic; font-size:12pt;">{os.path.basename(video)}</span></p><p><span style="color:#676767;">{last_modified}</span></p></body></html>'
+            item_widget = QVideoListItemWidget(self, thumbnail_path, html, video == self.parent.video)
 
             # create and setup QListWidgetItem as the base for our QVideoListItemWidget with our file and QLabel
             if index is not None:   # {index} is used exclusively for moving items (which requires the workaround too)
                 item_base = QtW.QListWidgetItem()
                 self.insertItem(index, item_base)
             else: item_base = QtW.QListWidgetItem(self)
-            item_base.setToolTip(file)
+            item_base.setToolTip(video)
             self.setItemWidget(item_base, item_widget)
             item_base.setSizeHint(QtCore.QSize(0, 64))          # default width/height is -1, but this is invalid. yeah.
 
             # check if thumbnail actually existed or not
-            if not os.path.exists(thumbnail):                   # check if thumbnail existed or not
-                thumbnails_needed.append((thumbnail, file, item_widget))
+            if not os.path.exists(thumbnail_path):              # check if thumbnail existed or not
+                thumbnails_needed.append((thumbnail_path, video, item_widget))
 
-        # create threads to generate thumbnails
+        # ensure thumbnail folder exists, then create threads to generate thumbnails
+        if not os.path.exists(constants.THUMBNAIL_DIR): os.makedirs(constants.THUMBNAIL_DIR)
         for thumbnail_needed in thumbnails_needed:              # TODO: there needs to be some way of cancelling these threads
             Thread(target=self.get_thumbnail, args=thumbnail_needed, daemon=True).start()
 
 
-    def get_thumbnail(self, thumbnail_dir, file, item_widget):
-        temp_path = thumbnail_dir.replace('_thumbnail', '_thumbnail_unscaled')
-        cmd = f'ffmpeg -y -i "{file}" -vf "select=eq(n\\,0)" -q:v 1 "{temp_path}" -hide_banner -loglevel warning'
-        logging.info(f'Generating thumbnail for {file}: {cmd}')
-        subprocess.call(cmd, shell=True)
-        cmd2 = f'ffmpeg -y -i "{temp_path}" -vf scale=-1:56 "{thumbnail_dir}" -hide_banner -loglevel warning'
-        subprocess.call(cmd2, shell=True)
-        item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_dir))
+    def get_thumbnail(self, thumbnail_path, video, item_widget):
+        temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
+        cmd_get_thumbnail = f'-ss 3 -i "{video}" -vframes 1 "{temp_path}"'
+        cmd_resize_thumbnail = f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"'
+        logging.info(f'Generating thumbnail for "{video}" to "{temp_path}"')
+        subprocess.call(f'ffmpeg -y {cmd_get_thumbnail} -hide_banner -loglevel warning', shell=True)
+        subprocess.call(f'ffmpeg -y {cmd_resize_thumbnail} -hide_banner -loglevel warning', shell=True)
+        item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
         try: os.remove(temp_path)
         except Exception as error: logging.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')
 
