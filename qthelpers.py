@@ -62,10 +62,10 @@ def openPath(path: str, explore: bool = False) -> None:
 
 def file_in_PATH(filename: str) -> str:
     ''' Returns the full path to a `filename` if it exists in the user's PATH. '''
-    for path in os.environ.get('path', '').split(';'):
+    for path in os.environ.get('PATH', '').split(';' if platform.system() == 'Windows' else ':'):
         try:
             if filename in os.listdir(path):
-                return path
+                return os.path.join(path, filename)
         except: pass
 
 def show_window(window: QtWidgets.QWidget) -> None:

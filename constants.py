@@ -65,9 +65,10 @@ prompt is shown on exit if any files are marked.'''
 
 # ---------------------
 
-FFMPEG = 'ffmpeg.exe' if IS_COMPILED else os.path.join(BIN_DIR, 'ffmpeg.exe')
+FFMPEG = 'ffmpeg' if IS_COMPILED else os.path.join(BIN_DIR, 'ffmpeg')
 
 def verify_ffmpeg():
+    global FFMPEG
     popup_text = 'ffmpeg was not detected in the bin folder, your install folder,\n' \
                  'or your system PATH variable. ffmpeg is used for editing.\n\n' \
                  'Without it, editing features will not function. It should have been\n' \
@@ -75,15 +76,20 @@ def verify_ffmpeg():
                  'essentials below, or click "Cancel" to stop receiving this warning.'
     popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
 
-    if not os.path.exists(FFMPEG):
+    expected_path = (FFMPEG + '.exe') if PLATFORM == 'Windows' else FFMPEG
+    if not os.path.exists(expected_path):
+        import logging
         from PyQt5.QtWidgets import QMessageBox
         if config.cfg.ffmpegwarningignored:
-            import logging
             logging.getLogger('constants.py').warning('(!) ffmpeg not detected in /bin folder. Assuming it is still accessible.')
         else:
-            if not qthelpers.file_in_PATH('ffmpeg.exe') and not os.path.exists('ffmpeg.exe'):
+            filename = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
+            global_path = qthelpers.file_in_PATH(filename)
+            if global_path: FFMPEG = global_path
+            elif not os.path.exists(filename):
                 choice = qthelpers.getPopupOkCancel(title='ffmpeg not detected',
                                                     text=popup_text,
                                                     textInformative=popup_text_informative,
                                                     icon=QMessageBox.Warning).exec()
                 if choice == QMessageBox.Cancel: config.cfg.ffmpegwarningignored = True
+            logging.getLogger('constants.py').warning('ffmpeg not detected in /bin folder. Current FFMPEG path: ' + FFMPEG)
