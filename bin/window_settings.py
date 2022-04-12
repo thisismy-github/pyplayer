@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_settingsDialog(object):
     def setupUi(self, settingsDialog):
         settingsDialog.setObjectName("settingsDialog")
-        settingsDialog.resize(349, 730)
+        settingsDialog.resize(354, 730)
         settingsDialog.setMinimumSize(QtCore.QSize(347, 356))
         self.gridLayout = QtWidgets.QGridLayout(settingsDialog)
         self.gridLayout.setContentsMargins(0, 0, 0, 8)
@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1462))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 335, 1462))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -991,8 +991,8 @@ class Ui_settingsDialog(object):
         self.buttonCheckForUpdates.setObjectName("buttonCheckForUpdates")
         self.formLayout_7.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.buttonCheckForUpdates)
         self.spinUpdateFrequency = QtWidgets.QSpinBox(self.tabUpdates)
-        self.spinUpdateFrequency.setMinimum(1)
         self.spinUpdateFrequency.setMaximum(365)
+        self.spinUpdateFrequency.setProperty("value", 0)
         self.spinUpdateFrequency.setObjectName("spinUpdateFrequency")
         self.formLayout_7.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.spinUpdateFrequency)
         self.checkAutoUpdateCheck = QtWidgets.QCheckBox(self.tabUpdates)

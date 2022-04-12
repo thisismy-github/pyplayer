@@ -44,7 +44,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     gui.recent_videos = [file for file in load('recent_videos', '', ',') if os.path.exists(file)][-10:]
 
     cfg.setSection('settings')
-    cfg.loadQt(settings.tabGeneral, ignore=('comboThemes',))
+    cfg.loadQt(settings.tabGeneral, settings.tabUpdates, ignore=('comboThemes',))
     for action in gui.trim_mode_action_group.actions():
         action.setChecked(load(action.objectName(), action.isChecked()))
     hoverfontcolor = load('hoverfontcolor', '255,255,255', ',', int, tuple, fill_with_defaults=True, default=255)
@@ -54,7 +54,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     del hoverfontcolor
 
     cfg.setSection('keys')
-    for widget in qthelpers.formGetItemsInColumn(gui.dialog_settings.tabKeys.layout(), 1):
+    for widget in qthelpers.formGetItemsInColumn(settings.tabKeys.layout(), 1):
         items = tuple(qthelpers.layoutGetItems(widget))
         name = items[0].objectName().rstrip('_')
 

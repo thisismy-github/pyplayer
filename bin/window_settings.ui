@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>349</width>
+    <width>354</width>
     <height>730</height>
    </rect>
   </property>
@@ -58,7 +58,7 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>334</width>
+        <width>335</width>
         <height>1462</height>
        </rect>
       </property>
@@ -265,12 +265,12 @@ Leave blank to always save unspecified videos to their source folder.</string>
              <item row="4" column="0">
               <widget class="QCheckBox" name="checkHideIdleCursor">
                <property name="toolTip">
-                <string>If checked, your cursor will disappear
-until moved if left idle over the video
-for the specified amount of time.</string>
+                <string>If checked, your cursor will disappear until moved
+if left idle over the player for the specified amount
+of time. While fullscreen, the UI will also disappear.</string>
                </property>
                <property name="text">
-                <string>Hide idle cursor</string>
+                <string>Hide cursor/UI</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -2563,11 +2563,11 @@ the currently playing media's height.</string>
                <property name="prefix">
                 <string>Once every </string>
                </property>
-               <property name="minimum">
-                <number>1</number>
-               </property>
                <property name="maximum">
                 <number>365</number>
+               </property>
+               <property name="value">
+                <number>0</number>
                </property>
               </widget>
              </item>

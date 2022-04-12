@@ -203,7 +203,6 @@ KNOWN ISSUES:
         volume gain suddenly changes after extended use
         native "Save as..." prompt replaced by strange and extremely buggy Qt version if the first thing you open after launch is an image
         .3gp, .ogv, and .mpg files do not trim correctly
-        raise/focus settings are not 100% consistent
     Cannot reproduce consistently:
         player's current visible frame doesn't change when navigating (<- and ->) after video finishes until it's unpaused (used to never happen)
         scrubbing slider and sharply moving mouse out of window while releasing causes video to not unpause until scrubbed again (rare)
@@ -2202,7 +2201,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 update.validate_update(self, update_report)
 
         if not _launch or settings.checkAutoUpdateCheck.isChecked():
-            try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string -> seconds needs %x
+            try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string into seconds needs %x
             except: last_check_time_seconds = 0
             if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < gettime():
                 self.log('Checking for updates...')
@@ -2217,7 +2216,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 import update
                 Thread(target=update.check_for_update, args=(self,)).start()
 
-                cfg.lastupdatecheck = strftime('%#D', localtime())                      # seconds -> string needs %D
+                cfg.lastupdatecheck = strftime('%#D', localtime())                      # seconds into string needs %D
                 settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck}')
 
 
