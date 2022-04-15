@@ -143,4 +143,4 @@ testing/
 *.cpp
 *.lnk
 *.ini
-
+version_info*.txt

@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
+import os
+version_file = 'version_info_updater.txt'
 block_cipher = None
 
 
@@ -37,4 +39,6 @@ exe = EXE(pyz,
           disable_windowed_traceback=False,
           target_arch=None,
           codesign_identity=None,
-          entitlements_file=None )
+          entitlements_file=None,
+          version=version_file if os.path.exists(version_file) else None,
+          icon='..\\themes\\resources\\updater.ico')

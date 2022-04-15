@@ -1,6 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
+import os
+version_file = 'version_info_main.txt'
 block_cipher = None
 
 
@@ -8,8 +10,7 @@ a = Analysis(['..\\main.pyw'],
              pathex=[],
              binaries=[],
              datas=[('..\\themes', 'themes'),
-					('include', 'plugins'),
-			 ],
+                    ('include', 'plugins')],
              hiddenimports=[],
              hookspath=[],
              hooksconfig={},
@@ -36,7 +37,8 @@ exe = EXE(pyz,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None,
-		  icon='..\\themes\\resources\\logo.ico')
+          version=version_file if os.path.exists(version_file) else None,
+          icon='..\\themes\\resources\\logo.ico')
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
