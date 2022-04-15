@@ -18,6 +18,7 @@ for /F "tokens=*" %%A in (exclude.txt) do (
 	IF EXIST "compiled\release\%%A\*" (rmdir "compiled\release\%%A" /s /q) ELSE (del "compiled\release\%%A" /s /q)
 )
 
+move compiled\release\PIL compiled\release\PyQt5\PIL
 move compiled\updater.exe compiled\release\PyQt5\updater.exe
 move compiled\release\*.pyd compiled\release\PyQt5
 move compiled\release\*.dll compiled\release\PyQt5

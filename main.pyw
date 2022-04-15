@@ -315,6 +315,88 @@ def get_listdir(file):
     return name, dir, files
 
 
+def get_PIL_Image():
+    ''' An over-the-top way of hiding the PIL folder. PIL folder cannot be avoided due to
+        the from-import, and hiding it using conventional means does not seem to work, so
+        instead we hide the folder, move (NOT copy) it to the root folder so we can import
+        it, and then move it back. All this, just to hide a single item. Honestly worth it. '''
+    try:    # prepare PIL for importing if it hasn't been imported yet (once imported, it's imported for good)
+        PIL_already_imported = 'PIL.Image' in sys.modules
+        if not PIL_already_imported and constants.IS_COMPILED:
+            logging.info('Import PIL for the first time...')
+            join = os.path.join             # create alias due to high usage
+            exists = os.path.exists         # create alias due to high usage
+            files_moved = []
+
+            # identify new PIL path and check if it already exists
+            new_path = join(constants.CWD, 'PIL')
+            new_path_already_existed = exists(new_path)
+            new_path_renamed = False
+
+            # identify expected PIL path and a backup for it, assert existence of at least one PIL path
+            old_path = join(constants.BIN_DIR, 'PIL')
+            backup_path = old_path + '.bak'
+            backup_path_already_existed = exists(backup_path)
+            if backup_path_already_existed:     # backup already exists (likely from error in previous session)
+                logging.warning(f'PIL backup path {backup_path} already exists, using it...')
+                old_path, backup_path = backup_path, old_path   # swap backup and old paths
+            assert exists(old_path) or new_path_already_existed, 'PIL folder not found at ' + old_path
+
+            # backup old PIL path and create new PIL path. if it already exists (for some reason), rename it temporarily
+            if exists(old_path):            # if old PIL path doesn't exist, just hope the new PIL path is correct
+                import shutil
+                shutil.copytree(old_path, backup_path)
+                if new_path_already_existed:
+                    try:
+                        new_path_temp_name = qthelpers.getUniquePath(new_path + '_temp')
+                        os.rename(new_path, new_path_temp_name)
+                        new_path_renamed = True
+                    except: logging.warning(f'Could not rename {new_path} to {new_path}_temp: {format_exc()}')
+                try: os.makedirs(new_path)
+                except: logging.warning(f'Could not make {new_path}: {format_exc()}')
+
+            # move (NOT copy) each file from the normal PIL path to the new PIL path and append each move to files_moved
+            for file in os.listdir(old_path):
+                if file[-4:] != '.pyd': continue
+                old_file = join(old_path, file)
+                new_file = join(new_path, file)
+                os.rename(old_file, new_file)
+                files_moved.append((old_file, new_file))
+
+        from PIL import Image               # actually import PIL.Image
+
+        # return files to their original spots, delete/restore new PIL path, and return PIL.Image
+        if not PIL_already_imported and constants.IS_COMPILED:
+            import shutil
+            for source, dest in files_moved:
+                try: os.rename(dest, source)
+                except: logging.warning(f'Could not move {dest} to {source}: {format_exc()}')
+            if not (new_path_already_existed and not new_path_renamed):
+                try: shutil.rmtree(new_path)
+                except: logging.warning(f'Could not delete {new_path}: {format_exc()}')
+            if new_path_renamed: os.rename(new_path_temp_name, new_path)
+            if exists(backup_path): shutil.rmtree(backup_path)
+            if backup_path_already_existed: os.rename(old_path, backup_path)
+            logging.info('First-time PIL import successful.')
+        return Image                        # return PIL.Image
+    except:
+        logging.error(f'(!) PIL IMPORT FAILED: {format_exc()}')
+        try:        # in the event of an error, attempt to restore backup if one exists
+            if exists(backup_path):
+                import shutil
+                shutil.rmtree(old_path)
+                os.rename(backup_path, old_path)
+            elif not exists(old_path) and not exists(new_path):
+                raise Exception('None of the following candidates for a PIL folder were found:'
+                                f'\nOld: {old_path}\nNew: {new_path}\nBackup: {backup_path}')
+        except NameError: pass              # NameError -> error occurred before the paths were even defined
+        except:     # PIL is seemingly unrecoverable. hopefully this is extremely unlikely outside of user-tampering
+            logging.critical(f'(!!!) COULD NOT RESTORE PIL FOLDER: {format_exc()}')
+            logging.critical('\n\n  WARNING -- You may need to reinstall PyPlayer to restore snapshotting capabilities.'
+                             '\n             If you cannot find the PIL folder within your installation, please report '
+                             '\n             this error (along with this log file) on Github.\n')
+
+
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
 #    _, vext = os.path.splitext(video)
 #    abase, aext = os.path.splitext(audio)
@@ -1056,9 +1138,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.info(f'Metadata for audio {file}: {tag}')
 
         elif mime == 'image':
-            from PIL import Image
             self.frame_rate, self.frame_count, self.duration = 5, 1, 0
-            try: self.vwidth, self.vheight = Image.open(file).size
+            try: self.vwidth, self.vheight = get_PIL_Image().open(file).size
             except AttributeError: self.vwidth, self.vheight = 1, 1
             self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
             self.frame_rate_rounded = 1
@@ -1527,8 +1608,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     operations_detected = non_crop_operations_detected              # see if any other operations were detected beforehand
                 else:
                     if self.mime_type == 'image':
-                        from PIL import Image
-                        image_data = Image.open(video)
+                        image_data = get_PIL_Image().open(video)
                         image_data.crop((round(lfp[0].x()), round(lfp[0].y()),              # left/top/right/bottom (crop takes a tuple)
                                          round(lfp[1].x()), round(lfp[2].y()))).save(dest)  # round QPointFs
                     else: ffmpeg(intermediate_file, f'-i "%tp" -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}" "{dest}"')
@@ -2739,10 +2819,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # crop final snapshot if desired
                 if self.actionCrop.isChecked():
-                    from PIL import Image
                     logging.info('Cropping previously saved snapshot...')
                     lfp = self.vlc.last_factored_points
-                    image_data = Image.open(path)
+                    image_data = get_PIL_Image().open(path)
                     image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
                                                   round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
                     if format == 'JPEG': self.convert_snapshot_to_jpeg(path, image_data)
@@ -2793,10 +2872,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                     # crop final snapshot if desired, taking into account the custom width/height
                     if self.actionCrop.isChecked():
-                        from PIL import Image
                         logging.info('Cropping previously saved snapshot...')
                         lfp = self.vlc.last_factored_points
-                        image_data = Image.open(path)
+                        image_data = get_PIL_Image().open(path)
 
                         # calculate factors between media's native resolution and actual desired snapshot resolution
                         if width or height:                         # custom width and/or height is set
@@ -2845,9 +2923,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog, using PIL. Assumes that `path` already ends in a valid file-extension. '''
         jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
         self.log(f'Saving JPEG snapshot at {jpeg_quality}% quality to {path}.')
-        if image_data is None:
-            from PIL import Image
-            image_data = Image.open(path)
+        if image_data is None: image_data = get_PIL_Image().open(path)
         image_data.convert('RGB')
         image_data.save(path, quality=jpeg_quality)
 
