@@ -2,10 +2,8 @@ import qtstart
 import constants
 import qthelpers
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMessageBox, QApplication
 import os
-import sys
 import time
 import logging
 import subprocess
@@ -161,8 +159,7 @@ def download_update(self, latest_version, download_url, download_path):
         add_to_report = f'"{constants.VERSION.split()[1]} -> {latest_version}" "{active_updater_path}"'
 
         logger.info('PyPlayer closing, updater-utility starting...')
-        updater_cmd = (f'{active_updater_path} '
-                       f'--zip {download_path} '                        # the zip file we want the updater to unpack
+        updater_cmd = (f'{active_updater_path} {download_path} '        # the updater and the zip file we want it to unpack
                        f'--destination {constants.CWD} '                # the destination to unzip the file to
                        f'--cmd "{constants.SCRIPT_PATH}{cmd_args}" '    # the command the updater should run to restart us
                        f'--lock-files {" ".join(pid_files)} '           # tell updater to wait for each PID file to be deleted
