@@ -2209,8 +2209,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 if constants.IS_COMPILED:   # if compiled, override cacert.pem path to get rid of pointless folder
                     import certifi.core
-                    os.environ["REQUESTS_CA_BUNDLE"] = constants.CACERT_OVERRIDE_PATH
-                    certifi.core.where = lambda: constants.CACERT_OVERRIDE_PATH
+                    cacert_override_path = os.path.join(constants.BIN_DIR, 'cacert.pem')
+                    os.environ["REQUESTS_CA_BUNDLE"] = cacert_override_path
+                    certifi.core.where = lambda: cacert_override_path
 
                 import update
                 Thread(target=update.check_for_update, args=(self,)).start()
