@@ -12,7 +12,6 @@ import qthelpers
 import os
 import logging
 import argparse
-import subprocess
 from threading import Thread
 from traceback import format_exc
 

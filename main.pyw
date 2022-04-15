@@ -170,7 +170,6 @@ ability to continue playing media while minimized to system tray
 enhance fading by adding ability to hold fade
 ability to limit combination-edits (adding/replacing audio) to the shortest input (this exists in ffmpeg but breaks often)
 do the math to chain audio-resizes together to get around ffmpeg atempo 0.5-2.0 limitation (can be chained in single command)
-rewrite launcher.py (pyplayer.exe) in pure C/C++ (on windows) for very negligible speed boost?
 
 
 KNOWN ISSUES:
@@ -2854,6 +2853,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 #######################################
 if __name__ == "__main__":
+    if '?EXIT' in sys.argv: sys.exit()          # ?EXIT means we used a different process, so exit this one
     try:
         logging.info(f'PyPlayer opened at {constants.SCRIPT_PATH} with executable {sys.executable}')
         logging.info('Creating QApplication and GUI...')

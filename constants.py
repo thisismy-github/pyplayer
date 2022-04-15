@@ -23,8 +23,8 @@ PLATFORM = platform.system()
 SCRIPT_PATH = sys.executable if IS_COMPILED else os.path.realpath(__file__)
 CWD = os.path.dirname(SCRIPT_PATH)
 
-BIN_DIR = os.path.join(CWD, 'bin')
-TEMP_DIR = os.path.join(CWD, 'temp')
+BIN_DIR = os.path.join(CWD, 'bin' if not IS_COMPILED else 'PyQt5')
+TEMP_DIR = os.path.join(BIN_DIR, 'temp')
 THEME_DIR = os.path.join(CWD, 'themes')
 RESOURCE_DIR = os.path.join(THEME_DIR, 'resources')
 LOG_PATH = os.path.join(CWD, 'pyplayer.log')
@@ -65,7 +65,8 @@ prompt is shown on exit if any files are marked.'''
 
 # ---------------------
 
-FFMPEG = 'ffmpeg' if IS_COMPILED else os.path.join(BIN_DIR, 'ffmpeg')
+if IS_COMPILED: FFMPEG = os.path.join(CWD, 'plugins', 'ffmpeg')
+else: FFMPEG = os.path.join(BIN_DIR, 'ffmpeg')
 
 def verify_ffmpeg():
     global FFMPEG
@@ -77,7 +78,8 @@ def verify_ffmpeg():
     popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
 
     expected_path = (FFMPEG + '.exe') if PLATFORM == 'Windows' else FFMPEG
-    if not os.path.exists(expected_path):
+    expected_name = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
+    if not os.path.exists(expected_path) and not os.path.exists(expected_name):
         import logging
         from PyQt5.QtWidgets import QMessageBox
         if config.cfg.ffmpegwarningignored:

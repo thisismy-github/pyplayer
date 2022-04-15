@@ -5,13 +5,15 @@ To compile PyPlayer on Windows, simply run "build-windows.bat" in the main folde
 This assumes that you have pip and already have all the appropriate libraries from
 requirements.txt installed. If not, you can do "pip -r --upgrade requirements.txt".
 
+For compatibility with Windows 7 and Windows Vista, Python 3.8 must be used.
+
 ---
 
 Summary of contents:
-    include           -- These are the excess files that are needed by PyPlayer, including libvlc
-                         .dlls, VLC's plugins folder, and a small copy of ffmpeg. If users already
-                         have all of these files accessible through their PATH, then they do not
-                         actually need to be included with the executable.
+    include           -- These are the excess files that are needed by PyPlayer, which currently
+                         includes the two required libvlc .dlls, and all of the currently used VLC
+                         plugins. If users already have these files in their PATH, (i.e. ffmpeg and
+                         VLC are installed) then they do not actually need to be included.
 
     build             -- PyInstaller build files that are created during the first compilation.
                          These are not needed for anything, but speed up future compilations.
@@ -26,5 +28,17 @@ Summary of contents:
                          and deleted automatically, and all misc/include files will be merged as well.
                          As the name implies, this is the folder that would be released on Github.
 
-    *.spec            -- PyInstaller .spec files specifying how to compile PyPlayer's three
-                         main scripts, main.pyw, launcher.pyw, and updater.pyw.
+    exclude.txt       -- This contains a list of likely files and folders to be included with each
+                         compilation on Windows that do not appear to actually be necessary and
+                         will be deleted automatically after compilation. Based on compilations
+                         done through a virtualenv on Windows 10 and Windows 7, using only the
+                         packages in requirements.txt.
+
+    hook.py           -- A runtime hook added to main.spec which runs at startup, decides whether to
+                         open a new PyPlayer instance or reuse an existing one, adds the PyQt5 folder
+                         to sys.path (allowing the executable to look for .dll and .pyd files inside
+                         the PyQt5 folder, which must exist regardless, letting us hide many files
+                         and cut down on clutter), and sets the location of necessary VLC files.
+
+    *.spec            -- PyInstaller .spec files specifying how to compile PyPlayer's two main
+                         scripts, main.pyw and updater.pyw.
