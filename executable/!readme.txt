@@ -1,6 +1,6 @@
 ---
 
-To compile PyPlayer on Windows, simply run "build-windows.bat" in the main folder.
+To compile PyPlayer on Windows, simply run "build.py".
 
 This assumes that you have pip and already have all the appropriate libraries from
 requirements.txt installed. If not, you can do "pip -r --upgrade requirements.txt".
@@ -27,6 +27,10 @@ Summary of contents:
                          If using build-windows.bat, the launcher and updater folders will be merged
                          and deleted automatically, and all misc/include files will be merged as well.
                          As the name implies, this is the folder that would be released on Github.
+
+    build.py          -- A cross-platform Python script for compiling. This searches for a venv, uses
+                         the .spec files to compile both PyPlayer and its updater, and then performs
+                         several post-compilation activities to clean up and finish the compile.
 
     exclude.txt       -- This contains a list of likely files and folders to be included with each
                          compilation on Windows that do not appear to actually be necessary and
