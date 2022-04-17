@@ -10,10 +10,22 @@ import constants
 import qthelpers
 
 import os
+import sys
 import logging
 import argparse
 from threading import Thread
 from traceback import format_exc
+
+
+# ---------------------
+# Arguments
+# ---------------------
+parser = argparse.ArgumentParser()
+parser.add_argument('file', nargs='?', help='Specifies a filepath to open')     # '?' allows for optional positionals
+parser.add_argument('--play-and-exit', action='store_true', help='Automatically exits at the conclusion of a media file')
+parser.add_argument('--exit', action='store_true', help='Instantly exits. Used when sending media to other instances')
+args = parser.parse_args()
+if args.exit: sys.exit(100)
 
 
 # ---------------------
@@ -29,15 +41,6 @@ logging.basicConfig(
     handlers=(file_handler, logging.StreamHandler())
 )
 logging.info(f'Logger initalized at {constants.LOG_PATH}.')
-
-
-# ---------------------
-# Arguments
-# ---------------------
-parser = argparse.ArgumentParser()
-parser.add_argument('file', nargs='?', help='Specifies a filepath to open')     # '?' allows for optional positionals
-parser.add_argument('--play-and-exit', action='store_true', help='Automatically exits at the conclusion of a media file')
-args = parser.parse_args()
 logging.info(f'Arguments: {args}')
 
 

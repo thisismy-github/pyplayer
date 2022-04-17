@@ -11,27 +11,33 @@ import os
 
 
 CWD = os.path.dirname(sys.argv[0])
-TEMP_DIR = os.path.join(CWD, 'PyQt5', 'temp')
+TEMP_DIR = os.path.join(CWD, 'PyQt5' if getattr(sys, 'frozen', False) else 'bin', 'temp')
+IS_WINDOWS = sys.platform in ('win32', 'cygwin', 'msys')
 
 
-''' If a file is specified, check for running instances and send the file to
-    the latest one by writing a text file with an encoded path and a specially
-    formatted name, then signal to our current instance that it should exit. '''
+''' If an argument is specified, check for running instances. If one is found,
+    encode the argument within a text file named after the PID of the latest
+    instance, then signal to our current instance that it should exit. '''
 try:
     filepath = sys.argv[1]
     pids = (os.path.join(TEMP_DIR, file) for file in os.listdir(TEMP_DIR) if file[-4:] == '.pid')   # get all .pid files
-    for pid in reversed(sorted(pids, key=os.path.getctime)):                # sort by age then reverse (newest first)
-        try: os.remove(pid)                                                 # attempt to delete pid -> PermissionError = active
-        except PermissionError:                                             # pid file in use -> send path to its instance
-            cmdpath = os.path.join(TEMP_DIR, f'cmd.{os.path.basename(pid)[:-4]}.txt')   # cmd.{pid}.txt
-            with open(cmdpath, 'wb') as txt: txt.write(filepath.encode())   # encode path and write to cmd file
-            sys.argv.append('?EXIT')                                        # add exit flag to args so this instance exits
+    for file in reversed(sorted(pids, key=os.path.getctime)):   # sort by age, then reverse (newest first)
+        try:    # check if PID file is valid
+            pid = os.path.basename(file)[:-4]
+            if not IS_WINDOWS:
+                os.kill(int(pid), 0)                # Linux/Mac, sending signal-0 to non-existent PID = ProcessLookupError
+                raise PermissionError               # no error -> PID file is valid -> manually raise PermissionError
+            os.remove(file)                         # Windows, removing a valid PID file = PermissionError
+        except ValueError: os.remove(file)          # ValueError means a PID file had letters in it (likely user-created)
+        except PermissionError:                     # PermissionError means pid file in use -> send path to its instance
+            cmdpath = os.path.join(TEMP_DIR, f'cmd.{pid}.txt')
+            with open(cmdpath, 'wb') as txt: txt.write(filepath.encode())
+            sys.argv.append('--exit')               # add --exit argument so our instance exits
 
-            # cmd file sent, clean temp folder while user waits for other instance to open
+            # if cmd-file sent, clean excess files in temp folder (if any) while user waits for pre-existing instance
             import time
             now = time.time()
-            max_age = 30                            # NOTE: Values < 15 seconds may result in unusual behavior on Windows
-
+            max_age = 30                            # NOTE: Values < 15 seconds causes unusual behavior on Windows
             for file in os.listdir(TEMP_DIR):
                 file = os.path.join(TEMP_DIR, file)
                 if not os.path.isfile(file): continue
@@ -40,6 +46,9 @@ try:
                     try: os.remove(file)            # delete outdated file
                     except: pass
             break                                   # break out of pid-loop
+        except OSError:                             # handle AFTER PermissionError (it's a type of OSError)
+            if not IS_WINDOWS:                      # on Linux/Mac, this is likely a ProcessLookupError -> remove PID file
+                os.remove(file)
 except (IndexError, FileNotFoundError): pass        # no file specified, or temp folder doesn't exist
 except:                                             # unexpected serious error -> setup logging and log error
     import logging

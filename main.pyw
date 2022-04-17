@@ -2930,7 +2930,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 #######################################
 if __name__ == "__main__":
-    if '?EXIT' in sys.argv: sys.exit()          # ?EXIT means we used a different process, so exit this one
+    if not constants.IS_COMPILED: import executable.hook        # manually import hook.py when running from script
     try:
         logging.info(f'PyPlayer opened at {constants.SCRIPT_PATH} with executable {sys.executable}')
         logging.info('Creating QApplication and GUI...')
