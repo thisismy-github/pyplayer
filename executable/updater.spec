@@ -2,11 +2,16 @@
 
 
 import os
-version_file = 'version_info_updater.txt'
+import sys
 block_cipher = None
 
+CWD = os.path.dirname(os.path.realpath(sys.argv[1]))
+ROOT_DIR = os.path.dirname(CWD)
+VERSION_FILE = os.path.join(CWD, 'version_info_updater.txt')
+ICON = os.path.join(ROOT_DIR, 'themes', 'resources', 'updater.ico')
 
-a = Analysis(['..\\bin\\updater.py'],
+
+a = Analysis([os.path.join(ROOT_DIR, 'bin', 'updater.py')],
              pathex=[],
              binaries=[],
              datas=[],
@@ -19,8 +24,9 @@ a = Analysis(['..\\bin\\updater.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
+
 pyz = PYZ(a.pure, a.zipped_data,
-             cipher=block_cipher)
+          cipher=block_cipher)
 
 exe = EXE(pyz,
           a.scripts,
@@ -40,5 +46,5 @@ exe = EXE(pyz,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None,
-          version=version_file if os.path.exists(version_file) else None,
-          icon='..\\themes\\resources\\updater.ico')
+          version=VERSION_FILE if os.path.exists(VERSION_FILE) else None,
+          icon=ICON if os.path.exists(ICON) else None)

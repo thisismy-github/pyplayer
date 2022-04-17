@@ -2,26 +2,32 @@
 
 
 import os
-version_file = 'version_info_main.txt'
+import sys
 block_cipher = None
 
+CWD = os.path.dirname(os.path.realpath(sys.argv[1]))
+ROOT_DIR = os.path.dirname(CWD)
+VERSION_FILE = os.path.join(CWD, 'version_info_main.txt')
+ICON = os.path.join(ROOT_DIR, 'themes', 'resources', 'logo.ico')
 
-a = Analysis(['..\\main.pyw'],
+
+a = Analysis([os.path.join(ROOT_DIR, 'main.pyw')],
              pathex=[],
              binaries=[],
-             datas=[('..\\themes', 'themes'),
-                    ('include', 'plugins')],
+             datas=[(os.path.join(ROOT_DIR, 'themes'), 'themes'),
+                    (os.path.join(CWD, 'include'), 'plugins')],
              hiddenimports=[],
              hookspath=[],
              hooksconfig={},
-             runtime_hooks=['hook.py'],
+             runtime_hooks=[os.path.join(CWD, 'hook.py')],
              excludes=[],
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
+
 pyz = PYZ(a.pure, a.zipped_data,
-             cipher=block_cipher)
+          cipher=block_cipher)
 
 exe = EXE(pyz,
           a.scripts, 
@@ -37,8 +43,9 @@ exe = EXE(pyz,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None,
-          version=version_file if os.path.exists(version_file) else None,
-          icon='..\\themes\\resources\\logo.ico')
+          version=VERSION_FILE if os.path.exists(VERSION_FILE) else None,
+          icon=ICON if os.path.exists(ICON) else None)
+
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
