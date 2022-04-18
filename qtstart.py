@@ -73,7 +73,7 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
     def handle_click(reason: QtW.QSystemTrayIcon.ActivationReason):
         if reason == QtW.QSystemTrayIcon.Context:
             action_show = QtW.QAction('Show PyPlayer')
-            action_show.triggered.connect(lambda: qthelpers.show_window(self))
+            action_show.triggered.connect(lambda: qthelpers.showWindow(self))
             action_settings = QtW.QAction('Settings')
             action_settings.triggered.connect(self.dialog_settings.exec)
             action_exit = QtW.QAction('Exit')
@@ -84,7 +84,7 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
             menu.addSeparator()
             menu.addAction(action_exit)
             return menu.exec(QtGui.QCursor.pos())
-        if reason == QtW.QSystemTrayIcon.Trigger: return qthelpers.show_window(self)
+        if reason == QtW.QSystemTrayIcon.Trigger: return qthelpers.showWindow(self)
         if reason == QtW.QSystemTrayIcon.MiddleClick: return exit(self)
 
     tray = QtW.QSystemTrayIcon(self.icons['window'])

@@ -60,7 +60,7 @@ def openPath(path: str, explore: bool = False) -> None:
     except: pass    # if any error occurs or system wasn't detected (Linux), use Qt to open the path normally
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
 
-def file_in_PATH(filename: str) -> str:
+def getFromPATH(filename: str) -> str:
     ''' Returns the full path to a `filename` if it exists in the user's PATH. '''
     for path in os.environ.get('PATH', '').split(';' if platform.system() == 'Windows' else ':'):
         try:
@@ -68,14 +68,14 @@ def file_in_PATH(filename: str) -> str:
                 return os.path.join(path, filename)
         except: pass
 
-def show_window(window: QtWidgets.QWidget) -> None:
+def showWindow(window: QtWidgets.QWidget) -> None:
     ''' Shows, restores, raises, and activates a `window`. '''
     if not window.isVisible(): window.show()
     window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
     window.raise_()
     window.activateWindow()
 
-def get_hms(seconds: float) -> tuple:
+def getHMS(seconds: float) -> tuple:
     ''' Converts seconds to the hours, minutes, seconds, and milliseconds it represents. '''
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)

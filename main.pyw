@@ -17,10 +17,7 @@ TODO: move open_color_picker and other browse dialogs + indeterminate_progress d
 TODO: better/more fleshed-out themes
 TODO: can't change themes while minimized to system tray (warn with tray icon?)
 TODO: live-themes advanced option? (button that auto-refreshes themes every half-second for theme developers)
-TODO: strange blue square appears around QVideoPlayer before video starts playing (this started after controls were turned into a dockwidget, i think)
 TODO: use more "modern" looking icon like VLC's ios app icon?
-TODO: noticable delay before moving to correct spot when double-clicking    <- is this configparsebetter's fault?
-TODO: double-clicking file when window should open maximized does not work  <- is this configparsebetter's fault?
 TODO: event_manager -> "no signature found for builtin <built-in method emit of PyQt5.QtCore.pyqtBoundSignal object"
 TODO: getting the padding of the QSlider groove
 TODO: better/more fleshed out sliderVolume (dedicated subclass?)
@@ -36,10 +33,8 @@ TODO: cropping finally finished. potential improvements:
 TODO: find interesting use for QtWidgets.QGraphicsScene()? (used in old widgets/main.py files for early crop tests)
 TODO: 47.58fps video NOT behaving well (progress bar is too fast -> 1.25 seconds ahead per minute)
 TODO: refactor:
-        - refactor inconsistent naming styles
         - refactor inconsistent function indentations (especially for qthelpers functions)
         - refactor inconsistent parent usage (is setParent() and parent() worth the likely performance loss?)
-        - create new file called "constants" or something for things like SUBTITLE_EXTENSIONS
 TODO: improved or improvised status bar? -> half-width and/or custom widgets for things like playback speed, etc.
 TODO: centralwidget's layout column stretch should be a customizable option
 TODO: streamlined way to trim and concat multiple sections of a single video (or just a timeline)
@@ -860,7 +855,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # create disabled action for displaying start time
         verb = 'Start' if is_trim_mode else 'Fade to'
         if self.minimum:
-            h, m, s, ms = qthelpers.get_hms(self.minimum / self.frame_rate)
+            h, m, s, ms = qthelpers.getHMS(self.minimum / self.frame_rate)
             if self.duration < 3600: start_label_action = QtW.QAction(f'{verb} {m}:{s:02}.{ms:02} (frame {self.minimum})')
             else: start_label_action = QtW.QAction(f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})')
         else: start_label_action = QtW.QAction(f'{verb}: Disabled')
@@ -869,7 +864,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # create disabled action for displaying end time
         verb = 'End' if is_trim_mode else 'Fade from'
         if self.maximum != self.frame_count:
-            h, m, s, ms = qthelpers.get_hms(self.maximum / self.frame_rate)
+            h, m, s, ms = qthelpers.getHMS(self.maximum / self.frame_rate)
             if self.duration < 3600: end_label_action = QtW.QAction(f'{verb}: {m}:{s:02}.{ms:02} (frame {self.maximum})')
             else: end_label_action = QtW.QAction(f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})')
         else: end_label_action = QtW.QAction(f'{verb}: Disabled')
@@ -879,7 +874,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if show_length_label:
             frames = self.maximum - self.minimum
             seconds = frames / self.frame_rate
-            h, m, s, ms = qthelpers.get_hms(seconds)
+            h, m, s, ms = qthelpers.getHMS(seconds)
             if seconds < 3600: length_label_action = QtW.QAction(f'Length: {m}:{s:02}.{ms:02} ({frames} frames)')
             else: length_label_action = QtW.QAction(f'Length: {h}:{m:02}:{s:02} ({frames} frames)')
             length_label_action.setEnabled(False)
@@ -1240,7 +1235,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.player.video_set_marquee_int(VideoMarqueeOption.Y, int(self.vheight * self.vlc.text_y_percent))
 
             # update UI with new media's duration
-            h, m, s, ms = qthelpers.get_hms(self.duration)
+            h, m, s, ms = qthelpers.getHMS(self.duration)
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
             self.spinHour.setEnabled(h != 0)        # spinSecond does not need to be adjusted here
             self.spinMinute.setEnabled(m != 0)
@@ -1261,7 +1256,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if was_minimzed_to_tray:    # check appropriate setting based on our original minimize state
                             if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
                         elif self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
-                if focus_window: qthelpers.show_window(self)
+                if focus_window: qthelpers.showWindow(self)
         except: self.log(f'(!) OPEN FAILED: {format_exc()}')
 
 
@@ -1734,7 +1729,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if frame == self.maximum and self.buttonTrimEnd.isChecked():
                     self.force_pause(True)
         self.current_time = round(self.duration * (frame / self.frame_count), 3)
-        h, m, s, ms = qthelpers.get_hms(self.current_time)
+        h, m, s, ms = qthelpers.getHMS(self.current_time)
 
         self.set_progress_slider(frame)
         if not self.current_time_lineedit_has_focus():  # use cleaner format for time-strings on videos > 1 hour
@@ -1825,7 +1820,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.log('You cannot set the start of your trim after the end of it.')
             self.minimum = desired_minimum
 
-            h, m, s, ms = qthelpers.get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = qthelpers.getHMS(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
             if self.duration < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_minimum = True
@@ -1848,7 +1843,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.log('You cannot set the end of your trim before the start of it.')
             self.maximum = desired_maximum
 
-            h, m, s, ms = qthelpers.get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = qthelpers.getHMS(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
             if self.duration < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_maximum = True
@@ -2564,7 +2559,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             mime = self.mime_type.capitalize()  # capitalize first letter of mime type
             paused = '■' if self.get_progess_slider() == self.frame_count else '▷' if not self.is_paused else '𝗜𝗜'   # ▶
-            h, m, s, _ = qthelpers.get_hms(self.duration)
+            h, m, s, _ = qthelpers.getHMS(self.duration)
             duration = f'{m}:{s:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}'  # no milliseconds in window title
             if self.mime_type != 'audio':
                 fps = str(self.frame_rate_rounded)
@@ -2724,7 +2719,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.set_and_update_progress(new_frame)
         if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
         if self.isFullScreen() and self.dialog_settings.checkTextOnFullScreenPosition.isChecked():   # if we're in fullscreen mode, show the current position as a marquee
-            h, m, s, _ = qthelpers.get_hms(self.current_time)
+            h, m, s, _ = qthelpers.getHMS(self.current_time)
             current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
             max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
             self.show_text(f'{current_text}/{max_text}')

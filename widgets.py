@@ -5,8 +5,6 @@ import constants
 import qthelpers
 
 import os
-import gc
-import sys
 import time
 import math
 import logging
@@ -25,7 +23,6 @@ def init_custom_widgets(cfg_instance, app_instance):
     global cfg, app
     cfg = cfg_instance
     app = app_instance
-
 
 
 # ------------------------------------------
@@ -742,7 +739,7 @@ class QVideoSlider(QtW.QSlider):
                 else: pos = self.last_mouseover_pos                                 # use last position if mouse is outside the slider
 
                 frame = self.pixelPosToRangeValue(pos)
-                h, m, s, _ = qthelpers.get_hms(round(self.parent.duration * (frame / self.parent.frame_count), 2))
+                h, m, s, _ = qthelpers.getHMS(round(self.parent.duration * (frame / self.parent.frame_count), 2))
                 text = f'{m}:{s:02}' if self.parent.duration < 3600 else f'{h}:{m:02}:{s:02}'
 
                 size = self.cfg.spinHoverFontSize.value()
@@ -764,7 +761,7 @@ class QVideoSlider(QtW.QSlider):
                 p.drawText(pos, text)                           # draw actual text over shadow
 
                 # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
-                #h, m, s, _ = qthelpers.get_hms(round(self.parent.duration * (frame / self.parent.frame_count), 2))
+                #h, m, s, _ = qthelpers.getHMS(round(self.parent.duration * (frame / self.parent.frame_count), 2))
                 #if self.parent.duration < 3600: self.setToolTip(f'{m}:{s:02}')
                 #else: self.setToolTip(f'{h}:{m:02}:{s:02}')    # use cleaner format for time-strings on videos > 1 hour
         finally: p.end()

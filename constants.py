@@ -85,7 +85,7 @@ def verify_ffmpeg():
             logging.getLogger('constants.py').warning('(!) ffmpeg not detected in /bin folder. Assuming it is still accessible.')
         else:
             filename = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
-            global_path = qthelpers.file_in_PATH(filename)
+            global_path = qthelpers.getFromPATH(filename)
             if global_path: FFMPEG = global_path
             elif not os.path.exists(filename):
                 choice = qthelpers.getPopupOkCancel(title='ffmpeg not detected',
