@@ -266,7 +266,7 @@ from tinytag import TinyTag
 # ---------------------
 def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
     start = gettime()
-    logging.info('Performing ffmpeg operation...')
+    logging.info('Performing FFmpeg operation...')
 
     # create temp file if '%tp' is in ffmpeg command (and we have a valid `out` file)
     temp_path = ''
@@ -277,7 +277,7 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
 
     # create final ffmpeg command and run it
     new_cmd = f'{constants.FFMPEG} -y {cmd.replace("%tp", temp_path)} -hide_banner -loglevel warning'
-    logging.info(f'ffmpeg command (out={infile} temp_path={temp_path})\nBefore: {cmd}\nAfter: {new_cmd}\n')
+    logging.info(f'FFmpeg command (out={infile} temp_path={temp_path})\nBefore: {cmd}\nAfter: {new_cmd}\n')
     process = subprocess.call(new_cmd, shell=True)
     try: process.wait()
     except: pass
@@ -286,11 +286,11 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
     if temp_path:
         if os.path.exists(infile):
             try: os.remove(temp_path)
-            except: logging.warning(f'Temporary ffmpeg file {temp_path} could not be deleted')
+            except: logging.warning(f'Temporary FFmpeg file {temp_path} could not be deleted')
         else:   # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_file line up there
             if temp_path == gui.locked_video: gui.locked_video = infile
             os.renames(temp_path, infile)
-    gui.log(f'ffmpeg operation succeeded after {gettime() - start:.1f} seconds.')
+    gui.log(f'FFmpeg operation succeeded after {gettime() - start:.1f} seconds.')
     return outfile
 
 
@@ -1610,10 +1610,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # confirm our operations, clean up temp files/base video, and get final path
             if operations_detected:                         # double-check that we've actually done anything at all
-                if not os.path.exists(dest): raise AssertionError('(!) Media saved without error, but never actually appeared. Likely an ffmpeg error.')
+                if not os.path.exists(dest): raise AssertionError('(!) Media saved without error, but never actually appeared. Likely an FFmpeg error.')
                 if os.path.getsize(dest) == 0:
                     os.remove(dest)
-                    raise AssertionError('(!) Media saved without error, but is completely empty. Likely an ffmpeg error.')
+                    raise AssertionError('(!) Media saved without error, but is completely empty. Likely an FFmpeg error.')
 
                 if delete_after_save == FULL_DELETE: self.mark_for_deletion(modifiers=Qt.ControlModifier)
                 else:                                       # we either don't want to delete or we want to only mark it for now
@@ -1805,7 +1805,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     # ---------------------
-    # >>> ffmpeg <<<
+    # >>> FFmpeg <<<
     # ---------------------
     def set_trim_start(self, *args, force=False):
         if not self.video:

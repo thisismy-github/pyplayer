@@ -69,10 +69,10 @@ else: FFMPEG = os.path.join(BIN_DIR, 'ffmpeg')
 
 def verify_ffmpeg():
     global FFMPEG
-    popup_text = 'ffmpeg was not detected in the bin folder, your install folder,\n' \
-                 'or your system PATH variable. ffmpeg is used for editing.\n\n' \
+    popup_text = 'FFmpeg was not detected in the bin folder, your install folder,\n' \
+                 'or your system PATH variable. FFmpeg is used for editing.\n\n' \
                  'Without it, editing features will not function. It should have been\n' \
-                 'included with your download. If it wasn\'t, download the ffmpeg\n' \
+                 'included with your download. If it wasn\'t, download the FFmpeg\n' \
                  'essentials below, or click "Cancel" to stop receiving this warning.'
     popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
 
@@ -82,15 +82,15 @@ def verify_ffmpeg():
         import logging
         from PyQt5.QtWidgets import QMessageBox
         if config.cfg.ffmpegwarningignored:
-            logging.getLogger('constants.py').warning('(!) ffmpeg not detected in /bin folder. Assuming it is still accessible.')
+            logging.getLogger('constants.py').warning('(!) FFmpeg not detected in /bin folder. Assuming it is still accessible.')
         else:
             filename = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
             global_path = qthelpers.getFromPATH(filename)
             if global_path: FFMPEG = global_path
             elif not os.path.exists(filename):
-                choice = qthelpers.getPopupOkCancel(title='ffmpeg not detected',
+                choice = qthelpers.getPopupOkCancel(title='FFmpeg not detected',
                                                     text=popup_text,
                                                     textInformative=popup_text_informative,
                                                     icon=QMessageBox.Warning).exec()
                 if choice == QMessageBox.Cancel: config.cfg.ffmpegwarningignored = True
-            logging.getLogger('constants.py').warning('ffmpeg not detected in /bin folder. Current FFMPEG path: ' + FFMPEG)
+            logging.getLogger('constants.py').warning('FFmpeg not detected in /bin folder. Current FFMPEG path: ' + FFMPEG)

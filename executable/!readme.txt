@@ -12,7 +12,7 @@ For compatibility with Windows 7 and Windows Vista, Python 3.8 must be used.
 Summary of contents:
     include           -- These are the excess files that are needed by PyPlayer, which currently
                          includes the two required libvlc .dlls, and all of the currently used VLC
-                         plugins. If users already have these files in their PATH, (i.e. ffmpeg and
+                         plugins. If users already have these files in their PATH, (i.e. FFmpeg and
                          VLC are installed) then they do not actually need to be included.
 
     build             -- PyInstaller build files that are created during the first compilation.

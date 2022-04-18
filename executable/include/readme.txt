@@ -1,6 +1,6 @@
-This folder is for ffmpeg as well as required VLC files.
+This folder is for FFmpeg as well as required VLC files.
 
-If you already have ffmpeg or VLC installed on your computer
+If you already have FFmpeg or VLC installed on your computer
 (assuming they're up-to-date), PyPlayer will be able to access
 these files automatically. If so, you are free to delete their
 associated files from this folder if you wish.

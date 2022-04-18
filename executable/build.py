@@ -83,7 +83,7 @@ def compile_windows():
     compile()
     print(f'\nPerforming post-compilation tasks for {PLATFORM}...')
 
-    print('Copying ffmpeg to plugins folder...')
+    print('Copying ffmpeg.exe to plugins folder...')
     shutil.copy2(pjoin(ROOT_DIR, 'bin', 'ffmpeg.exe'), pjoin(RELEASE_DIR, 'plugins', 'ffmpeg.exe'))
 
     print('Moving .pyd and .dll files to PyQt folder...')
