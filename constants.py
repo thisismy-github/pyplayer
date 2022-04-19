@@ -1,5 +1,5 @@
-''' Contains a number of constants used throughout the project that were originally
-    at the top of several files. Unlike qtstart.py, I think this one will stay.
+''' Contains a number of constants used throughout the project
+    that were originally spread across the tops of several files.
     thisismy-github 3/14/22 '''
 
 import config
@@ -67,30 +67,47 @@ prompt is shown on exit if any files are marked.'''
 if IS_COMPILED: FFMPEG = os.path.join(CWD, 'plugins', 'ffmpeg')
 else: FFMPEG = os.path.join(BIN_DIR, 'ffmpeg')
 
-def verify_ffmpeg():
-    global FFMPEG
-    popup_text = 'FFmpeg was not detected in the bin folder, your install folder,\n' \
-                 'or your system PATH variable. FFmpeg is used for editing.\n\n' \
-                 'Without it, editing features will not function. It should have been\n' \
-                 'included with your download. If it wasn\'t, download the FFmpeg\n' \
-                 'essentials below, or click "Cancel" to stop receiving this warning.'
-    popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
 
+def verify_ffmpeg(warning: bool = True, force_warning: bool = False) -> str:
+    ''' Checks, sets, and returns constants.FFMPEG if it's present in the
+        bin/PyQt/root folders, or the user's PATH variable. If not, FFMPEG is
+        set to ''. If `warning` is True, a popup is displayed unless the user
+        clicks 'Cancel' on one of the popups. If `force_warning` is True and
+        constants.FFMPEG is missing, a popup is displayed no matter what. '''
+    global FFMPEG
     expected_path = (FFMPEG + '.exe') if PLATFORM == 'Windows' else FFMPEG
-    expected_name = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
-    if not os.path.exists(expected_path) and not os.path.exists(expected_name):
-        import logging
-        from PyQt5.QtWidgets import QMessageBox
-        if config.cfg.ffmpegwarningignored:
-            logging.getLogger('constants.py').warning('(!) FFmpeg not detected in /bin folder. Assuming it is still accessible.')
+    filename = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
+    if not os.path.exists(expected_path):                   # FFmpeg not in expected path
+        if os.path.exists(filename):
+            FFMPEG = os.path.realpath(filename)             # ffmpeg.exe exists in root
+            if PLATFORM == 'Windows': FFMPEG = FFMPEG[:-4]  # strip '.exe'
         else:
-            filename = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
-            global_path = qthelpers.getFromPATH(filename)
-            if global_path: FFMPEG = global_path
-            elif not os.path.exists(filename):
-                choice = qthelpers.getPopupOkCancel(title='FFmpeg not detected',
-                                                    text=popup_text,
-                                                    textInformative=popup_text_informative,
-                                                    icon=QMessageBox.Warning).exec()
-                if choice == QMessageBox.Cancel: config.cfg.ffmpegwarningignored = True
-            logging.getLogger('constants.py').warning('FFmpeg not detected in /bin folder. Current FFMPEG path: ' + FFMPEG)
+            import logging
+            warn = logging.getLogger('constants.py').warning
+            FFMPEG = qthelpers.getFromPATH(filename)
+            if FFMPEG == '':
+                if config.cfg.ffmpegwarningignored and not force_warning:
+                    warn('(!) FFmpeg not detected in /bin folder. Assuming it is still accessible.')
+                elif warning or force_warning:
+                    _display_ffmpeg_warning(forced=force_warning)
+            warn('FFmpeg not detected in /bin folder. Current FFMPEG constant: ' + FFMPEG)
+    return FFMPEG
+
+
+def _display_ffmpeg_warning(forced: bool = True) -> None:
+    import logging
+    from PyQt5.QtWidgets import QMessageBox
+    dir_name = 'plugins' if IS_COMPILED else 'bin'
+    warning_text = '.' if forced else ', or click\n"Cancel" to stop receiving this warning.'
+    popup_text = f'FFmpeg was not detected in the {dir_name} folder, your install folder,\n' \
+                 'or your system PATH variable. FFmpeg is used for editing.\n\n' \
+                 'Without it, editing features will not function. For Windows\n' \
+                 'users, it should have been included with your download.\n' \
+                 'If it wasn\'t, download the FFmpeg essentials below' + warning_text
+    popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
+    choice = qthelpers.getPopupOkCancel(title='FFmpeg not detected',
+                                        text=popup_text,
+                                        textInformative=popup_text_informative,
+                                        icon=QMessageBox.Warning).exec()
+    if not forced and choice == QMessageBox.Cancel: config.cfg.ffmpegwarningignored = True
+    logging.getLogger('constants.py').warning('FFmpeg not detected in /bin folder. Current FFMPEG constant: ' + FFMPEG)

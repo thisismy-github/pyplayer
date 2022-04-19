@@ -180,6 +180,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self._save_open_signal.connect(lambda file, remember_old_file: self.open(file=file, remember_old_file=remember_old_file))
     self.fast_start_open_signal.connect(self.fast_start_open)
     self.restart_signal.connect(self.restart)
+    self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)
     self.update_progress_signal.connect(self.update_progress_slot)
     self.update_title_signal.connect(self.update_title)
     self.show_save_progress_signal.connect(self.save_progress_bar.setVisible)

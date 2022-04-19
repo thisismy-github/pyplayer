@@ -986,12 +986,15 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
 
 
     def get_thumbnail(self, thumbnail_path, video, item_widget):
+        ''' Generates a thumbnail for a given `video`, saves to `thumbnail_path`,
+            and updates the QVideoListItemWidget `item_widget` with the thumbnail.
+            constants.FFMPEG is verified beforehand and assumed to be valid. '''
         temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
         cmd_get_thumbnail = f'-ss 3 -i "{video}" -vframes 1 "{temp_path}"'
         cmd_resize_thumbnail = f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"'
         logging.info(f'Generating thumbnail for "{video}" to "{temp_path}"')
-        subprocess.call(f'ffmpeg -y {cmd_get_thumbnail} -hide_banner -loglevel warning', shell=True)
-        subprocess.call(f'ffmpeg -y {cmd_resize_thumbnail} -hide_banner -loglevel warning', shell=True)
+        subprocess.call(f'{constants.FFMPEG} -y {cmd_get_thumbnail} -hide_banner -loglevel warning', shell=True)
+        subprocess.call(f'{constants.FFMPEG} -y {cmd_resize_thumbnail} -hide_banner -loglevel warning', shell=True)
         item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
         try: os.remove(temp_path)
         except Exception as error: logging.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')

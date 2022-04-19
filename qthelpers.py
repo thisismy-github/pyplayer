@@ -61,12 +61,14 @@ def openPath(path: str, explore: bool = False) -> None:
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
 
 def getFromPATH(filename: str) -> str:
-    ''' Returns the full path to a `filename` if it exists in the user's PATH. '''
+    ''' Returns the full path to a `filename` if it exists in
+        the user's PATH, otherwise returns an empty string. '''
     for path in os.environ.get('PATH', '').split(';' if platform.system() == 'Windows' else ':'):
         try:
             if filename in os.listdir(path):
                 return os.path.join(path, filename)
         except: pass
+    return ''
 
 def showWindow(window: QtWidgets.QWidget) -> None:
     ''' Shows, restores, raises, and activates a `window`. '''
@@ -88,7 +90,7 @@ def getHMS(seconds: float) -> tuple:
 # Generic dialogs
 # ---------------------
 def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-             buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok, modal=0, opacity=1.0,
+             buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok, modal=True, opacity=1.0,
              icon=QMessageBox.Question, windowIcon=None) -> QMessageBox:
     if not text: return                                             # kill popup if no text is passed
     if isinstance(icon, str):                                       # allow common icons via a dictionary of strings
@@ -101,7 +103,7 @@ def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedA
     if textDetailed: msg.setDetailedText(textDetailed)
     msg.setStandardButtons(buttons)
     msg.setDefaultButton(defaultButton)
-    msg.setWindowModality(int(modal))
+    msg.setModal(modal)
     msg.setWindowOpacity(opacity)
     msg.setTextInteractionFlags(Qt.TextSelectableByMouse)    # allows copy/paste of popup text
     if isinstance(windowIcon, str):                                 # windowIcon (the titlebar icon) is a filepath
@@ -116,19 +118,19 @@ def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedA
     return msg
 
 def getPopupOkCancel(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-                     defaultButton=QMessageBox.Ok, icon=QMessageBox.Question, modal=0, opacity=1.0) -> QMessageBox:
+                     defaultButton=QMessageBox.Ok, icon=QMessageBox.Question, modal=True, opacity=1.0) -> QMessageBox:
     return getPopup(title, text, textInformative, textDetailed, textDetailedAutoOpen,
                     buttons=QMessageBox.Ok | QMessageBox.Cancel, defaultButton=defaultButton,
                     icon=icon, modal=modal, opacity=opacity)
 
 def getPopupYesNo(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-                  defaultButton=QMessageBox.Yes, icon=QMessageBox.Question, modal=0, opacity=1.0) -> QMessageBox:
+                  defaultButton=QMessageBox.Yes, icon=QMessageBox.Question, modal=True, opacity=1.0) -> QMessageBox:
     return getPopup(title, text, textInformative, textDetailed, textDetailedAutoOpen,
                     buttons=QMessageBox.Yes | QMessageBox.No, defaultButton=defaultButton,
                     icon=icon, modal=modal, opacity=opacity)
 
 def getPopupYesNoCancel(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-                        defaultButton=QMessageBox.Yes, icon=QMessageBox.Question, modal=0, opacity=1.0) -> QMessageBox:
+                        defaultButton=QMessageBox.Yes, icon=QMessageBox.Question, modal=True, opacity=1.0) -> QMessageBox:
     return getPopup(title, text, textInformative, textDetailed, textDetailedAutoOpen,
                     buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
                     defaultButton=defaultButton, icon=icon, modal=modal, opacity=opacity)
@@ -141,7 +143,7 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
             super().__init__(parent)
             if 'delete' in kwargs: kwargs['deleteOnClose'] = kwargs['delete']   # accept both 'delete' and 'deleteOnClose'
             self.setAttribute(Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
-            self.setWindowModality(int(kwargs.get('modal', 1)))
+            self.setModal(kwargs.get('modal', True))
             self.setParent(parent)
             self.setupUi(self)
     return QPersistentDialog(parent, **kwargs)
@@ -156,7 +158,8 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
 
     class QDialogHybrid(QtWidgets.QDialog):
         def select(self, choice):
-            ''' Sets the selected option to self.choice. `choice` can be any type and is accessed/manipulated after dialog execution. '''
+            ''' Sets the selected option to self.choice. `choice` can be any
+                type and is accessed/manipulated after dialog execution. '''
             self.choice = choice
 
         def addButtons(self, layout, *buttons):         # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox

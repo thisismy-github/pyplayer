@@ -421,11 +421,12 @@ def get_PIL_Image():
 class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     _open_signal = QtCore.pyqtSignal()                  # Custom signals MUST be class variables
     _save_open_signal = QtCore.pyqtSignal(str, bool)    # file + bool for remembering previous file
+    fast_start_open_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
+    show_ffmpeg_warning_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
     update_title_signal = QtCore.pyqtSignal()
     log_signal = QtCore.pyqtSignal(str)
-    fast_start_open_signal = QtCore.pyqtSignal(str)
     show_save_progress_signal = QtCore.pyqtSignal(bool)
     disable_crop_mode_signal = QtCore.pyqtSignal()
     _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
@@ -1501,6 +1502,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.rename(dest)                    # no operations, but name is changed. do a normal rename and return (not thread safe?)
             return self.log_on_screen('No changes have been made.', log=False)
 
+        # ffmpeg is required after this point, so check that it's actually present
+        # because we're in a thread, we skip the warning and display it separately through a signal
+        if not constants.verify_ffmpeg(warning=False, force_warning=False):
+            self.show_ffmpeg_warning_signal.emit()
+            return self.log_on_screen('You don\'t have FFmpeg installed!')
+
         # log data and create some strings for temporary paths we'll be needing
         logging.info(f'Saving file to "{dest}"')
         intermediate_file = video   # the path to the file that will be receiving all changes between operations
@@ -1869,13 +1876,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def concatenate(self, action: QtW.QAction, files=None):                             # TODO this is old and needs to be unified with the other edit methods
         # https://stackoverflow.com/questions/7333232/how-to-concatenate-two-mp4-files-using-ffmpeg
         # https://stackoverflow.com/questions/31691943/ffmpeg-concat-produces-dts-out-of-order-errors
+        if not constants.verify_ffmpeg(force_warning=True):
+            return self.log_on_screen('You don\'t have FFmpeg installed!')
+
         style = {self.actionCatNone: 0, self.actionCatAny: 1, self.actionCatBefore: 2, self.actionCatAfter: 3}[action]
         if self.mime_type != 'video' and style > 1: return self.statusbar.showMessage('Concatenation is not implemented for audio and image files yet.', 10000)
 
         try:
             if self.video is None and style > 1: return self.statusbar.showMessage('No video is playing.', 10000)  # for styles that assume a video is playing -> return
             logging.info(f'Preparing to concatenate videos with style={style} and files={files}')
-            #dialog = self.dialog_cat
 
             # create/setup dialog and connect signals
             from bin.window_cat import Ui_catDialog
@@ -1884,7 +1893,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.checkOpen.setChecked(cfg.concatenate.open)
             dialog.checkExplore.setChecked(cfg.concatenate.explore)
             dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our current delete setting
-            dialog.output.setText(self.lineOutput.text().strip())                  # set dialog's output text to our current output text
+            dialog.output.setText(self.lineOutput.text().strip())                       # set dialog's output text to our current output text
 
             dialog.add.clicked.connect(dialog.videoList.add)
             dialog.delete.clicked.connect(lambda: qthelpers.listRemoveSelected(dialog.videoList))   # TODO itemDoubleClicked -> play video?
@@ -1922,7 +1931,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try: os.remove(intermediate_file)
                 except: pass
                 intermediate_files.append(intermediate_file)
-                process = subprocess.Popen(f'ffmpeg -y -i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}" -hide_banner -loglevel warning', shell=True)
+                cmd = f'"{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"'
+                process = subprocess.Popen(f'{constants.FFMPEG} -y -i {cmd} -hide_banner -loglevel warning', shell=True)
                 process.wait()
 
             # preparing output destination
@@ -1934,9 +1944,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             output = os.path.join(dirname, sanitize(basename))                                              # sanitize() does not account for full paths
 
             # actually concatentating videos
-            if self.mime_type == 'audio': cmd = f'ffmpeg -y -i "concat:{"|".join(intermediate_files)}" -c copy "{output}" -hide_banner -loglevel warning'
-            else: cmd = f'ffmpeg -y -i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}" -hide_banner -loglevel warning'
-            process = subprocess.Popen(cmd, shell=True)
+            if self.mime_type == 'audio': cmd = f'"concat:{"|".join(intermediate_files)}" -c copy "{output}"'
+            else: cmd = f'"concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}"'
+            process = subprocess.Popen(f'{constants.FFMPEG} -y -i {cmd} -hide_banner -loglevel warning', shell=True)
             process.wait()
             for intermediate_file in intermediate_files:
                 try: os.remove(intermediate_file)
@@ -1945,7 +1955,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # post-concatenation activites
             #temp_path = os.path.join(TEMP_DIR, 'temp_concat_filelist.txt')
             #with open(temp_path, 'w') as txt: txt.writelines(f"file '{file}'\n" for file in files)
-            #subprocess.Popen(f'ffmpeg -y -safe 0 -f concat -i "{temp_path}" -c copy "{output}"', shell=True)
+            #subprocess.Popen(f'{constants.FFMPEG} -y -safe 0 -f concat -i "{temp_path}" -c copy "{output}"', shell=True)
             #try: os.remove(temp_path)
             #except: pass
             if not os.path.exists(output): return self.log('(!) Concatenation failed. No files have been altered.')
@@ -2937,7 +2947,7 @@ if __name__ == "__main__":
         cfg = config.loadConfig(gui, constants.CONFIG_PATH)     # create and load config
         gui.refresh_theme_combo(set_theme=cfg.theme)            # load and set themes
         widgets.init_custom_widgets(cfg, app)                   # set config and app as global objects in widgets.py
-        constants.verify_ffmpeg()                               # confirm/look for valid ffmpeg path if needed
+        constants.verify_ffmpeg(warning=True)                   # confirm/look for valid ffmpeg path if needed
 
         with open(constants.PID_PATH, 'w'):     # create PID file
             gui.handle_updates(_launch=True)    # check for/download/validate pending updates
