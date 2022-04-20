@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\bin\window_about.ui'
+# Form implementation generated from reading ui file 'bin\window_about.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -16,7 +16,6 @@ class Ui_aboutDialog(object):
         aboutDialog.setObjectName("aboutDialog")
         aboutDialog.resize(392, 184)
         aboutDialog.setMinimumSize(QtCore.QSize(392, 184))
-        aboutDialog.setMaximumSize(QtCore.QSize(392, 184))
         aboutDialog.setStyleSheet("QLabel { color: white; }\n"
 "QDialog {\n"
 "background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(50, 50, 50, 255), stop:1 rgba(85, 0, 0, 255));\n"
@@ -27,12 +26,32 @@ class Ui_aboutDialog(object):
         self.gridLayout.setContentsMargins(7, 6, 7, -1)
         self.gridLayout.setSpacing(6)
         self.gridLayout.setObjectName("gridLayout")
+        self.dialogButtonBox = QtWidgets.QDialogButtonBox(aboutDialog)
+        self.dialogButtonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
+        self.dialogButtonBox.setCenterButtons(True)
+        self.dialogButtonBox.setObjectName("dialogButtonBox")
+        self.gridLayout.addWidget(self.dialogButtonBox, 5, 0, 1, 3)
         self.line = QtWidgets.QFrame(aboutDialog)
         self.line.setFrameShadow(QtWidgets.QFrame.Raised)
         self.line.setLineWidth(1)
         self.line.setFrameShape(QtWidgets.QFrame.HLine)
         self.line.setObjectName("line")
-        self.gridLayout.addWidget(self.line, 2, 0, 1, 2)
+        self.gridLayout.addWidget(self.line, 2, 0, 1, 3)
+        self.label = QtWidgets.QLabel(aboutDialog)
+        self.label.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignTop)
+        self.label.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 3, 0, 1, 3)
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.labelLogo = QtWidgets.QLabel(aboutDialog)
+        self.labelLogo.setMaximumSize(QtCore.QSize(96, 96))
+        self.labelLogo.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+        self.labelLogo.setScaledContents(True)
+        self.labelLogo.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        self.labelLogo.setWordWrap(True)
+        self.labelLogo.setObjectName("labelLogo")
+        self.horizontalLayout.addWidget(self.labelLogo)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
         self.verticalLayout.setContentsMargins(2, 10, -1, 10)
@@ -50,25 +69,8 @@ class Ui_aboutDialog(object):
         self.labelVersion.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.labelVersion.setObjectName("labelVersion")
         self.verticalLayout.addWidget(self.labelVersion)
-        self.gridLayout.addLayout(self.verticalLayout, 0, 1, 1, 1)
-        self.labelLogo = QtWidgets.QLabel(aboutDialog)
-        self.labelLogo.setMaximumSize(QtCore.QSize(96, 96))
-        self.labelLogo.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
-        self.labelLogo.setScaledContents(True)
-        self.labelLogo.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
-        self.labelLogo.setWordWrap(True)
-        self.labelLogo.setObjectName("labelLogo")
-        self.gridLayout.addWidget(self.labelLogo, 0, 0, 1, 1)
-        self.label = QtWidgets.QLabel(aboutDialog)
-        self.label.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignTop)
-        self.label.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
-        self.label.setObjectName("label")
-        self.gridLayout.addWidget(self.label, 3, 0, 1, 2)
-        self.dialogButtonBox = QtWidgets.QDialogButtonBox(aboutDialog)
-        self.dialogButtonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
-        self.dialogButtonBox.setCenterButtons(True)
-        self.dialogButtonBox.setObjectName("dialogButtonBox")
-        self.gridLayout.addWidget(self.dialogButtonBox, 5, 0, 1, 2)
+        self.horizontalLayout.addLayout(self.verticalLayout)
+        self.gridLayout.addLayout(self.horizontalLayout, 0, 1, 1, 1)
 
         self.retranslateUi(aboutDialog)
         self.dialogButtonBox.accepted.connect(aboutDialog.accept)
@@ -78,8 +80,8 @@ class Ui_aboutDialog(object):
     def retranslateUi(self, aboutDialog):
         _translate = QtCore.QCoreApplication.translate
         aboutDialog.setWindowTitle(_translate("aboutDialog", "About PyPlayer"))
-        self.labelVersion.setText(_translate("aboutDialog", "<html><head/><body><p style=\"line-height:0.7\">?version</p><p style=\"line-height:0.3\"><span style=\"font-size:10.5pt;\"><a href=\"https://www.github.com/thisismy-github/pyplayer\"><span style=\"font-size:10.5pt; text-decoration: underline; color:#00aaff;\">github</span></a> created 2022 by thisismy-github</span></p><p ><a href=\"https://www.thisismywebsite.net/\"><span style=\"font-size:10.5pt; text-decoration: underline; color:#00aaff;\">https://www.thisismywebsite.net/</span></a></p></body></html>"))
         self.label.setText(_translate("aboutDialog", "<html><head/><body><p><span style=\" color:#ffffff;\">a mediaplayer based on the <a href=\"https://wiki.videolan.org/Python_bindings\" style=\"text-decoration: underline; color:#00aaff;\">python-bindings</a> for <a href=\"https://wiki.videolan.org/LibVLC\" style=\"text-decoration: underline; color:#00aaff;\">libVLC</a> and written in </span><a href=\"https://pythonpyqt.com\" style=\"text-decoration: underline; color:#00aaff;\">PyQt5</a></span></p></body></html>"))
+        self.labelVersion.setText(_translate("aboutDialog", "<html><head/><body><p style=\"line-height:0.7\">?version</p><p style=\"line-height:0.3\"><span style=\"font-size:10.5pt;\"><a href=\"https://www.github.com/thisismy-github/pyplayer\"><span style=\"font-size:10.5pt; text-decoration: underline; color:#00aaff;\">github</span></a> created 2022 by thisismy-github</span></p><p ><a href=\"https://www.thisismywebsite.net/\"><span style=\"font-size:10.5pt; text-decoration: underline; color:#00aaff;\">https://www.thisismywebsite.net/</span></a></p></body></html>"))
 
 
 if __name__ == "__main__":

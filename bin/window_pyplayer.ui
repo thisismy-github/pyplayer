@@ -331,7 +331,7 @@
            </size>
           </property>
           <property name="text">
-           <string>--:--</string>
+           <string notr="true">--:--</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -561,7 +561,7 @@ Right-click for more options.</string>
              <enum>Qt::NoFocus</enum>
             </property>
             <property name="text">
-             <string>𝗜𝗜</string>
+             <string notr="true">𝗜𝗜</string>
             </property>
            </widget>
           </item>
@@ -666,6 +666,12 @@ Right-click for more options.</string>
             </property>
             <item>
              <widget class="QPushButton" name="buttonOpenMediaLocation">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -690,6 +696,12 @@ Right-click for more options.</string>
             </item>
             <item>
              <widget class="QPushButton" name="buttonMarkDeleted">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -725,6 +737,12 @@ prompt is shown on exit if any files are marked.</string>
             </item>
             <item>
              <widget class="QPushButton" name="buttonSnapshot">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -758,6 +776,12 @@ Right-click for more options.</string>
             </item>
             <item>
              <widget class="QPushButton" name="buttonLoop">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>22</width>
@@ -785,6 +809,12 @@ Right-click for more options.</string>
             </item>
             <item>
              <widget class="QPushButton" name="buttonAutoplay">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>22</width>

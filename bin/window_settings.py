@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\bin\window_settings.ui'
+# Form implementation generated from reading ui file 'bin\window_settings.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -14,8 +14,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_settingsDialog(object):
     def setupUi(self, settingsDialog):
         settingsDialog.setObjectName("settingsDialog")
-        settingsDialog.resize(354, 730)
-        settingsDialog.setMinimumSize(QtCore.QSize(347, 356))
+        settingsDialog.resize(353, 730)
+        settingsDialog.setMinimumSize(QtCore.QSize(353, 353))
         self.gridLayout = QtWidgets.QGridLayout(settingsDialog)
         self.gridLayout.setContentsMargins(0, 0, 0, 8)
         self.gridLayout.setVerticalSpacing(8)
@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 335, 1462))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1462))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -73,6 +73,7 @@ class Ui_settingsDialog(object):
         self.label_49.setObjectName("label_49")
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_49)
         self.lineWindowTitleFormat = QtWidgets.QLineEdit(self.tabGeneral)
+        self.lineWindowTitleFormat.setText("?paused ?name (?duration | ?fpsfps)")
         self.lineWindowTitleFormat.setObjectName("lineWindowTitleFormat")
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.lineWindowTitleFormat)
         self.label_2 = QtWidgets.QLabel(self.tabGeneral)
@@ -975,6 +976,7 @@ class Ui_settingsDialog(object):
         font.setFamily("Segoe UI Light")
         font.setPointSize(15)
         self.labelCurrentVersion.setFont(font)
+        self.labelCurrentVersion.setWordWrap(True)
         self.labelCurrentVersion.setObjectName("labelCurrentVersion")
         self.verticalLayout_6.addWidget(self.labelCurrentVersion)
         self.line_2 = QtWidgets.QFrame(self.tabUpdates)
@@ -1071,14 +1073,13 @@ class Ui_settingsDialog(object):
 "?ratio        The aspect ratio of the media being played.\n"
 "?volume        The volume of the media being played.\n"
 "?speed        The playback speed of the media being played."))
-        self.lineWindowTitleFormat.setText(_translate("settingsDialog", "?paused ?name (?duration | ?fpsfps)"))
         self.label_33.setText(_translate("settingsDialog", "Scrollwheel volume"))
         self.spinVolumeScroll.setSuffix(_translate("settingsDialog", "%"))
         self.spinVolumeScroll.setPrefix(_translate("settingsDialog", "Increments volume by "))
-        self.checkHideIdleCursor.setToolTip(_translate("settingsDialog", "If checked, your cursor will disappear\n"
-"until moved if left idle over the video\n"
-"for the specified amount of time."))
-        self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide idle cursor"))
+        self.checkHideIdleCursor.setToolTip(_translate("settingsDialog", "If checked, your cursor will disappear until moved\n"
+"if left idle over the player for the specified amount\n"
+"of time. While fullscreen, the UI will also disappear."))
+        self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor/UI"))
         self.spinHideIdleCursorDuration.setPrefix(_translate("settingsDialog", "After: "))
         self.spinHideIdleCursorDuration.setSuffix(_translate("settingsDialog", " seconds"))
         self.checkHighPrecisionProgress.setToolTip(_translate("settingsDialog", "If checked, the progress slider for your media will be simulated in\n"

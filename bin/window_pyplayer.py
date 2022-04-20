@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file '.\bin\window_pyplayer.ui'
+# Form implementation generated from reading ui file 'bin\window_pyplayer.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -116,6 +116,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_3.addWidget(self.sliderProgress)
         self.labelMaxTime = QtWidgets.QLabel(self.frameProgress)
         self.labelMaxTime.setMinimumSize(QtCore.QSize(48, 0))
+        self.labelMaxTime.setText("--:--")
         self.labelMaxTime.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.labelMaxTime.setObjectName("labelMaxTime")
         self.horizontalLayout_3.addWidget(self.labelMaxTime)
@@ -192,6 +193,7 @@ class Ui_MainWindow(object):
         font.setPointSize(12)
         self.buttonPause.setFont(font)
         self.buttonPause.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.buttonPause.setText("𝗜𝗜")
         self.buttonPause.setObjectName("buttonPause")
         self.gridLayout_3.addWidget(self.buttonPause, 0, 0, 1, 1)
         self.advanced_layout.addLayout(self.gridLayout_3, 0, 0, 1, 1)
@@ -232,6 +234,7 @@ class Ui_MainWindow(object):
         self.hlayoutQuickButtons.setSpacing(6)
         self.hlayoutQuickButtons.setObjectName("hlayoutQuickButtons")
         self.buttonOpenMediaLocation = QtWidgets.QPushButton(self.frameAdvancedControls)
+        self.buttonOpenMediaLocation.setMinimumSize(QtCore.QSize(22, 0))
         self.buttonOpenMediaLocation.setMaximumSize(QtCore.QSize(22, 18))
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -241,6 +244,7 @@ class Ui_MainWindow(object):
         self.buttonOpenMediaLocation.setObjectName("buttonOpenMediaLocation")
         self.hlayoutQuickButtons.addWidget(self.buttonOpenMediaLocation)
         self.buttonMarkDeleted = QtWidgets.QPushButton(self.frameAdvancedControls)
+        self.buttonMarkDeleted.setMinimumSize(QtCore.QSize(22, 0))
         self.buttonMarkDeleted.setMaximumSize(QtCore.QSize(22, 18))
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -251,6 +255,7 @@ class Ui_MainWindow(object):
         self.buttonMarkDeleted.setObjectName("buttonMarkDeleted")
         self.hlayoutQuickButtons.addWidget(self.buttonMarkDeleted)
         self.buttonSnapshot = QtWidgets.QPushButton(self.frameAdvancedControls)
+        self.buttonSnapshot.setMinimumSize(QtCore.QSize(22, 0))
         self.buttonSnapshot.setMaximumSize(QtCore.QSize(22, 18))
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -261,6 +266,7 @@ class Ui_MainWindow(object):
         self.buttonSnapshot.setObjectName("buttonSnapshot")
         self.hlayoutQuickButtons.addWidget(self.buttonSnapshot)
         self.buttonLoop = QtWidgets.QPushButton(self.frameAdvancedControls)
+        self.buttonLoop.setMinimumSize(QtCore.QSize(22, 0))
         self.buttonLoop.setMaximumSize(QtCore.QSize(22, 18))
         font = QtGui.QFont()
         font.setPointSize(11)
@@ -271,6 +277,7 @@ class Ui_MainWindow(object):
         self.buttonLoop.setObjectName("buttonLoop")
         self.hlayoutQuickButtons.addWidget(self.buttonLoop)
         self.buttonAutoplay = QtWidgets.QPushButton(self.frameAdvancedControls)
+        self.buttonAutoplay.setMinimumSize(QtCore.QSize(22, 0))
         self.buttonAutoplay.setMaximumSize(QtCore.QSize(22, 18))
         font = QtGui.QFont()
         font.setPointSize(9)
@@ -582,7 +589,6 @@ class Ui_MainWindow(object):
         self.menuVideoTracks.setTitle(_translate("MainWindow", "Video Tracks"))
         self.menuTrimMode.setTitle(_translate("MainWindow", "Trim/Fade"))
         self.menuWindow.setTitle(_translate("MainWindow", "&Window"))
-        self.labelMaxTime.setText(_translate("MainWindow", "--:--"))
         self.buttonTrimStart.setToolTip(_translate("MainWindow", "Click to set the starting position of a trim/\n"
 "the point where the intro fade will stop.\n"
 "\n"
@@ -591,7 +597,6 @@ class Ui_MainWindow(object):
 "the point where the outro fade will stop.\n"
 "\n"
 "Right-click for more options."))
-        self.buttonPause.setText(_translate("MainWindow", "𝗜𝗜"))
         self.buttonPrevious.setToolTip(_translate("MainWindow", "Plays the previous valid media file in the current folder."))
         self.buttonPrevious.setText(_translate("MainWindow", "<<"))
         self.lineOutput.setToolTip(_translate("MainWindow", "No media is currently playing."))

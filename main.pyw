@@ -439,6 +439,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar = QtW.QProgressBar(self.statusbar)
         self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog)
         self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
+        if constants.PLATFORM != 'Windows':              # settings dialog was designed around Windows UI
+            self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width(),
+                                        self.dialog_settings.height())
         qtstart.connect_widget_signals(self)
         self.icons = {
             'window': QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'logo.ico')),
@@ -2187,6 +2190,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         settings_were_open = self.dialog_settings.isVisible()   # hide the always-on-top settings while we show popups
         if settings_were_open: self.dialog_settings.hide()
+        dialog_about.adjustSize()                               # adjust size to match version string/OS fonts
         dialog_about.exec()                                     # don't bother setting a fixed size
         if settings_were_open: self.dialog_settings.show()      # restore settings if they were originally open
 

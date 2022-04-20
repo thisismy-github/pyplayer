@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>354</width>
+    <width>353</width>
     <height>730</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>347</width>
-    <height>356</height>
+    <width>353</width>
+    <height>353</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -58,7 +58,7 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>335</width>
+        <width>334</width>
         <height>1462</height>
        </rect>
       </property>
@@ -186,7 +186,7 @@ following variables are replaced with their corresponding values:
 ?speed		The playback speed of the media being played.</string>
                </property>
                <property name="text">
-                <string>?paused ?name (?duration | ?fpsfps)</string>
+                <string notr="true">?paused ?name (?duration | ?fpsfps)</string>
                </property>
               </widget>
              </item>
@@ -2529,6 +2529,9 @@ the currently playing media's height.</string>
              </property>
              <property name="text">
               <string>Current version: 0.0.0</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
