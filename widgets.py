@@ -1071,6 +1071,7 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
             QtGui.QKeySequence('Ctrl+O'),
             QtGui.QKeySequence('Ctrl+S'),
             QtGui.QKeySequence('Ctrl+Shift+S'),
+            QtGui.QKeySequence('Alt+Q')
         )
 
 
