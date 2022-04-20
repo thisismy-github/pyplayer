@@ -46,15 +46,22 @@ def addPathSuffix(path: str, suffix: str, unique: bool = False) -> str:
     base, ext = os.path.splitext(path)
     return f'{base}{suffix}{ext}' if not unique else getUniquePath(f'{base}{suffix}{ext}')
 
-def openPath(path: str, explore: bool = False) -> None:
-    ''' Attempts to open a `path` with an appropriate application. If `explore` is True, `path`'s
-        parent directory is opened in a file explorer with `path` pre-selected (if possible). '''
+def openPath(path: str, explore: bool = False, fallback: bool = None):
+    ''' Attempts to open `path` with an appropriate application. If `explore`
+        is True, `path`'s parent directory is opened in a file explorer with
+        `path` pre-selected (if possible). If `fallback` is True and `path`
+        does not exist, its parent directory is opened directly. If False, -1
+        is returned. If None, `explore`'s value is used for `fallback`. '''
     path = os.path.abspath(path)
-    if not os.path.exists(path): return
+    if fallback is None: fallback = explore  # if `fallback` is not specified, use `explore`
     try:
-        if explore:                         # open in explorer with file/directory pre-selected
-            path = os.path.dirname(path)    # set path to parent directory
-            system = platform.system()      # couldn't find a way to pre-select files in Linux
+        if not os.path.exists(path):         # ignore `explore` if path doesn't exist (open directory instead)
+            if fallback:
+                path = os.path.dirname(path)
+                if not os.path.exists(path): return -1
+            else: return -1
+        elif explore:                        # open in explorer with file/directory pre-selected
+            system = platform.system()       # couldn't find a way to pre-select files in Linux
             if system == 'Windows': return subprocess.Popen(f'explorer /select, "{path}"')
             elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')
     except: pass    # if any error occurs or system wasn't detected (Linux), use Qt to open the path normally
