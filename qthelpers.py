@@ -101,11 +101,11 @@ def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedA
     msg.setText(text)
     if textInformative: msg.setInformativeText(textInformative)
     if textDetailed: msg.setDetailedText(textDetailed)
+    if not modal: msg.setWindowModality(Qt.WindowModal)             # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     msg.setStandardButtons(buttons)
     msg.setDefaultButton(defaultButton)
-    msg.setModal(modal)
     msg.setWindowOpacity(opacity)
-    msg.setTextInteractionFlags(Qt.TextSelectableByMouse)    # allows copy/paste of popup text
+    msg.setTextInteractionFlags(Qt.TextSelectableByMouse)           # allows copy/paste of popup text
     if isinstance(windowIcon, str):                                 # windowIcon (the titlebar icon) is a filepath
         if os.path.exists(windowIcon): msg.setWindowIcon(QtGui.QIcon(windowIcon))
         else:   # icon is the name of a Qt icon -> https://www.pythonguis.com/faq/built-in-qicons-pyqt/
@@ -141,15 +141,16 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
     class QPersistentDialog(QtWidgets.QDialog, uiClass):
         def __init__(self, parent, **kwargs):
             super().__init__(parent)
-            if 'delete' in kwargs: kwargs['deleteOnClose'] = kwargs['delete']   # accept both 'delete' and 'deleteOnClose'
+            if 'delete' in kwargs: kwargs['deleteOnClose'] = kwargs['delete']    # accept both 'delete' and 'deleteOnClose'
             self.setAttribute(Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
-            self.setModal(kwargs.get('modal', True))
+            modal = kwargs.get('modal', False) or kwargs.get('blocking', False)  # accept both 'modal' and 'blocking'
+            if not modal: self.setWindowModality(Qt.WindowModal)    # # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
             self.setParent(parent)
             self.setupUi(self)
     return QPersistentDialog(parent, **kwargs)
 
 def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size=None, fixedSize=None,
-              opacity=1.0, modal=True, flags=Qt.WindowCloseButtonHint):
+              opacity=1.0, modal=False, flags=Qt.WindowCloseButtonHint):
     ''' Returns a temporary dialog, designed to be finished manually. Uses an on-the-fly subclass called QDialogHybrid
         which serves to add QMessageBox-style functionality to the dialog, allowing easy standard-button access, as
         opposed to the 1 or 0 QDialogBox normally returns. QDialogHyrbid adds the methods dialog.select(choice) and
@@ -162,14 +163,14 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
                 type and is accessed/manipulated after dialog execution. '''
             self.choice = choice
 
-        def addButtons(self, layout, *buttons):         # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
+        def addButtons(self, layout, *buttons):             # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
             ''' Adds QDialogButtonBox to `layout` with a COMMA SEPARATED list of `buttons`, connecting them to
                 the self.select() method in order to access the user's choice after execution. QDialogButtonBox
                 is connected to the .accept() and .reject() methods for a more typical QDialog use-case. '''
             buttonBox = QtWidgets.QDialogButtonBox(self)
-            buttonBox.accepted.connect(self.accept)     # connect buttonBox to accept/reject in case we don't care about the buttons themselves
+            buttonBox.accepted.connect(self.accept)         # connect buttonBox to accept/reject in case we don't care about the buttons themselves
             buttonBox.rejected.connect(self.reject)
-            for button in buttons:                      # connect each button to a callback so we can access our selected button later
+            for button in buttons:                          # connect buttons to a callback so we can access our selected button later
                 buttonBox.addButton(button)
                 buttonBox.button(button).clicked.connect(get_button_callback(self, button))     # buttons cannot be connected directly
             layout.addWidget(buttonBox)
@@ -178,14 +179,14 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
     dialog.setWindowFlags(flags)
     dialog.setWindowTitle(title)
     if isinstance(icon, str):
-        if os.path.exists(icon): icon = QtGui.QIcon(icon)           # icon is a path to an icon file
+        if os.path.exists(icon): icon = QtGui.QIcon(icon)   # icon is a path to an icon file
         else:   # https://www.pythonguis.com/faq/built-in-qicons-pyqt/ icon is the name of a Qt icon
             try: icon = dialog.style().standardIcon(getattr(QtWidgets.QStyle, icon))
-            except AttributeError: icon = None                      # invalid Qt icon, replace with nothing
+            except AttributeError: icon = None              # invalid Qt icon, replace with nothing
     if icon: dialog.setWindowIcon(icon)
     if size: dialog.resize(*size)
-    if fixedSize: dialog.setFixedSize(*fixedSize)   # TODO add width/height?
-    dialog.setModal(modal)
+    if fixedSize: dialog.setFixedSize(*fixedSize)           # TODO add width/height?
+    if not modal: dialog.setWindowModality(Qt.WindowModal)  # # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     dialog.setWindowOpacity(opacity)
     #dialog.setToolTip()
     return dialog
@@ -201,13 +202,15 @@ def browseForDirectory(lastdir='.', caption='Select folder', directory=None, url
         directory=QtCore.QUrl.fromLocalFile(directory) if url else directory
     )
     try:
-        text = _dir.url() if url else _dir
-        if not text: return None, lastdir   # cancel selected
+        path = _dir.url() if url else _dir
+        if not path: return None, lastdir   # cancel selected
         lastdir = os.path.dirname(_dir.toLocalFile() if url else _dir)
         return _dir, lastdir
     except: return None, lastdir
 
-def browseForFile(lastdir='.', caption='Select file', filter='All files (*)', selectedFilter='', returnFilter=False, directory=None, name=None, url=False):
+def browseForFile(lastdir='.', caption='Select file', filter='All files (*)',
+                  selectedFilter='', returnFilter=False,
+                  directory=None, name=None, url=False):
     directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
     file, filter = (QFileDialog.getOpenFileUrl if url else QFileDialog.getOpenFileName)(
         caption=caption,
@@ -216,13 +219,15 @@ def browseForFile(lastdir='.', caption='Select file', filter='All files (*)', se
         initialFilter=selectedFilter
     )
     try:
-        text = file.url() if url else file
-        if not text: return (None, '', lastdir) if returnFilter else (None, lastdir)
+        path = file.url() if url else file
+        if not path: return (None, '', lastdir) if returnFilter else (None, lastdir)
         lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
         return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except: return (None, '', lastdir) if returnFilter else (None, lastdir)
 
-def browseForFiles(lastdir='.', caption='Select files', filter='All files (*)', selectedFilter='', returnFilter=False, directory=None, name=None, url=False):
+def browseForFiles(lastdir='.', caption='Select files', filter='All files (*)',
+                   selectedFilter='', returnFilter=False,
+                   directory=None, name=None, url=False):
     directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
     files, filter = (QFileDialog.getOpenFileUrls if url else QFileDialog.getOpenFileNames)(
         caption=caption,
@@ -236,7 +241,9 @@ def browseForFiles(lastdir='.', caption='Select files', filter='All files (*)', 
         return (files, filter, lastdir) if returnFilter else (files, lastdir)
     except: return (tuple(), '', lastdir) if returnFilter else (tuple(), lastdir)
 
-def saveFile(lastdir='.', caption='Save file', filter='All files (*)', selectedFilter='', returnFilter=False, directory=None, name=None, url=False):
+def saveFile(lastdir='.', caption='Save file', filter='All files (*)',
+             selectedFilter='', returnFilter=False,
+             directory=None, name=None, url=False):
     directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
     print('\n\n\nWHAT IS THE DIFFERENCE', lastdir, caption, filter, selectedFilter, returnFilter, directory, name, url)
     file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(
@@ -246,8 +253,8 @@ def saveFile(lastdir='.', caption='Save file', filter='All files (*)', selectedF
         initialFilter=selectedFilter
     )
     try:
-        text = file.url() if url else file
-        if not text: return (None, '', lastdir) if returnFilter else None, lastdir
+        path = file.url() if url else file
+        if not path: return (None, '', lastdir) if returnFilter else None, lastdir
         lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
         return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except: return (None, '', lastdir) if returnFilter else (None, lastdir)
