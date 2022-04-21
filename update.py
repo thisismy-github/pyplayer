@@ -11,15 +11,16 @@ from traceback import format_exc
 
 
 logger = logging.getLogger('update.py')
-HYPERLINK = f'<a href="{constants.REPOSITORY_URL}/releases/latest">latest release on Github here</a>'
+HYPERLINK = f'<a href="{constants.REPOSITORY_URL}/releases/latest">latest release on Github here</a>.'
 
 
-def get_later_version_string(a, b):     # https://stackoverflow.com/questions/11887762/how-do-i-compare-version-numbers-in-python
+def get_later_version(version_a: str, version_b: str) -> str:
     ''' Returns the greater of two version strings, with mild future-proofing. Allows for an
-        arbitrary number in each sequence of the version, with an arbitrary number of sequences. '''
-    atuple = tuple(map(int, (a.split('.'))))
-    btuple = tuple(map(int, (b.split('.'))))
-    return a if atuple > btuple else b
+        arbitrary number in each sequence of the version, with an arbitrary number of sequences.
+        https://stackoverflow.com/questions/11887762/how-do-i-compare-version-numbers-in-python '''
+    atuple = tuple(map(int, (version_a.split('.'))))
+    btuple = tuple(map(int, (version_b.split('.'))))
+    return version_a if atuple > btuple else version_b
 
 
 def check_for_update(self):
@@ -57,19 +58,19 @@ def check_for_update(self):
                      icon=QMessageBox.Warning,
                      text=f'The URL for the latest release on Github has an unexpected format.\n\nGithub version: "{latest_version}"\nCurrent version: "{current_version}"',
                      textInformative='Newer versions might use a different naming scheme, or perhaps '
-                                     f'there was an error while checking. You can manually check the {HYPERLINK}.')
+                                     'there was an error while checking. You can manually check the ' + HYPERLINK)
             )
 
-        if get_later_version_string(latest_version, current_version) != current_version:    # latest version is more recent than current version
+        if get_later_version(latest_version, current_version) != current_version:    # current version is older than latest version
             if constants.IS_COMPILED and constants.PLATFORM == 'Windows':   # TODO Windows only for now (and no auto-updating directly from the script)
                 return self._handle_updates_signal.emit(
                     dict(latest_version_url=latest_version_url),
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
-                         buttons=(QMessageBox.Yes | QMessageBox.No),        # | QMessageBox.Ignore
+                         buttons=(QMessageBox.Yes | QMessageBox.No),        # TODO | QMessageBox.Ignore
                          text=f'An update is available on Github ({current_version} -> {latest_version}). '
                               'Would you\nlike to download and install this update automatically?',
-                         textInformative=f'You can manually view the {HYPERLINK}.')
+                         textInformative='You can manually view the ' + HYPERLINK)
                 )
             else:                                                           # non-windows version of popup (no auto-updater yet)
                 if constants.IS_COMPILED: reason = 'Auto-updating is currently only available on Windows.<br><br>'      # \n breaks hyperlinks
@@ -79,7 +80,7 @@ def check_for_update(self):
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
                          text=f'An update is available on Github ({current_version} -> {latest_version}).',
-                         textInformative=f'{reason}You can view the {HYPERLINK}.')
+                         textInformative=f'{reason}You can view the {HYPERLINK}')
                 )
         else: self.log('You\'re up to date!')
     except: self.log(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
@@ -186,7 +187,7 @@ def download_update(self, latest_version, download_url, download_path):
                                            'the download may have failed, the update utility may be missing, '
                                            'or perhaps newer versions use a different format for updating.<br><br>'   # \n breaks hyperlinks
                                            f'{updater_removal_failed}{download_removal_failed}'
-                                           f'You can still manually download the {HYPERLINK}.',
+                                           'You can still manually download the ' + HYPERLINK,
                            textDetailed=format_exc(),
                            textDetailedAutoOpen=True).exec()
 
@@ -200,7 +201,7 @@ def validate_update(self, update_report):
     logger.info(f'Update report detected at {update_report}, validating...')
     with open(update_report) as report:
         lines = tuple(line.strip() for line in report)
-        version_change, active_updater_path, download_path, status = lines
+        version_change, active_updater_path, download_path, status = lines  # version_change = '<old_version> -> <new_version>'
 
         try: os.remove(active_updater_path)
         except: self.log(f'Could not clean up temporary updater after update: {download_path}')
@@ -209,13 +210,28 @@ def validate_update(self, update_report):
 
         if status != 'SUCCESS':
             logger.warning(f'(!) UPDATE FAILED: {status}')
-            qthelpers.getPopup(title='Update failed',
-                               icon=QMessageBox.Warning,
-                               text='The attempted update failed while unpacking.',
-                               textInformative=f'If needed, you can manually download the {HYPERLINK}.',
-                               textDetailed=status,
-                               textDetailedAutoOpen=True).exec()
+            return qthelpers.getPopup(title='Update failed',
+                                      icon=QMessageBox.Warning,
+                                      text='The attempted update failed while unpacking.',
+                                      textInformative='If needed, you can manually download the ' + HYPERLINK,
+                                      textDetailed=status,
+                                      textDetailedAutoOpen=True).exec()
     try: os.remove(update_report)
     except: logger.warning('Failed to delete update report after validation.')
     logger.info('Update validated.')
+    update_migration(version_change.split(' -> ')[0])
     self.log(f'Update from {version_change} successful.')
+
+
+def update_migration(old_version):
+    ''' Handles additional work required to migrate
+        `old_version` to the latest version, if any. '''
+    older_than = lambda v: old_version != v and get_later_version(old_version, v) == v
+    if older_than('0.3.0'):     # 0.1.0 - 0.2.0
+        qthelpers.getPopup(title='Update successful, but reinstall recommended',
+                           text='The update was successful, but there has been a massive change\n'
+                                'in PyPlayer\'s file structure (bringing a significant size reduction)\n'
+                                'that cannot be applied through the update utility. Reinstalling\n'
+                                'manually is not required, but is highly recommended.',
+                           textInformative='You can redownload the ' + HYPERLINK + ' Be sure to copy '
+                                           'over config.ini and any personal files you may have saved.').exec()
