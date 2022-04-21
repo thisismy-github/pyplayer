@@ -39,6 +39,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     cfg.loadQt(gui.sliderVolume, children=False)
     gui.checkDeleteOriginal.setCheckState(load('checkDeleteOriginal', 1))
     cfg.loadQt(gui.frameQuickChecks)
+    load('trimmodeselected', False)
     load('ffmpegwarningignored', False)
     load('minimizedtotraywarningignored', False)
     gui.recent_videos = [file for file in load('recent_videos', '', ',') if os.path.exists(file)][-10:]

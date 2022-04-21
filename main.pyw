@@ -416,6 +416,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     fast_start_open_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
     show_ffmpeg_warning_signal = QtCore.pyqtSignal()
+    show_trim_dialog_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
     update_title_signal = QtCore.pyqtSignal()
     log_signal = QtCore.pyqtSignal(str)
@@ -1471,7 +1472,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def _save(self, dest=None, ext_hint=None):
         ''' Current iteration: IV '''
-        start = gettime()
+        start_time = gettime()
 
         # save copies of all critical properties that could potentially change while we're saving
         video = self.video.strip()
@@ -1586,6 +1587,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # trim -> https://trac.ffmpeg.org/wiki/Seeking TODO: -vf trim filter should be used in here
             if op_trim_start or op_trim_end:
+                if not cfg.trimmodeselected:
+                    self.show_trim_dialog_signal.emit()
+                    while not cfg.trimmodeselected: sleep(0.2)
+                    start_time = gettime()                  # reset start_time to undo time spent waiting for dialog
                 if self.is_trim_mode():
                     precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.true_extension in constants.SPECIAL_TRIM_EXTENSIONS
                     self.log(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
@@ -1595,7 +1600,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if maximum < frame_count: trim_cmd_parts.append(f'-to {maximum / frame_rate}')  # "-c:v libx264" vs "-c:v copy"
                     if trim_cmd_parts: intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" {" ".join(trim_cmd_parts)}{cmd_parameters}"{dest}"', dest)
 
-            # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
+                # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 else:
                     self.log('Fade requested (this is a time-consuming task).')     # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
                     mode = {self.actionFadeBoth: 'both', self.actionFadeVideo: 'video', self.actionFadeAudio: 'audio'}[self.trim_mode_action_group.checkedAction()]
@@ -1663,7 +1668,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video: self._save_open_signal.emit(final_dest, self.dialog_settings.checkCycleRememberOriginalPath.checkState() == 2)
                 elif self.dialog_settings.checkTextOnSave.isChecked(): self.show_text(f'Changes saved to {final_dest}.')
-                self.log(f'Changes saved to {final_dest} after {gettime() - start:.1f} seconds.')
+                self.log(f'Changes saved to {final_dest} after {gettime() - start_time:.1f} seconds.')
             else: return self.log('No changes have been made because the crop was the same size as the source media.')
         except: self.log(f'(!) SAVE FAILED: {format_exc()}')
         finally:
@@ -1888,6 +1893,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_trim_mode(self, action: QtW.QAction):
+        cfg.trimmodeselected = True
         if action in (self.actionTrimAuto, self.actionTrimPrecise):
             self.buttonTrimStart.setText(self.buttonTrimStart.text().replace('Fade to', 'Start'))
             self.buttonTrimEnd.setText(self.buttonTrimEnd.text().replace('Fade from', 'End'))
@@ -2220,6 +2226,53 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         del dialog_about
         gc.collect(generation=2)
+
+
+    def show_trim_dialog(self):
+        ''' Opens dialog for selecting which trim mode to default to. Only
+            meant to appear for new users that haven't adjusted their trim
+            settings yet. Sets cfg.trimmodeselected to True. '''
+        try:
+            self.force_pause(True)
+            dialog = qthelpers.getDialog(title='Choose default trim mode', modal=True, deleteOnClose=True, flags=Qt.Tool)
+            dialog.setMinimumSize(427, 220)
+            dialog.resize(0, 0)
+
+            label = QtW.QLabel(
+                'Which trimming style would you prefer? You can change this '
+                'setting in the future by right-clicking the \'Start\' and '
+                '\'End\' buttons, or by using the \'Video\' menu.')
+            button_precise = QtW.QCommandLinkButton(
+                'Precise trim',
+                'Re-encode your trim. This is a slow process, but will always be '
+                '100% accurate. Recommended if you need the start of a trim to be '
+                'accurate down to the frame, or if you use a variety of formats.')
+            button_auto = QtW.QCommandLinkButton(
+                'Auto trim',
+                'Instantly trim your clip by rounding the start back to the last keyframe '
+                'and cutting from there. Some formats/encoders may be corrupted or briefly '
+                'frozen at the start (formats like MP4 usuallly work better). PyPlayer '
+                'will try falling back to precise trimming when possible.')
+
+            label.setAlignment(Qt.AlignCenter)
+            label.setWordWrap(True)
+            button_precise.setDefault(True)
+            button_precise.clicked.connect(dialog.accept)
+            button_precise.clicked.connect(lambda: dialog.select(button_precise))
+            button_auto.clicked.connect(dialog.accept)
+            button_auto.clicked.connect(lambda: dialog.select(button_auto))
+
+            layout = QtW.QVBoxLayout(dialog)
+            layout.addWidget(label)
+            layout.addWidget(button_precise)
+            layout.addWidget(button_auto)
+
+            if constants.PLATFORM != 'Windows': dialog.adjustSize()
+            if dialog.exec() == QtW.QDialog.Accepted:
+                if dialog.choice == button_auto: self.actionTrimAuto.setChecked(True)
+                else: self.actionTrimPrecise.setChecked(True)
+        except: pass
+        finally: cfg.trimmodeselected = True                # set this to True no matter what (_save is waiting on this)
 
 
     def show_delete_prompt(self):

@@ -157,7 +157,7 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
     return QPersistentDialog(parent, **kwargs)
 
 def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size=None, fixedSize=None,
-              opacity=1.0, modal=False, flags=Qt.WindowCloseButtonHint):
+              opacity=1.0, modal=False, deleteOnClose=True, flags=Qt.WindowCloseButtonHint):
     ''' Returns a temporary dialog, designed to be finished manually. Uses an on-the-fly subclass called QDialogHybrid
         which serves to add QMessageBox-style functionality to the dialog, allowing easy standard-button access, as
         opposed to the 1 or 0 QDialogBox normally returns. QDialogHyrbid adds the methods dialog.select(choice) and
@@ -185,6 +185,7 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
     dialog = QDialogHybrid(parent)
     dialog.setWindowFlags(flags)
     dialog.setWindowTitle(title)
+    dialog.setAttribute(Qt.WA_DeleteOnClose, deleteOnClose)
     if isinstance(icon, str):
         if os.path.exists(icon): icon = QtGui.QIcon(icon)   # icon is a path to an icon file
         else:   # https://www.pythonguis.com/faq/built-in-qicons-pyqt/ icon is the name of a Qt icon
