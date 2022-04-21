@@ -302,14 +302,6 @@ def get_aspect_ratio(width: int, height: int) -> str:
     return f'{int(width / r)}:{int(height / r)}'
 
 
-def get_listdir(file):
-    name = os.path.basename(file)
-    dir = os.path.dirname(file) or constants.CWD
-    files = os.listdir(dir)
-    if len(files) == 1: return None, None
-    return name, dir, files
-
-
 def get_PIL_Image():
     ''' An over-the-top way of hiding the PIL folder. PIL folder cannot be avoided due to
         the from-import, and hiding it using conventional means does not seem to work, so
@@ -1047,51 +1039,51 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # -------------------------------
     # >>> BASIC VIDEO OPERATIONS <<<
     # -------------------------------
-    def cycle_media(self, *args, next: bool = True):        # *args to capture unused signal args
-        ''' Cycles through the files in the current media's folder using listdir and looks for the next
-            openable, non-hidden file. If the folder has no other openable files, nothing happens. '''
+    def cycle_media(self, *args, next: bool = True, ignore: tuple = tuple()):   # *args to capture unused signal args
+        ''' Cycles through the current media's folder and looks for the `next`
+            or previous openable, non-hidden file that isn't in the `ignore`
+            list. If there are no other openable files, nothing happens.
+            Otherwise, the new file is opened and returned. '''
         if self.video is None: return self.statusbar.showMessage('No media is playing.', 10000)    # TODO remember last media's folder?
         logging.info(f'Getting {"next" if next else "previous"} media file...')
 
         base_file = self.video_original_path if self.dialog_settings.checkCycleRememberOriginalPath.checkState() else self.video
-        media_name, media_dir, files = get_listdir(base_file)
-        if media_name is None and files is None:
-            return self.log('This is the only media file in this folder.')
+        current_dir, current_media = os.path.split(os.path.abspath(base_file))
+        files = os.listdir(current_dir)
+        if len(files) == 1: return self.log('This is the only file in this folder.')
 
         self.last_cycle_was_forward = next
-        if media_name in files: original_video_index = video_index = files.index(media_name)
-        elif self.last_cycle_index is not None: original_video_index = video_index = self.last_cycle_index
+        if current_media in files: original_index = files.index(current_media)
+        elif self.last_cycle_index is not None: original_index = self.last_cycle_index
         else:           # video was moved/renamed and never cycled, use human sorting to roughly determine where to start from
             import re   # https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
             test = lambda char: int(char) if char.isdigit() else char   # NOTE: Most OS's do not actually use pure human sorting
             human_sort = lambda string: [test(c) for c in re.split(r'(\d+)', os.path.splitext(string)[0])]
             restored_files = files.copy()
-            restored_files.append(media_name)
+            restored_files.append(current_media)
             restored_files.sort(key=human_sort)
-            original_video_index = video_index = max(0, min(len(files), restored_files.index(media_name)) - 1)
+            original_index = max(0, min(len(files), restored_files.index(current_media)) - 1)
 
-        cycle_increment = 1 if next else -1
-        while True:
-            video_index += cycle_increment
-            if next:
-                if video_index > (len(files) - 1):
-                    video_index = 0
-            else:
-                if video_index < 0:
-                    video_index = len(files) - 1
+        skip_marked = self.checkSkipMarked.isChecked()
+        if next: file_range = range(original_index + 1, len(files) + original_index + 1)
+        else: file_range = range(original_index - 1, original_index - len(files) - 1, -1)
+        for index in file_range:
+            index = index % len(files)
 
-            # if we've reached the original file or the new video opens successfully -> stop. skip to-be-deleted files (if desired).
-            file = os.path.abspath(os.path.join(media_dir, files[video_index]))
-            if self.is_hidden(file) and video_index != original_video_index:
-                logging.debug(f'File {file} at index {video_index} is hidden. Skipping.')
-                continue                                        # skip hidden files if they're not our original file
-            logging.debug(f'Checking {file} at index {video_index}')
+            # if we've reached the original file or the new video opens successfully -> stop
+            file = os.path.abspath(os.path.join(current_dir, files[index]))
+            logging.debug(f'Checking {file} at index #{index}')
 
-            if video_index == original_video_index: return self.log('This is the only playable file in the current folder.')
-            if self.checkSkipMarked.isChecked() and file in self.marked_for_deletion: continue
-            if self.open(file, _from_cycle=True) != -1:         # if new video can't be opened, -1 is returned -> keep going
-                self.last_cycle_index = video_index
-                return
+            # check for reasons we might skip a given file (from most to least likely)
+            if os.path.isdir(file): continue
+            if self.is_hidden(file): continue
+            if file in ignore: continue
+            if skip_marked and file in self.marked_for_deletion: continue
+            if file == base_file: continue
+            if self.open(file, _from_cycle=True) != -1:     # if new video can't be opened, -1 is returned -> keep going
+                self.last_cycle_index = index
+                return file
+        return self.log('This is the only playable media file in this folder.')
 
 
     def parse_media_file(self, file, mime='video', _recursive=False):
