@@ -779,6 +779,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 elif key == 83:
                     if mod & Qt.ShiftModifier: self.actionSaveAs.trigger()  # ctrl + shift + s (save as)
                     else: self.actionSave.trigger()                         # ctrl + s (save)
+            elif mod & Qt.AltModifier:
+                if key == 81: self.actionExit.trigger()                     # alt + q (exit)
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{text}"')
 
 
