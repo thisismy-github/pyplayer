@@ -84,7 +84,8 @@
     <addaction name="actionAutoplay"/>
     <addaction name="separator"/>
     <addaction name="actionMarkDeleted"/>
-    <addaction name="actionEmptyRecycleBin"/>
+    <addaction name="actionClearMarked"/>
+    <addaction name="actionShowDeletePrompt"/>
     <addaction name="actionDeleteImmediately"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -1169,10 +1170,22 @@ skip over files that have been marked for deletion.</string>
    <property name="iconText">
     <string notr="true">Mark media for deletion</string>
    </property>
+   <property name="toolTip">
+    <string>Mark current media for deletion. This does not delete the file
+right away, but will give you the option to delete it it later, if
+you select &quot;Preview list of marked media&quot; or when you close
+the program.</string>
+   </property>
   </action>
-  <action name="actionEmptyRecycleBin">
+  <action name="actionShowDeletePrompt">
    <property name="text">
-    <string>Delete all marked media</string>
+    <string>Preview list of marked media</string>
+   </property>
+   <property name="toolTip">
+    <string>Displays a confirmation prompt for deleting
+all currently marked files. You may cancel this
+prompt, or hand-pick which files you do or
+do not want to actually delete.</string>
    </property>
   </action>
   <action name="actionViewLog">
@@ -1245,6 +1258,10 @@ skip over files that have been marked for deletion.</string>
   <action name="actionDeleteImmediately">
    <property name="text">
     <string>Immediately delete current media</string>
+   </property>
+   <property name="toolTip">
+    <string>Immediately deletes the current
+media, without marking it.</string>
    </property>
   </action>
   <action name="actionLoop">
@@ -1393,6 +1410,15 @@ nearly twice as long as the trimmed clip's length for some formats.
 Note: Some formats cannot be trimmed without re-encoding and
 will default to high-precision trimming regardless. If you still
 encounter corrupted trims, switch to high-precision manually.</string>
+   </property>
+  </action>
+  <action name="actionClearMarked">
+   <property name="text">
+    <string>Clear list of marked media</string>
+   </property>
+   <property name="toolTip">
+    <string>Clear the list of files that are currently marked
+for deletion, without actually deleting them.</string>
    </property>
   </action>
  </widget>

@@ -411,8 +411,8 @@ class Ui_MainWindow(object):
         self.actionMarkDeleted.setCheckable(True)
         self.actionMarkDeleted.setIconText("Mark media for deletion")
         self.actionMarkDeleted.setObjectName("actionMarkDeleted")
-        self.actionEmptyRecycleBin = QtWidgets.QAction(MainWindow)
-        self.actionEmptyRecycleBin.setObjectName("actionEmptyRecycleBin")
+        self.actionShowDeletePrompt = QtWidgets.QAction(MainWindow)
+        self.actionShowDeletePrompt.setObjectName("actionShowDeletePrompt")
         self.actionViewLog = QtWidgets.QAction(MainWindow)
         self.actionViewLog.setObjectName("actionViewLog")
         self.actionShowStatusBar = QtWidgets.QAction(MainWindow)
@@ -489,6 +489,8 @@ class Ui_MainWindow(object):
         self.actionTrimPrecise.setCheckable(True)
         self.actionTrimPrecise.setChecked(True)
         self.actionTrimPrecise.setObjectName("actionTrimPrecise")
+        self.actionClearMarked = QtWidgets.QAction(MainWindow)
+        self.actionClearMarked.setObjectName("actionClearMarked")
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
         self.menuFile.addAction(self.actionOpenMediaLocation)
@@ -505,7 +507,8 @@ class Ui_MainWindow(object):
         self.menuEdit.addAction(self.actionAutoplay)
         self.menuEdit.addSeparator()
         self.menuEdit.addAction(self.actionMarkDeleted)
-        self.menuEdit.addAction(self.actionEmptyRecycleBin)
+        self.menuEdit.addAction(self.actionClearMarked)
+        self.menuEdit.addAction(self.actionShowDeletePrompt)
         self.menuEdit.addAction(self.actionDeleteImmediately)
         self.menuHelp.addAction(self.actionCheckForUpdates)
         self.menuHelp.addSeparator()
@@ -643,7 +646,15 @@ class Ui_MainWindow(object):
         self.actionAddAudioTrack.setText(_translate("MainWindow", "Add audio track"))
         self.actionCrop.setText(_translate("MainWindow", "Crop video"))
         self.actionMarkDeleted.setText(_translate("MainWindow", "Mark media for deletion"))
-        self.actionEmptyRecycleBin.setText(_translate("MainWindow", "Delete all marked media"))
+        self.actionMarkDeleted.setToolTip(_translate("MainWindow", "Mark current media for deletion. This does not delete the file\n"
+"right away, but will give you the option to delete it it later, if\n"
+"you select \"Preview list of marked media\" or when you close\n"
+"the program."))
+        self.actionShowDeletePrompt.setText(_translate("MainWindow", "Preview list of marked media"))
+        self.actionShowDeletePrompt.setToolTip(_translate("MainWindow", "Displays a confirmation prompt for deleting\n"
+"all currently marked files. You may cancel this\n"
+"prompt, or hand-pick which files you do or\n"
+"do not want to actually delete."))
         self.actionViewLog.setText(_translate("MainWindow", "View log"))
         self.actionShowStatusBar.setText(_translate("MainWindow", "Status Bar"))
         self.actionShowMenuBar.setText(_translate("MainWindow", "Menu Bar"))
@@ -653,6 +664,8 @@ class Ui_MainWindow(object):
         self.actionSnapshot.setText(_translate("MainWindow", "Snapshot"))
         self.actionQuickSnapshot.setText(_translate("MainWindow", "Quick snapshot"))
         self.actionDeleteImmediately.setText(_translate("MainWindow", "Immediately delete current media"))
+        self.actionDeleteImmediately.setToolTip(_translate("MainWindow", "Immediately deletes the current\n"
+"media, without marking it."))
         self.actionLoop.setText(_translate("MainWindow", "Loop"))
         self.actionRotate90.setText(_translate("MainWindow", "90° clockwise"))
         self.actionRotate180.setText(_translate("MainWindow", "180° clockwise"))
@@ -690,6 +703,9 @@ class Ui_MainWindow(object):
 "Note: Some formats cannot be trimmed without re-encoding and\n"
 "will default to high-precision trimming regardless. If you still\n"
 "encounter corrupted trims, switch to high-precision manually."))
+        self.actionClearMarked.setText(_translate("MainWindow", "Clear list of marked media"))
+        self.actionClearMarked.setToolTip(_translate("MainWindow", "Clear the list of files that are currently marked\n"
+"for deletion, without actually deleting them."))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
 
 

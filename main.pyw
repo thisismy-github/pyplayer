@@ -434,7 +434,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if constants.PLATFORM != 'Windows':              # settings dialog was designed around Windows UI
             self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width(),
                                         self.dialog_settings.height())
-        qtstart.connect_widget_signals(self)
         self.icons = {
             'window': QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'logo.ico')),
             'loop': QtGui.QIcon(os.path.join(constants.RESOURCE_DIR, 'loop.png')),
@@ -898,8 +897,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles creating the context menu (right-click) for buttonMarkDeleted. Due to the uniqueness of
             each context menu, contextMenuEvent is replaced directly instead of subclassing the entire widget. '''
         context = QtW.QMenu(self)
+        context.setToolTipsVisible(True)
         context.addAction(self.actionMarkDeleted)
-        context.addAction(self.actionEmptyRecycleBin)
+        context.addAction(self.actionClearMarked)
+        context.addAction(self.actionShowDeletePrompt)
         context.addSeparator()
         context.addAction(self.actionDeleteImmediately)
         context.exec(event.globalPos())
@@ -1173,7 +1174,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
             except:
-                self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')    # .guess() errors out in rare circumstances
+                if not os.path.exists(file): self.log(f'File \'{file}\' does not exist.')
+                else: self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')    # .guess() errors out in rare circumstances
                 return -1
 
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
@@ -1183,13 +1185,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: was_minimzed_to_tray = False
 
             # attempt to actually play and parse file
-            if not self.vlc.play(file): return      # immediately attempt to play video once we know it might be valid
+            if not self.vlc.play(file): return      # immediately attempt to play media once we know it might be valid
             self.parsed = False                     # keep track of parse just in case this ends up actually being a video, so we can avoid re-parsing it later
             if mime != 'video':                     # parse key details from media file if it isn't a video
                 if self.parse_media_file(file, mime) == -1:
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
-            self.video = file                       # video isn't corrupt or invalid -> set it as our new video (AFTER vlc.play())
+
+            # set media (AFTER vlc.play()), and copy path to second variable unless otherwise specified
+            self.video = file
             if not remember_old_file or not self.video_original_path: self.video_original_path = file
 
             if file[-4:] != '.gif': self.log(f'Opening file {file}\n')
@@ -1412,6 +1416,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.vlc.play(self.video)                                               # replay (no need for full-scale open())
         self.set_player_position(self.get_progess_slider() / self.frame_count)  # set VLC back to current position
         self.recent_videos[-1] = self.video                                     # update recent video's list with new name
+
+
+    def delete(self, files):
+        if isinstance(files, str): files = (files,)
+        if self.video in files:             # cycle media before deleting if current video is about to be deleted
+            old_file = self.video           # self.video will likely change after media is cycled
+            new_file = self.cycle_media(next=self.last_cycle_was_forward, ignore=files)
+            if new_file is None or new_file == old_file:
+                self.stop()                 # media wasn't cycled -> stop player and uncheck deletion button
+                self.actionMarkDeleted.setChecked(False)
+                self.buttonMarkDeleted.setChecked(False)
+                self.log('There are no remaining files to play.')
+
+        recycle = self.dialog_settings.checkRecycleBin.isChecked()
+        verb = 'recycl' if recycle else 'delet'
+        if recycle: import send2trash
+        logging.info(f'{verb.capitalize()}ing {len(files)} files...')
+
+        for file in files:
+            try:
+                send2trash.send2trash(file) if recycle else os.remove(file)
+                logging.info(f'File {file} {verb}ed successfully.')
+            except Exception as error: self.log(f'File could not be deleted: {file} - {error}')
+            if not os.path.exists(file):    # if file doesn't exist, unmark file (even if error occurred)
+                if file in self.recent_videos: self.recent_videos.remove(file)
+                if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
 
 
     def save_as(self, *args, caption='Save media as...', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
@@ -2219,28 +2249,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.exec()
             logging.info(f'Deletion dialog choice: {dialog.choice}')
 
-            if dialog.choice == QtW.QDialogButtonBox.Yes:       # delete all files that are still checked off
-                if recycle:
-                    import send2trash
-                    logging.info('Recycling checked files...')
-                else: logging.info('Deleting checked files...')
-                still_marked = (check.text() for check in group.children() if isinstance(check, QtW.QCheckBox) and check.isChecked())
-                for file in still_marked:
-                    if file == self.video:                       # check if currently playing media is being deleted and stop the player
-                        if self.player.is_playing():
-                            self.player.stop()
-                    try:
-                        if recycle:
-                            send2trash.send2trash(file)
-                            logging.info(f'File {file} recycled successfully.')
-                        else:
-                            os.remove(file)
-                            logging.info(f'File {file} deleted successfully.')
-                        if file in self.recent_videos: self.recent_videos.remove(file)  # remove file from recent videos list if needed
-                    except Exception as error:                  # failed to delete -> if file doesn't exist, unmark file
-                        self.log(f'File could not be deleted: {file} - {error}')
-                        if not os.path.exists(file) and file in self.marked_for_deletion:
-                            self.marked_for_deletion.remove(file)
+            if dialog.choice == QtW.QDialogButtonBox.Yes:   # delete all files that are still checked off
+                still_marked = [check.text() for check in group.children() if isinstance(check, QtW.QCheckBox) and check.isChecked()]
+                self.delete(still_marked)
             return dialog.choice
         except: self.log(f'(!) DELETION PROMPT FAILED: {format_exc()}')
 
@@ -2752,23 +2763,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info(f'Marking file {file} for deletion: {checked}')
         mod = app.keyboardModifiers() if modifiers is None else modifiers
 
-        if file and mod & Qt.ControlModifier:                                   # ctrl pressed -> immediately delete video
-            doomed_video = file
-            self.cycle_media(next=self.last_cycle_was_forward)                  # cycle video before deleting
-            try:
-                if self.dialog_settings.checkRecycleBin.isChecked():
-                    import send2trash
-                    send2trash.send2trash(doomed_video)
-                    self.log(f'File {doomed_video} recycled successfully.')
-                else:
-                    os.remove(doomed_video)
-                    self.log(f'File {doomed_video} deleted successfully.')
-                self.marked_for_deletion.remove(doomed_video)
-                if file in self.recent_videos: self.recent_videos.remove(file)  # remove file from recent videos list if needed
-            except (ValueError, KeyError): pass
-            except Exception as error: logging.warning(f'Error deleting file {doomed_video} - {type(error)}: {error}')
-
-        elif mod & Qt.ShiftModifier: self.show_delete_prompt()                  # shift pressed -> show deletion prompt
+        if file and mod & Qt.ControlModifier: self.delete(file)                     # ctrl pressed -> immediately delete video
+        elif mod & Qt.ShiftModifier: self.show_delete_prompt()                      # shift pressed -> show deletion prompt
         elif checked and file: self.marked_for_deletion.add(file)
         elif not checked:
             try: self.marked_for_deletion.remove(file)
@@ -2776,6 +2772,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except: self.log(f'(!) MARK_FOR_DELETION FAILED: {format_exc()}')
         tooltip_count_string = f'{len(self.marked_for_deletion)} file{"s" if len(self.marked_for_deletion) == 1 else ""}'
         self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', tooltip_count_string))
+
+
+    def clear_marked_for_deletion(self):
+        self.marked_for_deletion.clear()
+        self.actionMarkDeleted.setChecked(False)
+        self.buttonMarkDeleted.setChecked(False)
+        self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', '0'))
 
 
     def snapshot(self, *args, modifiers=None):  # uses libvlc_video_take_snapshot. *args to capture unused signal args
@@ -2940,6 +2943,7 @@ if __name__ == "__main__":
         gui.setup()                             # setup gui's variables, widgets, and threads (0.3mb)
         gui.show()                              # show UI
 
+        qtstart.connect_widget_signals(gui)                     # connect signals and slots
         cfg = config.loadConfig(gui, constants.CONFIG_PATH)     # create and load config
         gui.refresh_theme_combo(set_theme=cfg.theme)            # load and set themes
         widgets.init_custom_widgets(cfg, app)                   # set config and app as global objects in widgets.py
