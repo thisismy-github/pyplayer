@@ -616,8 +616,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.marked_for_deletion:
             logging.info(f'The following files are still marked for deletion, opening prompt: {self.marked_for_deletion}')
             choice = self.show_delete_prompt()
-            if choice == QtW.QMessageBox.Cancel:    # cancel selected, don't close
-                self.close_cancel_selected = True   # required in case .close() was called from qtstart.exit()
+            if choice == QtW.QMessageBox.Cancel:        # cancel selected, don't close
+                self.close_cancel_selected = True       # required in case .close() was called from qtstart.exit()
                 logging.info('Close cancelled.')
                 return event.ignore()
             elif choice == QtW.QMessageBox.Yes:
@@ -633,7 +633,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         force_close = event.spontaneous() and not (self.dialog_settings.groupTray.isChecked() and self.dialog_settings.checkTrayClose.isChecked())
         if force_close:
             qtstart.exit(self)
-        elif self.tray_icon is None:      # no system tray icon/X-button pressed and checkTrayClose not checked -> manually complete rest of exit
+        elif self.tray_icon is None:        # no system tray icon/X-button pressed and checkTrayClose not checked -> manually complete rest of exit
             self.closed = False
             logging.info('self.closed manually set to True.')
             try: config.saveConfig(self, constants.CONFIG_PATH)
@@ -642,7 +642,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self._update_slider_thread.join()
         else:
             if not cfg.minimizedtotraywarningignored:
-                self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')  # this emits messageClicked signal
+                if event.spontaneous():     # only show message if closeEvent was called by OS (i.e. X button was pressed)
+                    self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')  # this emits messageClicked signal
                 cfg.minimizedtotraywarningignored = True
             gc.collect(generation=2)
         return event.accept()
