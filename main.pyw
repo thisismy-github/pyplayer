@@ -262,6 +262,12 @@ from tinytag import TinyTag
 
 
 # ---------------------
+# Aliases
+# ---------------------
+WindowStateChange = QtCore.QEvent.WindowStateChange
+
+
+# ---------------------
 # Utility functions
 # ---------------------
 def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
@@ -459,6 +465,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.lock_progress_updates = False
         self.lock_spin_updates = False
         self.timer_id_resize_snap: int = None
+        self.close_was_spontaneous = False
         self.was_maximized = False
         self.was_paused = False
         self.lock_fullscreen_ui = False
@@ -609,9 +616,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> EVENTS <<<
     # ---------------------
+    def event(self, event: QtCore.QEvent) -> bool:
+        ''' A global event callback. Used to detect windowStateChange events,
+            so we can save/remember the maximized state when minimizing. '''
+        if event.type() == WindowStateChange:           # alias used for speed
+            if not (self.windowState() & Qt.WindowMinimized or self.windowState() & Qt.WindowFullScreen):
+                self.was_maximized = bool(self.windowState() & Qt.WindowMaximized)
+        return super().event(event)
+
+
     def closeEvent(self, event: QtGui.QCloseEvent):     # 'spontaneous' -> X-button pressed
-        logging.info(f'Closing (spontaneous={event.spontaneous()}).')
         self.close_cancel_selected = False
+        self.close_was_spontaneous = event.spontaneous()
+        logging.info(f'Closing (spontaneous={event.spontaneous()}).')
 
         if self.marked_for_deletion:
             logging.info(f'The following files are still marked for deletion, opening prompt: {self.marked_for_deletion}')
@@ -627,10 +644,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         #self.set_and_update_progress(0)
         self.dialog_settings.close()
+        self.dockControls.setFloating(False)        # hide fullscreen UI if needed
         self.stop()
         logging.info('Player has been stopped.')
 
-        force_close = event.spontaneous() and not (self.dialog_settings.groupTray.isChecked() and self.dialog_settings.checkTrayClose.isChecked())
+        minimize_to_tray = self.dialog_settings.groupTray.isChecked() and self.dialog_settings.checkTrayClose.isChecked()
+        force_close = self.close_was_spontaneous and not minimize_to_tray
         if force_close:
             qtstart.exit(self)
         elif self.tray_icon is None:        # no system tray icon/X-button pressed and checkTrayClose not checked -> manually complete rest of exit
@@ -642,7 +661,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self._update_slider_thread.join()
         else:
             if not cfg.minimizedtotraywarningignored:
-                if event.spontaneous():     # only show message if closeEvent was called by OS (i.e. X button was pressed)
+                if self.close_was_spontaneous:      # only show message if closeEvent was called by OS (i.e. X button pressed)
                     self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')  # this emits messageClicked signal
                 cfg.minimizedtotraywarningignored = True
             gc.collect(generation=2)
@@ -650,7 +669,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def hideEvent(self, event: QtGui.QHideEvent):       # 'spontaneous' -> native minimize button pressed
-        self.was_maximized = self.isMaximized()
         if event.spontaneous():
             if self.dialog_settings.checkMinimizePause.isChecked():
                 self.was_paused = self.is_paused
@@ -675,6 +693,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if event.spontaneous():
             if not self.was_paused and s.checkMinimizePause.isChecked() and s.checkMinimizeRestore.isChecked():
                 self.force_pause(False)
+        if self.isFullScreen(): self.set_fullscreen(True)               # restore fullscreen UI
         gc.collect(generation=2)
 
 
@@ -691,11 +710,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def moveEvent(self, event: QtGui.QMoveEvent):
-        self.last_window_pos = event.oldPos()
+        if not self.isMaximized():                  # don't save position if we're currently maximized
+            self.last_window_pos = event.oldPos()
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
-        self.last_window_size = event.oldSize()
+        if not self.isMaximized():                  # don't save size if we're currently maximized
+            self.last_window_size = event.oldSize()
 
 
     def dockControlsResizeEvent(self, event: QtGui.QResizeEvent):
@@ -1185,6 +1206,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
             if not self.isVisible():                # we need to do this even if focus_window is True
                 was_minimzed_to_tray = True
+                self.resize(self.last_window_size)  # restore size/pos or maximized windows will forget...
+                self.move(self.last_window_pos)     # ...their original geometry when you unmaximize them
                 self.showMinimized()                # minimize for now, we'll check if we need to focus later
             else: was_minimzed_to_tray = False
 

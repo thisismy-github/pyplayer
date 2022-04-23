@@ -78,7 +78,29 @@ def getFromPATH(filename: str) -> str:
     return ''
 
 def showWindow(window: QtWidgets.QWidget) -> None:
-    ''' Shows, restores, raises, and activates a `window`. '''
+    ''' Shows, raises, and activates a `window`. NOTE: `window`'s old geometry
+        (`resizeEvent.oldSize/moveEvent.oldPos`), state (`WindowStateChange`),
+        and the last `closeEvent.spontaneous` value must all be tracked, as
+        Qt's tracking leads to many inconsistencies. `window` is expected to
+        have `was_maximized`, `last_window_size`, `last_window_position`, and
+        `close_was_spontaneous` attributes. Use `qthelpers.focusWindow` for a
+        looser, more general implementation. '''
+    if not window.isVisible():
+        if window.was_maximized:
+            if window.close_was_spontaneous:
+                window.resize(window.last_window_size)
+                window.move(window.last_window_pos)
+            window.showMaximized()
+        else: window.show()
+    elif window.isMinimized() and window.was_maximized: window.showMaximized()
+    window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
+    window.raise_()
+    window.activateWindow()
+
+def focusWindow(window: QtWidgets.QWidget) -> None:
+    ''' Shows, raises, and activates a `window`. This implementation works,
+        but tends to restore windows and save geometry inconsistently. Use
+        `qthelpers.showWindow` for a more complete implementation. '''
     if not window.isVisible(): window.show()
     window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
     window.raise_()
