@@ -82,9 +82,10 @@ def verify_ffmpeg(warning: bool = True, force_warning: bool = False) -> str:
             FFMPEG = os.path.realpath(filename)             # ffmpeg.exe exists in root
             if PLATFORM == 'Windows': FFMPEG = FFMPEG[:-4]  # strip '.exe'
         else:
+            import util
             import logging
             warn = logging.getLogger('constants.py').warning
-            FFMPEG = qthelpers.getFromPATH(filename)
+            FFMPEG = util.get_from_PATH(filename)
             if FFMPEG == '':
                 if config.cfg.ffmpegwarningignored and not force_warning:
                     warn('(!) FFmpeg not detected in /bin folder. Assuming it is still accessible.')

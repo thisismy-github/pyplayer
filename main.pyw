@@ -203,7 +203,7 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from qthelpers import addPathSuffix
+from util import get_unique_path, add_path_suffix, get_hms, get_aspect_ratio, file_is_hidden
 from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 
@@ -228,6 +228,7 @@ from PyQt5 import QtWidgets as QtW
 from PyQt5.QtCore import Qt
 #from PyQt5.Qt import QWIDGETSIZE_MAX                   # PyQt5.Qt adds FOUR MB of ram usage, used in set_fullscreen
 WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but can't be defined in __name__=='__main__'
+
 
 # keyboard event:     ['device', 'event_type', 'is_keypad', 'modifiers', 'name', 'scan_code', 'time', 'to_json' -> {"event_type": "up", "scan_code": 77, "name": "right", "time": 1636583589.5201082, "is_keypad": false}]
 # Qt keyReleaseEvent: ['accept', 'count', 'ignore', 'isAccepted', 'isAutoRepeat', 'key', 'matches', 'modifiers', 'nativeModifiers', 'nativeScanCode', 'nativeVirtualKey', 'registerEventType', 'setAccepted', 'setTimestamp', 'spontaneous', 'text', 'timestamp', 'type']
@@ -254,13 +255,9 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # NOTE: Interesting but useless in Python: QSaveFile, QRandomGenerator, QTemporaryDir/File, QJsonObject
 
 
-# ---------------------
-# Utility functions
-# ---------------------
-if constants.PLATFORM != 'Windows': file_is_hidden = lambda path: os.path.basename(path)[0] == '.'
-else: file_is_hidden = lambda path: os.stat(path).st_file_attributes & 2
-
-
+# -----------------------------
+# Additional utility functions
+# -----------------------------
 def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
     start = gettime()
     logging.info('Performing FFmpeg operation...')
@@ -268,7 +265,7 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
     # create temp file if '%tp' is in ffmpeg command (and we have a valid `out` file)
     temp_path = ''
     if '%tp' in cmd and infile and os.path.exists(infile):
-        temp_path = addPathSuffix(infile, '_temp', unique=True)
+        temp_path = add_path_suffix(infile, '_temp', unique=True)
         if infile == gui.locked_video: gui.locked_video = temp_path    # update locked video if needed TODO does this make sense...?
         os.renames(infile, temp_path)                                  # rename `out` to temp name
 
@@ -289,14 +286,6 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
             os.renames(temp_path, infile)
     gui.log(f'FFmpeg operation succeeded after {gettime() - start:.1f} seconds.')
     return outfile
-
-
-def get_aspect_ratio(width: int, height: int) -> str:
-    ''' Calculates the ratio between two numbers. https://gist.github.com/Integralist/4ca9ff94ea82b0e407f540540f1d8c6c '''
-    if width == 0: return '0:0'
-    gcd = lambda w, h: w if h == 0 else gcd(h, w % h)   # GCD is the highest number that evenly divides both W and H
-    r = gcd(width, height)
-    return f'{int(width / r)}:{int(height / r)}'
 
 
 def get_PIL_Image():
@@ -332,7 +321,7 @@ def get_PIL_Image():
                 shutil.copytree(old_path, backup_path)
                 if new_path_already_existed:
                     try:
-                        new_path_temp_name = qthelpers.getUniquePath(new_path + '_temp')
+                        new_path_temp_name = get_unique_path(new_path + '_temp')
                         os.rename(new_path, new_path_temp_name)
                         new_path_renamed = True
                     except: logging.warning(f'Could not rename {new_path} to {new_path}_temp: {format_exc()}')
@@ -838,7 +827,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # create disabled action for displaying start time
         verb = 'Start' if is_trim_mode else 'Fade to'
         if self.minimum:
-            h, m, s, ms = qthelpers.getHMS(self.minimum / self.frame_rate)
+            h, m, s, ms = get_hms(self.minimum / self.frame_rate)
             if self.duration < 3600: start_label_action = QtW.QAction(f'{verb} {m}:{s:02}.{ms:02} (frame {self.minimum})')
             else: start_label_action = QtW.QAction(f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})')
         else: start_label_action = QtW.QAction(f'{verb}: Disabled')
@@ -847,7 +836,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # create disabled action for displaying end time
         verb = 'End' if is_trim_mode else 'Fade from'
         if self.maximum != self.frame_count:
-            h, m, s, ms = qthelpers.getHMS(self.maximum / self.frame_rate)
+            h, m, s, ms = get_hms(self.maximum / self.frame_rate)
             if self.duration < 3600: end_label_action = QtW.QAction(f'{verb}: {m}:{s:02}.{ms:02} (frame {self.maximum})')
             else: end_label_action = QtW.QAction(f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})')
         else: end_label_action = QtW.QAction(f'{verb}: Disabled')
@@ -857,7 +846,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if show_length_label:
             frames = self.maximum - self.minimum
             seconds = frames / self.frame_rate
-            h, m, s, ms = qthelpers.getHMS(seconds)
+            h, m, s, ms = get_hms(seconds)
             if seconds < 3600: length_label_action = QtW.QAction(f'Length: {m}:{s:02}.{ms:02} ({frames} frames)')
             else: length_label_action = QtW.QAction(f'Length: {h}:{m:02}:{s:02} ({frames} frames)')
             length_label_action.setEnabled(False)
@@ -1225,7 +1214,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             player.video_set_marquee_int(VideoMarqueeOption.Y, int(self.vheight * self.vlc.text_y_percent))
 
             # update UI with new media's duration
-            h, m, s, ms = qthelpers.getHMS(self.duration)
+            h, m, s, ms = get_hms(self.duration)
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
             self.spinHour.setEnabled(h != 0)        # spinSecond does not need to be adjusted here
             self.spinMinute.setEnabled(m != 0)
@@ -1386,14 +1375,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             new_name = os.path.abspath(os.path.join(dirname, sanitize(basename)))
             if not os.path.splitext(new_name)[-1]: new_name = f'{new_name}{os.path.splitext(self.video)[-1]}'   # append extension if needed
             if new_name == self.video: return None      # make sure new name isn't the same as the old name
-            return qthelpers.getUniquePath(new_name)    # TODO make this a setting (use os.replace instead of renames)
+            return get_unique_path(new_name)            # TODO make this a setting (use os.replace instead of renames)
         finally: os.chdir(old_oscwd)                    # reset os module's CWD before returning
 
 
     def rename(self, new_name: str = None):
         new_name = self.get_renamed_output(new_name)
         if new_name is None: return
-        player.stop()                              # player must be stopped before we can rename
+        player.stop()                                   # player must be stopped before we can rename
         try:
             os.renames(self.video, new_name)
             self.video = new_name
@@ -1410,11 +1399,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def delete(self, files):
         if isinstance(files, str): files = (files,)
-        if self.video in files:             # cycle media before deleting if current video is about to be deleted
-            old_file = self.video           # self.video will likely change after media is cycled
+        if self.video in files:                         # cycle media before deleting if current video is about to be deleted
+            old_file = self.video                       # self.video will likely change after media is cycled
             new_file = self.cycle_media(next=self.last_cycle_was_forward, ignore=files)
             if new_file is None or new_file == old_file:
-                self.stop()                 # media wasn't cycled -> stop player and uncheck deletion button
+                self.stop()                             # media wasn't cycled -> stop player and uncheck deletion button
                 self.actionMarkDeleted.setChecked(False)
                 self.buttonMarkDeleted.setChecked(False)
                 self.log('There are no remaining files to play.')
@@ -1448,7 +1437,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Trim and save to a specified path. '''
         logging.info('Opening \'Save As...\' dialogue.')
         starting_name = self.video if self.dialog_settings.checkSaveAsUseMediaFolder.isChecked() else os.path.join(cfg.lastdir, os.path.basename(self.video))
-        file, cfg.lastdir = qthelpers.saveFile(lastdir=qthelpers.getUniquePath(starting_name),
+        file, cfg.lastdir = qthelpers.saveFile(lastdir=get_unique_path(starting_name),
                                                caption=caption,
                                                filter=filter,
                                                selectedFilter='All files (*)' if 'All files (*)' in filter else '')     # TODO this is a temporary change until all file prompts/editing features become more robust
@@ -1498,7 +1487,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 no_name_specified = True
                 if delete_after_save == FULL_DELETE: dest = video
                 elif self.dialog_settings.checkAlwaysSaveAs.isChecked(): return self._save_as()
-                else: dest = addPathSuffix(video, '_edited', unique=True)
+                else: dest = add_path_suffix(video, '_edited', unique=True)
             else:
                 dest = output_text
                 if not os.path.dirname(dest):                                                       # output text is just a name w/ no directory
@@ -1644,7 +1633,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if delete_after_save == FULL_DELETE: self.mark_for_deletion(modifiers=Qt.ControlModifier)
                 else:                                       # we either don't want to delete or we want to only mark it for now
                     if dest == video:                       # destination has same name as original video, but we don't want to delete it (yet)
-                        temp_name = addPathSuffix(video, '_original', unique=True)
+                        temp_name = add_path_suffix(video, '_original', unique=True)
                         os.rename(video, temp_name)
                         video = temp_name
                     if delete_after_save == MARK_DELETE: self.marked_for_deletion.add(video)
@@ -1694,16 +1683,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override is not None:
                         if self.open_queued:
-                            self._open_signal.emit()        # _open_signal uses self._open()
-                            set_progress_slider(0)     # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
+                            self._open_signal.emit()    # _open_signal uses self._open()
+                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
                         else:
                             update_progress_signal.emit(self.frame_override)
-                        self.frame_override = None          # reset frame_override
-                        self.open_queued = False            # reset open_queued
+                        self.frame_override = None      # reset frame_override
+                        self.open_queued = False        # reset open_queued
                     elif (next_frame := current_frame() + 1 * self.playback_speed) <= self.frame_count:  # do NOT update progress if we're at the end
                         update_progress_signal.emit(next_frame)                                          # update_progress_signal -> update_progress_slot
 
-                    sleep(0.0001)                           # sleep to force-update gettime()
+                    sleep(0.0001)                       # sleep to force-update gettime()
                     try: sleep(self.delay - (gettime() - start) - 0.0011)
                     except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.delay} execution-time={gettime() - start}')
                     finally: start = gettime()
@@ -1714,16 +1703,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override is not None:
                         if self.open_queued:
-                            self._open_signal.emit()        # _open_signal uses self._open()
-                            set_progress_slider(0)     # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
+                            self._open_signal.emit()    # _open_signal uses self._open()
+                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
                         else:
                             update_progress_signal.emit(self.frame_override)
-                        self.frame_override = None          # reset frame_override
-                        self.open_queued = False            # reset open_queued
+                        self.frame_override = None      # reset frame_override
+                        self.open_queued = False        # reset open_queued
                     else:
-                        for _ in range(5):                  # force QVideoSlider to paint at 40fps (this refreshes the hover-timestamp)
+                        for _ in range(5):              # force QVideoSlider to paint at 40fps (this refreshes the hover-timestamp)
                             self.sliderProgress.update()
-                            sleep(0.025)                    # only update slider position at 8fps (every 0.125 seconds -> VLC updates every 0.2-0.35)
+                            sleep(0.025)                # only update slider position at 8fps (every 0.125 seconds -> VLC updates every 0.2-0.35)
                         new_frame = player.get_position() * self.frame_count                       # convert VLC position to frame
                         if new_frame >= current_frame(): update_progress_signal.emit(new_frame)    # make sure VLC didn't literally go backwards (pretty common)
                         #else: update_progress_signal.emit(int(new_frame + (self.frame_rate / 5)))  # simulate a non-backwards update TODO this actually makes it look worse
@@ -1742,10 +1731,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             down update_slider_thread. Takes `frame` as a float in order to handle partial frames caused by
             non-1 playback speeds. Saves the partial frame for later use as updates use an integer frame. '''
         # TODO: fractional_frame might not work as well as I hope
-        frame += self.fractional_frame              # add previous partial frame to get true position
+        frame += self.fractional_frame                  # add previous partial frame to get true position
         int_frame = int(frame)
-        update_progress(int_frame)             # update with an integer frame
-        self.fractional_frame = frame - int_frame   # save new partial frame for later use
+        update_progress(int_frame)                      # update with an integer frame
+        self.fractional_frame = frame - int_frame       # save new partial frame for later use
 
 
     def update_progress(self, frame: int):
@@ -1757,18 +1746,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if frame == self.maximum and self.buttonTrimEnd.isChecked():
                     self.force_pause(True)
         self.current_time = round(self.duration * (frame / self.frame_count), 3)
-        h, m, s, ms = qthelpers.getHMS(self.current_time)
+        h, m, s, ms = get_hms(self.current_time)
 
         set_progress_slider(frame)
-        if not current_time_lineedit_has_focus():   # use cleaner format for time-strings on videos > 1 hour
+        if not current_time_lineedit_has_focus():       # use cleaner format for time-strings on videos > 1 hour
             set_current_time_text(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
 
-        self.lock_spin_updates = True               # lock spins from actually updating player so we don't get recursion
+        self.lock_spin_updates = True                   # lock spins from actually updating player so we don't get recursion
         set_hour_spin(h)
         set_minute_spin(m)
         set_second_spin(s)
         set_frame_spin(frame)
-        self.lock_spin_updates = False              # unlock spins so they can be edited by hand again
+        self.lock_spin_updates = False                  # unlock spins so they can be edited by hand again
 
 
     def update_time_spins(self):
@@ -1776,7 +1765,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             values, and updates the progress UI accordingly. If the new frame is after the end of the media,
             it's replaced with the current frame and the progress UI is reset to its previous state. '''
         if self.lock_spin_updates or self.lock_progress_updates: return         # return if user is not manually setting the time spins
-        self.lock_progress_updates = True           # lock progress updates to prevent recursion errors from multiple elements updating at once
+        self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
         try:
             seconds = self.spinHour.value() * 3600
             seconds += self.spinMinute.value() * 60
@@ -1848,7 +1837,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.log('You cannot set the start of your trim after the end of it.')
             self.minimum = desired_minimum
 
-            h, m, s, ms = qthelpers.getHMS(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
             if self.duration < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_minimum = True
@@ -1871,7 +1860,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.log('You cannot set the end of your trim before the start of it.')
             self.maximum = desired_maximum
 
-            h, m, s, ms = qthelpers.getHMS(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)            # use cleaner format for time-strings on videos > 1 hour
             if self.duration < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_maximum = True
@@ -1959,11 +1948,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # preparing output destination
             output = dialog.output.text().strip()
-            if not output: output = addPathSuffix(files[0] if style < 2 else self.video, '_concatenated')   # no output name -> default to first file's name + "_concatenated"
-            if not os.path.splitext(output)[-1]: output = f'{output}{os.path.splitext(files[0])[-1]}'       # append appropriate extension if needed
-            output = qthelpers.getUniquePath(output)
+            if not output: output = add_path_suffix(files[0] if style < 2 else self.video, '_concatenated')   # no output name -> default to first file's name + "_concatenated"
+            if not os.path.splitext(output)[-1]: output = f'{output}{os.path.splitext(files[0])[-1]}'   # append appropriate extension if needed
+            output = get_unique_path(output)
             dirname, basename = os.path.split(output)
-            output = os.path.join(dirname, sanitize(basename))                                              # sanitize() does not account for full paths
+            output = os.path.join(dirname, sanitize(basename))                                          # sanitize() does not account for full paths
 
             # actually concatentating videos
             if self.mime_type == 'audio': cmd = f'"concat:{"|".join(intermediate_files)}" -c copy "{output}"'
@@ -2100,7 +2089,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def browse_concatenate_output(self, lineEdit):
         starting_name = self.video if self.dialog_settings.checkSaveAsUseMediaFolder.isChecked() else os.path.join(cfg.lastdir, os.path.basename(self.video))
-        file, cfg.lastdir = qthelpers.saveFile(lastdir=qthelpers.getUniquePath(starting_name), caption='Save concatenated video as...', filter='All files (*)')
+        file, cfg.lastdir = qthelpers.saveFile(lastdir=get_unique_path(starting_name), caption='Save concatenated video as...', filter='All files (*)')
         if file is None: return
         lineEdit.setText(file)
 
@@ -2620,7 +2609,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             mime = self.mime_type.capitalize()  # capitalize first letter of mime type
             paused = '■' if get_progess_slider() == self.frame_count else '▷' if not self.is_paused else '𝗜𝗜'   # ▶
-            h, m, s, _ = qthelpers.getHMS(self.duration)
+            h, m, s, _ = get_hms(self.duration)
             duration = f'{m}:{s:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}'  # no milliseconds in window title
             if self.mime_type != 'audio':
                 fps = str(self.frame_rate_rounded)
@@ -2771,7 +2760,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         set_and_update_progress(new_frame)
         if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
         if self.isFullScreen() and self.dialog_settings.checkTextOnFullScreenPosition.isChecked():   # if we're in fullscreen mode, show the current position as a marquee
-            h, m, s, _ = qthelpers.getHMS(self.current_time)
+            h, m, s, _ = get_hms(self.current_time)
             current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
             max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
             show_text(f'{current_text}/{max_text}')
@@ -2851,7 +2840,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 except FileExistsError: pass
 
                 # take and save snapshot
-                path = qthelpers.getUniquePath(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
+                path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
                 player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
                 cfg.last_snapshot_path = os.path.abspath(path)
                 self.log(f'Snapshot saved to {path}')
@@ -2892,7 +2881,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if d_set.comboSnapshotFormat.currentText() == 'JPEG' else ''
                     directory = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
                     directory = f'{directory}{".png" if not selected_filter else ".jpg"}'
-                    path, filter, lastdir = qthelpers.saveFile(lastdir=qthelpers.getUniquePath(directory, key='?count', zeros=1),
+                    path, filter, lastdir = qthelpers.saveFile(lastdir=get_unique_path(directory, key='?count', zeros=1),
                                                                caption='Save snapshot as',
                                                                filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
                                                                selectedFilter=selected_filter,

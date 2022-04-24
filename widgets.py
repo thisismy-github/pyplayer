@@ -1,8 +1,10 @@
 from PyQt5 import QtGui, QtCore  # QtMultimedia, QtMultimediaWidgets
 from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets as QtW
+
 import constants
 import qthelpers
+from util import get_unique_path, get_hms
 
 import os
 import time
@@ -739,7 +741,7 @@ class QVideoSlider(QtW.QSlider):
                 else: pos = self.last_mouseover_pos                                 # use last position if mouse is outside the slider
 
                 frame = self.pixelPosToRangeValue(pos)
-                h, m, s, _ = qthelpers.getHMS(round(self.parent.duration * (frame / self.parent.frame_count), 2))
+                h, m, s, _ = get_hms(round(self.parent.duration * (frame / self.parent.frame_count), 2))
                 text = f'{m}:{s:02}' if self.parent.duration < 3600 else f'{h}:{m:02}:{s:02}'
 
                 size = self.cfg.spinHoverFontSize.value()
@@ -761,7 +763,7 @@ class QVideoSlider(QtW.QSlider):
                 p.drawText(pos, text)                           # draw actual text over shadow
 
                 # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
-                #h, m, s, _ = qthelpers.getHMS(round(self.parent.duration * (frame / self.parent.frame_count), 2))
+                #h, m, s, _ = get_hms(round(self.parent.duration * (frame / self.parent.frame_count), 2))
                 #if self.parent.duration < 3600: self.setToolTip(f'{m}:{s:02}')
                 #else: self.setToolTip(f'{h}:{m:02}:{s:02}')    # use cleaner format for time-strings on videos > 1 hour
         finally: p.end()
@@ -960,7 +962,7 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
         # create QVideoListItemWidgets on top of QListWidgetItems for each file
         thumbnails_needed = []
         for video in files:
-            thumbnail_name = qthelpers.getUniquePath(os.path.basename(video).replace('/', '.').replace('\\', '.'))
+            thumbnail_name = get_unique_path(os.path.basename(video).replace('/', '.').replace('\\', '.'))
             thumbnail_path = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
             last_modified = time.strftime('%#m/%#d/%y | %#I:%M:%S%p', time.localtime(os.path.getmtime(video))).lower()
             html = f'<html><head/><body><p style="line-height:0.5"><span style="font-family:Yu Gothic; font-size:12pt;">{os.path.basename(video)}</span></p><p><span style="color:#676767;">{last_modified}</span></p></body></html>'

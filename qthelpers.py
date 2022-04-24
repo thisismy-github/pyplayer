@@ -2,50 +2,12 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
 import os
-import time
 import platform
 import subprocess
 
 # ---------------------
 # Misc
 # ---------------------
-def getUniquePath(path: str, start: int = 2, key: str = None, zeros: int = 0, strict: bool = False) -> str:
-    ''' Returns a unique `path`. If `path` already exists, version-numbers starting from `start` are added. If a
-        keyword `key` is provided and exists within `path`, it is replaced with the version number with `zeros`
-        padded zeros. Otherwise, Windows-style naming is used with no padding: "(base) (version).(ext)".
-        The `strict` parameter forces `key` paths to always have version numbers included, even if `path`
-        was unique to begin with. This does not apply to Windows-style naming. '''
-    # TODO: add ignore_extensions parameter that uses os.path.splitext and glob(basepath.*)
-    start_time = time.time()
-    version = start
-    if key and key in path:                     # if key and key exists in path -> replace key in path with padded version number
-        print(f'Replacing key "{key}" in path: {path}')
-        key_path = path
-        if strict:                              # if strict, replace key with first version number
-            path = key_path.replace(key, str(version).zfill(zeros if version >= 0 else zeros + 1))  # +1 zero if version is negative
-            version += 1                        # increment version here to avoid checking this first path twice when we start looping
-        else: path = key_path.replace(key, '')  # if not strict, replace key with nothing first to see if original name is unique
-        while os.path.exists(path):
-            path = key_path.replace(key, str(version).zfill(zeros if version >= 0 else zeros + 1))
-            version += 1
-    else:                                       # no key -> use windows-style unique paths
-        base, ext = os.path.splitext(path)
-        if os.path.exists(path):                # if path exists, check if it's already using window-style names
-            parts = base.split()
-            if parts[-1][0] == '(' and parts[-1][-1] == ')' and parts[-1][1:-1].isnumeric():
-                base = ' '.join(parts[:-1])     # path is using window-style names, remove pre-existing version string from basename
-            while os.path.exists(path):
-                path = f'{base} ({version}){ext}'
-                version += 1
-    print(f'Unique path in {time.time() - start_time:.4f} seconds: {path}')
-    return path
-
-def addPathSuffix(path: str, suffix: str, unique: bool = False) -> str:
-    ''' Returns a path with `suffix` added between the basename and extension. If `unique` is set,
-        the new path will be run through getUniquePath with default arguments before returning. '''
-    base, ext = os.path.splitext(path)
-    return f'{base}{suffix}{ext}' if not unique else getUniquePath(f'{base}{suffix}{ext}')
-
 def openPath(path: str, explore: bool = False, fallback: bool = None):
     ''' Attempts to open `path` with an appropriate application. If `explore`
         is True, `path`'s parent directory is opened in a file explorer with
@@ -66,16 +28,6 @@ def openPath(path: str, explore: bool = False, fallback: bool = None):
             elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')
     except: pass    # if any error occurs or system wasn't detected (Linux), use Qt to open the path normally
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
-
-def getFromPATH(filename: str) -> str:
-    ''' Returns the full path to a `filename` if it exists in
-        the user's PATH, otherwise returns an empty string. '''
-    for path in os.environ.get('PATH', '').split(';' if platform.system() == 'Windows' else ':'):
-        try:
-            if filename in os.listdir(path):
-                return os.path.join(path, filename)
-        except: pass
-    return ''
 
 def showWindow(window: QtWidgets.QWidget) -> None:
     ''' Shows, raises, and activates a `window`. NOTE: `window`'s old geometry
@@ -105,14 +57,6 @@ def focusWindow(window: QtWidgets.QWidget) -> None:
     window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
     window.raise_()
     window.activateWindow()
-
-def getHMS(seconds: float) -> tuple:
-    ''' Converts seconds to the hours, minutes, seconds, and milliseconds it represents. '''
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int((seconds % 3600) % 60)
-    ms = int(round((seconds - int(seconds)) * 100, 4))  # round to account for floating point imprecision
-    return h, m, s, ms
 
 
 # ---------------------

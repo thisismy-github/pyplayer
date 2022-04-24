@@ -1,6 +1,7 @@
 import qtstart
 import constants
 import qthelpers
+from util import get_unique_path
 
 from PyQt5.QtWidgets import QMessageBox, QApplication
 import os
@@ -148,7 +149,7 @@ def download_update(self, latest_version, download_url, download_path):
 
         # copy updater utility to temporary path so it can be replaced during the update
         import shutil
-        active_updater_path = qthelpers.getUniquePath(os.path.join(constants.CWD, 'updater_active') + ext)
+        active_updater_path = get_unique_path(os.path.join(constants.CWD, 'updater_active') + ext)
         logger.info(f'Copying updater-utility to temporary path ({active_updater_path})')
         shutil.copy2(original_updater_path, active_updater_path)
 
