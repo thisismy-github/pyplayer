@@ -48,21 +48,25 @@ logging.info(f'Arguments: {args}')
 # System Tray Icon
 # ---------------------
 def exit(self: QtW.QMainWindow):
-    logging.info('Exiting.')
-    if self.dialog_settings.groupTray.isChecked() and not self.isHidden():
-        self.close()
-        if self.close_cancel_selected: return   # in case we show a file-deletion dialog and the user clicks cancel/X
+    try:
+        self.closed = True
+        logging.info('Exiting. self.closed set to True.')
 
-    self.tray_icon.setVisible(False)
-    logging.info('System tray icon stopped.')
-    self.closed = True
-    logging.info('self.closed set to True.')
-    self.app.quit()
-    logging.info('QApplication quit.')
+        if self.tray_icon is not None:
+            if self.dialog_settings.groupTray.isChecked() and not self.isHidden():
+                self.close()
+                if self.close_cancel_selected: return   # in case we show a file-deletion dialog and the user clicks cancel/X
+            self.tray_icon.setVisible(False)
+            logging.info('System tray icon stopped.')
 
-    try: config.saveConfig(self, constants.CONFIG_PATH)
-    except: logging.warning(f'Error saving configuration: {format_exc()}')
-    logging.info('Configuration has been saved. Goodbye.')
+        self.app.quit()
+        logging.info('QApplication quit.')
+
+        try: config.saveConfig(self, constants.CONFIG_PATH)
+        except: logging.warning(f'Error saving configuration: {format_exc()}')
+        logging.info('Configuration has been saved. Goodbye.')
+    except: logging.critical(f'\n\n(!)QTSTART.EXIT FAILED: {format_exc()}')
+    finally: self.closed = True                         # absolutely must be True or else daemon threads will never close
 
 
 def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:

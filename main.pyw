@@ -556,8 +556,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.set_frame_spin = self.spinFrame.setValue
         self.get_volume_slider = self.sliderVolume.value
         self.get_volume_scroll_increment = self.dialog_settings.spinVolumeScroll.value
-        self._update_slider_thread = Thread(target=self.update_slider_thread, daemon=True)
-        self._update_slider_thread.start()
+        Thread(target=self.update_slider_thread, daemon=True).start()
 
 
     def fast_start_open(self, cmdpath):
@@ -598,7 +597,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.fast_start_in_progress = True
                         self.fast_start_open_signal.emit(cmdpath)
                         logging.info(f'(FS) CMD-file detected: {cmdpath}')
-                        while self.fast_start_in_progress: sleep(0.05)
+                        while self.fast_start_in_progress and not self.closed: sleep(0.05)
                         os.remove(cmdpath)                                    # delete cmd.txt if possible
                 except: self.log(f'(!) FAST-START INTERFACE FAILED: {format_exc()}')
                 finally: sleep(check_delay)
@@ -650,15 +649,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         minimize_to_tray = self.dialog_settings.groupTray.isChecked() and self.dialog_settings.checkTrayClose.isChecked()
         force_close = self.close_was_spontaneous and not minimize_to_tray
-        if force_close:
-            qtstart.exit(self)
-        elif self.tray_icon is None:        # no system tray icon/X-button pressed and checkTrayClose not checked -> manually complete rest of exit
-            self.closed = False
-            logging.info('self.closed manually set to True.')
-            try: config.saveConfig(self, constants.CONFIG_PATH)
-            except: logging.warning(f'Error saving configuration: {format_exc()}')
-            logging.info('Configuration has been saved.')
-            self._update_slider_thread.join()
+        if force_close or self.tray_icon is None: qtstart.exit(self)
         else:
             if not cfg.minimizedtotraywarningignored:
                 if self.close_was_spontaneous:      # only show message if closeEvent was called by OS (i.e. X button pressed)
@@ -1711,13 +1702,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         current_frame = self.sliderProgress.value
         player = self.player                                # this doesn't work if instance is reset (NOTE: instance no longer gets reset)
         is_playing = player.is_playing                      # this doesn't work if instance is reset (NOTE: instance no longer gets reset)
-        while True:
+        while not self.closed:
             # window is NOT visible, stay relatively idle and do not update
-            while not self.isVisible(): sleep(0.25)
+            while not self.isVisible() and not self.closed: sleep(0.25)
 
             # window is visible, but nothing is actively playing
-            while self.isVisible() and not player.is_playing():
-                if self.closed: return logging.info('Program closed. Ending update_slider thread.')
+            while self.isVisible() and not player.is_playing() and not self.closed:
                 self.sliderProgress.update()                # force QVideoSlider to keep painting (this refreshes the hover-timestamp)
                 sleep(0.025)                                # update at 40fps
             self.swap_slider_styles_queued = False          # reset queued slider-swap (or the slider won't update anymore after a swap)
@@ -1762,6 +1752,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         new_frame = player.get_position() * self.frame_count                       # convert VLC position to frame
                         if new_frame >= current_frame(): self.update_progress_signal.emit(new_frame)    # make sure VLC didn't literally go backwards (pretty common)
                         #else: self.update_progress_signal.emit(int(new_frame + (self.frame_rate / 5)))  # simulate a non-backwards update TODO this actually makes it look worse
+        return logging.info('Program closed. Ending update_slider thread.')
 
 
     def set_and_update_progress(self, frame: int = 0):
