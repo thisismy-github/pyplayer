@@ -214,7 +214,7 @@ import math
 import logging
 import subprocess
 from time import sleep, localtime, mktime, strftime, strptime
-from time import time as gettime                        # from time import time -> time() errors out
+from time import time as get_time                       # from time import time -> time() errors out
 from threading import Thread
 from traceback import format_exc
 
@@ -259,7 +259,7 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # Additional utility functions
 # -----------------------------
 def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
-    start = gettime()
+    start = get_time()
     logging.info('Performing FFmpeg operation...')
 
     # create temp file if '%tp' is in ffmpeg command (and we have a valid `out` file)
@@ -284,7 +284,7 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
         else:   # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_file line up there
             if temp_path == gui.locked_video: gui.locked_video = infile
             os.renames(temp_path, infile)
-    gui.log(f'FFmpeg operation succeeded after {gettime() - start:.1f} seconds.')
+    gui.log(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
     return outfile
 
 
@@ -1066,15 +1066,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def parse_media_file(self, file, mime='video', _recursive=False):
         if mime == 'video':
-            start = gettime()
+            start = get_time()
 
             # get_parsed_status == 4 -> parsing finished. certain formats and conditions briefly report 0 length, fps, and/or dimensions.
             while self.vlc.media.get_parsed_status() != 4 or player.get_length() == 0 or player.get_fps() == 0 or player.video_get_size() == (0, 0):
-                if gettime() - start > 1 and self.vlc.media.get_parsed_status() == 4:   # certain file formats take an abnormal amount of time to report their FPS (like .mpg)
+                if get_time() - start > 1 and self.vlc.media.get_parsed_status() == 4:  # certain file formats take an abnormal amount of time to report their FPS (like .mpg)
                     logging.warning('Media is supposedly a video, but failed to report a frame rate after 1 full second despite being fully parsed.')
                     break
                 sleep(0.005)
-            logging.info(f'Media needed an additional {gettime() - start:.4f} seconds to parse.')
+            logging.info(f'Media needed an additional {get_time() - start:.4f} seconds to parse.')
 
             self.duration = round(player.get_length() / 1000, 4)
             self.frame_rate = round(player.get_fps(), 1)    # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
@@ -1448,7 +1448,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def _save(self, dest=None, ext_hint=None):
         ''' Current iteration: IV '''
-        start_time = gettime()
+        start_time = get_time()
 
         # save copies of all critical properties that could potentially change while we're saving
         video = self.video.strip()
@@ -1566,7 +1566,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if not cfg.trimmodeselected:
                     self.show_trim_dialog_signal.emit()
                     while not cfg.trimmodeselected: sleep(0.2)
-                    start_time = gettime()                  # reset start_time to undo time spent waiting for dialog
+                    start_time = get_time()                 # reset start_time to undo time spent waiting for dialog
                 if self.is_trim_mode():
                     precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.true_extension in constants.SPECIAL_TRIM_EXTENSIONS
                     self.log(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
@@ -1644,7 +1644,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video: self._save_open_signal.emit(final_dest, self.dialog_settings.checkCycleRememberOriginalPath.checkState() == 2)
                 elif self.dialog_settings.checkTextOnSave.isChecked(): show_text(f'Changes saved to {final_dest}.')
-                self.log(f'Changes saved to {final_dest} after {gettime() - start_time:.1f} seconds.')
+                self.log(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
             else: return self.log('No changes have been made because the crop was the same size as the source media.')
         except: self.log(f'(!) SAVE FAILED: {format_exc()}')
         finally:
@@ -1678,7 +1678,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # high-precision option enabled -> fake a smooth slider based on media's frame rate (simulates what libvlc SHOULD have)
             if self.dialog_settings.checkHighPrecisionProgress.isChecked():     # NOTE: (fast_start_interface_thread checks for accuracy every 5 seconds)
-                start = gettime()
+                start = get_time()
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:  # not playing, not locked, and not about to swap styles
                     # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override is not None:
@@ -1692,10 +1692,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif (next_frame := current_frame() + 1 * self.playback_speed) <= self.frame_count:  # do NOT update progress if we're at the end
                         update_progress_signal.emit(next_frame)                                          # update_progress_signal -> update_progress_slot
 
-                    sleep(0.0001)                       # sleep to force-update gettime()
-                    try: sleep(self.delay - (gettime() - start) - 0.0011)
-                    except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.delay} execution-time={gettime() - start}')
-                    finally: start = gettime()
+                    sleep(0.0001)                       # sleep to force-update get_time()
+                    try: sleep(self.delay - (get_time() - start) - 0.0011)
+                    except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.delay} execution-time={get_time() - start}')
+                    finally: start = get_time()
 
             # high-precision option disabled -> use libvlc's native progress at 8fps and manually paint QVideoSlider at 40fps
             else:
@@ -2327,7 +2327,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not _launch or settings.checkAutoUpdateCheck.isChecked():
             try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string into seconds needs %x
             except: last_check_time_seconds = 0
-            if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < gettime():
+            if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < get_time():
                 self.log('Checking for updates...')
                 self.checking_for_updates = True
                 self.dialog_settings.buttonCheckForUpdates.setText('Checking for updates...')
@@ -2413,7 +2413,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.statusbar.setVisible(False)
             self.menubar.setVisible(False)                  # TODO should this be like set_crop_mode's version? this requires up to 2 alt-presses to open
             self.was_maximized = self.isMaximized()         # remember if we're maximized or not
-            self.vlc.last_move_time = gettime()             # reset last_move_time, just in case we literally haven't moved the mouse yet
+            self.vlc.last_move_time = get_time()            # reset last_move_time, just in case we literally haven't moved the mouse yet
             return self.showFullScreen()                    # FullScreen with a capital S
         else:
             self.statusbar.setVisible(self.actionShowStatusBar.isChecked())
@@ -2999,7 +2999,7 @@ if __name__ == "__main__":
             gui.handle_updates(_launch=True)    # check for/download/validate pending updates
             qtstart.after_show_setup(gui)       # finish up any last second setup
             gc.collect(generation=2)            # final garbage collection before starting
-            logging.info(f'Starting GUI after {gettime() - constants.SCRIPT_START_TIME:.2f} seconds.')
+            logging.info(f'Starting GUI after {get_time() - constants.SCRIPT_START_TIME:.2f} seconds.')
 
             if gui.dialog_settings.groupTray.isChecked():       # start system tray icon
                 logging.info('Creating system tray icon...')
