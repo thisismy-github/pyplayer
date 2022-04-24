@@ -367,11 +367,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             for index, point in enumerate(s):
                 #p.drawRect(point.x() - 3, point.y() - 3, 5, 5)
                 text = f'({self.last_factored_points[index].x():.0f}, {self.last_factored_points[index].y():.0f})'
-                p.setPen(black)                                                               # set color to black
-                p.drawText(point.x() + 1, point.y() + self.text_y_offsets[index] + 1, text)   # draw shadow first
-                p.setPen(QtGui.QPen(white, 6, Qt.SolidLine))                           # set color to white
-                p.drawText(point.x(), point.y() + self.text_y_offsets[index], text)           # draw actual text over shadow
-                p.drawPoint(point.x(), point.y())                                             # size-6 point to represent handles
+                p.setPen(black)                                                              # set color to black
+                p.drawText(point.x() + 1, point.y() + self.text_y_offsets[index] + 1, text)  # draw shadow first
+                p.setPen(QtGui.QPen(white, 6, Qt.SolidLine))                                 # set color to white
+                p.drawText(point.x(), point.y() + self.text_y_offsets[index], text)          # draw actual text over shadow
+                p.drawPoint(point.x(), point.y())                                            # size-6 point to represent handles
         except: logging.warning(f'(!) Unexpected error while painting crop view from QVideoPlayer: {format_exc()}')
         p.end()
 
@@ -380,7 +380,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Recalculates borders and crop points while resizing, if crop-mode is enabled. '''
         if self.parent.actionCrop.isChecked():
             self.find_true_borders()
-            #self.selection = [self.defactor_point(point) for point in self.last_factored_points]   # this should work but has bizarre side effects
+            #self.selection = [self.defactor_point(p) for p in self.last_factored_points]    # this should work but has bizarre side effects
             for index in range(4): self.correct_points(index)
             self.update_crop_frames()
         super().resizeEvent(event)
@@ -614,20 +614,20 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         if self.parent.video:
             mod = event.keyboardModifiers()
-            if mod & Qt.ControlModifier:     # ctrl (concat before current)
+            if mod & Qt.ControlModifier:    # ctrl (concat before current)
                 self.parent.concatenate(action=self.parent.actionCatBefore, files=files)
-            elif mod & Qt.AltModifier:       # alt (concat after current)
+            elif mod & Qt.AltModifier:      # alt (concat after current)
                 self.parent.concatenate(action=self.parent.actionCatAfter, files=files)
-            elif mod & Qt.ShiftModifier:     # shift (add audio track, one file at time currently)
+            elif mod & Qt.ShiftModifier:    # shift (add audio track, one file at time currently)
                 file = files[0]
                 if os.path.abspath(file) != self.parent.video: self.parent.add_audio(path=file)
                 else: self.parent.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
-            else:                                   # no modifiers pressed, check if subtitle files were dropped
+            else:                           # no modifiers pressed, check if subtitle files were dropped
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
                 if subtitle_files: self.parent.browse_subtitle_file(urls=subtitle_files)
                 else: self.parent.open(files[0], focus_window=focus_window)    # no modifiers, no subtitles -> play dropped file as media
         else: self.parent.open(files[0], focus_window=focus_window)            # no video playing -> ignore modifiers and play dropped file
-        super().dropEvent(event)                    # run QWidget's built-in behavior
+        super().dropEvent(event)            # run QWidget's built-in behavior
 
 
 

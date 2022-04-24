@@ -121,7 +121,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
     # TODO add standardShortcuts | TODO are these noticably slower than using keyPressEvent or am I crazy?
     def increment_volume_boost(value=0.5):
         self.volume_boost = min(self.volume_boost + value, 5)
-        self.set_volume(self.get_volume_slider())
+        self.set_volume(self.sliderVolume.value())
         self.log_on_screen(f'{self.volume_boost:.1f}x volume multiplier', marq_key='VolumeBoost', log=False)
 
     def increment_subtitle_delay(value=50):

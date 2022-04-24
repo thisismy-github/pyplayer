@@ -85,7 +85,7 @@ def saveConfig(gui, filename: str = None):
     save = cfg.save
 
     cfg.setSection('window')
-    save('fullscreen', gui.isFullScreen())  # FullScreen with a capital S
+    save('fullscreen', gui.isFullScreen())                  # FullScreen with a capital S
     save('maximized', gui.isMaximized() or (gui.isFullScreen() and gui.was_maximized))
     if not gui.isMaximized() and not gui.isFullScreen():    # preserve normal size/position
         save('size', gui.size().width(), gui.size().height())

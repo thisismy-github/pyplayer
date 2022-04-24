@@ -130,39 +130,27 @@ def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedA
     msg.setText(text)
     if textInformative: msg.setInformativeText(textInformative)
     if textDetailed: msg.setDetailedText(textDetailed)
-    if not modal: msg.setWindowModality(Qt.WindowModal)             # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
+    if not modal: msg.setWindowModality(Qt.WindowModal)     # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     msg.setStandardButtons(buttons)
     msg.setDefaultButton(defaultButton)
     msg.setWindowOpacity(opacity)
-    msg.setTextInteractionFlags(Qt.TextSelectableByMouse)           # allows copy/paste of popup text
-    if isinstance(windowIcon, str):                                 # windowIcon (the titlebar icon) is a filepath
+    msg.setTextInteractionFlags(Qt.TextSelectableByMouse)   # allows copy/paste of popup text
+    if isinstance(windowIcon, str):                         # windowIcon (the titlebar icon) is a filepath
         if os.path.exists(windowIcon): msg.setWindowIcon(QtGui.QIcon(windowIcon))
         else:   # icon is the name of a Qt icon -> https://www.pythonguis.com/faq/built-in-qicons-pyqt/
             try: msg.setWindowIcon(msg.style().standardIcon(getattr(QtWidgets.QStyle, windowIcon)))
             except: pass
-    if textDetailedAutoOpen:                                        # auto-opens "Show Details..." button if present
+    if textDetailedAutoOpen:                                # auto-opens "Show Details..." button if present
         for button in msg.buttons():
             if button.text() == 'Show Details...':
                 button.click()
     return msg
 
-def getPopupOkCancel(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-                     defaultButton=QMessageBox.Ok, icon=QMessageBox.Question, modal=True, opacity=1.0) -> QMessageBox:
-    return getPopup(title, text, textInformative, textDetailed, textDetailedAutoOpen,
-                    buttons=QMessageBox.Ok | QMessageBox.Cancel, defaultButton=defaultButton,
-                    icon=icon, modal=modal, opacity=opacity)
-
-def getPopupYesNo(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-                  defaultButton=QMessageBox.Yes, icon=QMessageBox.Question, modal=True, opacity=1.0) -> QMessageBox:
-    return getPopup(title, text, textInformative, textDetailed, textDetailedAutoOpen,
-                    buttons=QMessageBox.Yes | QMessageBox.No, defaultButton=defaultButton,
-                    icon=icon, modal=modal, opacity=opacity)
-
-def getPopupYesNoCancel(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-                        defaultButton=QMessageBox.Yes, icon=QMessageBox.Question, modal=True, opacity=1.0) -> QMessageBox:
-    return getPopup(title, text, textInformative, textDetailed, textDetailedAutoOpen,
-                    buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                    defaultButton=defaultButton, icon=icon, modal=modal, opacity=opacity)
+def getPopupOkCancel(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Ok | QMessageBox.Cancel, **kwargs)
+def getPopupYesNo(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Yes | QMessageBox.No, **kwargs)
+def getPopupYesNoCancel(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, **kwargs)
+def getPopupRetryCancel(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Retry | QMessageBox.Cancel, **kwargs)
+def getPopupAbortRetryIgnore(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Abort | QMessageBox.Retry | QMessageBox.Ignore, **kwargs)
 
 def getDialogFromUiClass(uiClass, parent=None, **kwargs):
     ''' Returns a persistent dialog based on a `uiClass`, likely provided by a converted Qt Designer file. Can be
@@ -173,7 +161,7 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
             if 'delete' in kwargs: kwargs['deleteOnClose'] = kwargs['delete']    # accept both 'delete' and 'deleteOnClose'
             self.setAttribute(Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
             modal = kwargs.get('modal', False) or kwargs.get('blocking', False)  # accept both 'modal' and 'blocking'
-            if not modal: self.setWindowModality(Qt.WindowModal)    # # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
+            if not modal: self.setWindowModality(Qt.WindowModal)    # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
             self.setParent(parent)
             self.setupUi(self)
     return QPersistentDialog(parent, **kwargs)
@@ -184,7 +172,7 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
         which serves to add QMessageBox-style functionality to the dialog, allowing easy standard-button access, as
         opposed to the 1 or 0 QDialogBox normally returns. QDialogHyrbid adds the methods dialog.select(choice) and
         dialog.addButtons(layout, *buttons (comma-separated)), and stores the selected StandardButton in dialog.choice. '''
-    get_button_callback = lambda this, button: lambda: this.select(button)  # workaround for python bug/oddity involving creating lambdas in iterables
+    getButtonCallback = lambda this, button: lambda: this.select(button)  # workaround for python bug/oddity involving creating lambdas in iterables
 
     class QDialogHybrid(QtWidgets.QDialog):
         def select(self, choice):
@@ -201,7 +189,7 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
             buttonBox.rejected.connect(self.reject)
             for button in buttons:                          # connect buttons to a callback so we can access our selected button later
                 buttonBox.addButton(button)
-                buttonBox.button(button).clicked.connect(get_button_callback(self, button))     # buttons cannot be connected directly
+                buttonBox.button(button).clicked.connect(getButtonCallback(self, button))     # buttons cannot be connected directly
             layout.addWidget(buttonBox)
 
     dialog = QDialogHybrid(parent)
@@ -216,7 +204,7 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
     if icon: dialog.setWindowIcon(icon)
     if size: dialog.resize(*size)
     if fixedSize: dialog.setFixedSize(*fixedSize)           # TODO add width/height?
-    if not modal: dialog.setWindowModality(Qt.WindowModal)  # # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
+    if not modal: dialog.setWindowModality(Qt.WindowModal)  # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     dialog.setWindowOpacity(opacity)
     #dialog.setToolTip()
     return dialog
@@ -275,7 +263,6 @@ def saveFile(lastdir='.', caption='Save file', filter='All files (*)',
              selectedFilter='', returnFilter=False,
              directory=None, name=None, url=False):
     directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
-    print('\n\n\nWHAT IS THE DIFFERENCE', lastdir, caption, filter, selectedFilter, returnFilter, directory, name, url)
     file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(
         caption=caption,
         directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
