@@ -401,7 +401,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     _save_open_signal = QtCore.pyqtSignal(str, bool)    # str -> file, bool -> remembering previous file
     fast_start_open_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
-    show_ffmpeg_warning_signal = QtCore.pyqtSignal()
+    show_ffmpeg_warning_signal = QtCore.pyqtSignal(QtW.QWidget)
     show_trim_dialog_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
     update_title_signal = QtCore.pyqtSignal()
@@ -431,7 +431,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def setup(self):
-        self.shown_for_first_time = False
         self.first_video_fully_loaded = False
         self.closed = False
         self.restarted = False
@@ -1508,8 +1507,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # ffmpeg is required after this point, so check that it's actually present
         # because we're in a thread, we skip the warning and display it separately through a signal
-        if not constants.verify_ffmpeg(warning=False, force_warning=False):
-            self.show_ffmpeg_warning_signal.emit()
+        if not constants.verify_ffmpeg(self, warning=False, force_warning=False):
+            self.show_ffmpeg_warning_signal.emit(self)
             return self.log_on_screen('You don\'t have FFmpeg installed!')
 
         # log data and create some strings for temporary paths we'll be needing
@@ -1887,7 +1886,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def concatenate(self, action: QtW.QAction, files=None):                             # TODO this is old and needs to be unified with the other edit methods
         # https://stackoverflow.com/questions/7333232/how-to-concatenate-two-mp4-files-using-ffmpeg
         # https://stackoverflow.com/questions/31691943/ffmpeg-concat-produces-dts-out-of-order-errors
-        if not constants.verify_ffmpeg(force_warning=True):
+        if not constants.verify_ffmpeg(self, force_warning=True):
             return self.log_on_screen('You don\'t have FFmpeg installed!')
 
         style = {self.actionCatNone: 0, self.actionCatAny: 1, self.actionCatBefore: 2, self.actionCatAfter: 3}[action]
@@ -1899,7 +1898,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # create/setup dialog and connect signals
             from bin.window_cat import Ui_catDialog
-            dialog = qthelpers.getDialogFromUiClass(Ui_catDialog)
+            dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_location())
             dialog.videoList.parent = self                                              # set fake parent for videoList so it can directly access our properties
             dialog.checkOpen.setChecked(cfg.concatenate.open)
             dialog.checkExplore.setChecked(cfg.concatenate.explore)
@@ -2021,7 +2020,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def amplify_audio(self):                # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
         if self.mime_type == 'image': return self.statusbar.showMessage('Well that would just be silly, wouldn\'t it?', 10000)
-        dialog = qthelpers.getDialog(title='Amplify Audio', fixedSize=(125, 105), flags=Qt.Tool)   # TODO this won't close automatically
+        dialog = qthelpers.getDialog(title='Amplify Audio', **self.get_popup_location(), fixedSize=(125, 105), flags=Qt.Tool)
 
         layout = QtW.QVBoxLayout(dialog)
         label = QtW.QLabel('Input desired volume \n(applies on save):', dialog)
@@ -2117,7 +2116,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         is_video = self.mime_type == 'video'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
-        dialog = qthelpers.getDialog(title=f'Input desired {"size" if is_video else "length"}', fixedSize=(0, 0), flags=Qt.Tool)   # TODO this won't close automatically
+        dialog = qthelpers.getDialog(title='Input desired ' + 'size' if is_video else 'length',
+                                     **self.get_popup_location(), fixedSize=(0, 0), flags=Qt.Tool)
 
         layout = QtW.QVBoxLayout(dialog)
         form = QtW.QFormLayout()
@@ -2192,7 +2192,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def show_about_dialog(self):                # lazy version of about dialog
         from bin.window_about import Ui_aboutDialog
-        dialog_about = qthelpers.getDialogFromUiClass(Ui_aboutDialog, modal=True, deleteOnClose=True)
+        dialog_about = qthelpers.getDialogFromUiClass(Ui_aboutDialog, **self.get_popup_location(),
+                                                      modal=True, deleteOnClose=True)
         dialog_about.labelLogo.setPixmap(QtGui.QPixmap(os.path.join(constants.RESOURCE_DIR, 'logo_filled.png')))
         dialog_about.labelVersion.setText(dialog_about.labelVersion.text().replace('?version', constants.VERSION))
 
@@ -2212,7 +2213,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             settings yet. Sets cfg.trimmodeselected to True. '''
         try:
             self.force_pause(True)
-            dialog = qthelpers.getDialog(title='Choose default trim mode', modal=True, deleteOnClose=True, flags=Qt.Tool)
+            dialog = qthelpers.getDialog(title='Choose default trim mode', **self.get_popup_location(),
+                                         modal=True, deleteOnClose=True, flags=Qt.Tool)
             dialog.setMinimumSize(427, 220)
             dialog.resize(0, 0)
 
@@ -2259,7 +2261,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not self.marked_for_deletion: return self.log('No media is marked for deletion.')
         logging.info('Opening deletion prompt...')
         try:
-            dialog = qthelpers.getDialog(icon='SP_DialogDiscardButton', title='Confirm Deletion')  # TODO this won't close automatically
+            dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_location())
             recycle = self.dialog_settings.checkRecycleBin.isChecked()
 
             # layout at "fixed size" https://stackoverflow.com/questions/14980620/qt-layout-resize-to-minimum-after-widget-size-changes
@@ -2356,11 +2358,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             settings_were_open = self.dialog_settings.isVisible()       # hide the always-on-top settings while we show popups
             if settings_were_open: self.dialog_settings.hide()
             if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
-                if 'failed' in results: return qthelpers.getPopup(**popup_kwargs).exec()
+                if 'failed' in results: return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
                 if constants.IS_COMPILED and constants.PLATFORM == 'Windows':
-                    choice = qthelpers.getPopup(**popup_kwargs).exec()
+                    choice = qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
                     if choice == QtW.QMessageBox.Yes:
                         import update
                         name = constants.VERSION.split()[0]
@@ -2371,11 +2373,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         download_url = f'{latest_version_url.replace("/tag/", "/download/")}/{filename}'
                         download_path = os.path.join(constants.TEMP_DIR, filename)
                         update.download_update(self, latest_version, download_url, download_path)
-                else: return qthelpers.getPopup(**popup_kwargs).exec()                  # non-windows version of popup
+                else: return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()  # non-windows version of popup
         finally:
             self.checking_for_updates = False
             self.dialog_settings.buttonCheckForUpdates.setText('Check for updates')
             if settings_were_open: self.dialog_settings.show()          # restore settings if they were originally open
+
+
+    def get_popup_location(self):
+        ''' Returns keyword arguments as a dictionary for the center-parameters of popups and dialogs. '''
+        index = self.dialog_settings.comboDialogPosition.currentIndex()
+        if index: widget = None
+        elif not constants.APP_RUNNING:  # index is 0 but geometry isn't set yet, use cfg to get center of window
+            x, y = cfg.pos
+            w, h = cfg.size
+            x += w / 2
+            y += h / 2
+            widget = (x, y)
+        else: widget = self.vlc if self.vlc.height() >= 20 else self.frameGeometry()    # use VLC window if it's big enough
+        return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2}
 
 
     def swap_slider_styles(self):
@@ -2993,7 +3009,7 @@ if __name__ == "__main__":
         cfg = config.loadConfig(gui, constants.CONFIG_PATH)     # create and load config
         gui.refresh_theme_combo(set_theme=cfg.theme)            # load and set themes
         widgets.init_custom_widgets(cfg, app)                   # set config and app as global objects in widgets.py
-        constants.verify_ffmpeg(warning=True)                   # confirm/look for valid ffmpeg path if needed
+        constants.verify_ffmpeg(gui, warning=True)              # confirm/look for valid ffmpeg path if needed
 
         with open(constants.PID_PATH, 'w'):     # create PID file
             gui.handle_updates(_launch=True)    # check for/download/validate pending updates
@@ -3007,6 +3023,7 @@ if __name__ == "__main__":
                 gui.tray_icon = qtstart.get_tray_icon(gui)
             else: gui.tray_icon = None
 
+            constants.APP_RUNNING = True
             try: app.exec()
             except: logging.critical(f'(!) GUI FAILED TO EXECUTE: {format_exc()}')
             logging.info('Application execution has finished.')

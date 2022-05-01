@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>334</width>
-        <height>1462</height>
+        <height>1486</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -236,14 +236,14 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
-             <item row="3" column="0">
+             <item row="4" column="0">
               <widget class="QLabel" name="label_33">
                <property name="text">
                 <string>Scrollwheel volume</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="1">
+             <item row="4" column="1">
               <widget class="QSpinBox" name="spinVolumeScroll">
                <property name="suffix">
                 <string>%</string>
@@ -262,7 +262,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="0">
+             <item row="5" column="0">
               <widget class="QCheckBox" name="checkHideIdleCursor">
                <property name="toolTip">
                 <string>If checked, your cursor will disappear until moved
@@ -277,7 +277,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="5" column="1">
               <widget class="QDoubleSpinBox" name="spinHideIdleCursorDuration">
                <property name="prefix">
                 <string>After: </string>
@@ -302,7 +302,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0" colspan="2">
+             <item row="6" column="0" colspan="2">
               <widget class="QCheckBox" name="checkHighPrecisionProgress">
                <property name="toolTip">
                 <string>If checked, the progress slider for your media will be simulated in
@@ -322,7 +322,7 @@ otherwise, the progress bar will fall behind and start to desync.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAlwaysSaveAs">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -340,7 +340,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default
@@ -356,7 +356,7 @@ folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
                 <string>If checked, the media player will completely stop
@@ -375,7 +375,7 @@ going to &quot;File-&gt;Stop Player&quot; in the menubar.</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationWrap">
                <property name="toolTip">
                 <string>If checked, using the arrow keys or J/L to navigate forwards or backwards in a video
@@ -391,7 +391,7 @@ Example: If you're at the end of a video and press ➞, you'll be placed back at
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationUnpause">
                <property name="toolTip">
                 <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
@@ -405,7 +405,7 @@ has finished will automatically unpause the media and resume playback.</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -420,7 +420,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -446,7 +446,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -460,7 +460,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_8">
                <item>
                 <widget class="QCheckBox" name="checkMinimizePause">
@@ -487,6 +487,35 @@ but only if the media had not been paused prior to minimizing.</string>
                 </widget>
                </item>
               </layout>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_50">
+               <property name="toolTip">
+                <string>The location where popups and other dialogs will initially appear.</string>
+               </property>
+               <property name="text">
+                <string>Center dialogs over</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QComboBox" name="comboDialogPosition">
+               <item>
+                <property name="text">
+                 <string>Window</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Screen</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Mouse</string>
+                </property>
+               </item>
+              </widget>
              </item>
             </layout>
            </item>

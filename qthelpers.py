@@ -58,18 +58,95 @@ def focusWindow(window: QtWidgets.QWidget) -> None:
     window.raise_()
     window.activateWindow()
 
+def getScreenForRect(rect: QtCore.QRect, defaultPos: QtCore.QPoint = None,
+                     mouse: bool = False, strict: bool = False) -> QtGui.QScreen:
+    ''' Returns the QScreen that `rect` is touching, if any. If `rect` is not
+        touching any screen and `strict` is True, a ValueError is raised.
+        Otherwise, if `mouse` is True, the screen the mouse is on is returned,
+        and if neither are True, the primary screen is returned. `defaultPos`
+        specifies the QPoint to test before thoroughly testing `rect`. '''
+    if defaultPos is None: pos = rect.center()
+    else: pos = defaultPos
+    qscreen = QtWidgets.QApplication.screenAt(pos)
+    if not qscreen:   # check if rect's center (unless defaultPos was None) and corners are on a screen
+        if defaultPos is None: points = (rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)
+        else: points = (rect.center, rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)
+        for point in points:
+            qscreen = QtWidgets.QApplication.screenAt(point())
+            if qscreen: break
+    if not qscreen:   # no screen detected -> use mouse. if already used -> use primary screen
+        if strict: raise ValueError(f'Rect {rect} is not on any screen.')
+        if not mouse: qscreen = QtWidgets.QApplication.screenAt(QtGui.QCursor().pos())
+        if not qscreen: qscreen = QtWidgets.QApplication.primaryScreen()
+    return qscreen
+
+def center(widget: QtWidgets.QWidget, target=None, screen: bool = False,
+           mouse: bool = False, strict: bool = False) -> None:
+    ''' Centers `widget` over `target`, which may be a widget, QRect, QPoint,
+        or an (x, y) tuple. If only `screen` is True, `widget` is centered
+        over `target`'s screen, or `widget`'s own screen is `target` is None.
+        If only `mouse` is True, `widget` is centered over the mouse. If both
+        are True, `widget` is centered over the mouse's screen. `widget` is
+        clamped to its new screen if possible. `strict` controls whether or
+        not to raise errors when `target` is believed to be invalid. '''
+    pos = target
+    targetRect = None
+    if isinstance(target, QtWidgets.QWidget):
+        targetRect = target.geometry()
+        pos = target.mapToGlobal(targetRect.center())
+    elif isinstance(target, QtCore.QRect):
+        targetRect = target
+        pos = target.center()
+    elif target is not None:
+        try: pos = QtCore.QPoint(*target)
+        except: raise TypeError('`target` must be a widget, QRect, QPoint, '
+                                f'or an (x, y) tuple, not {type(target)}.')
+    elif not mouse: screen = True               # only `widget` is set, center on its own screen
+    if targetRect is None: targetRect = widget.geometry()
+
+    if screen:
+        if mouse: pos = QtGui.QCursor().pos()
+        elif not target: pos = widget.mapToGlobal(widget.rect().center())
+        pos = getScreenForRect(targetRect, pos, mouse, strict).availableGeometry().center()
+    elif mouse: pos = QtGui.QCursor().pos()
+
+    # move widget first, then clamp to screen if possible
+    widget.move(pos - widget.rect().center())   # move immediately and correct later
+    if not screen:                              # clamp is pointless if `screen` was set
+        widgetRect = widget.frameGeometry()
+        targetScreen = getScreenForRect(widgetRect, pos, mouse, strict)
+        if targetScreen:
+            screenRect = targetScreen.availableGeometry()
+            if not screenRect.contains(widgetRect):
+                offsetTopLeft = widgetRect.topLeft() - screenRect.topLeft()
+                widgetRect.translate(-min(0, offsetTopLeft.x()), -min(0, offsetTopLeft.y()))
+                offsetBottomRight = widgetRect.bottomRight() - screenRect.bottomRight()
+                widgetRect.translate(-max(0, offsetBottomRight.x()), -max(0, offsetBottomRight.y()))
+                widget.move(widgetRect.topLeft())           # .setGeometry(widgetRect) is wrong
+
 
 # ---------------------
 # Generic dialogs
 # ---------------------
-def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=False,
-             buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok, modal=True, opacity=1.0,
-             icon=QMessageBox.Question, windowIcon=None) -> QMessageBox:
-    if not text: return                                             # kill popup if no text is passed
-    if isinstance(icon, str):                                       # allow common icons via a dictionary of strings
+def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedAutoOpen=True,
+             buttons=QMessageBox.Ok, defaultButton=QMessageBox.Ok, icon=QMessageBox.Question,
+             centerWidget=None, centerScreen=False, centerMouse=False, sound=True,
+             modal=True, opacity=1.0, windowIcon=None, parent=None) -> QMessageBox:
+    if not text: return                                     # kill popup if no text is passed
+    if isinstance(icon, str):                               # allow common icons via a dictionary of strings
         icons = {'information': 1, 'info': 1, 'warning': 2, 'warn': 2, 'critical': 3, 'question': 4}
         icon = icons[icon.strip().lower()]
-    msg = QMessageBox(icon=icon)
+
+    def showEvent(event):
+        ''' Centers the popup before showing if desired. '''
+        if centerWidget or centerScreen or centerMouse:
+            target = centerWidget or None
+            screen = centerScreen or False
+            mouse = centerMouse or False
+            center(msg, target=target, screen=screen, mouse=mouse)
+
+    msg = QMessageBox(parent, icon=icon)
+    msg.showEvent = showEvent
     msg.setWindowTitle(title)
     msg.setText(text)
     if textInformative: msg.setInformativeText(textInformative)
@@ -97,8 +174,10 @@ def getPopupRetryCancel(*args, **kwargs): return getPopup(*args, buttons=QMessag
 def getPopupAbortRetryIgnore(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Abort | QMessageBox.Retry | QMessageBox.Ignore, **kwargs)
 
 def getDialogFromUiClass(uiClass, parent=None, **kwargs):
-    ''' Returns a persistent dialog based on a `uiClass`, likely provided by a converted Qt Designer file. Can be
-        used repeatedly, as a persistent dialog. Accepts the `modal` and `deleteOnClose/delete` keyword parameters. '''
+    ''' Returns a persistent dialog based on a `uiClass`, likely provided by
+        a converted Qt Designer file. Can be used repeatedly, as a persistent
+        dialog. Accepts `modal`, `deleteOnClose/delete`, and
+        `centerWidget/centerScreen/centerMouse` keyword parameters. '''
     class QPersistentDialog(QtWidgets.QDialog, uiClass):
         def __init__(self, parent, **kwargs):
             super().__init__(parent)
@@ -108,10 +187,23 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
             if not modal: self.setWindowModality(Qt.WindowModal)    # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
             self.setParent(parent)
             self.setupUi(self)
+
+        def showEvent(self, event):
+            ''' Centers the dialog before showing if desired. '''
+            centerWidget = kwargs.get('centerWidget', None)
+            centerScreen = kwargs.get('centerScreen', False)
+            centerMouse = kwargs.get('centerMouse', False)
+            if centerWidget or centerScreen or centerMouse:
+                target = centerWidget or None
+                screen = centerScreen or False
+                mouse = centerMouse or False
+                center(self, target=target, screen=screen, mouse=mouse)
+            return super().showEvent(event)
     return QPersistentDialog(parent, **kwargs)
 
-def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size=None, fixedSize=None,
-              opacity=1.0, modal=False, deleteOnClose=True, flags=Qt.WindowCloseButtonHint):
+def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation',
+              centerWidget=None, centerScreen=False, centerMouse=False, size=None, fixedSize=None,
+              modal=False, opacity=1.0, deleteOnClose=True, flags=Qt.WindowCloseButtonHint):
     ''' Returns a temporary dialog, designed to be finished manually. Uses an on-the-fly subclass called QDialogHybrid
         which serves to add QMessageBox-style functionality to the dialog, allowing easy standard-button access, as
         opposed to the 1 or 0 QDialogBox normally returns. QDialogHyrbid adds the methods dialog.select(choice) and
@@ -135,6 +227,15 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation', size
                 buttonBox.addButton(button)
                 buttonBox.button(button).clicked.connect(getButtonCallback(self, button))     # buttons cannot be connected directly
             layout.addWidget(buttonBox)
+
+        def showEvent(self, event):
+            ''' Centers the dialog before showing if desired. '''
+            if centerWidget or centerScreen or centerMouse:
+                target = centerWidget or None
+                screen = centerScreen or False
+                mouse = centerMouse or False
+                center(self, target=target, screen=screen, mouse=mouse)
+            return super().showEvent(event)
 
     dialog = QDialogHybrid(parent)
     dialog.setWindowFlags(flags)

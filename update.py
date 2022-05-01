@@ -24,7 +24,7 @@ def get_later_version(version_a: str, version_b: str) -> str:
     return version_a if atuple > btuple else version_b
 
 
-def check_for_update(self):
+def check_for_update(self) -> None:
     ''' The following format is assumed:
             > constants.REPOSITORY_URL -- https://github.com/thisismy-github/PyPlayer
             > constants.VERSION        -- pyplayer 0.1.0 beta
@@ -88,7 +88,7 @@ def check_for_update(self):
     self._handle_updates_signal.emit({}, {})                                # call empty signal to perform cleanup
 
 
-def download_update(self, latest_version, download_url, download_path):
+def download_update(self, latest_version: str, download_url: str, download_path: str) -> None:
     import requests
     try:
         logger.info(f'Downloading version {latest_version} from {download_url} to {download_path}')
@@ -190,7 +190,8 @@ def download_update(self, latest_version, download_url, download_path):
                                            f'{updater_removal_failed}{download_removal_failed}'
                                            'You can still manually download the ' + HYPERLINK,
                            textDetailed=format_exc(),
-                           textDetailedAutoOpen=True).exec()
+                           textDetailedAutoOpen=True,
+                           **self.get_popup_location()).exec()
 
         self.statusbar.setVisible(self.actionShowStatusBar.isChecked())     # restore statusbar to original state if update failed
         self.save_progress_bar.setMaximum(0)                                # set progress bar's maximum to 0 to restore indeterminate style
@@ -198,7 +199,7 @@ def download_update(self, latest_version, download_url, download_path):
         return self.save_progress_bar.setVisible(False)                     # hide progress bar if update failed
 
 
-def validate_update(self, update_report):
+def validate_update(self, update_report: str) -> None:
     logger.info(f'Update report detected at {update_report}, validating...')
     with open(update_report) as report:
         lines = tuple(line.strip() for line in report)
@@ -216,15 +217,16 @@ def validate_update(self, update_report):
                                       text='The attempted update failed while unpacking.',
                                       textInformative='If needed, you can manually download the ' + HYPERLINK,
                                       textDetailed=status,
-                                      textDetailedAutoOpen=True).exec()
+                                      textDetailedAutoOpen=True,
+                                      **self.get_popup_location()).exec()
     try: os.remove(update_report)
     except: logger.warning('Failed to delete update report after validation.')
     logger.info('Update validated.')
-    update_migration(version_change.split(' -> ')[0])
+    update_migration(self, version_change.split(' -> ')[0])
     self.log(f'Update from {version_change} successful.')
 
 
-def update_migration(old_version):
+def update_migration(self, old_version: str) -> None:
     ''' Handles additional work required to migrate
         `old_version` to the latest version, if any. '''
     older_than = lambda v: old_version != v and get_later_version(old_version, v) == v
@@ -235,4 +237,5 @@ def update_migration(old_version):
                                 'that cannot be applied through the update utility. Reinstalling\n'
                                 'manually is not required, but is highly recommended.',
                            textInformative='You can redownload the ' + HYPERLINK + ' Be sure to copy '
-                                           'over config.ini and any personal files you may have saved.').exec()
+                                           'over config.ini and any personal files you may have saved.',
+                           **self.get_popup_location()).exec()

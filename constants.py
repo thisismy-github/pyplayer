@@ -19,6 +19,7 @@ REPOSITORY_URL = 'https://github.com/thisismy-github/pyplayer'
 
 SCRIPT_START_TIME = time.time()
 IS_COMPILED = getattr(sys, 'frozen', False)
+APP_RUNNING = False
 PLATFORM = platform.system()
 SCRIPT_PATH = sys.executable if IS_COMPILED else os.path.realpath(__file__)
 CWD = os.path.dirname(SCRIPT_PATH)
@@ -68,7 +69,7 @@ if IS_COMPILED: FFMPEG = os.path.join(CWD, 'plugins', 'ffmpeg')
 else: FFMPEG = os.path.join(BIN_DIR, 'ffmpeg')
 
 
-def verify_ffmpeg(warning: bool = True, force_warning: bool = False) -> str:
+def verify_ffmpeg(self, warning: bool = True, force_warning: bool = False) -> str:
     ''' Checks, sets, and returns constants.FFMPEG if it's present in the
         bin/PyQt/root folders, or the user's PATH variable. If not, FFMPEG is
         set to ''. If `warning` is True, a popup is displayed unless the user
@@ -90,12 +91,12 @@ def verify_ffmpeg(warning: bool = True, force_warning: bool = False) -> str:
                 if config.cfg.ffmpegwarningignored and not force_warning:
                     warn('(!) FFmpeg not detected in /bin folder. Assuming it is still accessible.')
                 elif warning or force_warning:
-                    _display_ffmpeg_warning(forced=force_warning)
+                    _display_ffmpeg_warning(self, forced=force_warning)
             warn('FFmpeg not detected in /bin folder. Current FFMPEG constant: ' + FFMPEG)
     return FFMPEG
 
 
-def _display_ffmpeg_warning(forced: bool = True) -> None:
+def _display_ffmpeg_warning(self, forced: bool = True) -> None:
     import logging
     from PyQt5.QtWidgets import QMessageBox
     dir_name = 'plugins' if IS_COMPILED else 'bin'
@@ -109,6 +110,7 @@ def _display_ffmpeg_warning(forced: bool = True) -> None:
     choice = qthelpers.getPopupOkCancel(title='FFmpeg not detected',
                                         text=popup_text,
                                         textInformative=popup_text_informative,
-                                        icon=QMessageBox.Warning).exec()
+                                        icon=QMessageBox.Warning,
+                                        **self.get_popup_location()).exec()
     if not forced and choice == QMessageBox.Cancel: config.cfg.ffmpegwarningignored = True
     logging.getLogger('constants.py').warning('FFmpeg not detected in /bin folder. Current FFMPEG constant: ' + FFMPEG)
