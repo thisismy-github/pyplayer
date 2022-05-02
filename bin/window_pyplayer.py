@@ -493,10 +493,13 @@ class Ui_MainWindow(object):
         self.actionClearMarked.setObjectName("actionClearMarked")
         self.actionClearRecent = QtWidgets.QAction(MainWindow)
         self.actionClearRecent.setObjectName("actionClearRecent")
+        self.actionCopyMediaLocation = QtWidgets.QAction(MainWindow)
+        self.actionCopyMediaLocation.setObjectName("actionCopyMediaLocation")
         self.menuRecent.addAction(self.actionClearRecent)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
         self.menuFile.addAction(self.actionOpenMediaLocation)
+        self.menuFile.addAction(self.actionCopyMediaLocation)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionSave)
         self.menuFile.addAction(self.actionSaveAs)
@@ -710,6 +713,7 @@ class Ui_MainWindow(object):
         self.actionClearMarked.setToolTip(_translate("MainWindow", "Clear the list of files that are currently marked\n"
 "for deletion, without actually deleting them."))
         self.actionClearRecent.setText(_translate("MainWindow", "&Clear recent files"))
+        self.actionCopyMediaLocation.setText(_translate("MainWindow", "&Copy media path"))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
 
 

@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>334</width>
-        <height>1486</height>
+        <height>1508</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -405,7 +405,7 @@ has finished will automatically unpause the media and resume playback.</string>
                </property>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -420,7 +420,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -446,7 +446,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -460,7 +460,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_8">
                <item>
                 <widget class="QCheckBox" name="checkMinimizePause">
@@ -515,6 +515,24 @@ but only if the media had not been paused prior to minimizing.</string>
                  <string>Mouse</string>
                 </property>
                </item>
+              </widget>
+             </item>
+             <item row="12" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
+               <property name="toolTip">
+                <string>If checked, copying a media's path to your clipboard
+will escape all backslashes ( \ → \\ ), which is useful
+for certain use-cases.
+
+This is only relevant on Windows as other operating
+systems do not use backslashes in their paths.</string>
+               </property>
+               <property name="text">
+                <string>Escape backslashes (\ → \\) when copying media path</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
               </widget>
              </item>
             </layout>
@@ -2695,6 +2713,7 @@ the currently playing media's height.</string>
   <tabstop>checkStopOnFinish</tabstop>
   <tabstop>checkNavigationWrap</tabstop>
   <tabstop>checkNavigationUnpause</tabstop>
+  <tabstop>checkCopyEscapeBackslashes</tabstop>
   <tabstop>checkAutoEnableSubtitles</tabstop>
   <tabstop>checkCycleRememberOriginalPath</tabstop>
   <tabstop>checkRecycleBin</tabstop>

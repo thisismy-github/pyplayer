@@ -512,6 +512,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
+        self.buttonOpenMediaLocation.contextMenuEvent = self.openMediaLocationButtonContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
@@ -869,6 +870,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
+    def openMediaLocationButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles creating the context menu (right-click) for the open media location button. '''
+        if not self.video: return       # do not render context menu if no media is playing
+        context = QtW.QMenu(self)
+        context.addAction(self.actionOpenMediaLocation)
+        context.addAction(self.actionCopyMediaLocation)
+        context.exec(event.globalPos())
+
+
     def buttonMarkDeletedContextMenuEvent(self, event: QtGui.QContextMenuEvent):    # should these use QWidget.actions() instead of contextMenuEvent?
         ''' Handles creating the context menu (right-click) for buttonMarkDeleted. Due to the uniqueness of
             each context menu, contextMenuEvent is replaced directly instead of subclassing the entire widget. '''
@@ -912,20 +922,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if action is self.actionClearRecent or not action: return
         path = action.toolTip()
 
-        def explore_media_location():
-            if not os.path.exists(path):
-                self.recent_videos.remove(path)
-                return self.log(f'Recent file "{path}" no longer exists.')
-            else: qthelpers.openPath(path, explore=True)
-
-        explore_action = QtW.QAction('&Explore media location')     # & denotes shortcut key while menu is visible
-        explore_action.triggered.connect(explore_media_location)
-        remove_action = QtW.QAction('&Remove from recent files')    # & denotes shortcut key while menu is visible
+        explore_action = QtW.QAction('M&edia location')
+        explore_action.triggered.connect(lambda: self.explore_media_location(path))
+        copy_action = QtW.QAction('&Copy media path')
+        copy_action.triggered.connect(lambda: self.copy_media_location(path))
+        remove_action = QtW.QAction('&Remove from recent files')
         remove_action.triggered.connect(lambda: (self.recent_videos.remove(path), self.refresh_recent_menu()))
 
         context = QtW.QMenu(self)
-        context.addAction(explore_action)
         context.addAction(remove_action)
+        context.addSeparator()
+        context.addAction(explore_action)
+        context.addAction(copy_action)
         context.exec(event.globalPos())
 
 
@@ -1084,6 +1092,33 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.last_cycle_index = index
                 return file
         return self.log('This is the only playable media file in this folder.')
+
+
+    def explore_media_location(self, path: str = None):
+        ''' Opens `path` (or self.video if not provided) in the default
+            file explorer, with `path` pre-selected if possible. '''
+        if not path: path = self.video if self.video else cfg.lastdir
+        if not os.path.exists(path):
+            if path in self.recent_vidoes:
+                self.recent_videos.remove(path)
+            return self.log(f'Recent file "{path}" no longer exists.')
+        else: qthelpers.openPath(path, explore=True)
+
+
+    def copy_media_location(self, path: str = None):
+        ''' Copies `path` (or self.video if not provided) to the clipboard,
+            surrounded by quotes and with backslashes escaped (if desired). '''
+        if not path: path = self.video if self.video else cfg.lastdir
+        if not os.path.exists(path):
+            if path in self.recent_vidoes:
+                self.recent_videos.remove(path)
+            return self.log(f'Recent file "{path}" no longer exists.')
+        else:
+            if self.dialog_settings.checkCopyEscapeBackslashes.isChecked():
+                sep = '\\'
+                escaped_sep = r'\\'
+                app.clipboard().setText(f'"{path.replace(sep, escaped_sep)}"')
+            else: app.clipboard().setText(f'"{path}"')
 
 
     def parse_media_file(self, file, mime='video', _recursive=False):

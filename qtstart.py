@@ -199,7 +199,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionOpen.triggered.connect(self.open)
     self.menuRecent.aboutToShow.connect(self.refresh_recent_menu)
     self.actionClearRecent.triggered.connect(lambda: self.recent_videos.clear())    # TODO why won't .clear work on its own?
-    self.actionOpenMediaLocation.triggered.connect(lambda: qthelpers.openPath(self.video if self.video else config.cfg.lastdir, explore=True))
+    self.actionOpenMediaLocation.triggered.connect(self.explore_media_location)
+    self.actionCopyMediaLocation.triggered.connect(self.copy_media_location)
     self.actionSave.triggered.connect(self.save)
     self.actionSaveAs.triggered.connect(self.save_as)
     self.actionStop.triggered.connect(self.stop)

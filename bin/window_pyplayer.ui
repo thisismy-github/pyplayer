@@ -67,6 +67,7 @@
     <addaction name="actionOpen"/>
     <addaction name="menuRecent"/>
     <addaction name="actionOpenMediaLocation"/>
+    <addaction name="actionCopyMediaLocation"/>
     <addaction name="separator"/>
     <addaction name="actionSave"/>
     <addaction name="actionSaveAs"/>
@@ -1425,6 +1426,11 @@ for deletion, without actually deleting them.</string>
   <action name="actionClearRecent">
    <property name="text">
     <string>&amp;Clear recent files</string>
+   </property>
+  </action>
+  <action name="actionCopyMediaLocation">
+   <property name="text">
+    <string>&amp;Copy media path</string>
    </property>
   </action>
  </widget>
