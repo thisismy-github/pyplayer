@@ -62,6 +62,7 @@
      <property name="title">
       <string>Recent files...</string>
      </property>
+     <addaction name="actionClearRecent"/>
     </widget>
     <addaction name="actionOpen"/>
     <addaction name="menuRecent"/>
@@ -1419,6 +1420,11 @@ encounter corrupted trims, switch to high-precision manually.</string>
    <property name="toolTip">
     <string>Clear the list of files that are currently marked
 for deletion, without actually deleting them.</string>
+   </property>
+  </action>
+  <action name="actionClearRecent">
+   <property name="text">
+    <string>Clear recent files</string>
    </property>
   </action>
  </widget>

@@ -491,6 +491,9 @@ class Ui_MainWindow(object):
         self.actionTrimPrecise.setObjectName("actionTrimPrecise")
         self.actionClearMarked = QtWidgets.QAction(MainWindow)
         self.actionClearMarked.setObjectName("actionClearMarked")
+        self.actionClearRecent = QtWidgets.QAction(MainWindow)
+        self.actionClearRecent.setObjectName("actionClearRecent")
+        self.menuRecent.addAction(self.actionClearRecent)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
         self.menuFile.addAction(self.actionOpenMediaLocation)
@@ -706,6 +709,7 @@ class Ui_MainWindow(object):
         self.actionClearMarked.setText(_translate("MainWindow", "Clear list of marked media"))
         self.actionClearMarked.setToolTip(_translate("MainWindow", "Clear the list of files that are currently marked\n"
 "for deletion, without actually deleting them."))
+        self.actionClearRecent.setText(_translate("MainWindow", "Clear recent files"))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
 
 

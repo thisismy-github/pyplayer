@@ -514,6 +514,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
+        self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
         Thread(target=self.update_slider_thread, daemon=True).start()
@@ -903,6 +904,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addSeparator()
         context.addAction(self.actionQuickSnapshot)         # quick snapshot action
         context.addAction(self.actionSnapshot)              # regular snapshot action
+        context.exec(event.globalPos())
+
+
+    def menuRecentContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles context menus for individual recent files. '''
+        action = self.menuRecent.actionAt(event.pos())
+        if action is self.actionClearRecent or not action: return
+        path = action.toolTip()
+
+        def explore_media_location():
+            if not os.path.exists(path):
+                self.recent_videos.remove(path)
+                return self.log(f'Recent file "{path}" no longer exists.')
+            else: qthelpers.openPath(path, explore=True)
+
+        explore_action = QtW.QAction('Explore media location')
+        explore_action.triggered.connect(explore_media_location)
+        remove_action = QtW.QAction('Remove from recent files')
+        remove_action.triggered.connect(lambda: (self.recent_videos.remove(path), self.refresh_recent_menu()))
+
+        context = QtW.QMenu(self)
+        context.addAction(explore_action)
+        context.addAction(remove_action)
         context.exec(event.globalPos())
 
 
@@ -2754,13 +2778,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def refresh_recent_menu(self):
+        ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
         get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
-        for video in reversed(self.recent_videos):
+        for video in reversed(self.recent_videos):                          # reversed to show most recent first
             action = QtW.QAction(os.path.basename(video), self.menuRecent)
-            action.triggered.connect(get_open_lambda(video))
+            action.triggered.connect(get_open_lambda(video))                # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)
+        self.menuRecent.addSeparator()
+        self.menuRecent.addAction(self.actionClearRecent)                   # add separator and clear action at bottom
 
 
     def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable
