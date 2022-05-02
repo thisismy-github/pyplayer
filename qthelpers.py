@@ -138,7 +138,8 @@ def getPopup(title, text, textInformative=None, textDetailed=None, textDetailedA
         icon = icons[icon.strip().lower()]
 
     def showEvent(event):
-        ''' Centers the popup before showing if desired. '''
+        ''' Plays default OS sound and centers the popup before showing if desired. '''
+        if sound: QtWidgets.QApplication.beep()
         if centerWidget or centerScreen or centerMouse:
             target = centerWidget or None
             screen = centerScreen or False
@@ -189,7 +190,8 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
             self.setupUi(self)
 
         def showEvent(self, event):
-            ''' Centers the dialog before showing if desired. '''
+            ''' Plays default OS sound and centers dialog before showing if desired. '''
+            if kwargs.get('sound', False): QtWidgets.QApplication.beep()
             centerWidget = kwargs.get('centerWidget', None)
             centerScreen = kwargs.get('centerScreen', False)
             centerMouse = kwargs.get('centerMouse', False)
@@ -202,8 +204,9 @@ def getDialogFromUiClass(uiClass, parent=None, **kwargs):
     return QPersistentDialog(parent, **kwargs)
 
 def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation',
-              centerWidget=None, centerScreen=False, centerMouse=False, size=None, fixedSize=None,
-              modal=False, opacity=1.0, deleteOnClose=True, flags=Qt.WindowCloseButtonHint):
+              centerWidget=None, centerScreen=False, centerMouse=False,
+              size=None, fixedSize=None, modal=False, opacity=1.0,
+              sound=False, deleteOnClose=True, flags=Qt.WindowCloseButtonHint) -> QtWidgets.QDialog:
     ''' Returns a temporary dialog, designed to be finished manually. Uses an on-the-fly subclass called QDialogHybrid
         which serves to add QMessageBox-style functionality to the dialog, allowing easy standard-button access, as
         opposed to the 1 or 0 QDialogBox normally returns. QDialogHyrbid adds the methods dialog.select(choice) and
@@ -229,7 +232,8 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation',
             layout.addWidget(buttonBox)
 
         def showEvent(self, event):
-            ''' Centers the dialog before showing if desired. '''
+            ''' Plays default OS sound and centers the popup before showing if desired. '''
+            if sound: QtWidgets.QApplication.beep()
             if centerWidget or centerScreen or centerMouse:
                 target = centerWidget or None
                 screen = centerScreen or False
