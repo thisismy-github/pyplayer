@@ -32,7 +32,7 @@
       <string notr="true">▼</string>
      </property>
      <property name="shortcut">
-      <string>Del</string>
+      <string>Ctrl+Down</string>
      </property>
     </widget>
    </item>
@@ -90,7 +90,7 @@
       <string notr="true">▲</string>
      </property>
      <property name="shortcut">
-      <string>Del</string>
+      <string>Ctrl+Up</string>
      </property>
     </widget>
    </item>
@@ -136,7 +136,7 @@
         </size>
        </property>
        <property name="text">
-        <string>...</string>
+        <string>.&amp;..</string>
        </property>
       </widget>
      </item>
@@ -167,7 +167,7 @@
 automatically play in PyPlayer after saving.</string>
        </property>
        <property name="text">
-        <string>Play after save</string>
+        <string>&amp;Play after save</string>
        </property>
       </widget>
      </item>
@@ -178,7 +178,7 @@ automatically play in PyPlayer after saving.</string>
 automatically open in explorer after saving.</string>
        </property>
        <property name="text">
-        <string>Explore after save</string>
+        <string>&amp;Explore after save</string>
        </property>
       </widget>
      </item>
@@ -197,7 +197,7 @@ Note: File deletion/recycling
 is dependent on your settings.</string>
        </property>
        <property name="text">
-        <string>Delete originals</string>
+        <string>&amp;Delete originals</string>
        </property>
        <property name="tristate">
         <bool>true</bool>
@@ -228,6 +228,18 @@ is dependent on your settings.</string>
    <header>widgets</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>videoList</tabstop>
+  <tabstop>checkOpen</tabstop>
+  <tabstop>checkExplore</tabstop>
+  <tabstop>checkDelete</tabstop>
+  <tabstop>output</tabstop>
+  <tabstop>browse</tabstop>
+  <tabstop>add</tabstop>
+  <tabstop>delete</tabstop>
+  <tabstop>up</tabstop>
+  <tabstop>down</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

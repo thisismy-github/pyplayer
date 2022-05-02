@@ -70,7 +70,7 @@
          </property>
          <widget class="QWidget" name="tabGeneral">
           <attribute name="title">
-           <string>General</string>
+           <string>&amp;General</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
@@ -1907,7 +1907,7 @@ the currently playing media's height.</string>
          </widget>
          <widget class="QWidget" name="tabKeys">
           <attribute name="title">
-           <string>Hotkeys</string>
+           <string>&amp;Hotkeys</string>
           </attribute>
           <layout class="QFormLayout" name="formLayout_3">
            <property name="labelAlignment">
@@ -2545,7 +2545,7 @@ the currently playing media's height.</string>
          </widget>
          <widget class="QWidget" name="tabUpdates">
           <attribute name="title">
-           <string>Updates</string>
+           <string>&amp;Updates</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_6">
            <item>
@@ -2678,6 +2678,143 @@ the currently playing media's height.</string>
    <header>widgets</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>tabWidget</tabstop>
+  <tabstop>comboThemes</tabstop>
+  <tabstop>buttonRefreshThemes</tabstop>
+  <tabstop>lineWindowTitleFormat</tabstop>
+  <tabstop>lineDefaultOutputPath</tabstop>
+  <tabstop>buttonBrowseDefaultOutputPath</tabstop>
+  <tabstop>comboDialogPosition</tabstop>
+  <tabstop>spinVolumeScroll</tabstop>
+  <tabstop>checkHideIdleCursor</tabstop>
+  <tabstop>spinHideIdleCursorDuration</tabstop>
+  <tabstop>checkHighPrecisionProgress</tabstop>
+  <tabstop>checkAlwaysSaveAs</tabstop>
+  <tabstop>checkSaveAsUseMediaFolder</tabstop>
+  <tabstop>checkStopOnFinish</tabstop>
+  <tabstop>checkNavigationWrap</tabstop>
+  <tabstop>checkNavigationUnpause</tabstop>
+  <tabstop>checkAutoEnableSubtitles</tabstop>
+  <tabstop>checkCycleRememberOriginalPath</tabstop>
+  <tabstop>checkRecycleBin</tabstop>
+  <tabstop>checkMinimizePause</tabstop>
+  <tabstop>checkMinimizeRestore</tabstop>
+  <tabstop>checkFocusDrop</tabstop>
+  <tabstop>checkFocusDoubleClick</tabstop>
+  <tabstop>checkFocusMinimized</tabstop>
+  <tabstop>checkFocusMinimizedToTray</tabstop>
+  <tabstop>checkIgnoreFocusWithAutoplay</tabstop>
+  <tabstop>checkSnapOnResize</tabstop>
+  <tabstop>checkSnapOnOpen</tabstop>
+  <tabstop>checkResizeOnOpen</tabstop>
+  <tabstop>groupTray</tabstop>
+  <tabstop>checkTrayClose</tabstop>
+  <tabstop>checkTrayMinimize</tabstop>
+  <tabstop>groupHover</tabstop>
+  <tabstop>spinHoverFadeDuration</tabstop>
+  <tabstop>comboHoverFont</tabstop>
+  <tabstop>spinHoverFontSize</tabstop>
+  <tabstop>buttonHoverFontColor</tabstop>
+  <tabstop>checkHoverShadow</tabstop>
+  <tabstop>spinFullScreenFadeDuration</tabstop>
+  <tabstop>spinFullScreenWidth</tabstop>
+  <tabstop>spinFullScreenMinOpacity</tabstop>
+  <tabstop>spinFullScreenMaxOpacity</tabstop>
+  <tabstop>checkFullScreenMediaFinishedLock</tabstop>
+  <tabstop>lineDefaultSnapshotPath</tabstop>
+  <tabstop>default_snapshot_path_browse</tabstop>
+  <tabstop>lineSnapshotNameFormat</tabstop>
+  <tabstop>lineSnapshotDateFormat</tabstop>
+  <tabstop>buttonSnapshotDateHelp</tabstop>
+  <tabstop>comboSnapshotFormat</tabstop>
+  <tabstop>spinSnapshotJpegQuality</tabstop>
+  <tabstop>checkSnapshotRemember</tabstop>
+  <tabstop>checkSnapshotPause</tabstop>
+  <tabstop>groupText</tabstop>
+  <tabstop>spinTextHeight</tabstop>
+  <tabstop>spinTextX</tabstop>
+  <tabstop>spinTextY</tabstop>
+  <tabstop>spinTextOpacity</tabstop>
+  <tabstop>spinTextFadeDelay</tabstop>
+  <tabstop>checkTextOnOpen</tabstop>
+  <tabstop>checkTextOnPause</tabstop>
+  <tabstop>checkTextOnVolume</tabstop>
+  <tabstop>checkTextOnMute</tabstop>
+  <tabstop>checkTextOnVolumeBoost</tabstop>
+  <tabstop>checkTextOnLoop</tabstop>
+  <tabstop>checkTextOnSpeed</tabstop>
+  <tabstop>checkTextOnSubtitleAdded</tabstop>
+  <tabstop>checkTextOnSubtitleChanged</tabstop>
+  <tabstop>checkTextOnSubtitleDelay</tabstop>
+  <tabstop>checkTextOnSave</tabstop>
+  <tabstop>checkTextOnFullScreenPosition</tabstop>
+  <tabstop>radioTextPosition5</tabstop>
+  <tabstop>radioTextPosition4</tabstop>
+  <tabstop>radioTextPosition6</tabstop>
+  <tabstop>radioTextPosition1</tabstop>
+  <tabstop>radioTextPosition0</tabstop>
+  <tabstop>radioTextPosition2</tabstop>
+  <tabstop>radioTextPosition9</tabstop>
+  <tabstop>radioTextPosition8</tabstop>
+  <tabstop>radioTextPosition10</tabstop>
+  <tabstop>scrollArea</tabstop>
+  <tabstop>pause</tabstop>
+  <tabstop>pause_</tabstop>
+  <tabstop>plus5seconds</tabstop>
+  <tabstop>plus5seconds_</tabstop>
+  <tabstop>minus5seconds</tabstop>
+  <tabstop>minus5seconds_</tabstop>
+  <tabstop>plus10seconds</tabstop>
+  <tabstop>plus10seconds_</tabstop>
+  <tabstop>minus10seconds</tabstop>
+  <tabstop>minus10seconds_</tabstop>
+  <tabstop>plusframe</tabstop>
+  <tabstop>plusframe_</tabstop>
+  <tabstop>minusframe</tabstop>
+  <tabstop>minusframe_</tabstop>
+  <tabstop>plusspeed</tabstop>
+  <tabstop>plusspeed_</tabstop>
+  <tabstop>minusspeed</tabstop>
+  <tabstop>minusspeed_</tabstop>
+  <tabstop>plus5volume</tabstop>
+  <tabstop>plus5volume_</tabstop>
+  <tabstop>minus5volume</tabstop>
+  <tabstop>minus5volume_</tabstop>
+  <tabstop>plusvolumeboost</tabstop>
+  <tabstop>plusvolumeboost_</tabstop>
+  <tabstop>minusvolumeboost</tabstop>
+  <tabstop>minusvolumeboost_</tabstop>
+  <tabstop>mute</tabstop>
+  <tabstop>mute_</tabstop>
+  <tabstop>fullscreen</tabstop>
+  <tabstop>fullscreen_</tabstop>
+  <tabstop>crop</tabstop>
+  <tabstop>crop_</tabstop>
+  <tabstop>nextmedia</tabstop>
+  <tabstop>nextmedia_</tabstop>
+  <tabstop>previousmedia</tabstop>
+  <tabstop>previousmedia_</tabstop>
+  <tabstop>plussubtitledelay</tabstop>
+  <tabstop>plussubtitledelay_</tabstop>
+  <tabstop>minussubtitledelay</tabstop>
+  <tabstop>minussubtitledelay_</tabstop>
+  <tabstop>cyclesubtitles</tabstop>
+  <tabstop>cyclesubtitles_</tabstop>
+  <tabstop>markdeleted</tabstop>
+  <tabstop>markdeleted_</tabstop>
+  <tabstop>deleteimmediately</tabstop>
+  <tabstop>deleteimmediately_</tabstop>
+  <tabstop>snapshot</tabstop>
+  <tabstop>snapshot_</tabstop>
+  <tabstop>quicksnapshot</tabstop>
+  <tabstop>quicksnapshot_</tabstop>
+  <tabstop>loop</tabstop>
+  <tabstop>loop_</tabstop>
+  <tabstop>buttonCheckForUpdates</tabstop>
+  <tabstop>checkAutoUpdateCheck</tabstop>
+  <tabstop>spinUpdateFrequency</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

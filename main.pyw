@@ -795,10 +795,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        precision_action = QtW.QAction()
+        precision_action = QtW.QAction(self.dialog_settings.checkHighPrecisionProgress.text())
         precision_action.setCheckable(True)
         precision_action.setChecked(self.dialog_settings.checkHighPrecisionProgress.isChecked())
-        precision_action.setText(self.dialog_settings.checkHighPrecisionProgress.text())
         precision_action.setToolTip(self.dialog_settings.checkHighPrecisionProgress.toolTip())
         precision_action.toggled.connect(self.dialog_settings.checkHighPrecisionProgress.setChecked)
 
@@ -852,9 +851,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             length_label_action.setEnabled(False)
 
         # actions for force-setting start/end times
-        set_start_action = QtW.QAction('Set start to current position', self)
+        set_start_action = QtW.QAction('Set &start to current position', self)
         set_start_action.triggered.connect(lambda: self.set_trim_start(force=True))
-        set_end_action = QtW.QAction('Set end to current position', self)
+        set_end_action = QtW.QAction('Set &end to current position', self)
         set_end_action.triggered.connect(lambda: self.set_trim_end(force=True))
 
         # create context menu
@@ -890,11 +889,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
             else: qthelpers.openPath(cfg.last_snapshot_path, explore=True)
 
-        open_action1 = QtW.QAction('Open last snapshot (PyPlayer)')
+        open_action1 = QtW.QAction('Open last snapshot (&PyPlayer)')
         open_action1.triggered.connect(lambda: self.snapshot(modifiers=Qt.ControlModifier))
-        open_action2 = QtW.QAction('Open last snapshot (default)')
+        open_action2 = QtW.QAction('Open last snapshot (&default)')
         open_action2.triggered.connect(lambda: self.snapshot(modifiers=Qt.AltModifier))
-        explore_action = QtW.QAction('Explore last snapshot')
+        explore_action = QtW.QAction('&Explore last snapshot')
         explore_action.triggered.connect(explore_last_screenshot)
 
         context = QtW.QMenu(self)
@@ -919,9 +918,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.log(f'Recent file "{path}" no longer exists.')
             else: qthelpers.openPath(path, explore=True)
 
-        explore_action = QtW.QAction('Explore media location')
+        explore_action = QtW.QAction('&Explore media location')     # & denotes shortcut key while menu is visible
         explore_action.triggered.connect(explore_media_location)
-        remove_action = QtW.QAction('Remove from recent files')
+        remove_action = QtW.QAction('&Remove from recent files')    # & denotes shortcut key while menu is visible
         remove_action.triggered.connect(lambda: (self.recent_videos.remove(path), self.refresh_recent_menu()))
 
         context = QtW.QMenu(self)
@@ -2764,15 +2763,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             action_group = QtW.QActionGroup(menu)
             action_group.triggered.connect(lambda *args: self.set_track(string, *args))
 
-            for track_index, track_title in get_description():
-                action = QtW.QAction(track_title.decode(), action_group)    # get_spu_description includes pre-generated track titles with tags -> VLC uses the last...
-                action.setData(track_index)                                 # ...non-extension keyword separated by a period in the filename as the track's tag
-                action.setCheckable(True)                                   # e.g. 'dawnofthedead.2004.ENG.srt' -> 'Track 1 - [ENG]'
-                if current_track == track_index:                            # originally I was doing all of that manually, while juggling the random inconsistent indexes
+            for track_index, track_title in get_description():  # find track number in title -> add &-shortcut
+                name_parts = track_title.decode().split()
+                new_parts = []
+                for index, part in enumerate(name_parts):
+                    if part.isnumeric():                        # track number identified, add &-shortcut and stop
+                        new_parts.append('&' + part)
+                        new_parts.extend(name_parts[index + 1:])
+                        break
+                    else: new_parts.append(part)
+                track_name = ' '.join(new_parts)
+
+                action = QtW.QAction(track_name, action_group)  # get_spu_description includes pre-generated track titles with tags -> VLC uses the last...
+                action.setData(track_index)                     # ...non-extension keyword separated by a period in the filename as the track's tag
+                action.setCheckable(True)                       # e.g. 'dawnofthedead.2004.ENG.srt' -> 'Track 1 - [ENG]'
+                if current_track == track_index:                # originally I was doing all of that manually, while juggling the random inconsistent indexes
                     action.setChecked(True)
                 menu.addAction(action)
         else:
-            action = QtW.QAction(f'No {string} tracks', menu)               # The parent is required here for this action. Here and here alone. I don't know why.
+            action = QtW.QAction(f'No {string} tracks', menu)   # The parent is required here for this action. Here and here alone. I don't know why.
             action.setEnabled(False)
             menu.addAction(action)
 
@@ -2781,8 +2790,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
         get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
-        for video in reversed(self.recent_videos):                          # reversed to show most recent first
-            action = QtW.QAction(os.path.basename(video), self.menuRecent)
+        for index, video in enumerate(reversed(self.recent_videos)):        # reversed to show most recent first
+            action = QtW.QAction(f'&{index + 1}. {os.path.basename(video)}', self.menuRecent)
             action.triggered.connect(get_open_lambda(video))                # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)

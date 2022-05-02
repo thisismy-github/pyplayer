@@ -89,20 +89,29 @@ class Ui_catDialog(object):
         self.buttonBox.accepted.connect(catDialog.accept)
         self.buttonBox.rejected.connect(catDialog.reject)
         QtCore.QMetaObject.connectSlotsByName(catDialog)
+        catDialog.setTabOrder(self.videoList, self.checkOpen)
+        catDialog.setTabOrder(self.checkOpen, self.checkExplore)
+        catDialog.setTabOrder(self.checkExplore, self.checkDelete)
+        catDialog.setTabOrder(self.checkDelete, self.output)
+        catDialog.setTabOrder(self.output, self.browse)
+        catDialog.setTabOrder(self.browse, self.add)
+        catDialog.setTabOrder(self.add, self.delete)
+        catDialog.setTabOrder(self.delete, self.up)
+        catDialog.setTabOrder(self.up, self.down)
 
     def retranslateUi(self, catDialog):
         _translate = QtCore.QCoreApplication.translate
-        self.down.setShortcut(_translate("catDialog", "Del"))
+        self.down.setShortcut(_translate("catDialog", "Ctrl+Down"))
         self.add.setShortcut(_translate("catDialog", "Ins"))
         self.delete.setShortcut(_translate("catDialog", "Del"))
-        self.up.setShortcut(_translate("catDialog", "Del"))
-        self.browse.setText(_translate("catDialog", "..."))
+        self.up.setShortcut(_translate("catDialog", "Ctrl+Up"))
+        self.browse.setText(_translate("catDialog", ".&.."))
         self.checkOpen.setToolTip(_translate("catDialog", "If checked, the concatenated video will\n"
 "automatically play in PyPlayer after saving."))
-        self.checkOpen.setText(_translate("catDialog", "Play after save"))
+        self.checkOpen.setText(_translate("catDialog", "&Play after save"))
         self.checkExplore.setToolTip(_translate("catDialog", "If checked, the concatenated video will\n"
 "automatically open in explorer after saving."))
-        self.checkExplore.setText(_translate("catDialog", "Explore after save"))
+        self.checkExplore.setText(_translate("catDialog", "&Explore after save"))
         self.checkDelete.setToolTip(_translate("catDialog", "Tristate:\n"
 "\n"
 "Partially checked - videos will be marked\n"
@@ -113,7 +122,7 @@ class Ui_catDialog(object):
 "\n"
 "Note: File deletion/recycling\n"
 "is dependent on your settings."))
-        self.checkDelete.setText(_translate("catDialog", "Delete originals"))
+        self.checkDelete.setText(_translate("catDialog", "&Delete originals"))
 from widgets import QVideoList
 
 

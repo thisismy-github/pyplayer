@@ -941,11 +941,11 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
         item = self.itemAt(event.pos())     # get item under mouse to work with
         if not item: return                 # no item under mouse, return
 
-        action1 = QtW.QAction('Play')
+        action1 = QtW.QAction('&Play')
         action1.triggered.connect(lambda: self.parent.open(item.toolTip()))
-        action2 = QtW.QAction('Explore')
+        action2 = QtW.QAction('&Explore')
         action2.triggered.connect(lambda: qthelpers.openPath(item.toolTip(), explore=True))
-        action3 = QtW.QAction('Remove')
+        action3 = QtW.QAction('&Remove')
         action3.triggered.connect(lambda: qthelpers.listRemoveSelected(self))
 
         context = QtW.QMenu(self)

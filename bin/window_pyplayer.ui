@@ -60,7 +60,7 @@
     </property>
     <widget class="QMenu" name="menuRecent">
      <property name="title">
-      <string>Recent files...</string>
+      <string>&amp;Recent files...</string>
      </property>
      <addaction name="actionClearRecent"/>
     </widget>
@@ -107,7 +107,7 @@
     </property>
     <widget class="QMenu" name="menuAudioTracks">
      <property name="title">
-      <string>Audio Tracks</string>
+      <string>Audio &amp;Tracks</string>
      </property>
     </widget>
     <addaction name="menuAudioTracks"/>
@@ -123,7 +123,7 @@
     </property>
     <widget class="QMenu" name="menuConcatenate">
      <property name="title">
-      <string>Concatenate</string>
+      <string>C&amp;oncatenate</string>
      </property>
      <addaction name="actionCatBefore"/>
      <addaction name="actionCatAfter"/>
@@ -133,7 +133,7 @@
     </widget>
     <widget class="QMenu" name="menuRotate">
      <property name="title">
-      <string>Rotate/Flip</string>
+      <string>Rotate/&amp;Flip</string>
      </property>
      <addaction name="actionRotate90"/>
      <addaction name="actionRotate180"/>
@@ -143,18 +143,18 @@
     </widget>
     <widget class="QMenu" name="menuSubtitles">
      <property name="title">
-      <string>Subtitle Tracks</string>
+      <string>Su&amp;btitle Tracks</string>
      </property>
      <addaction name="actionAddSubtitleFile"/>
     </widget>
     <widget class="QMenu" name="menuVideoTracks">
      <property name="title">
-      <string>Video Tracks</string>
+      <string>&amp;Video Tracks</string>
      </property>
     </widget>
     <widget class="QMenu" name="menuTrimMode">
      <property name="title">
-      <string>Trim/Fade</string>
+      <string>&amp;Trim/Fade</string>
      </property>
      <property name="toolTipsVisible">
       <bool>true</bool>
@@ -1054,7 +1054,7 @@ skip over files that have been marked for deletion.</string>
   </widget>
   <action name="actionSave">
    <property name="text">
-    <string>Save</string>
+    <string>&amp;Save</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
@@ -1062,7 +1062,7 @@ skip over files that have been marked for deletion.</string>
   </action>
   <action name="actionSaveAs">
    <property name="text">
-    <string>Save as...</string>
+    <string>Save &amp;as...</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+S</string>
@@ -1070,7 +1070,7 @@ skip over files that have been marked for deletion.</string>
   </action>
   <action name="actionOpen">
    <property name="text">
-    <string>Open...</string>
+    <string>&amp;Open...</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
@@ -1078,7 +1078,7 @@ skip over files that have been marked for deletion.</string>
   </action>
   <action name="actionExit">
    <property name="text">
-    <string>Exit</string>
+    <string>E&amp;xit</string>
    </property>
    <property name="shortcut">
     <string>Alt+Q</string>
@@ -1089,7 +1089,7 @@ skip over files that have been marked for deletion.</string>
   </action>
   <action name="actionSettings">
    <property name="text">
-    <string>Settings</string>
+    <string>&amp;Settings</string>
    </property>
    <property name="menuRole">
     <enum>QAction::PreferencesRole</enum>
@@ -1097,27 +1097,27 @@ skip over files that have been marked for deletion.</string>
   </action>
   <action name="actionRemoveVideo">
    <property name="text">
-    <string>Remove video</string>
+    <string>Re&amp;move video</string>
    </property>
   </action>
   <action name="actionRemoveAudio">
    <property name="text">
-    <string>Remove audio</string>
+    <string>Re&amp;move audio</string>
    </property>
   </action>
   <action name="actionReplaceAudio">
    <property name="text">
-    <string>Replace audio</string>
+    <string>&amp;Replace audio</string>
    </property>
   </action>
   <action name="actionAmplifyVolume">
    <property name="text">
-    <string>Amplify audio</string>
+    <string>&amp;Amplify audio</string>
    </property>
   </action>
   <action name="actionAbout">
    <property name="text">
-    <string>About...</string>
+    <string>&amp;About...</string>
    </property>
    <property name="menuRole">
     <enum>QAction::AboutRole</enum>
@@ -1125,32 +1125,32 @@ skip over files that have been marked for deletion.</string>
   </action>
   <action name="actionCatAny">
    <property name="text">
-    <string>Any clips</string>
+    <string>Any &amp;clips</string>
    </property>
   </action>
   <action name="actionCatBefore">
    <property name="text">
-    <string>Before this clip</string>
+    <string>&amp;Before this clip</string>
    </property>
   </action>
   <action name="actionCatAfter">
    <property name="text">
-    <string>After this clip</string>
+    <string>&amp;After this clip</string>
    </property>
   </action>
   <action name="actionOpenMediaLocation">
    <property name="text">
-    <string>Media location</string>
+    <string>M&amp;edia location</string>
    </property>
   </action>
   <action name="actionCatNone">
    <property name="text">
-    <string>No clips</string>
+    <string>&amp;No clips</string>
    </property>
   </action>
   <action name="actionAddAudioTrack">
    <property name="text">
-    <string>Add audio track</string>
+    <string>A&amp;dd audio track</string>
    </property>
   </action>
   <action name="actionCrop">
@@ -1158,7 +1158,7 @@ skip over files that have been marked for deletion.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Crop video</string>
+    <string>&amp;Crop video</string>
    </property>
   </action>
   <action name="actionMarkDeleted">
@@ -1166,7 +1166,7 @@ skip over files that have been marked for deletion.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Mark media for deletion</string>
+    <string>Mark media for &amp;deletion</string>
    </property>
    <property name="iconText">
     <string notr="true">Mark media for deletion</string>
@@ -1180,7 +1180,7 @@ the program.</string>
   </action>
   <action name="actionShowDeletePrompt">
    <property name="text">
-    <string>Preview list of marked media</string>
+    <string>&amp;Preview list of marked media</string>
    </property>
    <property name="toolTip">
     <string>Displays a confirmation prompt for deleting
@@ -1191,7 +1191,7 @@ do not want to actually delete.</string>
   </action>
   <action name="actionViewLog">
    <property name="text">
-    <string>View log</string>
+    <string>&amp;View log</string>
    </property>
   </action>
   <action name="actionShowStatusBar">
@@ -1202,7 +1202,7 @@ do not want to actually delete.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Status Bar</string>
+    <string>S&amp;tatus Bar</string>
    </property>
   </action>
   <action name="actionShowMenuBar">
@@ -1213,7 +1213,7 @@ do not want to actually delete.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Menu Bar</string>
+    <string>Men&amp;u Bar</string>
    </property>
   </action>
   <action name="actionShowAdvancedControls">
@@ -1224,7 +1224,7 @@ do not want to actually delete.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Advanced Controls</string>
+    <string>Advanced &amp;Controls</string>
    </property>
   </action>
   <action name="actionFullscreen">
@@ -1243,22 +1243,22 @@ do not want to actually delete.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Progress Bar</string>
+    <string>Pro&amp;gress Bar</string>
    </property>
   </action>
   <action name="actionSnapshot">
    <property name="text">
-    <string>Snapshot</string>
+    <string>&amp;Snapshot</string>
    </property>
   </action>
   <action name="actionQuickSnapshot">
    <property name="text">
-    <string>Quick snapshot</string>
+    <string>&amp;Quick snapshot</string>
    </property>
   </action>
   <action name="actionDeleteImmediately">
    <property name="text">
-    <string>Immediately delete current media</string>
+    <string>&amp;Immediately delete current media</string>
    </property>
    <property name="toolTip">
     <string>Immediately deletes the current
@@ -1270,37 +1270,37 @@ media, without marking it.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Loop</string>
+    <string>&amp;Loop</string>
    </property>
   </action>
   <action name="actionRotate90">
    <property name="text">
-    <string>90° clockwise</string>
+    <string>&amp;90° clockwise</string>
    </property>
   </action>
   <action name="actionRotate180">
    <property name="text">
-    <string>180° clockwise</string>
+    <string>&amp;180° clockwise</string>
    </property>
   </action>
   <action name="actionRotate270">
    <property name="text">
-    <string>270° clockwise</string>
+    <string>&amp;270° clockwise</string>
    </property>
   </action>
   <action name="actionFlipHorizontally">
    <property name="text">
-    <string>Horizontal flip (mirrored left-to-right)</string>
+    <string>&amp;Horizontal flip (mirrored left-to-right)</string>
    </property>
   </action>
   <action name="actionFlipVertically">
    <property name="text">
-    <string>Vertical flip (180° + reversed)</string>
+    <string>&amp;Vertical flip (180° + reversed)</string>
    </property>
   </action>
   <action name="actionAddSubtitleFile">
    <property name="text">
-    <string>Add subtitle file</string>
+    <string>&amp;Add subtitle file</string>
    </property>
   </action>
   <action name="actionwtf">
@@ -1313,22 +1313,22 @@ media, without marking it.</string>
   </action>
   <action name="actionStop">
    <property name="text">
-    <string>Stop player</string>
+    <string>S&amp;top player</string>
    </property>
   </action>
   <action name="actionAboutQt">
    <property name="text">
-    <string>About Qt...</string>
+    <string>About &amp;Qt...</string>
    </property>
   </action>
   <action name="actionMinimize">
    <property name="text">
-    <string>Minimize to tray</string>
+    <string>&amp;Minimize to tray</string>
    </property>
   </action>
   <action name="actionViewInstallFolder">
    <property name="text">
-    <string>View install folder</string>
+    <string>View install &amp;folder</string>
    </property>
   </action>
   <action name="actionFadeVideo">
@@ -1336,7 +1336,7 @@ media, without marking it.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Fade video only</string>
+    <string>Fade &amp;video only</string>
    </property>
   </action>
   <action name="actionFadeAudio">
@@ -1344,7 +1344,7 @@ media, without marking it.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Fade audio only</string>
+    <string>Fade &amp;audio only</string>
    </property>
   </action>
   <action name="actionFadeBoth">
@@ -1352,7 +1352,7 @@ media, without marking it.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Fade both</string>
+    <string>&amp;Fade both</string>
    </property>
   </action>
   <action name="actionTrimAuto">
@@ -1360,7 +1360,7 @@ media, without marking it.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Auto trim</string>
+    <string>&amp;Auto trim</string>
    </property>
    <property name="toolTip">
     <string>If checked, certain formats such as MP4 files will have the starts
@@ -1377,12 +1377,12 @@ start of a trim. The end of a trim will always be accurate.</string>
   </action>
   <action name="actionResize">
    <property name="text">
-    <string>Resize</string>
+    <string>&amp;Resize</string>
    </property>
   </action>
   <action name="actionCheckForUpdates">
    <property name="text">
-    <string>Check for updates</string>
+    <string>&amp;Check for updates</string>
    </property>
   </action>
   <action name="actionAutoplay">
@@ -1390,7 +1390,7 @@ start of a trim. The end of a trim will always be accurate.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Autoplay</string>
+    <string>&amp;Autoplay</string>
    </property>
   </action>
   <action name="actionTrimPrecise">
@@ -1401,7 +1401,7 @@ start of a trim. The end of a trim will always be accurate.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Precise trim (slow)</string>
+    <string>Precise trim (&amp;slow)</string>
    </property>
    <property name="toolTip">
     <string>If checked, trimmed videos will ALWAYS be re-encoded to ensure 100%
@@ -1415,7 +1415,7 @@ encounter corrupted trims, switch to high-precision manually.</string>
   </action>
   <action name="actionClearMarked">
    <property name="text">
-    <string>Clear list of marked media</string>
+    <string>&amp;Clear list of marked media</string>
    </property>
    <property name="toolTip">
     <string>Clear the list of files that are currently marked
@@ -1424,7 +1424,7 @@ for deletion, without actually deleting them.</string>
   </action>
   <action name="actionClearRecent">
    <property name="text">
-    <string>Clear recent files</string>
+    <string>&amp;Clear recent files</string>
    </property>
   </action>
  </widget>

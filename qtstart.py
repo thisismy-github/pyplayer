@@ -76,11 +76,11 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
         may become an issue if the tray icon is expanded upon. Pystray is still a decent (albeit heavy) fallback if necessary. '''
     def handle_click(reason: QtW.QSystemTrayIcon.ActivationReason):
         if reason == QtW.QSystemTrayIcon.Context:
-            action_show = QtW.QAction('Show PyPlayer')
+            action_show = QtW.QAction('&PyPlayer')
             action_show.triggered.connect(lambda: qthelpers.showWindow(self))
-            action_settings = QtW.QAction('Settings')
+            action_settings = QtW.QAction('&Settings')
             action_settings.triggered.connect(self.dialog_settings.exec)
-            action_exit = QtW.QAction('Exit')
+            action_exit = QtW.QAction('&Exit')
             action_exit.triggered.connect(lambda: exit(self))
             menu = QtW.QMenu()
             menu.addAction(action_show)
