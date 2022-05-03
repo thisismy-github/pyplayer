@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>339</width>
-        <height>1546</height>
+        <height>1589</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -405,7 +405,7 @@ has finished will automatically unpause the media and resume playback.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -420,7 +420,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -446,7 +446,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -460,7 +460,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_8">
                <item>
                 <widget class="QCheckBox" name="checkMinimizePause">
@@ -529,6 +529,23 @@ systems do not use backslashes in their paths.</string>
                </property>
                <property name="text">
                 <string>Escape backslashes ( \ → \\ ) when copying media path</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="13" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRememberDropFolder">
+               <property name="toolTip">
+                <string>If checked, dragging and dropping media will remember
+that media's folder and use it as the default for the next
+time you open a file-browsing dialog. Otherwise, only
+media opened through those dialogs will have their
+folders remembered.</string>
+               </property>
+               <property name="text">
+                <string>Remember folders for drag-and-dropped media</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -732,6 +749,30 @@ resized for the first media file you open.</string>
                    <bool>true</bool>
                   </property>
                  </widget>
+                </item>
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_3">
+                  <property name="leftMargin">
+                   <number>14</number>
+                  </property>
+                  <item>
+                   <widget class="QCheckBox" name="checkFirstFileTrayReset">
+                    <property name="toolTip">
+                     <string>If checked, minimizing to the system tray,
+restoring, and opening a new piece of media
+will count as opening media for the first time,
+for any setting that mentions &quot;the first media
+file you open.&quot;</string>
+                    </property>
+                    <property name="text">
+                     <string>&quot;First media file&quot; resets when using system tray</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                 <item>
                  <widget class="QCheckBox" name="checkClampOnResize">
@@ -1131,7 +1172,7 @@ mouse idle or moving it to a different monitor.</string>
                  <double>0.050000000000000</double>
                 </property>
                 <property name="value">
-                 <double>0.100000000000000</double>
+                 <double>0.200000000000000</double>
                 </property>
                </widget>
               </item>

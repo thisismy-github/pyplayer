@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 1546))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 1589))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -146,16 +146,16 @@ class Ui_settingsDialog(object):
         self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.horizontalLayout_8 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
         self.checkMinimizePause = QtWidgets.QCheckBox(self.tabGeneral)
@@ -165,7 +165,7 @@ class Ui_settingsDialog(object):
         self.checkMinimizeRestore.setEnabled(False)
         self.checkMinimizeRestore.setObjectName("checkMinimizeRestore")
         self.horizontalLayout_8.addWidget(self.checkMinimizeRestore)
-        self.formLayout.setLayout(16, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
+        self.formLayout.setLayout(17, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
         self.label_50 = QtWidgets.QLabel(self.tabGeneral)
         self.label_50.setObjectName("label_50")
         self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_50)
@@ -179,6 +179,10 @@ class Ui_settingsDialog(object):
         self.checkCopyEscapeBackslashes.setChecked(True)
         self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
         self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.checkRememberDropFolder = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRememberDropFolder.setChecked(True)
+        self.checkRememberDropFolder.setObjectName("checkRememberDropFolder")
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 5, -1, 5)
@@ -230,6 +234,14 @@ class Ui_settingsDialog(object):
         self.checkResizeOnOpen.setTristate(True)
         self.checkResizeOnOpen.setObjectName("checkResizeOnOpen")
         self.verticalLayout_7.addWidget(self.checkResizeOnOpen)
+        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_3.setContentsMargins(14, -1, -1, -1)
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.checkFirstFileTrayReset = QtWidgets.QCheckBox(self.groupBox)
+        self.checkFirstFileTrayReset.setChecked(True)
+        self.checkFirstFileTrayReset.setObjectName("checkFirstFileTrayReset")
+        self.horizontalLayout_3.addWidget(self.checkFirstFileTrayReset)
+        self.verticalLayout_7.addLayout(self.horizontalLayout_3)
         self.checkClampOnResize = QtWidgets.QCheckBox(self.groupBox)
         self.checkClampOnResize.setChecked(True)
         self.checkClampOnResize.setObjectName("checkClampOnResize")
@@ -351,7 +363,7 @@ class Ui_settingsDialog(object):
         self.spinFullScreenFadeDuration.setMinimum(0.0)
         self.spinFullScreenFadeDuration.setMaximum(10.0)
         self.spinFullScreenFadeDuration.setSingleStep(0.05)
-        self.spinFullScreenFadeDuration.setProperty("value", 0.1)
+        self.spinFullScreenFadeDuration.setProperty("value", 0.2)
         self.spinFullScreenFadeDuration.setObjectName("spinFullScreenFadeDuration")
         self.formLayout_5.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.spinFullScreenFadeDuration)
         self.label_43 = QtWidgets.QLabel(self.groupBox_4)
@@ -1316,6 +1328,12 @@ class Ui_settingsDialog(object):
 "This is only relevant on Windows as other operating\n"
 "systems do not use backslashes in their paths."))
         self.checkCopyEscapeBackslashes.setText(_translate("settingsDialog", "Escape backslashes ( \\ → \\\\ ) when copying media path"))
+        self.checkRememberDropFolder.setToolTip(_translate("settingsDialog", "If checked, dragging and dropping media will remember\n"
+"that media\'s folder and use it as the default for the next\n"
+"time you open a file-browsing dialog. Otherwise, only\n"
+"media opened through those dialogs will have their\n"
+"folders remembered."))
+        self.checkRememberDropFolder.setText(_translate("settingsDialog", "Remember folders for drag-and-dropped media"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusDrop.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will raise the window\n"
 "and give it focus. This brings the window to the foreground and\n"
@@ -1374,6 +1392,12 @@ class Ui_settingsDialog(object):
 "Partially checked - the window will only be\n"
 "resized for the first media file you open."))
         self.checkResizeOnOpen.setText(_translate("settingsDialog", "Resize to native resolution on open (tristate)"))
+        self.checkFirstFileTrayReset.setToolTip(_translate("settingsDialog", "If checked, minimizing to the system tray,\n"
+"restoring, and opening a new piece of media\n"
+"will count as opening media for the first time,\n"
+"for any setting that mentions \"the first media\n"
+"file you open.\""))
+        self.checkFirstFileTrayReset.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
         self.checkClampOnResize.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
 "and resized to fit within the boundaries\n"
 "of the screen it\'s on when using the\n"

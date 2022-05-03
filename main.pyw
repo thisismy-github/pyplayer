@@ -603,9 +603,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except Exception as error: logging.warning(f'Error deleting file {file} - {type(error)}: {error}')
 
         #set_and_update_progress(0)
+        self.stop()                                 # stop player
         self.dialog_settings.close()                # close settings dialog
         self.dockControls.setFloating(False)        # hide fullscreen UI if needed
-        self.stop()                                 # stop player
         logging.info('Player has been stopped.')
 
         minimize_to_tray = self.dialog_settings.groupTray.isChecked() and self.dialog_settings.checkTrayClose.isChecked()
@@ -616,6 +616,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.close_was_spontaneous:      # only show message if closeEvent was called by OS (i.e. X button pressed)
                     self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')  # this emits messageClicked signal
                 cfg.minimizedtotraywarningignored = True
+            if self.dialog_settings.checkFirstFileTrayReset.isChecked():
+                self.first_video_fully_loaded = False
             gc.collect(generation=2)
         return event.accept()
 
@@ -1344,7 +1346,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.vlc.play(self.video)
                 return update_progress(0)
             if self.actionAutoplay.isChecked():
-                update_progress(0)         # TODO required due to the audio issue side-effect (I think) -> 1st video file after audio file ends instantly
+                update_progress(0)              # TODO required due to the audio issue side-effect (I think) -> 1st video file after audio file ends instantly
                 return self.cycle_media()       # if we want autoplay, don't reload video -> cycle immediately
             if self.dialog_settings.checkStopOnFinish.isChecked() and player.get_state() != State.Stopped:
                 return self.stop()
@@ -1359,13 +1361,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 logging.info('Play-and-exit requested. Closing.')
                 return qtstart.exit(self)
 
-            while player.get_state() == State.Ended: sleep(0.005)  # wait for VLC to update the player state
+            while player.get_state() == State.Ended: sleep(0.005)       # wait for VLC to update the player state
             self.force_pause(True, '⟳')                                # forcibly re-pause VLC
             if self.isFullScreen() and self.dialog_settings.checkFullScreenMediaFinishedLock.isChecked():
-                self.lock_fullscreen_ui = True      # indicate we've restarted in fullscreen by showing the UI (marquee doesn't work -> player is stopped)
+                self.lock_fullscreen_ui = True  # indicate we've restarted in fullscreen by showing the UI (marquee doesn't work -> player is stopped)
                 self.timer_fullscreen_media_ended = QtCore.QTimer(self, interval=500, timeout=self.timerFullScreenMediaEndedEvent)
                 self.timer_fullscreen_media_ended.start()
             else: show_text('')                                         # VLC will auto-show last marq text everytime it restarts
+            self.first_video_fully_loaded = True                        # ensure this is True (it resets depending on settings)
         except: logging.error(f'(!) RESTART FAILED: {format_exc()}')
 
 

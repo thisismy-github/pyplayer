@@ -610,8 +610,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             Shift        -> Concatenates media file(s) to the end of the current media.
             Alt          -> Concatenates media file(s) to the start of the current media. '''
         self.reset_dragdrop_status()
-        settings = self.parent.dialog_settings
-        focus_window = settings.checkFocusDrop.isChecked()
+        focus_window = self.parent.dialog_settings.checkFocusDrop.isChecked()
         files = [url.toLocalFile() for url in event.mimeData().urls()]
 
         if self.parent.video:
@@ -627,8 +626,10 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             else:                           # no modifiers pressed, check if subtitle files were dropped
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
                 if subtitle_files: self.parent.browse_subtitle_file(urls=subtitle_files)
-                else: self.parent.open(files[0], focus_window=focus_window)    # no modifiers, no subtitles -> play dropped file as media
-        else: self.parent.open(files[0], focus_window=focus_window)            # no video playing -> ignore modifiers and play dropped file
+                else: self.parent.open(files[0], focus_window=focus_window)  # no modifiers, no subtitles -> play dropped file as media
+        else: self.parent.open(files[0], focus_window=focus_window)          # no video playing -> ignore modifiers and play dropped file
+        if self.parent.dialog_settings.checkRememberDropFolder.isChecked():  # update lastdir if desired
+            cfg.lastdir = os.path.dirname(files[0])
         super().dropEvent(event)            # run QWidget's built-in behavior
 
 
