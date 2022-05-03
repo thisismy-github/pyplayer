@@ -58,13 +58,48 @@ def focusWindow(window: QtWidgets.QWidget) -> None:
     window.raise_()
     window.activateWindow()
 
+def clampToScreen(window, screen: QtGui.QScreen = None,
+                  resize: bool = True, move: bool = True,
+                  mouseFallback: bool = True, returnScreen: bool = False,
+                  strict: bool = False):
+    ''' Clamps `window` to the boundaries of `screen`. If `screen` is None,
+        the `window`'s current screen will be approximated if possible. If not
+        possible and `mouseFallback` is True, the mouse's screen will be used.
+        If still not possible or `mouseFallback` is False, the primary screen
+        will be used. If `move` is True and `window` is a QWidget, it will be
+        automatically moved to its new position. If `resize` is True,
+        `window`'s size will be clamped to the final screen's size. If
+        `returnScreen` is True, the final screen is returned, otherwise
+        `window`'s final QRect is returned. If `strict` is True, clamping
+        occurs even if `window` is maximized or in fullscreen mode. '''
+    if not strict and (window.isMaximized() or window.isFullScreen()): return
+    isRect = isinstance(window, QtCore.QRect)
+    if isRect: windowRect = window
+    else: windowRect = window.frameGeometry()
+    if screen is None: screen = getScreenForRect(windowRect, mouseFallback=mouseFallback)
+    screenRect = screen.availableGeometry()     # availableGeometry excludes the taskbar
+    if not screenRect.contains(windowRect):     # .contains for entire rect, .intersects for partial rect
+        if resize and not isRect:
+            screenSize = screenRect.size()
+            windowSize = windowRect.size()      # only resize if necessary
+            if windowSize.height() > screenSize.height() or windowSize.width() > screenSize.width():
+                window.resize(windowRect.size().boundedTo(screenRect.size()))
+                windowRect = window.frameGeometry()
+        offsetTopLeft = windowRect.topLeft() - screenRect.topLeft()
+        windowRect.translate(-min(0, offsetTopLeft.x()), -min(0, offsetTopLeft.y()))
+        offsetBottomRight = windowRect.bottomRight() - screenRect.bottomRight()
+        windowRect.translate(-max(0, offsetBottomRight.x()), -max(0, offsetBottomRight.y()))
+        if move and not isRect: window.move(windowRect.topLeft())   # .setGeometry() is sometimes wrong
+    return screen if returnScreen else windowRect
+
 def getScreenForRect(rect: QtCore.QRect, defaultPos: QtCore.QPoint = None,
-                     mouse: bool = False, strict: bool = False) -> QtGui.QScreen:
+                     mouseFallback: bool = False, strict: bool = False) -> QtGui.QScreen:
     ''' Returns the QScreen that `rect` is touching, if any. If `rect` is not
         touching any screen and `strict` is True, a ValueError is raised.
-        Otherwise, if `mouse` is True, the screen the mouse is on is returned,
-        and if neither are True, the primary screen is returned. `defaultPos`
-        specifies the QPoint to test before thoroughly testing `rect`. '''
+        Otherwise, if `mouseFallback` is True, the screen the mouse is on is
+        returned. If the mouse isn't touching a screen either or neither are
+        True, the primary screen is returned. `defaultPos` specifies the
+        first QPoint to test before thoroughly testing `rect`. '''
     if defaultPos is None: pos = rect.center()
     else: pos = defaultPos
     qscreen = QtWidgets.QApplication.screenAt(pos)
@@ -74,10 +109,10 @@ def getScreenForRect(rect: QtCore.QRect, defaultPos: QtCore.QPoint = None,
         for point in points:
             qscreen = QtWidgets.QApplication.screenAt(point())
             if qscreen: break
-    if not qscreen:   # no screen detected -> use mouse. if already used -> use primary screen
-        if strict: raise ValueError(f'Rect {rect} is not on any screen.')
-        if not mouse: qscreen = QtWidgets.QApplication.screenAt(QtGui.QCursor().pos())
-        if not qscreen: qscreen = QtWidgets.QApplication.primaryScreen()
+        if not qscreen:   # no screen detected -> use mouse. if already used -> use primary screen
+            if strict: raise ValueError(f'Rect {rect} is not on any screen.')
+            if mouseFallback: qscreen = QtWidgets.QApplication.screenAt(QtGui.QCursor().pos())
+            if not qscreen: qscreen = QtWidgets.QApplication.primaryScreen()
     return qscreen
 
 def center(widget: QtWidgets.QWidget, target=None, screen: bool = False,
@@ -116,13 +151,13 @@ def center(widget: QtWidgets.QWidget, target=None, screen: bool = False,
         widgetRect = widget.frameGeometry()
         targetScreen = getScreenForRect(widgetRect, pos, mouse, strict)
         if targetScreen:
-            screenRect = targetScreen.availableGeometry()
+            screenRect = targetScreen.availableGeometry()   # availableGeometry excludes the taskbar
             if not screenRect.contains(widgetRect):
                 offsetTopLeft = widgetRect.topLeft() - screenRect.topLeft()
                 widgetRect.translate(-min(0, offsetTopLeft.x()), -min(0, offsetTopLeft.y()))
                 offsetBottomRight = widgetRect.bottomRight() - screenRect.bottomRight()
                 widgetRect.translate(-max(0, offsetBottomRight.x()), -max(0, offsetBottomRight.y()))
-                widget.move(widgetRect.topLeft())           # .setGeometry(widgetRect) is wrong
+                widget.move(widgetRect.topLeft())           # .setGeometry() is sometimes wrong
 
 
 # ---------------------

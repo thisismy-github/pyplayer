@@ -58,8 +58,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>334</width>
-        <height>1508</height>
+        <width>339</width>
+        <height>1546</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -270,7 +270,7 @@ if left idle over the player for the specified amount
 of time. While fullscreen, the UI will also disappear.</string>
                </property>
                <property name="text">
-                <string>Hide cursor/UI</string>
+                <string>Hide cursor\UI</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -528,7 +528,7 @@ This is only relevant on Windows as other operating
 systems do not use backslashes in their paths.</string>
                </property>
                <property name="text">
-                <string>Escape backslashes (\ → \\) when copying media path</string>
+                <string>Escape backslashes ( \ → \\ ) when copying media path</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -729,6 +729,37 @@ resized for the first media file you open.</string>
                    <string>Resize to native resolution on open (tristate)</string>
                   </property>
                   <property name="tristate">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkClampOnResize">
+                  <property name="toolTip">
+                   <string>If checked, the window will be moved
+and resized to fit within the boundaries
+of the screen it's on when using the
+&quot;Snap to native aspect ratio&quot; settings.</string>
+                  </property>
+                  <property name="text">
+                   <string>Clamp window to monitor on snap-resize</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkClampOnOpen">
+                  <property name="toolTip">
+                   <string>If checked, the window will be moved
+and resized to fit within the boundaries
+of the screen it's on when opening media.</string>
+                  </property>
+                  <property name="text">
+                   <string>Clamp window to monitor on open</string>
+                  </property>
+                  <property name="checked">
                    <bool>true</bool>
                   </property>
                  </widget>
@@ -2727,6 +2758,8 @@ the currently playing media's height.</string>
   <tabstop>checkSnapOnResize</tabstop>
   <tabstop>checkSnapOnOpen</tabstop>
   <tabstop>checkResizeOnOpen</tabstop>
+  <tabstop>checkClampOnResize</tabstop>
+  <tabstop>checkClampOnOpen</tabstop>
   <tabstop>groupTray</tabstop>
   <tabstop>checkTrayClose</tabstop>
   <tabstop>checkTrayMinimize</tabstop>

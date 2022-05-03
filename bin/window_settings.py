@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1508))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 1546))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -230,6 +230,14 @@ class Ui_settingsDialog(object):
         self.checkResizeOnOpen.setTristate(True)
         self.checkResizeOnOpen.setObjectName("checkResizeOnOpen")
         self.verticalLayout_7.addWidget(self.checkResizeOnOpen)
+        self.checkClampOnResize = QtWidgets.QCheckBox(self.groupBox)
+        self.checkClampOnResize.setChecked(True)
+        self.checkClampOnResize.setObjectName("checkClampOnResize")
+        self.verticalLayout_7.addWidget(self.checkClampOnResize)
+        self.checkClampOnOpen = QtWidgets.QCheckBox(self.groupBox)
+        self.checkClampOnOpen.setChecked(True)
+        self.checkClampOnOpen.setObjectName("checkClampOnOpen")
+        self.verticalLayout_7.addWidget(self.checkClampOnOpen)
         self.verticalLayout.addWidget(self.groupBox)
         self.verticalLayout_3.addLayout(self.verticalLayout)
         self.groupTray = QtWidgets.QGroupBox(self.tabGeneral)
@@ -1072,7 +1080,9 @@ class Ui_settingsDialog(object):
         settingsDialog.setTabOrder(self.checkIgnoreFocusWithAutoplay, self.checkSnapOnResize)
         settingsDialog.setTabOrder(self.checkSnapOnResize, self.checkSnapOnOpen)
         settingsDialog.setTabOrder(self.checkSnapOnOpen, self.checkResizeOnOpen)
-        settingsDialog.setTabOrder(self.checkResizeOnOpen, self.groupTray)
+        settingsDialog.setTabOrder(self.checkResizeOnOpen, self.checkClampOnResize)
+        settingsDialog.setTabOrder(self.checkClampOnResize, self.checkClampOnOpen)
+        settingsDialog.setTabOrder(self.checkClampOnOpen, self.groupTray)
         settingsDialog.setTabOrder(self.groupTray, self.checkTrayClose)
         settingsDialog.setTabOrder(self.checkTrayClose, self.checkTrayMinimize)
         settingsDialog.setTabOrder(self.checkTrayMinimize, self.groupHover)
@@ -1227,7 +1237,7 @@ class Ui_settingsDialog(object):
         self.checkHideIdleCursor.setToolTip(_translate("settingsDialog", "If checked, your cursor will disappear until moved\n"
 "if left idle over the player for the specified amount\n"
 "of time. While fullscreen, the UI will also disappear."))
-        self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor/UI"))
+        self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor\\UI"))
         self.spinHideIdleCursorDuration.setPrefix(_translate("settingsDialog", "After: "))
         self.spinHideIdleCursorDuration.setSuffix(_translate("settingsDialog", " seconds"))
         self.checkHighPrecisionProgress.setToolTip(_translate("settingsDialog", "If checked, the progress slider for your media will be simulated in\n"
@@ -1305,7 +1315,7 @@ class Ui_settingsDialog(object):
 "\n"
 "This is only relevant on Windows as other operating\n"
 "systems do not use backslashes in their paths."))
-        self.checkCopyEscapeBackslashes.setText(_translate("settingsDialog", "Escape backslashes (\\ → \\\\) when copying media path"))
+        self.checkCopyEscapeBackslashes.setText(_translate("settingsDialog", "Escape backslashes ( \\ → \\\\ ) when copying media path"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusDrop.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will raise the window\n"
 "and give it focus. This brings the window to the foreground and\n"
@@ -1364,6 +1374,15 @@ class Ui_settingsDialog(object):
 "Partially checked - the window will only be\n"
 "resized for the first media file you open."))
         self.checkResizeOnOpen.setText(_translate("settingsDialog", "Resize to native resolution on open (tristate)"))
+        self.checkClampOnResize.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
+"and resized to fit within the boundaries\n"
+"of the screen it\'s on when using the\n"
+"\"Snap to native aspect ratio\" settings."))
+        self.checkClampOnResize.setText(_translate("settingsDialog", "Clamp window to monitor on snap-resize"))
+        self.checkClampOnOpen.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
+"and resized to fit within the boundaries\n"
+"of the screen it\'s on when opening media."))
+        self.checkClampOnOpen.setText(_translate("settingsDialog", "Clamp window to monitor on open"))
         self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer to restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"

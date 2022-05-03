@@ -137,7 +137,6 @@ trimming-support for more obscure formats
 implement filetype associations
 high-precision progress bar has been neglected and is now consistently a little too fast
 some videos do not report correct FPS in libvlc (ffprobe works but takes too long while compiled and shows a console window)
-ensure "Snap to aspect ratio" and "Resize to native resolution" options do not cause window to go off-screen
 far greater UI customization
 
 TODO: LOW PRIORITY:
@@ -1315,21 +1314,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.vsize.setHeight(self.vheight)
             resize_on_open_state = self.dialog_settings.checkResizeOnOpen.checkState()
             snap_on_open_state = self.dialog_settings.checkSnapOnOpen.checkState()
-            if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):       # 1 -> don't resize after first video opened
-                # TODO ensure the new window position does not go off screen (use self.rect().moveCenter()?)
-                center = self.mapToGlobal(self.rect().center())
-                current_screen = app.screenAt(center)       # current screen is based on center of window
-                screen_size = current_screen.availableSize()
+            if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):      # 1 -> only resize first video opened
                 excess_height = self.height() - self.vlc.height()
-
-                if self.vwidth > screen_size.width() or self.vheight > screen_size.height():
-                    screen_size.scale(screen_size.width(), int(screen_size.height() * 0.75), Qt.KeepAspectRatio)
-                    new_size = self.vsize.scaled(screen_size, Qt.KeepAspectRatio)
-                    new_size.setHeight(new_size.height() + excess_height)
-                    self.resize(new_size)
-                else: self.resize(self.vwidth, self.vheight + excess_height)
+                self.resize(self.vwidth, self.vheight + excess_height)
+                qthelpers.clampToScreen(self)
             elif snap_on_open_state and not (snap_on_open_state == 1 and self.first_video_fully_loaded):
                 self.snap_to_player_size(force_instant_resize=True)
+            elif self.dialog_settings.checkClampOnOpen.isChecked():
+                qthelpers.clampToScreen(self)
 
             self.update_title_signal.emit()
             if self.dialog_settings.checkTextOnOpen.isChecked(): show_text(os.path.basename(self.video), 1000)
@@ -2644,9 +2636,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def snap_to_player_size(self, shrink=False, force_instant_resize=False):
         if not self.isMaximized() and not self.isFullScreen() and self.mime_type == 'video':    # TODO if we figure out cover-art, get rid of mime_type condition
             vlc_size = self.vlc.size()
-            expected_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
-            void_width = vlc_size.width() - expected_size.width()
-            void_height = vlc_size.height() - expected_size.height()
+            expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
+            void_width = vlc_size.width() - expected_vlc_size.width()
+            void_height = vlc_size.height() - expected_vlc_size.height()
 
             # default instant snap. normally this shrinks the window, but to mitigate this and have a more balanced...
             # ...resize, we snap twice - once to resize it bigger than needed, then again to shrink it back down
@@ -2656,19 +2648,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     void = round((void_width if void_width else void_height) / 2)
 
                     # TODO +28 here or window gets smaller when switching between videos with different ratios
-                    expected_size.scale(expected_size.width() + round(void * ratio), expected_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
-                    true_height = expected_size.height() + self.height() - self.vlc.height()
-                    if expected_size != vlc_size: self.resize(expected_size.width(), true_height)
+                    expected_vlc_size.scale(expected_vlc_size.width() + round(void * ratio), expected_vlc_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
+                    true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
+                    if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
                     return self.snap_to_player_size(shrink=True)    # snap again, but shrink this time
 
             # experimental animated snap (discovered by accident)
             else:
-                expected_size.setWidth(expected_size.width() + round(void_width / 2))
-                expected_size.setHeight(expected_size.height() + round(void_height / 2))
+                expected_vlc_size.setWidth(expected_vlc_size.width() + round(void_width / 2))
+                expected_vlc_size.setHeight(expected_vlc_size.height() + round(void_height / 2))
 
             # resize window if player size does not match the expected size (expected size = w/o black bars)
-            true_height = expected_size.height() + self.height() - self.vlc.height()
-            if expected_size != vlc_size: self.resize(expected_size.width(), true_height)
+            true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
+            if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
+
+            # move and resize to fit within screen if necessary
+            if self.dialog_settings.checkClampOnResize.isChecked():
+                frame_size = self.frameGeometry().size()
+                screen = qthelpers.getScreenForRect(self.rect())
+                screen_size = screen.availableSize()
+                if frame_size.height() > screen_size.height() or frame_size.width() > screen_size.width():
+                    self.resize(self.frameGeometry().size().boundedTo(screen_size))
+                    self.snap_to_player_size(shrink=True)
+                qthelpers.clampToScreen(self, screen=screen, resize=False)
 
 
     def update_title(self):
