@@ -94,7 +94,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             #self.show_text(os.path.basename(file))
             self.media = self.instance.media_new(file)  # combines media_new_path (local files) and media_new_location (urls)
             self.media.parse_with_options(0x0, 0)       # not needed? https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.Media-class.html#parse_with_options
-            self.player.set_media(self.media)
+            self.player.set_media(self.media)           # TODO: this single line has a HUGE delay when opening first video after opening extremely large video
             #self.player.set_mrl(self.media.get_mrl())  # not needed? https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.MediaPlayer-class.html#set_mrl
             self.player.play()
             return True

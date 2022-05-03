@@ -176,6 +176,7 @@ KNOWN ISSUES:
         resizing videos doesn't actually stretch them? or... it does? very strange behavior with phantom black bars that differ from player to player
         rarely, concatenated videos will have a completely blank frame between clips, causing the theme background to appear for 1 frame
         forwards/backwards buttons only work when pressed over the player
+        abnormally long delay opening first video after opening extremely large video (longer delay than in VLC) -> delay occurs at player.set_media
     Medium priority:
         output-name lineEdit's placeholder text becomes invisible after setting a theme and then changing focus
         resizing an audio file rarely stalls forever with no error (works upon retry)
@@ -1123,29 +1124,30 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def parse_media_file(self, file, mime='video', _recursive=False):
+        self.sliderProgress.setEnabled(mime != 'image')    # ensure progress bar is enabled for non-images (odd but harmless behavior with images)
         if mime == 'video':
+            # get_parsed_status == 4 -> parsing finished. certain formats/conditions (like .mpg) briefly report 0's for some...
+            # ...metadata, so wait after parsing if needed. also wait if current video appears to be the same as the last video
             start = get_time()
-
-            # get_parsed_status == 4 -> parsing finished. certain formats and conditions briefly report 0 length, fps, and/or dimensions.
             while self.vlc.media.get_parsed_status() != 4 or player.get_length() == 0 or player.get_fps() == 0 or player.video_get_size() == (0, 0):
-                if get_time() - start > 1 and self.vlc.media.get_parsed_status() == 4:  # certain file formats take an abnormal amount of time to report their FPS (like .mpg)
-                    logging.warning('Media is supposedly a video, but failed to report a frame rate after 1 full second despite being fully parsed.')
+                if self.vlc.media.get_parsed_status() == 4 and get_time() - start > 3 and file != self.recent_videos[-1]:
+                    self.log('Media is supposedly a video, but is reporting invalid metadata despite being fully parsed.')
                     break
                 sleep(0.005)
             logging.info(f'Media needed an additional {get_time() - start:.4f} seconds to parse.')
 
-            self.duration = round(player.get_length() / 1000, 4)
-            self.frame_rate = round(player.get_fps(), 1)    # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
-            if self.frame_rate == 0:                        # if the frame rate is still 0 after parsing, assume it's actually an audio file
-                if _recursive: return -1                    # avoid infinite loop
-                logging.info('Invalid frame rate detected, parsing as an audio file (fps=0 duration={self.duration})...')
+            fps = round(player.get_fps(), 1)        # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
+            if fps == 0:                            # if the frame rate is still 0 after parsing, assume it's actually an audio file
+                if _recursive: return -1            # avoid infinite loop
+                logging.info(f'Invalid frame rate detected, parsing as an audio file (fps=0 duration={self.duration})...')
                 return self.parse_media_file(file, mime='audio', _recursive=True)
-            self.frame_count = int(self.duration * self.frame_rate)
-            self.frame_rate_rounded = round(self.frame_rate)
+            self.frame_rate = fps                   # wait until fps is confirmed to update self.frame_rate
+            self.duration = round(player.get_length() / 1000, 4)
+            self.frame_count = int(self.duration * fps)
+            self.frame_rate_rounded = round(fps)
             self.vwidth, self.vheight = player.video_get_size()
             self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
-            self.delay = 1 / self.frame_rate
-            self.sliderProgress.setEnabled(True)   # ensure progress bar is enabled
+            self.delay = 1 / fps
 
         elif mime == 'audio':
             try: tag = TinyTag.get(file)            # https://pypi.org/project/tinytag/0.18.0/
@@ -1160,7 +1162,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.vwidth, self.vheight = 1, 1
             self.ratio = '1:1'
             self.delay = 0.05
-            self.sliderProgress.setEnabled(True)   # ensure progress bar is enabled
             logging.info(f'Metadata for audio {file}: {tag}')
 
         elif mime == 'image':
@@ -1174,7 +1175,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.mime_type = mime
         self.open_queued = True
         self.frame_override = 0                     # set frame_override in order to trigger open_queue in update_slider_thread
-        self.sliderProgress.setEnabled(mime != 'image')    # ensure progress bar is enabled, unless it's an image (odd but harmless behavior with images)
         if mime != 'audio': self.vlc.find_true_borders()
         self.parsed = True
 
@@ -1185,6 +1185,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
             if not file or file == self.locked_video: return
+            start = get_time()
             file = os.path.abspath(file)
 
             # if `file` is actually a directory -> open first valid, non-hidden file and enable Autoplay
@@ -1262,7 +1263,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if self.actionCrop.isChecked(): self.disable_crop_mode()    # set_crop_mode auto-returns if mime_type is 'audio'
 
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
-            if mime == 'video' and not self.parsed: self.parse_media_file(file, mime)   # parse key details from VLC
+            if mime == 'video' and not self.parsed:
+                if self.parse_media_file(file, mime) == -1:             # parse key details from VLC
+                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
+                    return -1
 
             logging.info(f'-- KEY MEDIA ATTRIBUTES --\nduration={self.duration}, fps={self.frame_rate} ({self.frame_rate_rounded}), frame_count={self.frame_count}, w={self.vwidth}, h={self.vheight}, ratio={self.ratio}, delay={self.delay}\n')
 
@@ -1294,6 +1298,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
                         elif self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
                 if focus_window: qthelpers.showWindow(self)
+            logging.info(f'Initial media opening completed after {get_time() - start:.4f} seconds.')
         except: self.log(f'(!) OPEN FAILED: {format_exc()}')
 
 
@@ -1303,8 +1308,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             reset the progress regardless, or we'll experience timing issues that cause newly opened media to play from the frame
             the previous media left off at. Putting ALL of open() in this slot, however, results in a noticable delay when opening
             media. Non-essential actions - emitting update_title_signal and displaying a marquee - are handled here as well. '''
-        logging.info('Finishing open from _open_signal.')
         try:
+            logging.info('Finishing open from _open_signal.')
+            start = get_time()
+
             self.sliderProgress.setMaximum(self.frame_count)
             update_progress(0)
             self.minimum = self.sliderProgress.minimum()
@@ -1331,6 +1338,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.first_video_fully_loaded = True
 
             logging.info(f'VLC\'s delayed readings:\n > VLC FPS: {player.get_fps()} | VLC Duration: {player.get_length() / 1000}')
+            logging.info(f'Supplementary media opening completed after {get_time() - start:.4f} seconds.')
             gc.collect(generation=2)            # do manual garbage collection after opening (NOTE: this MIGHT be risky)
         except: logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
 
