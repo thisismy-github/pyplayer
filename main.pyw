@@ -10,7 +10,6 @@ r'''  >>> thisismygithub - 10/31/21 <<<
 
 icon sources/inspirations https://www.pinclipart.com/maxpin/hxThoo/ + https://www.hiclipart.com/free-transparent-background-png-clipart-vuclz
 https://youtu.be/P1qMAupb2_Y?t=2461 VLC devs talk about Qt problems -> making two windows actually behave as one?
-TODO: audio with cover art not showing up (works in VLC, possibly something in docs for it?) https://github.com/devsnd/tinytag
 TODO: update boilerplate code with last_window_size/pos changes
 TODO: need a way to deal with VLC registry edits
 TODO: move open_color_picker and other browse dialogs + indeterminate_progress decorator + setCursor(app) and resetCursor(app) to qthelpers?
@@ -75,8 +74,6 @@ optimization: remove translate flags from .ui file? maybe not a good idea
 TODO: use qtawesome icons/fonts? https://pypi.org/project/QtAwesome/ <- qta-browser
 TODO: enhanced playback speed option (context menu/menubar)?
 TODO: playlists + shuffle (including a smart shuffle that plays playlist to completion without repeats)
-TODO: play .gifs with a QMovie inside a QLabel (.setMovie())
-        - this may also be the key to audio cover-art
 TODO: playing online media like VLC
 TODO: implement VLC's taskbar button preview where it lets you play/pause from it https://docs.microsoft.com/en-us/dotnet/api/system.windows.shell.thumbbuttoninfo?view=windowsdesktop-6.0
 TODO: video_set_aspect_ratio and video_set_scale (this is for "zooming")
@@ -127,7 +124,6 @@ lazy concatenate dialog seems to have a memory leak (it does not free up QVideoL
 
 TODO: MEDIUM PRIORITY:
 DPI/scaling support
-show cover art for audio using a QLabel inside QVideoPlayer frame/area (if not possible with vlc bindings)
 ffmpeg audio replacement/addition sometimes cuts out the audio 1 second short. keyframe related? corrupted streams (not vlc-specific)?
 further polish cropping
 increase stability/add re-encoding ability to concatenation (currently fails/corrupts if you combine different formats/corrupted streams)
@@ -141,8 +137,7 @@ far greater UI customization
 
 TODO: LOW PRIORITY:
 replace VLC with QMediaPlayer (maybe)
-show animated .gifs using the same method for cover art
-show and cache all images using the same method for cover art (would allow for one cached image at a time)
+display and cache images using gifPlayer
 support chaining more edits together at once
 massively improve robust-ness of editing features -> filters/hints/prompts/errors/formats need to be MUCH more consistent
 implement the "concatenate" edit for audio-only files
@@ -457,6 +452,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_videos = []
         self.locked_video: str = None
         self.mime_type = 'image'    # defaults to 'image' since self.pause() is disabled for 'image' mime_types
+        self.true_extension: str = None
 
         self.fractional_frame = 0.0
         self.delay = self.duration = 0
@@ -1123,8 +1119,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: app.clipboard().setText(f'"{path}"')
 
 
-    def parse_media_file(self, file, mime='video', _recursive=False):
-        self.sliderProgress.setEnabled(mime != 'image')    # ensure progress bar is enabled for non-images (odd but harmless behavior with images)
+    def parse_media_file(self, file, mime='video', extension=None, _recursive=False):
         if mime == 'video':
             # get_parsed_status == 4 -> parsing finished. certain formats/conditions (like .mpg) briefly report 0's for some...
             # ...metadata, so wait after parsing if needed. also wait if current video appears to be the same as the last video
@@ -1140,40 +1135,56 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if fps == 0:                            # if the frame rate is still 0 after parsing, assume it's actually an audio file
                 if _recursive: return -1            # avoid infinite loop
                 logging.info(f'Invalid frame rate detected, parsing as an audio file (fps=0 duration={self.duration})...')
-                return self.parse_media_file(file, mime='audio', _recursive=True)
+                return self.parse_media_file(file, mime='audio', extension=extension, _recursive=True)
             self.frame_rate = fps                   # wait until fps is confirmed to update self.frame_rate
             self.duration = round(player.get_length() / 1000, 4)
             self.frame_count = int(self.duration * fps)
             self.frame_rate_rounded = round(fps)
             self.vwidth, self.vheight = player.video_get_size()
-            self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
             self.delay = 1 / fps
 
         elif mime == 'audio':
-            try: tag = TinyTag.get(file)            # https://pypi.org/project/tinytag/0.18.0/
-            except:                                 # this is to handle things that wrongly report as audio, like .ogv files
-                if _recursive: return -1            # avoid infinite loop
+            try: tag = TinyTag.get(file, image=True)    # https://pypi.org/project/tinytag/0.18.0/
+            except:                                     # this is to handle things that wrongly report as audio, like .ogv files
+                if _recursive: return -1                # avoid infinite loop
                 logging.info('Invalid audio file detected, parsing as a video file...')
-                return self.parse_media_file(file, mime='video', _recursive=True)
+                return self.parse_media_file(file, mime='video', extension=extension, _recursive=True)
             self.duration = tag.duration
-            self.frame_rate = 20                    # TODO we only set to 20 to not deal with laggy hover-fades
+            self.frame_rate = 20                        # TODO we only set to 20 to not deal with laggy hover-fades
             self.frame_rate_rounded = 20
             self.frame_count = round(tag.duration * 20)
-            self.vwidth, self.vheight = 1, 1
-            self.ratio = '1:1'
             self.delay = 0.05
+            cover_art = tag.get_image()
+            gif_player.play(cover_art)  # cover art is bytes -> set to gif_player's QPixmap, then open QPixmap with PIL
+            self.vwidth, self.vheight = get_PIL_Image().fromqpixmap(gif_player.art).size if cover_art else (1, 1)
             logging.info(f'Metadata for audio {file}: {tag}')
 
         elif mime == 'image':
-            self.frame_rate, self.frame_count, self.duration = 5, 1, 0
-            try: self.vwidth, self.vheight = get_PIL_Image().open(file).size
-            except AttributeError: self.vwidth, self.vheight = 1, 1
-            self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
-            self.frame_rate_rounded = 1
-            self.delay = 0.2                        # run update_slider_thread only 5 times/second
+            if extension == 'gif':
+                movie = gif_player.gif
+                self.frame_count = movie.frameCount()
+                self.delay = movie.nextFrameDelay() / 1000
+                self.duration = self.frame_count * self.delay
+                self.frame_rate = 1 / self.delay
+                self.frame_rate_rounded = round(self.frame_rate)
+                size = movie.frameRect().size()
+                self.vwidth, self.vheight = size.width(), size.height()
+            else:
+                self.frame_rate, self.frame_count, self.duration = 5, 1, 0
+                try: self.vwidth, self.vheight = get_PIL_Image().open(file).size
+                except AttributeError: self.vwidth, self.vheight = 1, 1
+                self.frame_rate_rounded = 1
+                self.delay = 0.2                    # run update_slider_thread only 5 times/second
 
+        self.true_extension = extension
+        if extension == 'gif':
+            self._open_signal.emit()
+            set_progress_slider(0)
+            mime = 'video'
+        else: self.open_queued = True
         self.mime_type = mime
-        self.open_queued = True
+        self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+
         self.frame_override = 0                     # set frame_override in order to trigger open_queue in update_slider_thread
         if mime != 'audio': self.vlc.find_true_borders()
         self.parsed = True
@@ -1203,7 +1214,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # get mime type of file
             try:
                 filetype_data = filetype.guess(file)            # 'EXTENSION', 'MIME', 'extension', 'mime'
-                mime, self.true_extension = filetype_data.mime.split('/')
+                mime, extension = filetype_data.mime.split('/')
                 logging.info(f'Filetype data: {filetype_data} | Mime type: {mime} | Full mime: {filetype_data.mime} | True extension: {filetype_data.extension}')
                 if mime not in ('video', 'image', 'audio'):
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
@@ -1221,20 +1232,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.showMinimized()                # minimize for now, we'll check if we need to focus later
             else: was_minimzed_to_tray = False
 
-            # attempt to actually play and parse file
-            if not self.vlc.play(file): return      # immediately attempt to play media once we know it might be valid
+            # attempt to play file
+            if extension == 'gif':
+                player.stop()
+                gif_player.play(file)
+            elif not self.vlc.play(file): return    # immediately attempt to play media once we know it might be valid
+            else: gif_player.play(None)             # clear gifPlayer
+
+            # parse file
             self.parsed = False                     # keep track of parse so we can avoid re-parsing it later if it ends up being a video
-            if mime != 'video':                     # parse key details from media file if it isn't a video
-                if self.parse_media_file(file, mime) == -1:
+            if mime != 'video':                     # parse metadata early if it isn't a video
+                if self.parse_media_file(file, mime, extension) == -1:
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
 
             # set media (AFTER vlc.play()), and copy path to second variable unless otherwise specified
             self.video = file
             if not remember_old_file or not self.video_original_path: self.video_original_path = file
-
-            if file[-4:] != '.gif': self.log(f'Opening file {file}\n')
-            else: self.log('Animated GIFs are not supported (just like in VLC).')
+            self.log(f'Opening {"file" if extension != "gif" else "animated GIF (limited support)"}: {file}\n')
 
             # update recent media list
             if update_recent_list:
@@ -1243,11 +1258,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     recent_videos.append(recent_videos.pop(recent_videos.index(file)))
                 else:
                     recent_videos.append(file)
-                    if len(recent_videos) > 10:     # do NOT use alias here
+                    if len(recent_videos) > 10:     # do NOT use the recent_videos alias here
                         self.recent_videos = self.recent_videos[-10:]
 
             # misc cleanup/setup for new media
             self.operations = {}
+            self.sliderProgress.setEnabled(mime != 'image' or extension == 'gif')   # static images have odd but harmless behavior
             self.buttonTrimStart.setChecked(False)
             self.buttonTrimEnd.setChecked(False)
             self.lineOutput.setText('')
@@ -1262,9 +1278,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # reset cropped mode if needed
             if self.actionCrop.isChecked(): self.disable_crop_mode()    # set_crop_mode auto-returns if mime_type is 'audio'
 
+            # extra setup before we absolutely must wait for the media to finish parsing
+            self.is_paused = False                  # force_pause could be used here, but it is slightly more efficient this way
+            set_pause_button_text('𝗜𝗜')
+            if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())  # force volume to quickly correct gain issue
+            self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
+
+            # focus window. if disabled but window is minimized, check for special focus settings. ignore Autoplay focus if desired.
+            if not self.isActiveWindow() and not (_from_cycle and self.dialog_settings.checkIgnoreFocusWithAutoplay.isChecked()):
+                if not focus_window:
+                    if self.isMinimized():
+                        if was_minimzed_to_tray:    # check appropriate setting based on our original minimize state
+                            if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
+                        elif self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
+                if focus_window: qthelpers.showWindow(self)
+
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not self.parsed:
-                if self.parse_media_file(file, mime) == -1:             # parse key details from VLC
+                if self.parse_media_file(file, mime, extension) == -1:        # parse metadata from VLC
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
 
@@ -1285,19 +1316,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.spinFrame.setMaximum(self.frame_count)
             self.spinFrame.setPrefix(f'{self.frame_rate_rounded} FPS: ')
 
-            self.is_paused = False                  # force_pause could be used here, but it is slightly more efficient this way
-            set_pause_button_text('𝗜𝗜')
-            if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())  # force volume to quickly correct gain issue
-            self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
-
-            # focus window. if focus is disabled but window is minimized, check for special focus settings. ignore Autoplay focus if desired.
-            if not self.isActiveWindow() and not (_from_cycle and self.dialog_settings.checkIgnoreFocusWithAutoplay.isChecked()):
-                if not focus_window:
-                    if self.isMinimized():
-                        if was_minimzed_to_tray:    # check appropriate setting based on our original minimize state
-                            if self.dialog_settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
-                        elif self.dialog_settings.checkFocusMinimized.isChecked(): focus_window = True
-                if focus_window: qthelpers.showWindow(self)
             logging.info(f'Initial media opening completed after {get_time() - start:.4f} seconds.')
         except: self.log(f'(!) OPEN FAILED: {format_exc()}')
 
@@ -1384,21 +1402,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Pauses/unpauses the media. Handles updating GUI, cleaning up/restarting, clamping progress
             to current trim, displaying the pause state on-screen, and wrapping around the progress bar. '''
         if self.mime_type == 'image': return
-        frame = get_progess_slider()
-        old_state = player.get_state()
+        if self.true_extension == 'gif':
+            old_state = gif_player.gif.state()
+            was_paused = old_state != QtGui.QMovie.Running
+            gif_player.gif.setPaused(not was_paused)
+            self.is_paused = not was_paused
+            frame = gif_player.gif.currentFrameNumber()
+        else:
+            frame = get_progess_slider()
+            old_state = player.get_state()
+            if old_state == State.Stopped:
+                self.restart()
+                set_and_update_progress(frame)
 
-        if old_state == State.Stopped:
-            self.restart()
-            set_and_update_progress(frame)
+            if frame >= self.maximum or frame <= self.minimum:              # play media from beginning if media is over
+                self.lock_progress_updates = True
+                set_and_update_progress(self.minimum)
+                self.lock_progress_updates = False
+            player.pause()                                                  # actually pause VLC player
+            self.is_paused = True if old_state == State.Playing else False  # prevents most types of pause-bugs...?
 
-        if frame >= self.maximum or frame <= self.minimum:              # play media from beginning if media is over
-            self.lock_progress_updates = True
-            set_and_update_progress(self.minimum)
-            self.lock_progress_updates = False
-        player.pause()                                             # actually pause VLC player
-        self.is_paused = True if old_state == State.Playing else False  # prevents most types of pause-bugs...?
-
-        pause_text = '▶' if self.is_paused else '𝗜𝗜'                     # ▷ ▶ ⏵︎
+        pause_text = '▶' if self.is_paused else '𝗜𝗜'                         # ▷ ▶ ⏵︎
         set_pause_button_text(pause_text)
         if self.dialog_settings.checkTextOnPause.isChecked(): show_text(pause_text)
         self.update_title_signal.emit()
@@ -1410,6 +1434,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def force_pause(self, paused: bool, text=None):
         player.set_pause(paused)
+        gif_player.gif.setPaused(paused)
         self.is_paused = paused
         set_pause_button_text(text if text is not None else '▶' if paused else '𝗜𝗜')
         self.update_title_signal.emit()
@@ -1420,6 +1445,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def stop(self):
         ''' A more robust way of stopping - stop the player while also force-pausing. '''
         player.stop()
+        gif_player.gif.stop()
         self.force_pause(True)
 
 
@@ -1723,6 +1749,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         current_frame = self.sliderProgress.value
         player = self.player
         is_playing = player.is_playing
+        get_rate = player.get_rate                          # TODO: get_rate() vs. self.playback_speed <- which is faster?
         update_progress_signal = self.update_progress_signal
         set_progress_slider = self.sliderProgress.setValue
 
@@ -1749,8 +1776,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             update_progress_signal.emit(self.frame_override)
                         self.frame_override = None      # reset frame_override
                         self.open_queued = False        # reset open_queued
-                    elif (next_frame := current_frame() + 1 * self.playback_speed) <= self.frame_count:  # do NOT update progress if we're at the end
-                        update_progress_signal.emit(next_frame)                                          # update_progress_signal -> update_progress_slot
+                    elif (next_frame := current_frame() + 1 * get_rate()) <= self.frame_count:     # do NOT update progress if we're at the end
+                        update_progress_signal.emit(next_frame)                                     # update_progress_signal -> update_progress_slot
 
                     sleep(0.0001)                       # sleep to force-update get_time()
                     try: sleep(self.delay - (get_time() - start) - 0.0011)
@@ -1780,10 +1807,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_and_update_progress(self, frame: int = 0):
-        ''' Simultaneously sets VLC player position and updates progress on GUI. '''
+        ''' Simultaneously sets VLC/gif player position and updates progress on GUI. '''
         set_player_position(frame / self.frame_count)
         #self.set_player_time(round(frame * (1000 / self.frame_rate)))
         update_progress(frame)
+        set_gif_position(frame)
 
 
     def update_progress_slot(self, frame: float):
@@ -2503,7 +2531,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def set_playback_speed(self, rate: float):
         ''' Sets, saves, and displays the playback speed/rate for the video. '''
         player.set_rate(rate)
-        self.playback_speed = rate  # save speed to avoid player.get_rate() as we must access it constantly
+        gif_player.gif.setSpeed(rate * 100)
+        self.playback_speed = rate
         if self.dialog_settings.checkTextOnSpeed.isChecked(): show_text(f'{rate:.2f}x', 1000)
         self.log(f'Playback speed set to {rate:.2f}x')
 
@@ -2645,7 +2674,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def snap_to_player_size(self, shrink=False, force_instant_resize=False):
-        if not self.isMaximized() and not self.isFullScreen() and self.mime_type == 'video':    # TODO if we figure out cover-art, get rid of mime_type condition
+        if not self.isMaximized() and not self.isFullScreen() and (self.mime_type != 'audio' or gif_player.pixmap()):
             vlc_size = self.vlc.size()
             expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
             void_width = vlc_size.width() - expected_vlc_size.width()
@@ -3070,6 +3099,7 @@ if __name__ == "__main__":
         # Aliases for time-sensitive functions/variables
         # -----------------------------------------------
         player = gui.vlc.player
+        gif_player = gui.gifPlayer
         show_text = gui.vlc.show_text
         update_progress = gui.update_progress
         update_progress_signal = gui.update_progress_signal
@@ -3085,6 +3115,7 @@ if __name__ == "__main__":
         set_second_spin = gui.spinSecond.setValue
         set_frame_spin = gui.spinFrame.setValue
         set_player_position = player.set_position
+        set_gif_position = gif_player.gif.jumpToFrame
         set_current_time_text = gui.lineCurrentTime.setText
         current_time_lineedit_has_focus = gui.lineCurrentTime.hasFocus
 

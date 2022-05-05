@@ -278,3 +278,6 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.spinTextX.valueChanged.connect(self.vlc.set_text_x)
     settings.spinTextY.valueChanged.connect(self.vlc.set_text_y)
     settings.spinTextOpacity.valueChanged.connect(self.vlc.set_text_opacity)
+
+    # NOTE: this looks weird if the gif has custom frame-by-frame delays, but it's perfectly fine
+    self.gifPlayer.gif.frameChanged.connect(self.update_progress)

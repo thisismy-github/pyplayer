@@ -635,6 +635,31 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
 
+class QVideoPlayerLabel(QtW.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.art = QtGui.QPixmap()
+        self.gif = QtGui.QMovie()
+        self.gif.setCacheMode(QtGui.QMovie.CacheAll)     # required for jumpToFrame to work
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+    def play(self, file):
+        self.clear()
+        self.gif.stop()
+        if file is None: return
+        if isinstance(file, bytes):
+            self.art.loadFromData(file)
+            self.setPixmap(self.art)
+            logging.info('Cover art detected.')
+        else:
+            self.gif.setFileName(file)
+            self.setMovie(self.gif)
+            self.gif.start()
+            logging.info('Animated image detected.')
+
+
+
+
 class QVideoSlider(QtW.QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

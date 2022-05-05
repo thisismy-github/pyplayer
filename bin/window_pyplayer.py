@@ -22,9 +22,22 @@ class Ui_MainWindow(object):
         self.gridLayout.setVerticalSpacing(0)
         self.gridLayout.setObjectName("gridLayout")
         self.vlc = QVideoPlayer(self.centralwidget)
-        self.vlc.setMinimumSize(QtCore.QSize(254, 0))
+        self.vlc.setMinimumSize(QtCore.QSize(253, 0))
         self.vlc.setAcceptDrops(True)
         self.vlc.setObjectName("vlc")
+        self.gridLayout_4 = QtWidgets.QGridLayout(self.vlc)
+        self.gridLayout_4.setContentsMargins(0, 0, 0, 0)
+        self.gridLayout_4.setObjectName("gridLayout_4")
+        self.gifPlayer = QVideoPlayerLabel(self.vlc)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.gifPlayer.sizePolicy().hasHeightForWidth())
+        self.gifPlayer.setSizePolicy(sizePolicy)
+        self.gifPlayer.setScaledContents(True)
+        self.gifPlayer.setAlignment(QtCore.Qt.AlignCenter)
+        self.gifPlayer.setObjectName("gifPlayer")
+        self.gridLayout_4.addWidget(self.gifPlayer, 0, 0, 1, 1)
         self.gridLayout.addWidget(self.vlc, 0, 0, 1, 4)
         self.gridLayout.setColumnStretch(0, 2)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -714,7 +727,7 @@ class Ui_MainWindow(object):
 "for deletion, without actually deleting them."))
         self.actionClearRecent.setText(_translate("MainWindow", "&Clear recent files"))
         self.actionCopyMediaLocation.setText(_translate("MainWindow", "&Copy media path"))
-from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoSlider
+from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoPlayerLabel, QVideoSlider
 
 
 if __name__ == "__main__":

@@ -34,13 +34,43 @@
      <widget class="QVideoPlayer" name="vlc" native="true">
       <property name="minimumSize">
        <size>
-        <width>254</width>
+        <width>253</width>
         <height>0</height>
        </size>
       </property>
       <property name="acceptDrops">
        <bool>true</bool>
       </property>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QVideoPlayerLabel" name="gifPlayer">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="scaledContents">
+          <bool>true</bool>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
    </layout>
@@ -1466,6 +1496,11 @@ for deletion, without actually deleting them.</string>
   <customwidget>
    <class>QLineEditPassthrough</class>
    <extends>QLineEdit</extends>
+   <header>widgets</header>
+  </customwidget>
+  <customwidget>
+   <class>QVideoPlayerLabel</class>
+   <extends>QLabel</extends>
    <header>widgets</header>
   </customwidget>
  </customwidgets>
