@@ -401,23 +401,24 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Handles grabbing crop points/edges in crop-mode, as well as detected the
             forwards/backwards buttons and moving through the recent files list. '''
         try:
-            if not self.parent.actionCrop.isChecked():      # no crop -> check for forward/backward buttons
+            if not self.parent.actionCrop.isChecked():                      # no crop -> check for back/forward buttons
                 # NOTE: recent_videos is least recent to most recent -> index 0 is the LEAST recent
                 if event.button() == Qt.BackButton or event.button() == Qt.ForwardButton:
-                    if self.parent.video not in self.parent.recent_videos: return
-                    current_index = self.parent.recent_videos.index(self.parent.video)
+                    if self.parent.video not in self.parent.recent_videos:  # default to latest file if no valid file is loaded
+                        current_index = len(self.parent.recent_videos)
+                    else: current_index = self.parent.recent_videos.index(self.parent.video)
                     new_index = current_index + (1 if event.button() == Qt.ForwardButton else -1)
                     if 0 <= new_index <= len(self.parent.recent_videos) - 1:
                         file = self.parent.recent_videos[new_index]
                         self.parent.open(file, update_recent_list=False)
                         self.parent.log(f'Opened recent file #{len(self.parent.recent_videos) - new_index}: {file}')
-                return  # TODO add forward/backwards functionality globally (not as easy as it sounds?)
+                return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
-            pos = self.mapFromGlobal(QtGui.QCursor.pos())            # mousePressEvent's event.pos() appears to return incorrect values...
-            self.dragging = self.get_crop_point_index_in_range(pos)  # ...in certain areas, leading to bad offsets and mismatched selections
+            pos = self.mapFromGlobal(QtGui.QCursor.pos())                   # mousePressEvent's event.pos() appears to return incorrect values...
+            self.dragging = self.get_crop_point_index_in_range(pos)         # ...in certain areas, leading to bad offsets and mismatched selections
             if self.dragging is not None:
-                self.drag_axis_lock = None                  # reset axis lock before dragging corners
+                self.drag_axis_lock = None                                  # reset axis lock before dragging corners
                 self.dragging_offset = pos - self.selection[self.dragging]
             else:
                 edge_index = self.get_crop_edge_index_in_range(pos)

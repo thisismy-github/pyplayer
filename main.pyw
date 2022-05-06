@@ -2045,7 +2045,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not os.path.splitext(output)[-1]: output = f'{output}{os.path.splitext(files[0])[-1]}'   # append appropriate extension if needed
             output = get_unique_path(output)
             dirname, basename = os.path.split(output)
-            output = os.path.join(dirname, sanitize(basename))                                          # sanitize() does not account for full paths
+            if not dirname:                                         # no output directory specified
+                default_dir = self.dialog_settings.lineDefaultOutputPath.text().strip()
+                dirname = default_dir if default_dir else os.path.dirname(files[0])
+            output = os.path.join(dirname, sanitize(basename))      # sanitize() does not account for full paths
 
             # actually concatentating videos
             if self.mime_type == 'audio': cmd = f'"concat:{"|".join(intermediate_files)}" -c copy "{output}"'
