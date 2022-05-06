@@ -2125,11 +2125,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         for w in (label, spin): layout.addWidget(w)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
-        if dialog.exec() == QtW.QDialog.Accepted:
+        def accept():
             self.last_amplify_audio_value = spin.value()                     # save value to re-display it next time
             self.operations['amplify audio'] = round(spin.value() / 100, 2)  # convert volume to 0-1 range
             if self.lineOutput.text().strip(): self.save()
             else: self.save_as('Save amplified video/audio as...')
+
+        dialog.accepted.connect(accept)
+        dialog.exec()
 
 
     def replace_audio(self, *args, path=None):
@@ -2205,8 +2208,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def get_size_dialog(self):
-        width = 0
-        height = 0
         is_video = self.mime_type == 'video'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
@@ -2245,8 +2246,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         layout.addLayout(form)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
-        # open resize dialog. if sizes are percents, strip '%' and multiply w/h by percentages
-        if dialog.exec() == QtW.QDialog.Accepted:
+        def accept():
             if is_video:
                 width, height =   wline.text().strip(), hline.text().strip()
                 if '%' in width:  width = round(vwidth * (float(width.strip('%').strip()) / 100))
@@ -2264,8 +2264,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif len(parts) == 1: seconds = parts[0]
                     width = duration / seconds  # actual length is not a percent, but a multiplier
                 width = min(2, max(0.5, width))
-        else: return None, None                 # cancel selected, return None
-        return width, height
+            dialog.width = width
+            dialog.height = height
+
+        # open resize dialog. if sizes are percents, strip '%' and multiply w/h by percentages
+        dialog.accepted.connect(accept)
+        if not dialog.exec(): return None, None  # cancel selected, return None
+        return dialog.width, dialog.height
 
 
     def open_color_picker(self):                # NOTE: F suffix is Float -> values are represented from 0-1 (e.g. getRgb() becomes getRgbF())
@@ -2374,13 +2379,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 checkbox.setChecked(True)
                 groupLayout.addWidget(checkbox)
 
-            dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.No, QtW.QDialogButtonBox.Yes)
-            dialog.exec()
-            logging.info(f'Deletion dialog choice: {dialog.choice}')
-
-            if dialog.choice == QtW.QDialogButtonBox.Yes:   # delete all files that are still checked off
+            def accept():                       # delete all files that are still checked off
                 still_marked = [check.text() for check in group.children() if isinstance(check, QtW.QCheckBox) and check.isChecked()]
                 self.delete(still_marked)
+
+            dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.No, QtW.QDialogButtonBox.Yes)
+            dialog.accepted.connect(accept)
+            dialog.exec()
+            logging.info(f'Deletion dialog choice: {dialog.choice}')
             return dialog.choice
         except: self.log(f'(!) DELETION PROMPT FAILED: {format_exc()}')
 
@@ -3104,7 +3110,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 #######################################
 if __name__ == "__main__":
-    if not constants.IS_COMPILED: import executable.hook            # manually import hook when running from script
+    if not constants.IS_COMPILED:
+        import executable.hook                  # manually import launch-hook when running from script
+        from PIL import Image                   # get_PIL_Image sometimes hangs on import when running from script
     try:
         logging.info(f'PyPlayer opened at {constants.SCRIPT_PATH} with executable {sys.executable}')
         logging.info('Creating QApplication and GUI...')
