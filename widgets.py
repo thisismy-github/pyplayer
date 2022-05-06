@@ -388,7 +388,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         super().resizeEvent(event)
 
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
-        if self.parent.first_video_fully_loaded:
+        if self.parent.first_video_fully_loaded and self.parent.is_snap_mode_enabled():
             checked = self.parent.dialog_settings.checkSnapOnResize.checkState()
             reverse_behavior = app.keyboardModifiers() & Qt.ControlModifier
             start_snap_timer = checked and not reverse_behavior or not checked and reverse_behavior
@@ -638,24 +638,72 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 class QVideoPlayerLabel(QtW.QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._artScale = 0
+        self._gifScale = 0
         self.art = QtGui.QPixmap()
         self.gif = QtGui.QMovie()
         self.gif.setCacheMode(QtGui.QMovie.CacheAll)     # required for jumpToFrame to work
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
+
+    def updateArtScale(self, index):
+        self._artScale = index
+        self.setScaledContents(index == 2)
+        if self.pixmap():
+            if index != 1: self.setPixmap(self.art)
+            else: self.setPixmap(self.art.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+
+    def updateGifScale(self, index):
+        self._gifScale = index
+        self.setScaledContents(index == 2)
+        if self.movie():
+            self.setMovie(self.gif)
+            if index == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
+            if index == 1:
+                rect = self.geometry()
+                size = QtCore.QSize(min(rect.width(), rect.height()), min(rect.width(), rect.height()))
+                self.gif.setScaledSize(size)
+
+
     def play(self, file):
+        ''' Opens `file`. If `file` is a gif, it is played as a QMovie. If
+            `file` is an image, it is displayed as a QPixmap. If `file` is
+            None, then the label is cleared. '''
         self.clear()
         self.gif.stop()
         if file is None: return
         if isinstance(file, bytes):
+            scale = self._artScale
+            self.setScaledContents(scale == 2)
             self.art.loadFromData(file)
-            self.setPixmap(self.art)
+            if scale == 1: self.setPixmap(self.art.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            elif scale == 0: self.setPixmap(self.art)
             logging.info('Cover art detected.')
         else:
+            scale = self._gifScale
+            self.setScaledContents(scale == 2)
             self.gif.setFileName(file)
             self.setMovie(self.gif)
+            if scale == 1:
+                rect = self.geometry()
+                size = QtCore.QSize(min(rect.width(), rect.height()), min(rect.width(), rect.height()))
+                self.gif.setScaledSize(size)
             self.gif.start()
             logging.info('Animated image detected.')
+
+
+    def resizeEvent(self, event: QtGui.QResizeEvent):
+        ''' Handles scaling the GIF/cover art while resizing. '''
+        if self.hasScaledContents(): return
+        if self.movie():        # "and" not used here for slight optimization
+            if self._gifScale == 1:
+                rect = self.geometry()
+                size = QtCore.QSize(min(rect.width(), rect.height()), min(rect.width(), rect.height()))
+                self.gif.setScaledSize(size)
+        elif self.pixmap():     # "and" not used here for slight optimization
+            if self._artScale == 1:
+                self.setPixmap(self.art.scaled(event.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
 
 

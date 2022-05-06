@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>339</width>
-        <height>1589</height>
+        <height>1683</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -580,9 +580,6 @@ folders remembered.</string>
                 <property name="topMargin">
                  <number>5</number>
                 </property>
-                <property name="rightMargin">
-                 <number>0</number>
-                </property>
                 <property name="bottomMargin">
                  <number>6</number>
                 </property>
@@ -680,101 +677,6 @@ autoplay will never raise or focus the window.</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="checkSnapOnResize">
-                  <property name="toolTip">
-                   <string>Hold Shift while resizing to always shrink the window.
-Hold Ctrl while resizing to trigger the opposite behavior (snap
-while snap is disabled, or don't snap while snap is enabled).
-
-Tristate:
-
-Fully checked: window will snap to the media's native aspect
-ratio after resizing, so that no black bars appear.
-
-Partially checked (experimental): window will have a choppy
-animated transition while snapping. This was discovered by
-accident, but I couldn't let it go to waste.
-
-Note: The window will only correct itself once you've stopped
-manually resizing it. This is intentional, and is done as a work-
-around for unwanted Qt/VLC behavior.</string>
-                  </property>
-                  <property name="text">
-                   <string>Snap to native aspect ratio on resize (tristate)</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                  <property name="tristate">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkSnapOnOpen">
-                  <property name="toolTip">
-                   <string>Tristate:
-
-Fully checked - the window will be immediately resized
-to match the media's native aspect ratio upon opening it,
-without shrinking/enlarging to match the media's resolution.
-
-Partially checked - the window will only be resized for the
-first media file you open.</string>
-                  </property>
-                  <property name="text">
-                   <string>Snap to native aspect ratio on open (tristate)</string>
-                  </property>
-                  <property name="tristate">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkResizeOnOpen">
-                  <property name="toolTip">
-                   <string>Tristate:
-
-Fully checked - the window will be immediately resized
-to match the media's native resolution upon opening it,
-as long as it's not larger than your screen.
-
-Partially checked - the window will only be
-resized for the first media file you open.</string>
-                  </property>
-                  <property name="text">
-                   <string>Resize to native resolution on open (tristate)</string>
-                  </property>
-                  <property name="tristate">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_3">
-                  <property name="leftMargin">
-                   <number>14</number>
-                  </property>
-                  <item>
-                   <widget class="QCheckBox" name="checkFirstFileTrayReset">
-                    <property name="toolTip">
-                     <string>If checked, minimizing to the system tray,
-restoring, and opening a new piece of media
-will count as opening media for the first time,
-for any setting that mentions &quot;the first media
-file you open.&quot;</string>
-                    </property>
-                    <property name="text">
-                     <string>&quot;First media file&quot; resets when using system tray</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
                  <widget class="QCheckBox" name="checkClampOnResize">
                   <property name="toolTip">
                    <string>If checked, the window will be moved
@@ -803,6 +705,230 @@ of the screen it's on when opening media.</string>
                   <property name="checked">
                    <bool>true</bool>
                   </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QFormLayout" name="formLayout_8">
+                  <property name="horizontalSpacing">
+                   <number>6</number>
+                  </property>
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_51">
+                    <property name="toolTip">
+                     <string>How to scale the size of cover/album art within the window.</string>
+                    </property>
+                    <property name="text">
+                     <string>Cover art scaling:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QComboBox" name="comboScaleArt">
+                    <property name="currentIndex">
+                     <number>1</number>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>No scaling (native size)</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Fit (keep aspect ratio)</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Fill (ignore aspect ratio)</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="label_52">
+                    <property name="toolTip">
+                     <string>How to scale the size of animated GIFs within the window.</string>
+                    </property>
+                    <property name="text">
+                     <string>GIF scaling:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QComboBox" name="comboScaleGifs">
+                    <property name="currentIndex">
+                     <number>1</number>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>No scaling (native size)</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Fit (keep aspect ratio)</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Fill (ignore aspect ratio)</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_2">
+                  <property name="title">
+                   <string>Auto-resizing</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_9">
+                   <property name="spacing">
+                    <number>1</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>5</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>6</number>
+                   </property>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,1">
+                     <property name="spacing">
+                      <number>8</number>
+                     </property>
+                     <item>
+                      <widget class="QCheckBox" name="checkSnapVideos">
+                       <property name="text">
+                        <string>Videos</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkSnapGifs">
+                       <property name="text">
+                        <string>GIFs</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkSnapImages">
+                       <property name="text">
+                        <string>Images</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkSnapArt">
+                       <property name="text">
+                        <string>Cover Art</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkResizeOnOpen">
+                     <property name="toolTip">
+                      <string>Tristate:
+
+Fully checked - the window will be immediately resized
+to match the media's native resolution upon opening it,
+as long as it's not larger than your screen.
+
+Partially checked - the window will only be
+resized for the first media file you open.</string>
+                     </property>
+                     <property name="text">
+                      <string>Resize to native resolution on open (tristate)</string>
+                     </property>
+                     <property name="tristate">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkSnapOnOpen">
+                     <property name="toolTip">
+                      <string>Tristate:
+
+Fully checked - the window will be immediately resized
+to match the media's native aspect ratio upon opening it,
+without shrinking/enlarging to match the media's resolution.
+
+Partially checked - the window will only be resized for the
+first media file you open.</string>
+                     </property>
+                     <property name="text">
+                      <string>Snap to native aspect ratio on open (tristate)</string>
+                     </property>
+                     <property name="tristate">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkSnapOnResize">
+                     <property name="toolTip">
+                      <string>Hold Shift while resizing to always shrink the window.
+Hold Ctrl while resizing to trigger the opposite behavior (snap
+while snap is disabled, or don't snap while snap is enabled).
+
+Tristate:
+
+Fully checked: window will snap to the media's native aspect
+ratio after resizing, so that no black bars appear.
+
+Partially checked (experimental): window will have a choppy
+animated transition while snapping. This was discovered by
+accident, but I couldn't let it go to waste.
+
+Note: The window will only correct itself once you've stopped
+manually resizing it. This is intentional, and is done as a work-
+around for unwanted Qt/VLC behavior.</string>
+                     </property>
+                     <property name="text">
+                      <string>Snap to native aspect ratio on resize (tristate)</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
+                     </property>
+                     <property name="tristate">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkFirstFileTrayReset">
+                     <property name="toolTip">
+                      <string>If checked, minimizing to the system tray,
+restoring, and opening a new piece of media
+will count as opening media for the first time,
+for any setting that mentions &quot;the first media
+file you open.&quot;</string>
+                     </property>
+                     <property name="text">
+                      <string>&quot;First media file&quot; resets when using system tray</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
+                     </property>
+                     <property name="tristate">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </widget>
                 </item>
                </layout>
@@ -2786,6 +2912,7 @@ the currently playing media's height.</string>
   <tabstop>checkNavigationWrap</tabstop>
   <tabstop>checkNavigationUnpause</tabstop>
   <tabstop>checkCopyEscapeBackslashes</tabstop>
+  <tabstop>checkRememberDropFolder</tabstop>
   <tabstop>checkAutoEnableSubtitles</tabstop>
   <tabstop>checkCycleRememberOriginalPath</tabstop>
   <tabstop>checkRecycleBin</tabstop>
@@ -2796,11 +2923,18 @@ the currently playing media's height.</string>
   <tabstop>checkFocusMinimized</tabstop>
   <tabstop>checkFocusMinimizedToTray</tabstop>
   <tabstop>checkIgnoreFocusWithAutoplay</tabstop>
-  <tabstop>checkSnapOnResize</tabstop>
-  <tabstop>checkSnapOnOpen</tabstop>
-  <tabstop>checkResizeOnOpen</tabstop>
   <tabstop>checkClampOnResize</tabstop>
   <tabstop>checkClampOnOpen</tabstop>
+  <tabstop>comboScaleArt</tabstop>
+  <tabstop>comboScaleGifs</tabstop>
+  <tabstop>checkSnapVideos</tabstop>
+  <tabstop>checkSnapGifs</tabstop>
+  <tabstop>checkSnapImages</tabstop>
+  <tabstop>checkSnapArt</tabstop>
+  <tabstop>checkResizeOnOpen</tabstop>
+  <tabstop>checkSnapOnOpen</tabstop>
+  <tabstop>checkSnapOnResize</tabstop>
+  <tabstop>checkFirstFileTrayReset</tabstop>
   <tabstop>groupTray</tabstop>
   <tabstop>checkTrayClose</tabstop>
   <tabstop>checkTrayMinimize</tabstop>

@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 1589))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 1683))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -191,7 +191,7 @@ class Ui_settingsDialog(object):
         self.groupBox = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupBox.setObjectName("groupBox")
         self.verticalLayout_7 = QtWidgets.QVBoxLayout(self.groupBox)
-        self.verticalLayout_7.setContentsMargins(9, 5, 0, 6)
+        self.verticalLayout_7.setContentsMargins(9, 5, -1, 6)
         self.verticalLayout_7.setSpacing(1)
         self.verticalLayout_7.setObjectName("verticalLayout_7")
         self.checkFocusDrop = QtWidgets.QCheckBox(self.groupBox)
@@ -221,27 +221,6 @@ class Ui_settingsDialog(object):
         self.checkIgnoreFocusWithAutoplay.setChecked(True)
         self.checkIgnoreFocusWithAutoplay.setObjectName("checkIgnoreFocusWithAutoplay")
         self.verticalLayout_7.addWidget(self.checkIgnoreFocusWithAutoplay)
-        self.checkSnapOnResize = QtWidgets.QCheckBox(self.groupBox)
-        self.checkSnapOnResize.setChecked(True)
-        self.checkSnapOnResize.setTristate(True)
-        self.checkSnapOnResize.setObjectName("checkSnapOnResize")
-        self.verticalLayout_7.addWidget(self.checkSnapOnResize)
-        self.checkSnapOnOpen = QtWidgets.QCheckBox(self.groupBox)
-        self.checkSnapOnOpen.setTristate(True)
-        self.checkSnapOnOpen.setObjectName("checkSnapOnOpen")
-        self.verticalLayout_7.addWidget(self.checkSnapOnOpen)
-        self.checkResizeOnOpen = QtWidgets.QCheckBox(self.groupBox)
-        self.checkResizeOnOpen.setTristate(True)
-        self.checkResizeOnOpen.setObjectName("checkResizeOnOpen")
-        self.verticalLayout_7.addWidget(self.checkResizeOnOpen)
-        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_3.setContentsMargins(14, -1, -1, -1)
-        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.checkFirstFileTrayReset = QtWidgets.QCheckBox(self.groupBox)
-        self.checkFirstFileTrayReset.setChecked(True)
-        self.checkFirstFileTrayReset.setObjectName("checkFirstFileTrayReset")
-        self.horizontalLayout_3.addWidget(self.checkFirstFileTrayReset)
-        self.verticalLayout_7.addLayout(self.horizontalLayout_3)
         self.checkClampOnResize = QtWidgets.QCheckBox(self.groupBox)
         self.checkClampOnResize.setChecked(True)
         self.checkClampOnResize.setObjectName("checkClampOnResize")
@@ -250,6 +229,72 @@ class Ui_settingsDialog(object):
         self.checkClampOnOpen.setChecked(True)
         self.checkClampOnOpen.setObjectName("checkClampOnOpen")
         self.verticalLayout_7.addWidget(self.checkClampOnOpen)
+        self.formLayout_8 = QtWidgets.QFormLayout()
+        self.formLayout_8.setHorizontalSpacing(6)
+        self.formLayout_8.setObjectName("formLayout_8")
+        self.label_51 = QtWidgets.QLabel(self.groupBox)
+        self.label_51.setObjectName("label_51")
+        self.formLayout_8.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_51)
+        self.comboScaleArt = QtWidgets.QComboBox(self.groupBox)
+        self.comboScaleArt.setObjectName("comboScaleArt")
+        self.comboScaleArt.addItem("")
+        self.comboScaleArt.addItem("")
+        self.comboScaleArt.addItem("")
+        self.formLayout_8.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.comboScaleArt)
+        self.label_52 = QtWidgets.QLabel(self.groupBox)
+        self.label_52.setObjectName("label_52")
+        self.formLayout_8.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_52)
+        self.comboScaleGifs = QtWidgets.QComboBox(self.groupBox)
+        self.comboScaleGifs.setObjectName("comboScaleGifs")
+        self.comboScaleGifs.addItem("")
+        self.comboScaleGifs.addItem("")
+        self.comboScaleGifs.addItem("")
+        self.formLayout_8.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.comboScaleGifs)
+        self.verticalLayout_7.addLayout(self.formLayout_8)
+        self.groupBox_2 = QtWidgets.QGroupBox(self.groupBox)
+        self.groupBox_2.setObjectName("groupBox_2")
+        self.verticalLayout_9 = QtWidgets.QVBoxLayout(self.groupBox_2)
+        self.verticalLayout_9.setContentsMargins(-1, 5, 0, 6)
+        self.verticalLayout_9.setSpacing(1)
+        self.verticalLayout_9.setObjectName("verticalLayout_9")
+        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_3.setSpacing(8)
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.checkSnapVideos = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkSnapVideos.setChecked(True)
+        self.checkSnapVideos.setObjectName("checkSnapVideos")
+        self.horizontalLayout_3.addWidget(self.checkSnapVideos)
+        self.checkSnapGifs = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkSnapGifs.setChecked(True)
+        self.checkSnapGifs.setObjectName("checkSnapGifs")
+        self.horizontalLayout_3.addWidget(self.checkSnapGifs)
+        self.checkSnapImages = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkSnapImages.setObjectName("checkSnapImages")
+        self.horizontalLayout_3.addWidget(self.checkSnapImages)
+        self.checkSnapArt = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkSnapArt.setObjectName("checkSnapArt")
+        self.horizontalLayout_3.addWidget(self.checkSnapArt)
+        self.horizontalLayout_3.setStretch(3, 1)
+        self.verticalLayout_9.addLayout(self.horizontalLayout_3)
+        self.checkResizeOnOpen = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkResizeOnOpen.setTristate(True)
+        self.checkResizeOnOpen.setObjectName("checkResizeOnOpen")
+        self.verticalLayout_9.addWidget(self.checkResizeOnOpen)
+        self.checkSnapOnOpen = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkSnapOnOpen.setTristate(True)
+        self.checkSnapOnOpen.setObjectName("checkSnapOnOpen")
+        self.verticalLayout_9.addWidget(self.checkSnapOnOpen)
+        self.checkSnapOnResize = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkSnapOnResize.setChecked(True)
+        self.checkSnapOnResize.setTristate(True)
+        self.checkSnapOnResize.setObjectName("checkSnapOnResize")
+        self.verticalLayout_9.addWidget(self.checkSnapOnResize)
+        self.checkFirstFileTrayReset = QtWidgets.QCheckBox(self.groupBox_2)
+        self.checkFirstFileTrayReset.setChecked(True)
+        self.checkFirstFileTrayReset.setTristate(True)
+        self.checkFirstFileTrayReset.setObjectName("checkFirstFileTrayReset")
+        self.verticalLayout_9.addWidget(self.checkFirstFileTrayReset)
+        self.verticalLayout_7.addWidget(self.groupBox_2)
         self.verticalLayout.addWidget(self.groupBox)
         self.verticalLayout_3.addLayout(self.verticalLayout)
         self.groupTray = QtWidgets.QGroupBox(self.tabGeneral)
@@ -1055,6 +1100,8 @@ class Ui_settingsDialog(object):
 
         self.retranslateUi(settingsDialog)
         self.tabWidget.setCurrentIndex(0)
+        self.comboScaleArt.setCurrentIndex(1)
+        self.comboScaleGifs.setCurrentIndex(1)
         self.comboSnapshotFormat.setCurrentIndex(1)
         self.buttonBox.accepted.connect(settingsDialog.accept)
         self.buttonBox.rejected.connect(settingsDialog.reject)
@@ -1079,7 +1126,8 @@ class Ui_settingsDialog(object):
         settingsDialog.setTabOrder(self.checkStopOnFinish, self.checkNavigationWrap)
         settingsDialog.setTabOrder(self.checkNavigationWrap, self.checkNavigationUnpause)
         settingsDialog.setTabOrder(self.checkNavigationUnpause, self.checkCopyEscapeBackslashes)
-        settingsDialog.setTabOrder(self.checkCopyEscapeBackslashes, self.checkAutoEnableSubtitles)
+        settingsDialog.setTabOrder(self.checkCopyEscapeBackslashes, self.checkRememberDropFolder)
+        settingsDialog.setTabOrder(self.checkRememberDropFolder, self.checkAutoEnableSubtitles)
         settingsDialog.setTabOrder(self.checkAutoEnableSubtitles, self.checkCycleRememberOriginalPath)
         settingsDialog.setTabOrder(self.checkCycleRememberOriginalPath, self.checkRecycleBin)
         settingsDialog.setTabOrder(self.checkRecycleBin, self.checkMinimizePause)
@@ -1089,12 +1137,19 @@ class Ui_settingsDialog(object):
         settingsDialog.setTabOrder(self.checkFocusDoubleClick, self.checkFocusMinimized)
         settingsDialog.setTabOrder(self.checkFocusMinimized, self.checkFocusMinimizedToTray)
         settingsDialog.setTabOrder(self.checkFocusMinimizedToTray, self.checkIgnoreFocusWithAutoplay)
-        settingsDialog.setTabOrder(self.checkIgnoreFocusWithAutoplay, self.checkSnapOnResize)
-        settingsDialog.setTabOrder(self.checkSnapOnResize, self.checkSnapOnOpen)
-        settingsDialog.setTabOrder(self.checkSnapOnOpen, self.checkResizeOnOpen)
-        settingsDialog.setTabOrder(self.checkResizeOnOpen, self.checkClampOnResize)
+        settingsDialog.setTabOrder(self.checkIgnoreFocusWithAutoplay, self.checkClampOnResize)
         settingsDialog.setTabOrder(self.checkClampOnResize, self.checkClampOnOpen)
-        settingsDialog.setTabOrder(self.checkClampOnOpen, self.groupTray)
+        settingsDialog.setTabOrder(self.checkClampOnOpen, self.comboScaleArt)
+        settingsDialog.setTabOrder(self.comboScaleArt, self.comboScaleGifs)
+        settingsDialog.setTabOrder(self.comboScaleGifs, self.checkSnapVideos)
+        settingsDialog.setTabOrder(self.checkSnapVideos, self.checkSnapGifs)
+        settingsDialog.setTabOrder(self.checkSnapGifs, self.checkSnapImages)
+        settingsDialog.setTabOrder(self.checkSnapImages, self.checkSnapArt)
+        settingsDialog.setTabOrder(self.checkSnapArt, self.checkResizeOnOpen)
+        settingsDialog.setTabOrder(self.checkResizeOnOpen, self.checkSnapOnOpen)
+        settingsDialog.setTabOrder(self.checkSnapOnOpen, self.checkSnapOnResize)
+        settingsDialog.setTabOrder(self.checkSnapOnResize, self.checkFirstFileTrayReset)
+        settingsDialog.setTabOrder(self.checkFirstFileTrayReset, self.groupTray)
         settingsDialog.setTabOrder(self.groupTray, self.checkTrayClose)
         settingsDialog.setTabOrder(self.checkTrayClose, self.checkTrayMinimize)
         settingsDialog.setTabOrder(self.checkTrayMinimize, self.groupHover)
@@ -1357,6 +1412,48 @@ class Ui_settingsDialog(object):
         self.checkIgnoreFocusWithAutoplay.setToolTip(_translate("settingsDialog", "If checked, files that are opened through\n"
 "autoplay will never raise or focus the window."))
         self.checkIgnoreFocusWithAutoplay.setText(_translate("settingsDialog", "Ignore focus settings while Autoplay is on"))
+        self.checkClampOnResize.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
+"and resized to fit within the boundaries\n"
+"of the screen it\'s on when using the\n"
+"\"Snap to native aspect ratio\" settings."))
+        self.checkClampOnResize.setText(_translate("settingsDialog", "Clamp window to monitor on snap-resize"))
+        self.checkClampOnOpen.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
+"and resized to fit within the boundaries\n"
+"of the screen it\'s on when opening media."))
+        self.checkClampOnOpen.setText(_translate("settingsDialog", "Clamp window to monitor on open"))
+        self.label_51.setToolTip(_translate("settingsDialog", "How to scale the size of cover/album art within the window."))
+        self.label_51.setText(_translate("settingsDialog", "Cover art scaling:"))
+        self.comboScaleArt.setItemText(0, _translate("settingsDialog", "No scaling (native size)"))
+        self.comboScaleArt.setItemText(1, _translate("settingsDialog", "Fit (keep aspect ratio)"))
+        self.comboScaleArt.setItemText(2, _translate("settingsDialog", "Fill (ignore aspect ratio)"))
+        self.label_52.setToolTip(_translate("settingsDialog", "How to scale the size of animated GIFs within the window."))
+        self.label_52.setText(_translate("settingsDialog", "GIF scaling:"))
+        self.comboScaleGifs.setItemText(0, _translate("settingsDialog", "No scaling (native size)"))
+        self.comboScaleGifs.setItemText(1, _translate("settingsDialog", "Fit (keep aspect ratio)"))
+        self.comboScaleGifs.setItemText(2, _translate("settingsDialog", "Fill (ignore aspect ratio)"))
+        self.groupBox_2.setTitle(_translate("settingsDialog", "Auto-resizing"))
+        self.checkSnapVideos.setText(_translate("settingsDialog", "Videos"))
+        self.checkSnapGifs.setText(_translate("settingsDialog", "GIFs"))
+        self.checkSnapImages.setText(_translate("settingsDialog", "Images"))
+        self.checkSnapArt.setText(_translate("settingsDialog", "Cover Art"))
+        self.checkResizeOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
+"\n"
+"Fully checked - the window will be immediately resized\n"
+"to match the media\'s native resolution upon opening it,\n"
+"as long as it\'s not larger than your screen.\n"
+"\n"
+"Partially checked - the window will only be\n"
+"resized for the first media file you open."))
+        self.checkResizeOnOpen.setText(_translate("settingsDialog", "Resize to native resolution on open (tristate)"))
+        self.checkSnapOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
+"\n"
+"Fully checked - the window will be immediately resized\n"
+"to match the media\'s native aspect ratio upon opening it,\n"
+"without shrinking/enlarging to match the media\'s resolution.\n"
+"\n"
+"Partially checked - the window will only be resized for the\n"
+"first media file you open."))
+        self.checkSnapOnOpen.setText(_translate("settingsDialog", "Snap to native aspect ratio on open (tristate)"))
         self.checkSnapOnResize.setToolTip(_translate("settingsDialog", "Hold Shift while resizing to always shrink the window.\n"
 "Hold Ctrl while resizing to trigger the opposite behavior (snap\n"
 "while snap is disabled, or don\'t snap while snap is enabled).\n"
@@ -1374,39 +1471,12 @@ class Ui_settingsDialog(object):
 "manually resizing it. This is intentional, and is done as a work-\n"
 "around for unwanted Qt/VLC behavior."))
         self.checkSnapOnResize.setText(_translate("settingsDialog", "Snap to native aspect ratio on resize (tristate)"))
-        self.checkSnapOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
-"\n"
-"Fully checked - the window will be immediately resized\n"
-"to match the media\'s native aspect ratio upon opening it,\n"
-"without shrinking/enlarging to match the media\'s resolution.\n"
-"\n"
-"Partially checked - the window will only be resized for the\n"
-"first media file you open."))
-        self.checkSnapOnOpen.setText(_translate("settingsDialog", "Snap to native aspect ratio on open (tristate)"))
-        self.checkResizeOnOpen.setToolTip(_translate("settingsDialog", "Tristate:\n"
-"\n"
-"Fully checked - the window will be immediately resized\n"
-"to match the media\'s native resolution upon opening it,\n"
-"as long as it\'s not larger than your screen.\n"
-"\n"
-"Partially checked - the window will only be\n"
-"resized for the first media file you open."))
-        self.checkResizeOnOpen.setText(_translate("settingsDialog", "Resize to native resolution on open (tristate)"))
         self.checkFirstFileTrayReset.setToolTip(_translate("settingsDialog", "If checked, minimizing to the system tray,\n"
 "restoring, and opening a new piece of media\n"
 "will count as opening media for the first time,\n"
 "for any setting that mentions \"the first media\n"
 "file you open.\""))
         self.checkFirstFileTrayReset.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
-        self.checkClampOnResize.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
-"and resized to fit within the boundaries\n"
-"of the screen it\'s on when using the\n"
-"\"Snap to native aspect ratio\" settings."))
-        self.checkClampOnResize.setText(_translate("settingsDialog", "Clamp window to monitor on snap-resize"))
-        self.checkClampOnOpen.setToolTip(_translate("settingsDialog", "If checked, the window will be moved\n"
-"and resized to fit within the boundaries\n"
-"of the screen it\'s on when opening media."))
-        self.checkClampOnOpen.setText(_translate("settingsDialog", "Clamp window to monitor on open"))
         self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer to restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"

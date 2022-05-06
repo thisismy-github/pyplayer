@@ -429,7 +429,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.first_video_fully_loaded = False
         self.closed = False
         self.restarted = False
-        self.parsed = False
         self.is_paused = False
         self.close_cancel_selected = False
         self.checking_for_updates = False
@@ -452,14 +451,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_videos = []
         self.locked_video: str = None
         self.mime_type = 'image'    # defaults to 'image' since self.pause() is disabled for 'image' mime_types
-        self.true_extension: str = None
+        self.extension: str = None
 
         self.fractional_frame = 0.0
         self.delay = self.duration = 0
         self.frame_count = self.frame_rate = self.frame_rate_rounded = self.current_time = self.minimum = self.maximum = 1
         self.vwidth = self.vheight = 1000
         self.vsize = QtCore.QSize(1000, 1000)
-        self.ratio: str = None
+        self.ratio = '0:0'
 
         self.last_amplify_audio_value = 100
         self.marked_for_deletion = set()
@@ -490,6 +489,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.dockControls.resizeEvent = self.dockControlsResizeEvent         # ensures dockControls correctly hides/shows widgets in fullscreen
         self.frameAdvancedControls.setDragTarget(self)
         self.lineOutput.setIgnoreAll(False)
+
         for spin in (self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame): spin.setProxyWidget(self)
         self.save_progress_bar.setMaximum(0)
         self.save_progress_bar.setMaximumHeight(16)
@@ -514,6 +514,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
+
+        # TODO: why isn't currentIndexChanged called when the config loads?
+        self.gifPlayer.updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
+        self.gifPlayer.updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
         Thread(target=self.update_slider_thread, daemon=True).start()
 
 
@@ -1134,7 +1138,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             fps = round(player.get_fps(), 1)        # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
             if fps == 0:                            # if the frame rate is still 0 after parsing, assume it's actually an audio file
                 if _recursive: return -1            # avoid infinite loop
-                logging.info(f'Invalid frame rate detected, parsing as an audio file (fps=0 duration={self.duration})...')
+                logging.warning('Invalid frame rate detected, parsing as an audio file...')
                 return self.parse_media_file(file, mime='audio', extension=extension, _recursive=True)
             self.frame_rate = fps                   # wait until fps is confirmed to update self.frame_rate
             self.duration = round(player.get_length() / 1000, 4)
@@ -1176,18 +1180,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.frame_rate_rounded = 1
                 self.delay = 0.2                    # run update_slider_thread only 5 times/second
 
-        self.true_extension = extension
-        if extension == 'gif':
-            self._open_signal.emit()
-            set_progress_slider(0)
-            mime = 'video'
-        else: self.open_queued = True
-        self.mime_type = mime
+        self.video = file                           # set media AFTER opening but BEFORE _open_signal
+        self.extension = extension
         self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
-
-        self.frame_override = 0                     # set frame_override in order to trigger open_queue in update_slider_thread
+        if extension == 'gif':
+            self.mime_type = 'video'
+            self._open_signal.emit()                # manually emit _open_signal for gifs (slider thread will be idle)
+        else:
+            self.mime_type = mime
+            self.open_queued = True
+            self.frame_override = 0                 # set frame_override to trigger open_queue in update_slider_thread
         if mime != 'audio': self.vlc.find_true_borders()
-        self.parsed = True
 
 
     def open(self, file=None, focus_window=True, update_recent_list=True, remember_old_file=False,
@@ -1239,27 +1242,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif not self.vlc.play(file): return    # immediately attempt to play media once we know it might be valid
             else: gif_player.play(None)             # clear gifPlayer
 
-            # parse file
-            self.parsed = False                     # keep track of parse so we can avoid re-parsing it later if it ends up being a video
+            # parse non-video files and show/log file on statusbar
+            parsed = False                          # keep track of parse so we can avoid re-parsing it later if it ends up being a video
             if mime != 'video':                     # parse metadata early if it isn't a video
                 if self.parse_media_file(file, mime, extension) == -1:
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
-
-            # set media (AFTER vlc.play()), and copy path to second variable unless otherwise specified
-            self.video = file
-            if not remember_old_file or not self.video_original_path: self.video_original_path = file
-            self.log(f'Opening {"file" if extension != "gif" else "animated GIF (limited support)"}: {file}\n')
-
-            # update recent media list
-            if update_recent_list:
-                recent_videos = self.recent_videos
-                if file in recent_videos:
-                    recent_videos.append(recent_videos.pop(recent_videos.index(file)))
-                else:
-                    recent_videos.append(file)
-                    if len(recent_videos) > 10:     # do NOT use the recent_videos alias here
-                        self.recent_videos = self.recent_videos[-10:]
+                parsed = True
+                if extension == 'gif': self.log(f'Opening GIF (limited support): {file}\n')
+            else: self.log(f'Opening file: {file}\n')
 
             # misc cleanup/setup for new media
             self.operations = {}
@@ -1294,12 +1285,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if focus_window: qthelpers.showWindow(self)
 
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
-            if mime == 'video' and not self.parsed:
+            if mime == 'video' and not parsed:
                 if self.parse_media_file(file, mime, extension) == -1:        # parse metadata from VLC
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
                     return -1
 
+            if not remember_old_file or not self.video_original_path: self.video_original_path = file
             logging.info(f'-- KEY MEDIA ATTRIBUTES --\nduration={self.duration}, fps={self.frame_rate} ({self.frame_rate_rounded}), frame_count={self.frame_count}, w={self.vwidth}, h={self.vheight}, ratio={self.ratio}, delay={self.delay}\n')
+
+            # update recent media list
+            if update_recent_list:
+                recent_videos = self.recent_videos
+                if file in recent_videos:
+                    recent_videos.append(recent_videos.pop(recent_videos.index(file)))
+                else:
+                    recent_videos.append(file)
+                    if len(recent_videos) > 10:     # do NOT use the recent_videos alias here
+                        self.recent_videos = self.recent_videos[-10:]
 
             # update marquee size and offset relative to media's dimensions
             player.video_set_marquee_int(VideoMarqueeOption.Size, int(self.vheight * self.vlc.text_height_percent))
@@ -1339,16 +1341,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             self.vsize.setWidth(self.vwidth)
             self.vsize.setHeight(self.vheight)
-            resize_on_open_state = self.dialog_settings.checkResizeOnOpen.checkState()
-            snap_on_open_state = self.dialog_settings.checkSnapOnOpen.checkState()
-            if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):      # 1 -> only resize first video opened
-                excess_height = self.height() - self.vlc.height()
-                self.resize(self.vwidth, self.vheight + excess_height)
-                qthelpers.clampToScreen(self)
-            elif snap_on_open_state and not (snap_on_open_state == 1 and self.first_video_fully_loaded):
-                self.snap_to_player_size(force_instant_resize=True)
+            if self.is_snap_mode_enabled():
+                resize_on_open_state = self.dialog_settings.checkResizeOnOpen.checkState()
+                snap_on_open_state = self.dialog_settings.checkSnapOnOpen.checkState()
+                if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):      # 1 -> only resize first video opened
+                    excess_height = self.height() - self.vlc.height()
+                    self.resize(self.vwidth, self.vheight + excess_height)
+                    qthelpers.clampToScreen(self)
+                elif snap_on_open_state and not (snap_on_open_state == 1 and self.first_video_fully_loaded):
+                    self.snap_to_player_size(force_instant_resize=True)
+                elif self.dialog_settings.checkClampOnOpen.isChecked():
+                    qthelpers.clampToScreen(self)   # clamping enabled but snap/resize is disabled
             elif self.dialog_settings.checkClampOnOpen.isChecked():
-                qthelpers.clampToScreen(self)
+                qthelpers.clampToScreen(self)       # clamping enabled but snap/resize is disabled for this media
 
             self.update_title_signal.emit()
             if self.dialog_settings.checkTextOnOpen.isChecked(): show_text(os.path.basename(self.video), 1000)
@@ -1402,7 +1407,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Pauses/unpauses the media. Handles updating GUI, cleaning up/restarting, clamping progress
             to current trim, displaying the pause state on-screen, and wrapping around the progress bar. '''
         if self.mime_type == 'image': return
-        if self.true_extension == 'gif':
+        if self.extension == 'gif':
             old_state = gif_player.gif.state()
             was_paused = old_state != QtGui.QMovie.Running
             gif_player.gif.setPaused(not was_paused)
@@ -1654,7 +1659,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     while not cfg.trimmodeselected: sleep(0.2)
                     start_time = get_time()                 # reset start_time to undo time spent waiting for dialog
                 if self.is_trim_mode():
-                    precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.true_extension in constants.SPECIAL_TRIM_EXTENSIONS
+                    precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.extension in constants.SPECIAL_TRIM_EXTENSIONS
                     self.log(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
                     cmd_parameters = f' -c:v {"libx264" if precise else "copy"} -c:a {"aac" if precise else "copy -avoid_negative_ts make_zero"} '
                     trim_cmd_parts = []
@@ -2673,8 +2678,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.log('Crop mode disabled.')
 
 
+    def is_snap_mode_enabled(self):
+        mime = self.mime_type
+        if mime == 'video':
+            if self.extension == 'gif': return self.dialog_settings.checkSnapGifs.isChecked()
+            return self.dialog_settings.checkSnapVideos.isChecked()
+        if mime == 'audio':
+            if not gif_player.pixmap(): return False
+            return self.dialog_settings.checkSnapArt.isChecked()
+        if mime == 'image': return self.dialog_settings.checkSnapImages.isChecked()
+        return False
+
+
     def snap_to_player_size(self, shrink=False, force_instant_resize=False):
-        if not self.isMaximized() and not self.isFullScreen() and (self.mime_type != 'audio' or gif_player.pixmap()):
+        if not self.isMaximized() and not self.isFullScreen():
             vlc_size = self.vlc.size()
             expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
             void_width = vlc_size.width() - expected_vlc_size.width()

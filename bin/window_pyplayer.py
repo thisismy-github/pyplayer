@@ -34,7 +34,6 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.gifPlayer.sizePolicy().hasHeightForWidth())
         self.gifPlayer.setSizePolicy(sizePolicy)
-        self.gifPlayer.setScaledContents(True)
         self.gifPlayer.setAlignment(QtCore.Qt.AlignCenter)
         self.gifPlayer.setObjectName("gifPlayer")
         self.gridLayout_4.addWidget(self.gifPlayer, 0, 0, 1, 1)
