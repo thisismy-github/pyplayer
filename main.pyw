@@ -255,7 +255,7 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -----------------------------
 def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
     start = get_time()
-    logging.info('Performing FFmpeg operation...')
+    logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})...')
 
     # create temp file if '%tp' is in ffmpeg command (and we have a valid `out` file)
     temp_path = ''
@@ -264,12 +264,9 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
         if infile == gui.locked_video: gui.locked_video = temp_path    # update locked video if needed TODO does this make sense...?
         os.renames(infile, temp_path)                                  # rename `out` to temp name
 
-    # create final ffmpeg command and run it
-    new_cmd = f'{constants.FFMPEG} -y {cmd.replace("%tp", temp_path)} -hide_banner -loglevel warning'
-    logging.info(f'FFmpeg command (out={infile} temp_path={temp_path})\nBefore: {cmd}\nAfter: {new_cmd}\n')
-    process = subprocess.call(new_cmd, shell=True)
-    try: process.wait()
-    except: pass
+    # run final ffmpeg command
+    try: ffmpeg_simple(cmd.replace("%tp", temp_path))
+    except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
     # cleanup temp file, if needed
     if temp_path:
@@ -283,11 +280,20 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
     return outfile
 
 
+def ffmpeg_simple(cmd: str) -> None:    # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    cmd = f'{constants.FFMPEG} -y {cmd} -hide_banner -loglevel warning'
+    logging.info('FFmpeg command: ' + cmd)
+    subprocess.Popen(cmd, startupinfo=startupinfo, shell=True).wait()
+
+
 def get_PIL_Image():
     ''' An over-the-top way of hiding the PIL folder. PIL folder cannot be avoided due to
         the from-import, and hiding it using conventional means does not seem to work, so
         instead we hide the folder, move (NOT copy) it to the root folder so we can import
-        it, and then move it back. All this, just to hide a single item. Honestly worth it. '''
+        it, and then move it back. All this, just to hide a single item. Honestly worth it.
+        NOTE: If PIL.Image isn't already imported, this can hang when called from the script. '''
     try:    # prepare PIL for importing if it hasn't been imported yet (once imported, it's imported for good)
         PIL_already_imported = 'PIL.Image' in sys.modules
         if not PIL_already_imported and constants.IS_COMPILED:
@@ -331,7 +337,7 @@ def get_PIL_Image():
                 os.rename(old_file, new_file)
                 files_moved.append((old_file, new_file))
 
-        from PIL import Image               # actually import PIL.Image
+        from PIL import Image                   # actually import PIL.Image (this is what hangs in the script)
 
         # return files to their original spots, delete/restore new PIL path, and return PIL.Image
         if not PIL_already_imported and constants.IS_COMPILED:
@@ -346,7 +352,7 @@ def get_PIL_Image():
             if exists(backup_path): shutil.rmtree(backup_path)
             if backup_path_already_existed: os.rename(old_path, backup_path)
             logging.info('First-time PIL import successful.')
-        return Image                        # return PIL.Image
+        return Image                            # return PIL.Image
     except:
         logging.error(f'(!) PIL IMPORT FAILED: {format_exc()}')
         try:        # in the event of an error, attempt to restore backup if one exists
@@ -2035,9 +2041,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try: os.remove(intermediate_file)
                 except: pass
                 intermediate_files.append(intermediate_file)
-                cmd = f'"{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"'
-                process = subprocess.Popen(f'{constants.FFMPEG} -y -i {cmd} -hide_banner -loglevel warning', shell=True)
-                process.wait()
+                ffmpeg_simple(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
 
             # preparing output destination
             output = dialog.output.text().strip()
@@ -2051,23 +2055,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             output = os.path.join(dirname, sanitize(basename))      # sanitize() does not account for full paths
 
             # actually concatentating videos
-            if self.mime_type == 'audio': cmd = f'"concat:{"|".join(intermediate_files)}" -c copy "{output}"'
-            else: cmd = f'"concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}"'
-            process = subprocess.Popen(f'{constants.FFMPEG} -y -i {cmd} -hide_banner -loglevel warning', shell=True)
-            process.wait()
+            if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{output}"'
+            else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}"'
+            ffmpeg_simple(cmd)
             for intermediate_file in intermediate_files:
                 try: os.remove(intermediate_file)
                 except: pass
 
-            # post-concatenation activites
-            #temp_path = os.path.join(TEMP_DIR, 'temp_concat_filelist.txt')
-            #with open(temp_path, 'w') as txt: txt.writelines(f"file '{file}'\n" for file in files)
-            #subprocess.Popen(f'{constants.FFMPEG} -y -safe 0 -f concat -i "{temp_path}" -c copy "{output}"', shell=True)
-            #try: os.remove(temp_path)
-            #except: pass
             if not os.path.exists(output): return self.log('(!) Concatenation failed. No files have been altered.')
-
             self.log(f'Concatenation saved to {output}.')
+
             if dialog.checkExplore.isChecked(): qthelpers.openPath(output, explore=True)
             if dialog.checkOpen.isChecked(): self.open(output)
             if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
