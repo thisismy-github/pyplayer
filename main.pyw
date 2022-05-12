@@ -1097,7 +1097,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if file in ignore: continue
             if skip_marked and file in self.marked_for_deletion: continue
             if file == base_file: continue
-            if self.open(file, _from_cycle=True) != -1:     # if new video can't be opened, -1 is returned -> keep going
+
+            # get mime type of file to verify this is actually playable and skip the extra setup done in open()
+            try:
+                mime, extension = filetype.guess(file).mime.split('/')
+                if mime not in ('video', 'image', 'audio'): continue
+            except: continue
+
+            # attempt to play file -> -1 is returned if file can't be opened
+            if self.open(file, _from_cycle=True, mime=mime, extension=extension) != -1:
                 self.last_cycle_index = index
                 return file
         return self.log('This is the only playable media file in this folder.')
@@ -1315,7 +1323,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def open(self, file=None, focus_window=True, update_recent_list=True, remember_old_file=False,
-             _from_cycle=False, _from_dir=False):
+             mime=None, extension=None, _from_cycle=False, _from_dir=False):
         ''' Current iteration: IV '''
         try:
             if not _from_cycle:                     # assume that this is already sorted out if called from cycle
@@ -1359,18 +1367,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else: Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
             else: probe_file = None                 # no FFprobe -> no probe file (even if one exists already)
 
-            # get mime type of file
-            try:
-                filetype_data = filetype.guess(file)            # 'EXTENSION', 'MIME', 'extension', 'mime'
-                mime, extension = filetype_data.mime.split('/')
-                logging.info(f'Filetype data: {filetype_data} | Mime type: {mime} | Full mime: {filetype_data.mime} | True extension: {filetype_data.extension}')
-                if mime not in ('video', 'image', 'audio'):
-                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid mime type).')
-                    return -1
-            except:
-                if not os.path.exists(file): self.log(f'File \'{file}\' does not exist.')
-                else: self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (failed to determine mime type).')
-                return -1                       # ^^^ .guess() errors out in rare circumstances ^^^
+            # get mime type of file (if called from cycle, then this part was worked out beforehand)
+            if mime is None:
+                try:
+                    filetype_data = filetype.guess(file)    # 'EXTENSION', 'MIME', 'extension', 'mime'
+                    mime, extension = filetype_data.mime.split('/')
+                    logging.info(f'Filetype data: {filetype_data} | Mime type: {mime} | Full mime: {filetype_data.mime} | True extension: {filetype_data.extension}')
+                    if mime not in ('video', 'image', 'audio'):
+                        self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid mime type).')
+                        return -1
+                except:
+                    if not os.path.exists(file): self.log(f'File \'{file}\' does not exist.')
+                    else: self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (failed to determine mime type).')
+                    return -1                       # ^^^ .guess() errors out in rare circumstances ^^^
 
         # --- Restoring window ---
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
