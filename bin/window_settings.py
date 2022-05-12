@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 1683))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1705))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -127,35 +127,35 @@ class Ui_settingsDialog(object):
         self.checkAlwaysSaveAs = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAlwaysSaveAs.setChecked(True)
         self.checkAlwaysSaveAs.setObjectName("checkAlwaysSaveAs")
-        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
+        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
         self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkSaveAsUseMediaFolder.setChecked(True)
         self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
-        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
+        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
         self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkStopOnFinish.setObjectName("checkStopOnFinish")
-        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
+        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
         self.checkNavigationWrap = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkNavigationWrap.setChecked(True)
         self.checkNavigationWrap.setObjectName("checkNavigationWrap")
-        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationWrap)
+        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationWrap)
         self.checkNavigationUnpause = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkNavigationUnpause.setChecked(True)
         self.checkNavigationUnpause.setObjectName("checkNavigationUnpause")
-        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationUnpause)
+        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationUnpause)
         self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.horizontalLayout_8 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
         self.checkMinimizePause = QtWidgets.QCheckBox(self.tabGeneral)
@@ -165,7 +165,7 @@ class Ui_settingsDialog(object):
         self.checkMinimizeRestore.setEnabled(False)
         self.checkMinimizeRestore.setObjectName("checkMinimizeRestore")
         self.horizontalLayout_8.addWidget(self.checkMinimizeRestore)
-        self.formLayout.setLayout(17, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
+        self.formLayout.setLayout(18, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_8)
         self.label_50 = QtWidgets.QLabel(self.tabGeneral)
         self.label_50.setObjectName("label_50")
         self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_50)
@@ -178,11 +178,15 @@ class Ui_settingsDialog(object):
         self.checkCopyEscapeBackslashes = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCopyEscapeBackslashes.setChecked(True)
         self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
-        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
         self.checkRememberDropFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRememberDropFolder.setChecked(True)
         self.checkRememberDropFolder.setObjectName("checkRememberDropFolder")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
+        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
+        self.checkFFprobe = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkFFprobe.setChecked(True)
+        self.checkFFprobe.setObjectName("checkFFprobe")
+        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 5, -1, 5)
@@ -1389,6 +1393,19 @@ class Ui_settingsDialog(object):
 "media opened through those dialogs will have their\n"
 "folders remembered."))
         self.checkRememberDropFolder.setText(_translate("settingsDialog", "Remember folders for drag-and-dropped media"))
+        self.checkFFprobe.setToolTip(_translate("settingsDialog", "If checked, FFprobe will be used (if it exists) to parse media files\n"
+"for data such as its FPS, duration, etc. to display on the UI. This\n"
+"is more reliable, more stable, and sometimes faster than VLC\'s\n"
+"built-in parsing, though VLC is sufficient for many use-cases.\n"
+"\n"
+"PyPlayer tracks both FFprobe and VLC\'s parsing progress, and will\n"
+"use whichever one finishes first. FFprobe\'s data is saved to a .txt\n"
+"file and reused if possible, for better performance when replaying\n"
+"the same files.\n"
+"\n"
+"NOTE: If you experience noticable delays while\n"
+"opening media, you can try disabling this setting."))
+        self.checkFFprobe.setText(_translate("settingsDialog", "Use FFprobe when possible (requires PyPlayer restart)"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusDrop.setToolTip(_translate("settingsDialog", "If checked, dragging-and-dropping media will raise the window\n"
 "and give it focus. This brings the window to the foreground and\n"
@@ -1477,7 +1494,7 @@ class Ui_settingsDialog(object):
 "for any setting that mentions \"the first media\n"
 "file you open.\""))
         self.checkFirstFileTrayReset.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
-        self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer to restart)"))
+        self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"
 "by going to \"File->Exit\" or by right-clicking\n"

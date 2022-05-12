@@ -132,7 +132,6 @@ implement "compress" and "speed" edits for videos
 trimming-support for more obscure formats
 implement filetype associations
 high-precision progress bar has been neglected and is now consistently a little too fast
-some videos do not report correct FPS in libvlc (ffprobe works but takes too long while compiled and shows a console window)
 far greater UI customization
 
 TODO: LOW PRIORITY:
@@ -182,6 +181,7 @@ KNOWN ISSUES:
         repeatedly going into fullscreen on a higher DPI/scaled monitor results ruins the controls (general DPI/scaling support is high priority)
         images have overall strange, inconsistent behavior (it wasn't always like this, so it's definitely fixable)
     Moderately high priority:
+        spamming the cycle buttons will eventually crash to desktop with no error
         volume gain suddenly changes after extended use
         native "Save as..." prompt replaced by strange and extremely buggy Qt version if the first thing you open after launch is an image
         .3gp, .ogv, and .mpg files do not trim correctly
@@ -206,6 +206,7 @@ import os
 import gc
 import sys
 import math
+import json
 import logging
 import subprocess
 from time import sleep, localtime, mktime, strftime, strptime
@@ -1129,66 +1130,180 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: app.clipboard().setText(f'"{path}"')
 
 
-    def parse_media_file(self, file, mime='video', extension=None, _recursive=False):
-        if mime == 'video':
-            # get_parsed_status == 4 -> parsing finished. certain formats/conditions (like .mpg) briefly report 0's for some...
-            # ...metadata, so wait after parsing if needed. also wait if current video appears to be the same as the last video
-            start = get_time()
-            while self.vlc.media.get_parsed_status() != 4 or player.get_length() == 0 or player.get_fps() == 0 or player.video_get_size() == (0, 0):
-                if self.vlc.media.get_parsed_status() == 4 and get_time() - start > 3 and file != self.recent_videos[-1]:
-                    self.log('Media is supposedly a video, but is reporting invalid metadata despite being fully parsed.')
-                    break
-                sleep(0.005)
-            logging.info(f'Media needed an additional {get_time() - start:.4f} seconds to parse.')
+    def parse_media_file(self, file, probe_file=None, mime='video', extension=None, data=None):
+        ''' Parses a media file for relevant metadata and emits _open_signal.
+            This *could* be simpler, but it still needs to be fast.
+            The following properties should be set by this function:
+                - self.mime
+                - self.extension
+                - self.video
+                    - self.duration             (media duration in seconds)
+                    - self.frame_count          (number of frames)
+                    - self.frame_rate           (frames per second)
+                    - self.frame_rate_rounded   (rounded frame rate, for UI purposes)
+                    - self.delay                (delay between frames in seconds)
+                    - self.vwidth               (media width)
+                    - self.vheight              (media height)
+                    - self.ratio                (aspect ratio, as a string) '''
+        try:
+            if mime == 'video':
+                if probe_file or data:
+                    if data or self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
+                        start = get_time()
+                        if data is None:            # VLC not finished, no data provided, but probe file is being generated
+                            while not os.path.exists(probe_file): pass
+                            with open(probe_file) as probe:
+                                while data is None:
+                                    try: data = json.load(probe)
+                                    except:
+                                        if self.vlc.media.get_parsed_status() == 4 and player.get_fps() != 0 and player.get_length() != 0 and player.video_get_size() != (0, 0):
+                                            logging.info(f'VLC finished parsing while waiting for FFprobe ({get_time() - start:.4f} seconds).')
+                                            break
+                                        if get_time() - start > 5:
+                                            logging.error('Media probe did not finish after 5 seconds.')
+                                            return -1
+                                        probe.seek(0)
 
-            fps = round(player.get_fps(), 1)        # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
-            if fps == 0:                            # if the frame rate is still 0 after parsing, assume it's actually an audio file
-                if _recursive: return -1            # avoid infinite loop
-                logging.warning('Invalid frame rate detected, parsing as an audio file...')
-                return self.parse_media_file(file, mime='audio', extension=extension, _recursive=True)
-            self.frame_rate = fps                   # wait until fps is confirmed to update self.frame_rate
-            self.duration = round(player.get_length() / 1000, 4)
-            self.frame_count = int(self.duration * fps)
-            self.frame_rate_rounded = round(fps)
-            self.vwidth, self.vheight = player.video_get_size()
-            self.delay = 1 / fps
+                        if data:                    # double check if data was actually acquired
+                            logging.info(f'FFprobe needed an additional {get_time() - start:.4f} seconds to parse.')
+                            logging.debug(f'FFprobe for {file}:\n{data}')
+                            for stream in data['streams']:
+                                if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
+                                    fps_parts = stream['avg_frame_rate'].split('/')
+                                    fps = int(fps_parts[0]) / int(fps_parts[1])
+                                    duration = float(data['format']['duration'])
 
-        elif mime == 'audio':
-            try: tag = TinyTag.get(file, image=True)    # https://pypi.org/project/tinytag/0.18.0/
-            except:                                     # this is to handle things that wrongly report as audio, like .ogv files
-                if _recursive: return -1                # avoid infinite loop
-                logging.info('Invalid audio file detected, parsing as a video file...')
-                return self.parse_media_file(file, mime='video', extension=extension, _recursive=True)
-            self.duration = tag.duration
-            self.frame_rate = 20                        # TODO we only set to 20 to not deal with laggy hover-fades
-            self.frame_rate_rounded = 20
-            self.frame_count = round(tag.duration * 20)
-            self.delay = 0.05
-            cover_art = tag.get_image()
-            gif_player.play(cover_art)  # cover art is bytes -> set to gif_player's QPixmap, then open QPixmap with PIL
-            self.vwidth, self.vheight = get_PIL_Image().fromqpixmap(gif_player.art).size if cover_art else (1, 1)
-            logging.info(f'Metadata for audio {file}: {tag}')
+                                    self.duration = duration
+                                    self.frame_count = math.ceil(duration * fps)    # NOTE: nb_frames is unreliable for partially corrupt videos
+                                    self.frame_rate = fps
+                                    self.frame_rate_rounded = round(fps)
+                                    self.delay = 1 / fps
 
-        elif mime == 'image':
-            if extension == 'gif':
-                movie = gif_player.gif
-                self.frame_count = movie.frameCount()
-                self.delay = movie.nextFrameDelay() / 1000
-                self.duration = self.frame_count * self.delay
-                self.frame_rate = 1 / self.delay
-                self.frame_rate_rounded = round(self.frame_rate)
-                size = movie.frameRect().size()
-                self.vwidth, self.vheight = size.width(), size.height()
-            else:
-                self.frame_rate, self.frame_count, self.duration = 5, 1, 0
-                try: self.vwidth, self.vheight = get_PIL_Image().open(file).size
-                except AttributeError: self.vwidth, self.vheight = 1, 1
-                self.frame_rate_rounded = 1
-                self.delay = 0.2                    # run update_slider_thread only 5 times/second
+                                    self.vwidth = int(stream['width'])
+                                    self.vheight = int(stream['height'])
+                                    self.ratio = stream.get('display_aspect_ratio', get_aspect_ratio(self.vwidth, self.vheight))
+                                    break
+                            else: mime = 'audio'    # the rare for-else-loop (else only happens if we don't break). audio streams usually report 0/0
+                            logging.info('FFprobe parsed faster than VLC.')
 
+                # still no FFprobe probe data, we MUST wait for VLC to finish (if it ever does)
+                if data is None:
+                    if self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
+                        start = get_time()          # get_parsed_status() == 4 means parsing is apparently done, but values are often not accessible immediately
+                        while self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
+                            if get_time() - start > 15:
+                                logging.error('FFprobe is disabled and VLC did not finish parsing after 15 seconds.')
+                                return -1
+                        logging.info(f'VLC needed an additional {get_time() - start:.4f} seconds to parse.')
+                    elif probe_file: logging.info('VLC did not need additional time to parse.')
+                    fps = round(player.get_fps(), 1)        # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
+                    duration = round(player.get_length() / 1000, 4)
+                    self.duration = duration
+                    self.frame_count = int(duration * fps)
+                    self.frame_rate = fps
+                    self.frame_rate_rounded = round(fps)
+                    self.delay = 1 / fps
+                    self.vwidth, self.vheight = player.video_get_size()
+                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                    logging.info('VLC parsed faster than FFprobe.')
+
+            if mime == 'audio':
+                if data:
+                    for stream in data['streams']:
+                        if stream['codec_type'] == 'video' and stream['avg_frame_rate'] == '0/0':
+                            data = None             # audio file has 0fps video stream -> most likely cover art
+                            break                   # set data back to None and break so we can extract the cover art
+                    else:                           # the rare for-else-loop (else only happens if we don't break)
+                        duration = float(data['format']['duration'])
+                    self.vwidth, self.vheight = 16, 9
+
+                if data is None:                    # no data provided OR art detected, use TinyTag (fallback to music_tag if necessary)
+                    try:                            # we need to avoid parsing probe file anyway, since we need to check for cover art
+                        try:
+                            tag = TinyTag.get(file, image=True)         # https://pypi.org/project/tinytag/0.18.0/
+                            cover_art = tag.get_image()
+                            if cover_art:
+                                gif_player.play(cover_art)              # cover art is bytes -> set to gif_player's QPixmap, open QPixmap with PIL
+                                self.vwidth, self.vheight = get_PIL_Image().fromqpixmap(gif_player.art).size
+                            else:
+                                self.vwidth = 16
+                                self.vheight = 9
+                            duration = tag.duration
+                        except:                                         # TinyTag is lightweight but cannot handle everything
+                            import music_tag                            # only import music_tag if we absolutely need to
+                            tag = music_tag.load_file(file)
+                            if 'artwork' in tag:
+                                art = tag['artwork'].first
+                                gif_player.play(art.data)               # art.data is bytes -> set to gif_player's QPixmap
+                                self.vwidth = art.width                 # music_tag directly reports width/height of artwork
+                                self.vheight = art.height
+                            else:
+                                self.vwidth = 16
+                                self.vheight = 9
+                            duration = tag['#length'].value
+                        #gif_player.pixmap().save(os.path.join(constants.TEMP_DIR, f'{os.path.basename(file)}_{os.path.getctime(file)}.png'))
+                    except:                                             # this is to handle things that wrongly report as audio, like .ogv files
+                        logging.info(f'Invalid audio file detected, parsing as a video file... {format_exc()}')
+                        if probe_file:
+                            start = get_time()
+                            while not os.path.exists(probe_file): pass
+                            with open(probe_file) as probe:
+                                while data is None:
+                                    try: data = json.load(probe)
+                                    except: probe.seek(0)
+                                    if get_time() - start > 5:
+                                        logging.error('Media probe did not finish after 5 seconds.')
+                                        return -1
+                        return self.parse_media_file(file, probe_file, mime='video', extension=extension, data=data)
+                self.duration = duration
+                self.frame_count = round(duration * 20)
+                self.frame_rate = 20                # TODO we only set to 20 to not deal with laggy hover-fades
+                self.frame_rate_rounded = 20
+                self.delay = 0.05
+                self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+
+            elif mime == 'image':
+                if extension == 'gif':
+                    gif = gif_player.gif
+                    self.frame_count = gif.frameCount()
+                    if data:                        # use probe data if available but it's not necessary
+                        for stream in data['streams']:
+                            if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
+                                fps_parts = stream['avg_frame_rate'].split('/')
+                                fps = int(fps_parts[0]) / int(fps_parts[1])
+                                duration = float(data['format']['duration'])
+                        self.duration = duration
+                        self.frame_rate = fps
+                        self.frame_rate_rounded = round(fps)
+                        self.delay = 1 / fps
+                        self.vwidth = int(stream['width'])
+                        self.vheight = int(stream['height'])
+                    else:
+                        self.delay = gif.nextFrameDelay() / 1000
+                        self.duration = self.frame_count * self.delay
+                        self.frame_rate = 1 / self.delay
+                        self.frame_rate_rounded = round(self.frame_rate)
+                        size = gif.frameRect().size()
+                        self.vwidth, self.vheight = size.width(), size.height()
+                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                else:
+                    self.duration = 0.0000001       # low duration to avoid errors but still show up as 0 on the UI
+                    self.frame_count = 1
+                    self.frame_rate = 1
+                    self.frame_rate_rounded = 1
+                    try: self.vwidth, self.vheight = get_PIL_Image().open(file).size
+                    except AttributeError: self.vwidth, self.vheight = 1, 1
+                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                    self.delay = 0.2                # run update_slider_thread only 5 times/second
+
+            assert self.duration != 0, f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid duration).'
+        except:
+            logging.error(format_exc())
+            return -1
+
+        # extra setup. frame_rate_rounded, ratio, and delay could all be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_signal
         self.extension = extension
-        self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
         if extension == 'gif':
             self.mime_type = 'video'
             self._open_signal.emit()                # manually emit _open_signal for gifs (slider thread will be idle)
@@ -1201,24 +1316,48 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def open(self, file=None, focus_window=True, update_recent_list=True, remember_old_file=False,
              _from_cycle=False, _from_dir=False):
-        ''' Current iteration: III '''
+        ''' Current iteration: IV '''
         try:
-            if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
-            if not file or file == self.locked_video: return
-            start = get_time()
-            file = os.path.abspath(file)
+            if not _from_cycle:                     # assume that this is already sorted out if called from cycle
+                if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
+                if not file or file == self.locked_video: return
+                file = os.path.abspath(file)
+                start = get_time()
 
-            # if `file` is actually a directory -> open first valid, non-hidden file and enable Autoplay
-            if os.path.isdir(file):
-                if _from_dir: return -1             # avoid recursively opening directories
-                for filename in os.listdir(file):
-                    path = os.path.join(file, filename)
+                # if `file` is actually a directory -> open first valid, non-hidden file and enable Autoplay
+                if os.path.isdir(file):
+                    if _from_dir: return -1         # avoid recursively opening directories
+                    for filename in os.listdir(file):
+                        path = os.path.join(file, filename)
 
-                    if not file_is_hidden(path) and self.open(path, _from_dir=True) != -1:
-                        self.actionAutoplay.setChecked(True)
-                        self.log(f'Opened {filename} from folder {file} and enabled Autoplay.')
-                        return
-                else: return self.log(f'No files in {file} were playable.')
+                        if not file_is_hidden(path) and self.open(path, _from_dir=True) != -1:
+                            self.actionAutoplay.setChecked(True)
+                            self.log(f'Opened {filename} from folder {file} and enabled Autoplay.')
+                            return
+                    else: return self.log(f'No files in {file} were playable.')
+            else: start = get_time()
+
+        # --- Probing file and determining mime type ---
+            # probe file with FFprobe if possible. if file has already been probed, reuse old probe. otherwise, save output to txt file
+            # probing calls Popen through a Thread (faster than calling Popen itself or using Thread on a middle-ground function)
+            probe_data = None
+            if FFPROBE:                             # generate probe file's path and check if it already exists
+                probe_file = os.path.join(constants.PROBE_DIR, f'{os.path.basename(file)}_{os.path.getctime(file)}.txt')
+                if os.path.exists(probe_file):      # probe file already exists
+                    with open(probe_file, 'r') as f:
+                        try:
+                            probe_data = json.load(f)   # parse pre-existing probe file and check if listed size is correct
+                            if int(probe_data['format']['size']) == os.path.getsize(file):
+                                logging.info('Reusing previously parsed metadata.')
+                            else:
+                                Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
+                                logging.info('Previously parsed metadata is now out-of-date. Re-probing with FFprobe.')
+                        except:
+                            try: os.remove(probe_file)
+                            except: logging.warning('FAILED TO DELETE PROBE FILE: ' + probe_file)
+                            Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
+                else: Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
+            else: probe_file = None                 # no FFprobe -> no probe file (even if one exists already)
 
             # get mime type of file
             try:
@@ -1226,13 +1365,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 mime, extension = filetype_data.mime.split('/')
                 logging.info(f'Filetype data: {filetype_data} | Mime type: {mime} | Full mime: {filetype_data.mime} | True extension: {filetype_data.extension}')
                 if mime not in ('video', 'image', 'audio'):
-                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
+                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid mime type).')
                     return -1
             except:
                 if not os.path.exists(file): self.log(f'File \'{file}\' does not exist.')
-                else: self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')    # .guess() errors out in rare circumstances
-                return -1
+                else: self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (failed to determine mime type).')
+                return -1                       # ^^^ .guess() errors out in rare circumstances ^^^
 
+        # --- Restoring window ---
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
             if not self.isVisible():                # we need to do this even if focus_window is True
                 was_minimzed_to_tray = True
@@ -1241,6 +1381,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.showMinimized()                # minimize for now, we'll check if we need to focus later
             else: was_minimzed_to_tray = False
 
+        # --- Playing media ---
             # attempt to play file
             if extension == 'gif':
                 player.stop()
@@ -1248,11 +1389,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif not self.vlc.play(file): return    # immediately attempt to play media once we know it might be valid
             else: gif_player.play(None)             # clear gifPlayer
 
+        # --- Parsing metadata and setting up UI/recent files list ---
             # parse non-video files and show/log file on statusbar
             parsed = False                          # keep track of parse so we can avoid re-parsing it later if it ends up being a video
             if mime != 'video':                     # parse metadata early if it isn't a video
-                if self.parse_media_file(file, mime, extension) == -1:
-                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
+                if self.parse_media_file(file, probe_file, mime, extension, probe_data) == -1:
+                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (non-video parsing failed).')
                     return -1
                 parsed = True
                 if extension == 'gif': self.log(f'Opening GIF (limited support): {file}\n')
@@ -1292,8 +1434,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
-                if self.parse_media_file(file, mime, extension) == -1:        # parse metadata from VLC
-                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened.')
+                if self.parse_media_file(file, probe_file, mime, extension, probe_data) == -1:        # parse metadata from VLC
+                    self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (video parsing failed).')
                     return -1
 
             if not remember_old_file or not self.video_original_path: self.video_original_path = file
@@ -1366,7 +1508,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not self.dialog_settings.checkAutoEnableSubtitles.isChecked(): player.video_set_spu(-1)
             self.first_video_fully_loaded = True
 
-            logging.info(f'VLC\'s delayed readings:\n > VLC FPS: {player.get_fps()} | VLC Duration: {player.get_length() / 1000}')
             logging.info(f'Supplementary media opening completed after {get_time() - start:.4f} seconds.')
             gc.collect(generation=2)            # do manual garbage collection after opening (NOTE: this MIGHT be risky)
         except: logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
@@ -3150,6 +3291,7 @@ if __name__ == "__main__":
         gui.refresh_theme_combo(set_theme=cfg.theme)            # load and set themes
         widgets.init_custom_widgets(cfg, app)                   # set config and app as global objects in widgets.py
         constants.verify_ffmpeg(gui, warning=True)              # confirm/look for valid ffmpeg path if needed
+        FFPROBE = constants.verify_ffprobe(gui, warning=True)   # confirm/look/return valid ffprobe path if needed
 
         with open(constants.PID_PATH, 'w'):     # create PID file
             gui.handle_updates(_launch=True)    # check for/download/validate pending updates

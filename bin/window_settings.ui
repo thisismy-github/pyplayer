@@ -58,8 +58,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>339</width>
-        <height>1683</height>
+        <width>334</width>
+        <height>1705</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -322,7 +322,7 @@ otherwise, the progress bar will fall behind and start to desync.</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAlwaysSaveAs">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -340,7 +340,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default
@@ -356,7 +356,7 @@ folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
                 <string>If checked, the media player will completely stop
@@ -375,7 +375,7 @@ going to &quot;File-&gt;Stop Player&quot; in the menubar.</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationWrap">
                <property name="toolTip">
                 <string>If checked, using the arrow keys or J/L to navigate forwards or backwards in a video
@@ -391,7 +391,7 @@ Example: If you're at the end of a video and press ➞, you'll be placed back at
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationUnpause">
                <property name="toolTip">
                 <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
@@ -405,7 +405,7 @@ has finished will automatically unpause the media and resume playback.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -420,7 +420,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -446,7 +446,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -460,7 +460,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="17" column="0" colspan="2">
+             <item row="18" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_8">
                <item>
                 <widget class="QCheckBox" name="checkMinimizePause">
@@ -517,7 +517,7 @@ but only if the media had not been paused prior to minimizing.</string>
                </item>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
                <property name="toolTip">
                 <string>If checked, copying a media's path to your clipboard
@@ -535,7 +535,7 @@ systems do not use backslashes in their paths.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRememberDropFolder">
                <property name="toolTip">
                 <string>If checked, dragging and dropping media will remember
@@ -546,6 +546,30 @@ folders remembered.</string>
                </property>
                <property name="text">
                 <string>Remember folders for drag-and-dropped media</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkFFprobe">
+               <property name="toolTip">
+                <string>If checked, FFprobe will be used (if it exists) to parse media files
+for data such as its FPS, duration, etc. to display on the UI. This
+is more reliable, more stable, and sometimes faster than VLC's
+built-in parsing, though VLC is sufficient for many use-cases.
+
+PyPlayer tracks both FFprobe and VLC's parsing progress, and will
+use whichever one finishes first. FFprobe's data is saved to a .txt
+file and reused if possible, for better performance when replaying
+the same files.
+
+NOTE: If you experience noticable delays while
+opening media, you can try disabling this setting.</string>
+               </property>
+               <property name="text">
+                <string>Use FFprobe when possible (requires PyPlayer restart)</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -939,7 +963,7 @@ file you open.&quot;</string>
            <item>
             <widget class="QGroupBox" name="groupTray">
              <property name="title">
-              <string>Enable system tray icon (requires PyPlayer to restart)</string>
+              <string>Enable system tray icon (requires PyPlayer restart)</string>
              </property>
              <property name="checkable">
               <bool>true</bool>
