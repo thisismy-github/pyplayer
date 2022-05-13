@@ -782,16 +782,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context = QtW.QMenu(self)
         if self.actionCrop.isChecked(): context.addAction(self.actionCrop)
         context.addAction(self.actionStop)
+        context.addMenu(self.menuWindow)
         context.addSeparator()
-        context.addAction(self.actionShowMenuBar)
-        context.addAction(self.actionShowStatusBar)
-        context.addAction(self.actionShowProgressBar)
-        context.addAction(self.actionShowAdvancedControls)
         context.addSeparator()
         context.addAction(self.actionSettings)
         context.addAction(self.actionLoop)
         context.addAction(self.actionAutoplay)
-        context.addAction(self.actionFullscreen)
         context.addSeparator()
         context.addMenu(self.menuFile)
         context.addMenu(self.menuEdit)
@@ -1495,9 +1491,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 resize_on_open_state = self.dialog_settings.checkResizeOnOpen.checkState()
                 snap_on_open_state = self.dialog_settings.checkSnapOnOpen.checkState()
                 if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):      # 1 -> only resize first video opened
-                    excess_height = self.height() - self.vlc.height()
-                    self.resize(self.vwidth, self.vheight + excess_height)
-                    qthelpers.clampToScreen(self)
+                    self.snap_to_native_size()
                 elif snap_on_open_state and not (snap_on_open_state == 1 and self.first_video_fully_loaded):
                     self.snap_to_player_size(force_instant_resize=True)
                 elif self.dialog_settings.checkClampOnOpen.isChecked():
@@ -2841,7 +2835,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def snap_to_player_size(self, shrink=False, force_instant_resize=False):
-        if not self.isMaximized() and not self.isFullScreen():
+        if self.video and not self.isMaximized() and not self.isFullScreen():
             vlc_size = self.vlc.size()
             expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
             void_width = vlc_size.width() - expected_vlc_size.width()
@@ -2878,6 +2872,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.resize(self.frameGeometry().size().boundedTo(screen_size))
                     self.snap_to_player_size(shrink=True)
                 qthelpers.clampToScreen(self, screen=screen, resize=False)
+
+
+    def snap_to_native_size(self):
+        if not self.video: return
+        excess_height = self.height() - self.vlc.height()
+        self.resize(self.vwidth, self.vheight + excess_height)
+        qthelpers.clampToScreen(self)
 
 
     def update_title(self):

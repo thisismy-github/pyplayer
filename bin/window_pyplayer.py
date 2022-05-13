@@ -507,6 +507,12 @@ class Ui_MainWindow(object):
         self.actionClearRecent.setObjectName("actionClearRecent")
         self.actionCopyMediaLocation = QtWidgets.QAction(MainWindow)
         self.actionCopyMediaLocation.setObjectName("actionCopyMediaLocation")
+        self.actionSnapRatio = QtWidgets.QAction(MainWindow)
+        self.actionSnapRatio.setObjectName("actionSnapRatio")
+        self.actionSnapSize = QtWidgets.QAction(MainWindow)
+        self.actionSnapSize.setObjectName("actionSnapSize")
+        self.actionSnapRatioShrink = QtWidgets.QAction(MainWindow)
+        self.actionSnapRatioShrink.setObjectName("actionSnapRatioShrink")
         self.menuRecent.addAction(self.actionClearRecent)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
@@ -571,6 +577,10 @@ class Ui_MainWindow(object):
         self.menuVideo.addAction(self.actionRemoveVideo)
         self.menuVideo.addAction(self.actionResize)
         self.menuWindow.addAction(self.actionFullscreen)
+        self.menuWindow.addSeparator()
+        self.menuWindow.addAction(self.actionSnapSize)
+        self.menuWindow.addAction(self.actionSnapRatio)
+        self.menuWindow.addAction(self.actionSnapRatioShrink)
         self.menuWindow.addSeparator()
         self.menuWindow.addAction(self.actionShowMenuBar)
         self.menuWindow.addAction(self.actionShowStatusBar)
@@ -726,6 +736,9 @@ class Ui_MainWindow(object):
 "for deletion, without actually deleting them."))
         self.actionClearRecent.setText(_translate("MainWindow", "&Clear recent files"))
         self.actionCopyMediaLocation.setText(_translate("MainWindow", "&Copy media path"))
+        self.actionSnapRatio.setText(_translate("MainWindow", "Resize to media\'s aspect ratio"))
+        self.actionSnapSize.setText(_translate("MainWindow", "Resize to media\'s native size"))
+        self.actionSnapRatioShrink.setText(_translate("MainWindow", "Shrink to media\'s aspect ratio"))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoPlayerLabel, QVideoSlider
 
 

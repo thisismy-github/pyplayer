@@ -213,6 +213,10 @@
     </property>
     <addaction name="actionFullscreen"/>
     <addaction name="separator"/>
+    <addaction name="actionSnapSize"/>
+    <addaction name="actionSnapRatio"/>
+    <addaction name="actionSnapRatioShrink"/>
+    <addaction name="separator"/>
     <addaction name="actionShowMenuBar"/>
     <addaction name="actionShowStatusBar"/>
     <addaction name="actionShowProgressBar"/>
@@ -1458,6 +1462,21 @@ for deletion, without actually deleting them.</string>
   <action name="actionCopyMediaLocation">
    <property name="text">
     <string>&amp;Copy media path</string>
+   </property>
+  </action>
+  <action name="actionSnapRatio">
+   <property name="text">
+    <string>Resize to media's aspect ratio</string>
+   </property>
+  </action>
+  <action name="actionSnapSize">
+   <property name="text">
+    <string>Resize to media's native size</string>
+   </property>
+  </action>
+  <action name="actionSnapRatioShrink">
+   <property name="text">
+    <string>Shrink to media's aspect ratio</string>
    </property>
   </action>
  </widget>
