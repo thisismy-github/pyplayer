@@ -639,72 +639,96 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 class QVideoPlayerLabel(QtW.QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._imageScale = 0
         self._artScale = 0
         self._gifScale = 0
         self.art = QtGui.QPixmap()
         self.gif = QtGui.QMovie()
         self.gif.setCacheMode(QtGui.QMovie.CacheAll)     # required for jumpToFrame to work
+        self.gifSize = None                             # gif's native size (QMovie doesn't track this)
+        self.image = self.art                           # alias for self.art's QPixmap
+        self.isCoverArt = False
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
 
-    def updateArtScale(self, index):
-        self._artScale = index
-        self.setScaledContents(index == 2)
-        if self.pixmap():
-            if index != 1: self.setPixmap(self.art)
-            else: self.setPixmap(self.art.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-
-
-    def updateGifScale(self, index):
-        self._gifScale = index
-        self.setScaledContents(index == 2)
-        if self.movie():
-            self.setMovie(self.gif)
-            if index == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
-            if index == 1:
-                rect = self.geometry()
-                size = QtCore.QSize(min(rect.width(), rect.height()), min(rect.width(), rect.height()))
-                self.gif.setScaledSize(size)
-
-
-    def play(self, file):
-        ''' Opens `file`. If `file` is a gif, it is played as a QMovie. If
-            `file` is an image, it is displayed as a QPixmap. If `file` is
-            None, then the label is cleared. '''
+    def play(self, file, gif: bool = False):
+        ''' Opens `file`. If `gif` is True, it's played as a QMovie. Otherwise
+            if `file` is a string, it is displayed as a QPixmap. If `file` is
+            a bytes object, it is decoded as a QPixmap and `isCoverArt` is set
+            to True. If `file` is None, then the label is cleared. '''
         self.clear()
         self.gif.stop()
         if file is None: return
-        if isinstance(file, bytes):
-            scale = self._artScale
-            self.setScaledContents(scale == 2)
-            self.art.loadFromData(file)
-            if scale == 1: self.setPixmap(self.art.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            elif scale == 0: self.setPixmap(self.art)
-            logging.info('Cover art detected.')
-        else:
-            scale = self._gifScale
+        if gif:
+            scale = self._gifScale                      # load gif into QPixmap first to get its native size
+            self.art.load(file)
+            self.gifSize = self.art.size()
+            self.clear()
+
             self.setScaledContents(scale == 2)
             self.gif.setFileName(file)
+            if scale == 1: self._resizeMovieFit()
             self.setMovie(self.gif)
-            if scale == 1:
-                rect = self.geometry()
-                size = QtCore.QSize(min(rect.width(), rect.height()), min(rect.width(), rect.height()))
-                self.gif.setScaledSize(size)
             self.gif.start()
             logging.info('Animated image detected.')
+        else:                                           # static image. if `file` is bytes, it's cover art
+            isBytes = self.isCoverArt = isinstance(file, bytes)
+            scale = self._artScale
+
+            self.setScaledContents(scale == 2)
+            if isBytes: self.art.loadFromData(file)
+            else: self.art.load(file)
+            if scale == 1: self._resizePixmapFit(self.size())
+            else: self.setPixmap(self.art)
+            logging.info('Static image/cover art detected.')
+
+
+    def updateImageScale(self, index: int):
+        self._imageScale = index
+        if self.pixmap() and not self.isCoverArt:
+            self.setScaledContents(index == 2)
+            if index != 1: self.setPixmap(self.art)
+            else: self._resizePixmapFit(self.size())
+
+
+    def updateArtScale(self, index: int):
+        self._artScale = index
+        if self.pixmap() and self.isCoverArt:
+            self.setScaledContents(index == 2)
+            if index != 1: self.setPixmap(self.art)
+            else: self._resizePixmapFit(self.size())
+
+
+    def updateGifScale(self, index: int):
+        self._gifScale = index
+        if self.movie():
+            self.setScaledContents(index == 2)
+            self.gif.stop()                             # stop and reset gif to clear cached frames
+            self.gif.setFileName(self.gif.fileName())
+            if index == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
+            if index == 1: self._resizeMovieFit()
+            self.gif.start()
+
+
+    def _resizePixmapFit(self, size: QtCore.QSize):
+        self.setPixmap(self.art.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+
+    def _resizeMovieFit(self):
+        size = QtCore.QSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
+        self.gif.setScaledSize(size)
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
-        ''' Handles scaling the GIF/cover art while resizing. '''
+        ''' Handles scaling the GIF/image/cover art while resizing. '''
         if self.hasScaledContents(): return
-        if self.movie():        # "and" not used here for slight optimization
-            if self._gifScale == 1:
-                rect = self.geometry()
-                size = QtCore.QSize(min(rect.width(), rect.height()), min(rect.width(), rect.height()))
-                self.gif.setScaledSize(size)
-        elif self.pixmap():     # "and" not used here for slight optimization
-            if self._artScale == 1:
-                self.setPixmap(self.art.scaled(event.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        if self.movie():
+            if self._gifScale == 1: self._resizeMovieFit()
+        elif self.pixmap():
+            if self.isCoverArt:                         # "and" not used here for slight optimization
+                if self._artScale == 1: self._resizePixmapFit(event.size())
+            elif self._imageScale == 1: self._resizePixmapFit(event.size())
 
 
 

@@ -523,6 +523,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
         # TODO: why isn't currentIndexChanged called when the config loads?
+        self.gifPlayer.updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
         self.gifPlayer.updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
         self.gifPlayer.updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
         Thread(target=self.update_slider_thread, daemon=True).start()
@@ -1154,6 +1155,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     - self.vheight              (media height)
                     - self.ratio                (aspect ratio, as a string) '''
         try:
+            base_mime = mime
             if mime == 'video':
                 if probe_file or data:
                     if data or self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
@@ -1272,6 +1274,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             elif mime == 'image':
                 if extension == 'gif':
+                    mime = 'video'
                     gif = gif_player.gif
                     self.frame_count = gif.frameCount()
                     if data:                        # use probe data if available but it's not necessary
@@ -1311,14 +1314,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # extra setup. frame_rate_rounded, ratio, and delay could all be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_signal
-        self.extension = extension
-        if extension == 'gif':
-            self.mime_type = 'video'
-            self._open_signal.emit()                # manually emit _open_signal for gifs (slider thread will be idle)
+        self.mime_type = mime
+        if base_mime == 'image':
+            self._open_signal.emit()                # manually emit _open_signal for images/gifs (slider thread will be idle)
         else:
-            self.mime_type = mime
             self.open_queued = True
             self.frame_override = 0                 # set frame_override to trigger open_queue in update_slider_thread
+        self.extension = extension
         if mime != 'audio': self.vlc.find_true_borders()
 
 
@@ -1392,9 +1394,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # --- Playing media ---
             # attempt to play file
-            if extension == 'gif':
+            if mime == 'image':
+                gif_player.play(file, gif=extension == 'gif')
                 player.stop()
-                gif_player.play(file)
             elif not self.vlc.play(file): return    # immediately attempt to play media once we know it might be valid
             else: gif_player.play(None)             # clear gifPlayer
 
@@ -3050,7 +3052,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable
-        if self.mime_type == 'image': return
+        if self.mime_type == 'image': return self.cycle_media(next=forward)  # cycle images with basic navigation keys
         old_frame = get_progess_slider()
         if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
             if old_frame == self.frame_count and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = 0

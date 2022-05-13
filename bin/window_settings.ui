@@ -59,7 +59,7 @@
         <x>0</x>
         <y>0</y>
         <width>334</width>
-        <height>1705</height>
+        <height>1731</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -737,17 +737,17 @@ of the screen it's on when opening media.</string>
                    <number>6</number>
                   </property>
                   <item row="0" column="0">
-                   <widget class="QLabel" name="label_51">
+                   <widget class="QLabel" name="label_53">
                     <property name="toolTip">
-                     <string>How to scale the size of cover/album art within the window.</string>
+                     <string>Sets how to scale the size of static images within the window.</string>
                     </property>
                     <property name="text">
-                     <string>Cover art scaling:</string>
+                     <string>Image scaling:</string>
                     </property>
                    </widget>
                   </item>
                   <item row="0" column="1">
-                   <widget class="QComboBox" name="comboScaleArt">
+                   <widget class="QComboBox" name="comboScaleImages">
                     <property name="currentIndex">
                      <number>1</number>
                     </property>
@@ -769,16 +769,48 @@ of the screen it's on when opening media.</string>
                    </widget>
                   </item>
                   <item row="1" column="0">
+                   <widget class="QLabel" name="label_51">
+                    <property name="toolTip">
+                     <string>Sets how to scale the size of cover/album art within the window.</string>
+                    </property>
+                    <property name="text">
+                     <string>Cover art scaling:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QComboBox" name="comboScaleArt">
+                    <property name="currentIndex">
+                     <number>1</number>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>No scaling (native size)</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Fit (keep aspect ratio)</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>Fill (ignore aspect ratio)</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
                    <widget class="QLabel" name="label_52">
                     <property name="toolTip">
-                     <string>How to scale the size of animated GIFs within the window.</string>
+                     <string>Sets how to scale the size of animated GIFs within the window.</string>
                     </property>
                     <property name="text">
                      <string>GIF scaling:</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="1" column="1">
+                  <item row="2" column="1">
                    <widget class="QComboBox" name="comboScaleGifs">
                     <property name="currentIndex">
                      <number>1</number>
@@ -2950,7 +2982,6 @@ the currently playing media's height.</string>
   <tabstop>checkClampOnResize</tabstop>
   <tabstop>checkClampOnOpen</tabstop>
   <tabstop>comboScaleArt</tabstop>
-  <tabstop>comboScaleGifs</tabstop>
   <tabstop>checkSnapVideos</tabstop>
   <tabstop>checkSnapGifs</tabstop>
   <tabstop>checkSnapImages</tabstop>

@@ -278,6 +278,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.spinTextX.valueChanged.connect(self.vlc.set_text_x)
     settings.spinTextY.valueChanged.connect(self.vlc.set_text_y)
     settings.spinTextOpacity.valueChanged.connect(self.vlc.set_text_opacity)
+    settings.comboScaleImages.currentIndexChanged.connect(self.gifPlayer.updateImageScale)
     settings.comboScaleArt.currentIndexChanged.connect(self.gifPlayer.updateArtScale)
     settings.comboScaleGifs.currentIndexChanged.connect(self.gifPlayer.updateGifScale)
 
