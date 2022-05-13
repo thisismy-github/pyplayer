@@ -230,7 +230,7 @@ def update_migration(self, old_version: str) -> None:
     ''' Handles additional work required to migrate
         `old_version` to the latest version, if any. '''
     older_than = lambda v: old_version != v and get_later_version(old_version, v) == v
-    if older_than('0.3.0'):     # 0.1.0 - 0.2.0
+    if older_than('0.3.0'):     # updated from 0.1.0 - 0.2.0
         qthelpers.getPopup(title='Update successful, but reinstall recommended',
                            text='The update was successful, but there has been a massive change\n'
                                 'in PyPlayer\'s file structure (bringing a significant size reduction)\n'
@@ -239,3 +239,8 @@ def update_migration(self, old_version: str) -> None:
                            textInformative='You can redownload the ' + HYPERLINK + ' Be sure to copy '
                                            'over config.ini and any personal files you may have saved.',
                            **self.get_popup_location()).exec()
+    elif older_than('0.4.0'):   # updated from 0.3.0
+        old_ffmpeg = os.path.join(constants.CWD, 'plugins', 'ffmpeg.exe')
+        if os.path.exists(old_ffmpeg) and os.path.getsize(old_ffmpeg) == 35445760:
+            try: os.remove(old_ffmpeg)
+            except: logger.info('(!) Failed to remove outdated ffmpeg.exe.')

@@ -67,11 +67,12 @@ prompt is shown on exit if any files are marked.'''
 # ---------------------
 
 if IS_COMPILED:
-    FFMPEG = os.path.join(CWD, 'plugins', 'ffmpeg')
-    FFPROBE = os.path.join(CWD, 'plugins', 'ffprobe')
+    FFMPEG = os.path.join(CWD, 'plugins', 'ffmpeg', 'ffmpeg')
+    FFPROBE = os.path.join(CWD, 'plugins', 'ffmpeg', 'ffprobe')
 else:
-    FFMPEG = os.path.join(BIN_DIR, 'ffmpeg')
-    FFPROBE = os.path.join(BIN_DIR, 'ffprobe')
+    folder = 'ffmpeg-windows' if PLATFORM == 'Windows' else 'ffmpeg-unix'
+    FFMPEG = os.path.join(CWD, 'executable', 'include', folder, 'ffmpeg')
+    FFPROBE = os.path.join(CWD, 'executable', 'include', folder, 'ffprobe')
 
 
 def verify_ffmpeg(self, warning: bool = True, force_warning: bool = False) -> str:
@@ -133,7 +134,7 @@ def verify_ffprobe(self, warning: bool = True) -> str:
 def _display_ffmpeg_warning(self, forced: bool = True) -> None:
     import logging
     from PyQt5.QtWidgets import QMessageBox
-    dir_name = 'plugins' if IS_COMPILED else 'bin'
+    dir_name = 'plugins' if IS_COMPILED else 'executable\\include'
     warning_text = '.' if forced else ', or click\n"Cancel" to stop receiving this warning.'
     popup_text = \
 f'''FFmpeg was not detected in the {dir_name} folder, your install folder,
@@ -155,7 +156,7 @@ If it wasn't, download the FFmpeg essentials below{warning_text}'''
 def _display_ffprobe_warning(self) -> None:
     import logging
     from PyQt5.QtWidgets import QMessageBox
-    dir_name = 'plugins' if IS_COMPILED else 'bin'
+    dir_name = 'plugins' if IS_COMPILED else 'executable\\include'
     popup_text = \
 f'''FFprobe was not detected in the {dir_name} folder, your install folder, or
 your system PATH variable. FFprobe is used for parsing media files,
