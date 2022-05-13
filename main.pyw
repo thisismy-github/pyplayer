@@ -16,7 +16,7 @@ TODO: move open_color_picker and other browse dialogs + indeterminate_progress d
 TODO: better/more fleshed-out themes
 TODO: can't change themes while minimized to system tray (warn with tray icon?)
 TODO: live-themes advanced option? (button that auto-refreshes themes every half-second for theme developers)
-TODO: use more "modern" looking icon like VLC's ios app icon?
+TODO: make more "modern" looking icon like VLC's ios app icon?
 TODO: event_manager -> "no signature found for builtin <built-in method emit of PyQt5.QtCore.pyqtBoundSignal object"
 TODO: getting the padding of the QSlider groove
 TODO: better/more fleshed out sliderVolume (dedicated subclass?)
@@ -85,7 +85,7 @@ TODO: finish marquee settings: drop shadow (VLC can control this, but I have no 
         - fade durations aren't working very well, I was forced to put arbitrary limits on the settings
 TODO: vlc settings to add
         - video/audio dependent raise/focus settings
-        - use only one instance when opening from file explorer (potentially difficult)
+        - settings for allowing multiple instances
         - "enable time-stretching audio" -> fixes audio pitch changing with playback speed
         - --start-paused, --no-start-paused
 TODO: gstreamer | ffpyplayer https://matham.github.io/ffpyplayer/player.html
@@ -95,9 +95,6 @@ TODO: https://wiki.videolan.org/Documentation:Modules/alphamask/
 TODO: WA_PaintUnclipped https://doc.qt.io/qt-5/qt.html#WidgetAttribute-enum
 TODO: app.primaryScreenChanged.connect()
 TODO: is there a way to add/modify libvlc options like "--gain" post-launch? media.add_option() is very limited
-TODO: at some point while removing cv2+ffprobe/adding pystray, showing images started making the progress bar actually show VLC's 10 second image timer
-        - this only happens sometimes
-        - when the image "ends" sometimes the screen cuts out -> "[0000026ec6bc3b60] direct3d11 vout display error: SetThumbNailClip failed: 0x800706f4"
 TODO: make logo in about window link somewhere
 TODO: "add subtitle file" but for video/audio tracks? (audio tracks supported, but VLC chooses not to use this)
 TODO: pressing esc on QWidgetPassthrough clears focus, but sometimes clears focus on the entire window
@@ -111,6 +108,8 @@ TODO: ram usage
 TODO: editing feature changes:
         - "replace/add audio" -> add prompt to change volume of incoming file (make these into menus with 2 actions? one that shows a prompt and one that doesn't)
         - "add audio" -> option to literally add it as an audio track (with ffmpeg, not libvlc/add_slave)
+        - adding audio to gifs
+        - converting mp4 to gif
         - improve filter/name hints, especially for things like remove_track
         - add "compress" option
         - add "speed" option (this is already implemented for audio files through the resize function)
@@ -136,7 +135,6 @@ far greater UI customization
 
 TODO: LOW PRIORITY:
 replace VLC with QMediaPlayer (maybe)
-display and cache images using gifPlayer
 support chaining more edits together at once
 massively improve robust-ness of editing features -> filters/hints/prompts/errors/formats need to be MUCH more consistent
 implement the "concatenate" edit for audio-only files
@@ -149,6 +147,7 @@ figure out the smallest feasible ffmpeg executable we can without sacrificing ma
 create "lite" version on github that doesn't include ffmpeg or vlc files?
 ability to continue playing media while minimized to system tray
 enhance fading by adding ability to hold fade
+forwards/backwards buttons currently only work when pressed over the player
 ability to limit combination-edits (adding/replacing audio) to the shortest input (this exists in ffmpeg but breaks often)
 do the math to chain audio-resizes together to get around ffmpeg atempo 0.5-2.0 limitation (can be chained in single command)
 
@@ -169,7 +168,6 @@ KNOWN ISSUES:
         player becomes slightly less responsive after repeatedly minimizing to system tray (noticable fraction-of-a-second delay when navigating)
         resizing videos doesn't actually stretch them? or... it does? very strange behavior with phantom black bars that differ from player to player
         rarely, concatenated videos will have a completely blank frame between clips, causing the theme background to appear for 1 frame
-        forwards/backwards buttons only work when pressed over the player
         abnormally long delay opening first video after opening extremely large video (longer delay than in VLC) -> delay occurs at player.set_media
     Medium priority:
         output-name lineEdit's placeholder text becomes invisible after setting a theme and then changing focus
@@ -177,9 +175,7 @@ KNOWN ISSUES:
         rotating/flipping video rarely fails for no reason (works upon retry)
         videos with replace/added audio tracks longer than the video themselves do NOT concatenate correctly (audio track freaks ffmpeg out)
         concatenting sometimes freezes an explorer window if drag/dropping from it into the concatenation dialog
-        cropping temporarily breaks in various ways after any type of window-resize occurs -> resize crop diagonally to fix
         repeatedly going into fullscreen on a higher DPI/scaled monitor results ruins the controls (general DPI/scaling support is high priority)
-        images have overall strange, inconsistent behavior (it wasn't always like this, so it's definitely fixable)
     Moderately high priority:
         spamming the cycle buttons will eventually crash to desktop with no error
         volume gain suddenly changes after extended use
@@ -557,7 +553,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: pass
         try: os.remove(cmdpath)
         except: pass
-        logging.info(f'Fast-start connection established. Will listen for videos to open at {cmdpath}.')
+        logging.info(f'Fast-start connection established. Will listen for commands at {cmdpath}.')
 
         while not self.closed:
             for _ in range(total_checks):                                     # run fast-start interface for 5 seconds at a time
@@ -1230,29 +1226,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if data is None:                    # no data provided OR art detected, use TinyTag (fallback to music_tag if necessary)
                     try:                            # we need to avoid parsing probe file anyway, since we need to check for cover art
                         try:
-                            tag = TinyTag.get(file, image=True)         # https://pypi.org/project/tinytag/0.18.0/
+                            tag = TinyTag.get(file, image=True)     # https://pypi.org/project/tinytag/0.18.0/
                             cover_art = tag.get_image()
                             if cover_art:
-                                gif_player.play(cover_art)              # cover art is bytes -> set to gif_player's QPixmap, open QPixmap with PIL
+                                gif_player.play(cover_art)          # cover art is bytes -> set to gif_player's QPixmap, open QPixmap with PIL
                                 self.vwidth, self.vheight = get_PIL_Image().fromqpixmap(gif_player.art).size
                             else:
                                 self.vwidth = 16
                                 self.vheight = 9
                             duration = tag.duration
-                        except:                                         # TinyTag is lightweight but cannot handle everything
-                            import music_tag                            # only import music_tag if we absolutely need to
+                        except:                                     # TinyTag is lightweight but cannot handle everything
+                            import music_tag                        # only import music_tag if we absolutely need to
                             tag = music_tag.load_file(file)
                             if 'artwork' in tag:
                                 art = tag['artwork'].first
-                                gif_player.play(art.data)               # art.data is bytes -> set to gif_player's QPixmap
-                                self.vwidth = art.width                 # music_tag directly reports width/height of artwork
+                                gif_player.play(art.data)           # art.data is bytes -> set to gif_player's QPixmap
+                                self.vwidth = art.width             # music_tag directly reports width/height of artwork
                                 self.vheight = art.height
                             else:
                                 self.vwidth = 16
                                 self.vheight = 9
                             duration = tag['#length'].value
                         #gif_player.pixmap().save(os.path.join(constants.TEMP_DIR, f'{os.path.basename(file)}_{os.path.getctime(file)}.png'))
-                    except:                                             # this is to handle things that wrongly report as audio, like .ogv files
+                    except:                                         # this is to handle things that wrongly report as audio, like .ogv files
                         logging.info(f'Invalid audio file detected, parsing as a video file... {format_exc()}')
                         if probe_file:
                             start = get_time()
@@ -1374,7 +1370,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try:
                     filetype_data = filetype.guess(file)    # 'EXTENSION', 'MIME', 'extension', 'mime'
                     mime, extension = filetype_data.mime.split('/')
-                    logging.info(f'Filetype data: {filetype_data} | Mime type: {mime} | Full mime: {filetype_data.mime} | True extension: {filetype_data.extension}')
                     if mime not in ('video', 'image', 'audio'):
                         self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid mime type).')
                         return -1
@@ -1408,8 +1403,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (non-video parsing failed).')
                     return -1
                 parsed = True
-                if extension == 'gif': self.log(f'Opening GIF (limited support): {file}\n')
-            else: self.log(f'Opening file: {file}\n')
+            logging.info('--- OPENING FILE ---')
+            self.log(f'Opening file ({mime}/{extension}): {file}')
 
             # misc cleanup/setup for new media
             self.operations = {}
@@ -1450,7 +1445,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     return -1
 
             if not remember_old_file or not self.video_original_path: self.video_original_path = file
-            logging.info(f'-- KEY MEDIA ATTRIBUTES --\nduration={self.duration}, fps={self.frame_rate} ({self.frame_rate_rounded}), frame_count={self.frame_count}, w={self.vwidth}, h={self.vheight}, ratio={self.ratio}, delay={self.delay}\n')
 
             # update recent media list
             if update_recent_list:
@@ -1488,9 +1482,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             the previous media left off at. Putting ALL of open() in this slot, however, results in a noticable delay when opening
             media. Non-essential actions - emitting update_title_signal and displaying a marquee - are handled here as well. '''
         try:
-            logging.info('Finishing open from _open_signal.')
-            start = get_time()
-
             self.sliderProgress.setMaximum(self.frame_count)
             update_progress(0)
             self.minimum = self.sliderProgress.minimum()
@@ -1519,7 +1510,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not self.dialog_settings.checkAutoEnableSubtitles.isChecked(): player.video_set_spu(-1)
             self.first_video_fully_loaded = True
 
-            logging.info(f'Supplementary media opening completed after {get_time() - start:.4f} seconds.')
+            logging.info(f'Metadata: duration={self.duration}, fps={self.frame_rate} ({self.frame_rate_rounded}), frames={self.frame_count}, size={self.vwidth}x{self.vheight}, ratio={self.ratio}, delay={self.delay:.6f}')
+            logging.info('--- OPENING COMPLETE ---\n')
             gc.collect(generation=2)            # do manual garbage collection after opening (NOTE: this MIGHT be risky)
         except: logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
 
@@ -3042,13 +3034,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
         get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
-        for index, video in enumerate(reversed(self.recent_videos)):        # reversed to show most recent first
+        for index, video in enumerate(reversed(self.recent_videos)):         # reversed to show most recent first
             action = QtW.QAction(f'&{index + 1}. {os.path.basename(video)}', self.menuRecent)
-            action.triggered.connect(get_open_lambda(video))                # workaround for python bug/oddity involving creating lambdas in iterables
+            action.triggered.connect(get_open_lambda(video))                 # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)
         self.menuRecent.addSeparator()
-        self.menuRecent.addAction(self.actionClearRecent)                   # add separator and clear action at bottom
+        self.menuRecent.addAction(self.actionClearRecent)                    # add separator and clear action at bottom
 
 
     def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable

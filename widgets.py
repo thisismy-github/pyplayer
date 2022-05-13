@@ -583,13 +583,13 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             mod = event.keyboardModifiers()
             if mod != self.dragdrop_last_modifiers:
                 self.dragdrop_last_modifiers = mod
-                if mod & Qt.ControlModifier:     # ctrl (concat before current)
+                if mod & Qt.ControlModifier:            # ctrl (concat before current)
                     self.parent.statusbar.showMessage('Drop to concatenate before current media', 0)
                     self.show_text('Drop to concatenate before current media', timeout=0, position=0)
-                elif mod & Qt.AltModifier:       # alt (concat after current)
+                elif mod & Qt.AltModifier:              # alt (concat after current)
                     self.parent.statusbar.showMessage('Drop to concatenate after current media', 0)
                     self.show_text('Drop to concatenate after current media', timeout=0, position=0)
-                elif mod & Qt.ShiftModifier:     # shift (add audio track)
+                elif mod & Qt.ShiftModifier:            # shift (add audio track)
                     file = [url.toLocalFile() for url in event.mimeData().urls()][0]
                     if os.path.abspath(file) != self.parent.video:
                         self.parent.statusbar.showMessage('Drop to add as audio track', 0)
@@ -616,22 +616,22 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         if self.parent.video:
             mod = event.keyboardModifiers()
-            if mod & Qt.ControlModifier:    # ctrl (concat before current)
+            if mod & Qt.ControlModifier:                # ctrl (concat before current)
                 self.parent.concatenate(action=self.parent.actionCatBefore, files=files)
-            elif mod & Qt.AltModifier:      # alt (concat after current)
+            elif mod & Qt.AltModifier:                  # alt (concat after current)
                 self.parent.concatenate(action=self.parent.actionCatAfter, files=files)
-            elif mod & Qt.ShiftModifier:    # shift (add audio track, one file at time currently)
+            elif mod & Qt.ShiftModifier:                # shift (add audio track, one file at time currently)
                 file = files[0]
                 if os.path.abspath(file) != self.parent.video: self.parent.add_audio(path=file)
                 else: self.parent.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
-            else:                           # no modifiers pressed, check if subtitle files were dropped
+            else:                                       # no modifiers pressed, check if subtitle files were dropped
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
                 if subtitle_files: self.parent.browse_subtitle_file(urls=subtitle_files)
                 else: self.parent.open(files[0], focus_window=focus_window)  # no modifiers, no subtitles -> play dropped file as media
         else: self.parent.open(files[0], focus_window=focus_window)          # no video playing -> ignore modifiers and play dropped file
         if self.parent.dialog_settings.checkRememberDropFolder.isChecked():  # update lastdir if desired
             cfg.lastdir = os.path.dirname(files[0])
-        super().dropEvent(event)            # run QWidget's built-in behavior
+        super().dropEvent(event)                        # run QWidget's built-in behavior
 
 
 
@@ -645,7 +645,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         self._gifScale = 0
         self.art = QtGui.QPixmap()
         self.gif = QtGui.QMovie()
-        self.gif.setCacheMode(QtGui.QMovie.CacheAll)     # required for jumpToFrame to work
+        self.gif.setCacheMode(QtGui.QMovie.CacheAll)    # required for jumpToFrame to work
         self.gifSize = None                             # gif's native size (QMovie doesn't track this)
         self.image = self.art                           # alias for self.art's QPixmap
         self.isCoverArt = False
@@ -736,7 +736,7 @@ class QVideoPlayerLabel(QtW.QLabel):
 class QVideoSlider(QtW.QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setAcceptDrops(True)                   # TODO is having stuff like this here better than in the .ui file?
+        self.setAcceptDrops(True)                       # TODO is having stuff like this here better than in the .ui file?
 
         self.last_mouseover_time = 0
         self.last_mouseover_pos = None
@@ -758,7 +758,7 @@ class QVideoSlider(QtW.QSlider):
     def paintEvent(self, event: QtGui.QPaintEvent):
         ''' Paints timestamps under the mouse cursor corresponding with its position while hovering over the slider.
             Due to the need for the cursor's up-to-date position regardless '''
-        super().paintEvent(event)                           # perform built-in paint immediately so we can paint on top
+        super().paintEvent(event)                       # perform built-in paint immediately so we can paint on top
         now = time.time()
 
         # handle QVideoPlayer's idle cursor/fullscreen controls timeout
