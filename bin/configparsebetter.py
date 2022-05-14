@@ -209,7 +209,8 @@ class _ConfigParseBetter:
                  section='general', stripValues=False,
                  autoUnpackLen1Lists=True, defaultExtension='.ini',
                  defaultDelimiter=',', sectionLock=False,
-                 lowMemoryMode=False, autosaveCallback=True):
+                 lowMemoryMode=False, autosaveCallback=True,
+                 encoding=None, ConfigParserKwargs={}):
         ''' ConfigParserObject defaults to None because using objects as default
             values will always init them first, causing 2 ConfigParserObjects to
             be generated if the user passes in their own. '''
@@ -221,13 +222,14 @@ class _ConfigParseBetter:
         self.__defaultDelimiter = defaultDelimiter
         self.__lowMemoryMode = lowMemoryMode    # TODO unused
         self.__autosave = autosave
+        self.__encoding = encoding
 
         self.__iterTypes = (generator, list, tuple, set)
         #self.__locked = tuple(self.__dict__.keys())     # TODO unused (use soon)
         #print(self.__locked, end='\n\n')
 
         if ConfigParserObject is None:
-            self.__parser = configparser.ConfigParser()
+            self.__parser = configparser.ConfigParser(**ConfigParserKwargs)
         else:
             self.__parser = ConfigParserObject
         #self.__section = 'DEFAULT'  # TODO not needed anymore?
@@ -246,7 +248,7 @@ class _ConfigParseBetter:
                 else:
                     self.__filepath = 'config'
         self.__filepath = self.createConfigPath(appdata=appdata)
-        if autoread: self.read(self.__filepath, section)
+        if autoread: self.read(self.__filepath, section, encoding=encoding)
         if autosave and autosaveCallback is not False:          # False -> no callback; True or None -> default callback
             import atexit
             if autosaveCallback is not True and autosaveCallback is not None:   # custom callback specified
@@ -286,16 +288,19 @@ class _ConfigParseBetter:
         return os.path.join(dirs, name)
 
 
-    def read(self, filepath=None, setSection=None):
+    def read(self, filepath=None, setSection=None, **kwargs):
         if setSection is not None: self.setSection(setSection)
-        filepath = filepath if filepath else self.__filepath
-        self.__parser.read(filepath)
+        filepath = filepath or self.__filepath
+        encoding = kwargs.get('encoding', self.__encoding)
+        self.__parser.read(filepath, encoding=encoding)
 
 
-    def write(self, filepath=None, appdata=False):
+    def write(self, filepath=None, mode='w', appdata=False, **kwargs):
         logger.debug('Writing ConfigParseBetter config.')
         filepath = self.createConfigPath(filepath, appdata) if filepath else self.__filepath
-        with open(filepath, 'w') as configfile: self.__parser.write(configfile)
+        encoding = kwargs.get('encoding', self.__encoding)
+        with open(filepath, mode, encoding=encoding) as configfile:
+            self.__parser.write(configfile)
         # -- Outdated version --
         #if (self.__autosave if autosave is None else autosave):     # attempt to auto-save all sections and their options
         #    for section_name in self.sections():
@@ -345,12 +350,14 @@ class _ConfigParseBetter:
         #with open(path, 'w') as configfile: self.__parser.write(configfile)
 
 
-    def refresh(self, newParser=None, autoread=True):
-        ''' Deletes and replaces old configparser object with a new one. '''
+    def refresh(self, newParser=None, autoread=True, **kwargs):
+        ''' Deletes/replaces an old configparser object with a new one. '''
         oldSection = self.__dict__['_ConfigParseBetter__section'].name
         del self.__parser
         self.__parser = newParser or configparser.ConfigParser()  # TODO add the % thing here?
-        if autoread: self.read(self.__filepath)
+        if autoread:
+            encoding = kwargs.get('encoding', self.__encoding)
+            self.read(self.__filepath, encoding=encoding)
         self.setSection(oldSection)   # restore previous section, if possible
 
 

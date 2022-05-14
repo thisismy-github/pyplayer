@@ -9,7 +9,7 @@ import logging
 
 
 logger = logging.getLogger('config.py')
-cfg = ConfigParseBetterQt(autoread=False, autosave=True, autosaveCallback=False)
+cfg = ConfigParseBetterQt(autoread=False, autosave=True, autosaveCallback=False, encoding='utf-16')
 
 
 def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
@@ -19,7 +19,8 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     screen = gui.app.primaryScreen().size()
 
     if filename: cfg.setFilepath(filename)
-    cfg.read(filename)
+    try: cfg.read(filename)
+    except: cfg.read(filename, encoding=None)
 
     cfg.setSection('window')
     gui.resize(*load('size', '871,588', ',', int, tuple))
@@ -42,7 +43,7 @@ def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
     load('trimmodeselected', False)
     load('ffmpegwarningignored', False)
     load('minimizedtotraywarningignored', False)
-    gui.recent_videos = [file for file in load('recent_videos', '', ',') if os.path.exists(file)][-10:]
+    gui.recent_videos = [file for file in load('recent_videos', '', '<|>') if os.path.exists(file)][-10:]
 
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, settings.tabUpdates, ignore=('comboThemes',))
@@ -96,7 +97,7 @@ def saveConfig(gui, filename: str = None):
     save('windowstyle', gui.app.style().objectName())
 
     cfg.setSection('general')
-    save('recent_videos', gui.recent_videos, delimiter=',')
+    save('recent_videos', gui.recent_videos, delimiter='<|>')
 
     cfg.setSection('settings')
     for action in gui.trim_mode_action_group.actions():
