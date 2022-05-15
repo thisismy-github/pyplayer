@@ -184,6 +184,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self._save_open_signal.connect(lambda file, remember_old_file: self.open(file=file, remember_old_file=remember_old_file))
     self.fast_start_open_signal.connect(self.fast_start_open)
     self.restart_signal.connect(self.restart)
+    self.force_pause_signal.connect(self.force_pause)
     self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)
     self.show_trim_dialog_signal.connect(self.show_trim_dialog)
     self.update_progress_signal.connect(self.update_progress_slot)

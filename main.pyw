@@ -399,6 +399,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     _save_open_signal = QtCore.pyqtSignal(str, bool)    # str -> file, bool -> remembering previous file
     fast_start_open_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
+    force_pause_signal = QtCore.pyqtSignal(bool)
     show_ffmpeg_warning_signal = QtCore.pyqtSignal(QtW.QWidget)
     show_trim_dialog_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
@@ -1384,12 +1385,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: was_minimzed_to_tray = False
 
         # --- Playing media ---
-            # attempt to play file
+            # attempt to play media
             if mime == 'image':
                 gif_player.play(file, gif=extension == 'gif')
                 player.stop()
             elif not self.vlc.play(file): return    # immediately attempt to play media once we know it might be valid
-            else: gif_player.play(None)             # clear gifPlayer
+            else: gif_player.play(None)             # clear gifPlayer if vlc successfully played media
 
         # --- Parsing metadata and setting up UI/recent files list ---
             # parse non-video files and show/log file on statusbar
@@ -1548,12 +1549,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def pause(self):
-        ''' Pauses/unpauses the media. Handles updating GUI, cleaning up/restarting, clamping progress
-            to current trim, displaying the pause state on-screen, and wrapping around the progress bar. '''
+        ''' Pauses/unpauses the media. Handles updating GUI, cleaning
+            up/restarting, clamping progress to current trim, displaying
+            the pause state on-screen, wrapping around the progress bar. '''
         if self.mime_type == 'image': return
-        if self.extension == 'gif':
+        if self.extension == 'gif':             # check if gif's filename is correct. if not, restart the gif and restore position
             old_state = gif_player.gif.state()
             was_paused = old_state != QtGui.QMovie.Running
+            if was_paused and os.path.abspath(gif_player.gif.fileName()) != gif_player.filename:
+                gif_player.gif.setFileName(gif_player.filename)             # ^ .fileName() is formatted wrong -> fix with abspath()
+                set_gif_position(get_progess_slider())
             gif_player.gif.setPaused(not was_paused)
             self.is_paused = not was_paused
             frame = gif_player.gif.currentFrameNumber()
@@ -1594,13 +1599,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def stop(self):
         ''' A more robust way of stopping - stop the player while also force-pausing. '''
         player.stop()
-        gif_player.gif.stop()
+        gif_player.gif.setFileName('')
         self.force_pause(True)
 
 
     def get_renamed_output(self, new_name: str = None):
-        ''' Returns `new_name` or self.lineOutput as a valid, sanitized, unique path. If `new_name` ends up being the same
-            as self.video/no media is playing/`new_name` and self.lineOutput are all blank, then `None` is returned. '''
+        ''' Returns `new_name` or self.lineOutput as a valid, sanitized, unique path.
+            If `new_name` ends up being the same as self.video, no media is playing,
+            or `new_name` and self.lineOutput are both blank, then None is returned. '''
         if not self.video or (not new_name and not self.lineOutput.text().strip()): return None
         try:
             old_oscwd = os.getcwd()
@@ -1615,26 +1621,44 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def rename(self, new_name: str = None):
+        ''' Renames the current media to `new_name`. If `new_name` is blank,
+            self.lineOutput is used. See get_renamed_output() for details. '''
         new_name = self.get_renamed_output(new_name)
-        if new_name is None: return
-        player.stop()                                   # player must be stopped before we can rename
+        if new_name is None: return                     # get_renamed_output failed to create a valid output path
+        was_paused = self.is_paused
+        self.stop()                                     # player must be stopped before we can rename
         try:
-            os.renames(self.video, new_name)
+            try:
+                os.renames(self.video, new_name)
+                self.log_on_screen(f'File renamed to {new_name}', 2500, marq_key='Save')
+            except FileNotFoundError:                   # images are cached so they can be altered behind the scenes
+                if self.dialog_settings.checkRenameMissingImages.isChecked():
+                    gif_player.art.save(new_name)
+                    self.log('Current file no longer exists, so a renamed copy was created.')
+                else: return self.log('Current file no longer exists.')
             self.video = new_name
-            self.log_on_screen(f'File renamed to {new_name}', 2500, marq_key='Save')
             self.lineOutput.setText('')                 # clear lineedit after successful rename (same as in open())
             self.lineOutput.setPlaceholderText(os.path.basename(new_name))
             self.lineOutput.setToolTip(f'{new_name}\nEnter a new name and press enter to rename this file.')
             self.update_title_signal.emit()
         except: self.log(f'RENAME FAILED: {format_exc()}')
-        self.vlc.play(self.video)                                       # replay (no need for full-scale open())
-        set_player_position(get_progess_slider() / self.frame_count)    # set VLC back to current position
-        self.recent_videos[-1] = self.video                             # update recent video's list with new name
+
+        # replay the media and restore position (no need for full-scale open())
+        if self.extension == 'gif':
+            gif_player.gif.setFileName(new_name)
+            set_gif_position(get_progess_slider())
+            if not was_paused: self.force_pause_signal.emit(False)          # we have to do this and this must be a signal
+            gif_player.filename = new_name
+        elif self.mime_type != 'image':
+            self.vlc.play(self.video)
+            set_player_position(get_progess_slider() / self.frame_count)    # set VLC back to current position
+        self.recent_videos[-1] = self.video                                 # update recent video's list with new name
 
 
     def delete(self, files):
         if isinstance(files, str): files = (files,)
         if self.video in files:                         # cycle media before deleting if current video is about to be deleted
+            if self.extension == 'gif': self.stop()     # gif_player's QMovie must have its filename changed to unlock it
             old_file = self.video                       # self.video will likely change after media is cycled
             new_file = self.cycle_media(next=self.last_cycle_was_forward, ignore=files)
             if new_file is None or new_file == old_file:
@@ -1755,7 +1779,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.debug(f'temp-dest={dest}, video={video} delete_after_save={delete_after_save} operations_detected={operations_detected}')
 
         # stop player if we've reached this point. it's our last chance to do so safely (without theoretically disrupting the user)
-        player.stop()
+        self.stop()
         #self.frame_override = 0                            # reset UI to frame 0 to avoid glitched times after stopping the player
         #self.lineCurrentTime.setText('')
         if dest == video or delete_after_save == FULL_DELETE:         # TODO add comment here once this is figured out better

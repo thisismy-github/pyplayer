@@ -649,18 +649,21 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.gifSize = None                             # gif's native size (QMovie doesn't track this)
         self.image = self.art                           # alias for self.art's QPixmap
         self.isCoverArt = False
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.filename = None
 
 
-    def play(self, file, gif: bool = False):
-        ''' Opens `file`. If `gif` is True, it's played as a QMovie. Otherwise
-            if `file` is a string, it is displayed as a QPixmap. If `file` is
-            a bytes object, it is decoded as a QPixmap and `isCoverArt` is set
-            to True. If `file` is None, then the label is cleared. '''
-        self.clear()
+    def play(self, file, gif: bool = False, autostart: bool = True):
+        ''' Opens `file`. If `gif` is True, it's opened as a QMovie and starts
+            playing immediately based on `autostart`. Otherwise if `file` is a
+            string, it is displayed as a QPixmap. If `file` is a bytes object,
+            it is decoded as a QPixmap and `isCoverArt` is set to True. If
+            `file` is None, then the label is cleared. '''
         self.gif.stop()
-        if file is None: return
-        if gif:
+        self.filename = file
+        if file is None:
+            self.clear()
+            self.gif.setFileName('')
+        elif gif:
             scale = self._gifScale                      # load gif into QPixmap first to get its native size
             self.art.load(file)
             self.gifSize = self.art.size()
@@ -670,7 +673,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.gif.setFileName(file)
             if scale == 1: self._resizeMovieFit()
             self.setMovie(self.gif)
-            self.gif.start()
+            if autostart: self.gif.start()
             logging.info('Animated image detected.')
         else:                                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
