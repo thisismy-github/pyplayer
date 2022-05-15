@@ -122,17 +122,17 @@ def connect_shortcuts(self: QtW.QMainWindow):
     def increment_volume_boost(value=0.5):
         self.volume_boost = min(self.volume_boost + value, 5)
         self.set_volume(self.sliderVolume.value())
-        self.log_on_screen(f'{self.volume_boost:.1f}x volume multiplier', marq_key='VolumeBoost', log=False)
+        self.log_on_player(f'{self.volume_boost:.1f}x volume multiplier', marq_key='VolumeBoost', log=False)
 
     def increment_subtitle_delay(value=50):
-        if (self.player.video_get_spu_count() - 1) <= 0: return self.log_on_screen('No subtitles available', marq_key='SubtitleDelay', log=False)
+        if (self.player.video_get_spu_count() - 1) <= 0: return self.log_on_player('No subtitles available', marq_key='SubtitleDelay', log=False)
         new_delay = self.player.video_get_spu_delay() + (value * 1000)
         self.player.video_set_spu_delay(new_delay)
-        if new_delay == 0: self.log_on_screen('Subtitle delay 0ms', marq_key='SubtitleDelay', log=False)
-        else: self.log_on_screen(f'Subtitle delay {new_delay/ 1000:.0f}ms ({"later" if new_delay > 0 else "sooner"})', marq_key='SubtitleDelay', log=False)
+        if new_delay == 0: self.log_on_player('Subtitle delay 0ms', marq_key='SubtitleDelay', log=False)
+        else: self.log_on_player(f'Subtitle delay {new_delay/ 1000:.0f}ms ({"later" if new_delay > 0 else "sooner"})', marq_key='SubtitleDelay', log=False)
 
     def toggle_loop():
-        self.log_on_screen(f'Looping {"disabled" if self.actionLoop.isChecked() else "enabled"}', marq_key='Loop', log=False),
+        self.log_on_player(f'Looping {"disabled" if self.actionLoop.isChecked() else "enabled"}', marq_key='Loop', log=False),
         self.actionLoop.trigger()
 
     shortcut_actions = {      # NOTE: having empty rows in tabKeys's formLayout (in QtDesigner) causes actions below empty rows to not work

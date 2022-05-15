@@ -1630,7 +1630,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             try:
                 os.renames(self.video, new_name)
-                self.log_on_screen(f'File renamed to {new_name}', 2500, marq_key='Save')
+                self.log_on_player(f'File renamed to {new_name}', 2500, marq_key='Save')
             except FileNotFoundError:                   # images are cached so they can be altered behind the scenes
                 if self.dialog_settings.checkRenameMissingImages.isChecked():
                     gif_player.art.save(new_name)
@@ -1763,13 +1763,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if dest != video and not no_name_specified:     # destination is different from the video and not because we added "_edited" to it
                 logging.info(f'No operations detected, but a new name was specified. Renaming to {dest}')
                 return self.rename(dest)                    # no operations, but name is changed. do a normal rename and return (not thread safe?)
-            return self.log_on_screen('No changes have been made.', log=False)
+            return self.log_on_player('No changes have been made.', log=False)
 
         # ffmpeg is required after this point, so check that it's actually present
         # because we're in a thread, we skip the warning and display it separately through a signal
         if not constants.verify_ffmpeg(self, warning=False, force_warning=False):
             self.show_ffmpeg_warning_signal.emit(self)
-            return self.log_on_screen('You don\'t have FFmpeg installed!')
+            return self.log_on_player('You don\'t have FFmpeg installed!')
 
         # log data and create some strings for temporary paths we'll be needing
         logging.info(f'Saving file to "{dest}"')
@@ -2149,7 +2149,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # https://stackoverflow.com/questions/7333232/how-to-concatenate-two-mp4-files-using-ffmpeg
         # https://stackoverflow.com/questions/31691943/ffmpeg-concat-produces-dts-out-of-order-errors
         if not constants.verify_ffmpeg(self, force_warning=True):
-            return self.log_on_screen('You don\'t have FFmpeg installed!')
+            return self.log_on_player('You don\'t have FFmpeg installed!')
 
         style = {self.actionCatNone: 0, self.actionCatAny: 1, self.actionCatBefore: 2, self.actionCatAfter: 3}[action]
         if self.mime_type != 'video' and style > 1: return self.statusbar.showMessage('Concatenation is not implemented for audio and image files yet.', 10000)
@@ -2562,9 +2562,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.statusbar.showMessage(msg, timeout)
 
 
-    def log_on_screen(self, text: str, timeout: int = 350, marq_key: str = '', log: bool = True):
+    def log_on_player(self, text: str, timeout: int = 350, marq_key: str = '', log: bool = True):
         ''' Like log_slot, but displays `text` on-screen as a marquee as well. Actual
-            logging can be skipped for less important messages with the `log` parameter. '''
+            logging can be skipped for less important messages with the `log` parameter.
+            `marq_key` is the suffix for the appropriate marquee setting that this message
+            should apply to. Example: marq_key='Save' -> checkTextOnSave.isChecked()? '''
         if log: self.log(text)
         else: self.statusbar.showMessage(text, 10000)
         check = self.dialog_settings.findChild(QtW.QCheckBox, f'checkTextOn{marq_key}')
@@ -2990,7 +2992,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if track_count > 0:
             new_track = player.video_get_spu() - 1     # disabled = -1, track #1 = 2. Yeah.
             self.set_track('subtitle', -1 if new_track == track_count else 0 if new_track == -2 else new_track)
-        else: self.log_on_screen('No subtitles available', marq_key='SubtitleChanged', log=False)
+        else: self.log_on_player('No subtitles available', marq_key='SubtitleChanged', log=False)
 
 
     def set_track(self, track_type, track=-1):
@@ -3002,8 +3004,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not isinstance(track, int): track = track.data()
         else: track += track_offset if track != -1 else 0
         set_track(track)
-        if track >= 0: self.log_on_screen(f'{track_type.title().rstrip("s")} track {track - offset_from_1} enabled', marq_key='SubtitleChanged', log=False)
-        else: self.log_on_screen(f'{track_type.title()} disabled', marq_key='SubtitleChanged', log=False)
+        if track >= 0: self.log_on_player(f'{track_type.title().rstrip("s")} track {track - offset_from_1} enabled', marq_key='SubtitleChanged', log=False)
+        else: self.log_on_player(f'{track_type.title()} disabled', marq_key='SubtitleChanged', log=False)
         gc.collect(generation=2)
 
 
