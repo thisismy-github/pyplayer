@@ -2585,7 +2585,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck or "never"}')
             settings.labelCurrentVersion.setText(f'Current version: {constants.VERSION}')
             settings.labelGithub.setText(settings.labelGithub.text().replace('?url', f'{constants.REPOSITORY_URL}/releases/latest'))
-            update_report = os.path.join(constants.TEMP_DIR, 'update_report.txt')
+            update_report = os.path.join(constants.CWD, 'update_report.txt')
             if os.path.exists(update_report):
                 import update
                 update.validate_update(self, update_report)
