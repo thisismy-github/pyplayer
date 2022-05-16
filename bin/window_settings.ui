@@ -57,9 +57,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>334</width>
-        <height>1753</height>
+        <y>-223</y>
+        <width>346</width>
+        <height>1759</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -76,7 +76,7 @@
            <item>
             <layout class="QFormLayout" name="formLayout">
              <property name="verticalSpacing">
-              <number>4</number>
+              <number>3</number>
              </property>
              <item row="0" column="0">
               <widget class="QLabel" name="label">
@@ -460,34 +460,6 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="19" column="0" colspan="2">
-              <layout class="QHBoxLayout" name="horizontalLayout_8">
-               <item>
-                <widget class="QCheckBox" name="checkMinimizePause">
-                 <property name="toolTip">
-                  <string>If checked, media will automatically pause when minimizing the window.</string>
-                 </property>
-                 <property name="text">
-                  <string>Pause on minimize</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="checkMinimizeRestore">
-                 <property name="enabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="toolTip">
-                  <string>If checked, media will automatically unpause when restoring the window,
-but only if the media had not been paused prior to minimizing.</string>
-                 </property>
-                 <property name="text">
-                  <string>Unpause on restore</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
              <item row="3" column="0">
               <widget class="QLabel" name="label_50">
                <property name="toolTip">
@@ -625,6 +597,34 @@ doesn't exist anymore will do nothing.</string>
                 <property name="bottomMargin">
                  <number>6</number>
                 </property>
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_8">
+                  <item>
+                   <widget class="QCheckBox" name="checkMinimizePause">
+                    <property name="toolTip">
+                     <string>If checked, media will automatically pause when minimizing the window.</string>
+                    </property>
+                    <property name="text">
+                     <string>Pause on minimize</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkMinimizeRestore">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="toolTip">
+                     <string>If checked, media will automatically unpause when restoring the window,
+but only if the media had not been paused prior to minimizing.</string>
+                    </property>
+                    <property name="text">
+                     <string>Unpause on restore</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
                 <item>
                  <widget class="QCheckBox" name="checkFocusDrop">
                   <property name="toolTip">
@@ -848,6 +848,20 @@ of the screen it's on when opening media.</string>
                       <string>Fill (ignore aspect ratio)</string>
                      </property>
                     </item>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QCheckBox" name="checkShowCoverArt">
+                    <property name="toolTip">
+                     <string>If checked, audio files with embedded cover art
+will have their cover art displayed on the player.</string>
+                    </property>
+                    <property name="text">
+                     <string>Show cover art</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
                    </widget>
                   </item>
                  </layout>

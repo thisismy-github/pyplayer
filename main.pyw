@@ -1225,7 +1225,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         try:
                             tag = TinyTag.get(file, image=True)     # https://pypi.org/project/tinytag/0.18.0/
                             cover_art = tag.get_image()
-                            if cover_art:
+                            if cover_art and self.dialog_settings.checkShowCoverArt.isChecked():
                                 gif_player.play(cover_art)          # cover art is bytes -> set to gif_player's QPixmap, open QPixmap with PIL
                                 self.vwidth, self.vheight = get_PIL_Image().fromqpixmap(gif_player.art).size
                             else:
@@ -1235,7 +1235,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         except:                                     # TinyTag is lightweight but cannot handle everything
                             import music_tag                        # only import music_tag if we absolutely need to
                             tag = music_tag.load_file(file)
-                            if 'artwork' in tag:
+                            if 'artwork' in tag and self.dialog_settings.checkShowCoverArt.isChecked():
                                 art = tag['artwork'].first
                                 gif_player.play(art.data)           # art.data is bytes -> set to gif_player's QPixmap
                                 self.vwidth = art.width             # music_tag directly reports width/height of artwork
