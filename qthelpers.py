@@ -94,7 +94,8 @@ def clampToScreen(window, screen: QtGui.QScreen = None,
 
 def getScreenForRect(rect: QtCore.QRect, defaultPos: QtCore.QPoint = None,
                      mouseFallback: bool = False, strict: bool = False) -> QtGui.QScreen:
-    ''' Returns the QScreen that `rect` is touching, if any. If `rect` is not
+    ''' WARNING: If you're checking a window, pass in geometry(), NOT rect().
+        Returns the QScreen that `rect` is touching, if any. If `rect` is not
         touching any screen and `strict` is True, a ValueError is raised.
         Otherwise, if `mouseFallback` is True, the screen the mouse is on is
         returned. If the mouse isn't touching a screen either or neither are

@@ -2894,7 +2894,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # move and resize to fit within screen if necessary
             if self.dialog_settings.checkClampOnResize.isChecked():
                 frame_size = self.frameGeometry().size()
-                screen = qthelpers.getScreenForRect(self.rect())
+                screen = qthelpers.getScreenForRect(self.geometry())
                 screen_size = screen.availableSize()
                 if frame_size.height() > screen_size.height() or frame_size.width() > screen_size.width():
                     self.resize(self.frameGeometry().size().boundedTo(screen_size))
