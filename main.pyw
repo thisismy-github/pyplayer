@@ -2580,6 +2580,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             check date is only saved down to the day so that checks on launch are more predictable. '''
         if self.checking_for_updates: return    # prevent spamming the "check for updates" button
         settings = self.dialog_settings
+        just_updated = False
 
         if _launch:
             settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck or "never"}')
@@ -2589,12 +2590,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if os.path.exists(update_report):
                 import update
                 update.validate_update(self, update_report)
+                just_updated = True
 
         if not _launch or settings.checkAutoUpdateCheck.isChecked():
             try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string into seconds needs %x
             except: last_check_time_seconds = 0
             if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < get_time():
-                self.log('Checking for updates...')
+                if not just_updated: self.log('Checking for updates...')
                 self.checking_for_updates = True
                 self.dialog_settings.buttonCheckForUpdates.setText('Checking for updates...')
 
@@ -2605,7 +2607,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     certifi.core.where = lambda: cacert_override_path
 
                 import update
-                Thread(target=update.check_for_update, args=(self,)).start()
+                Thread(target=update.check_for_update, args=(self, just_updated)).start()
 
                 cfg.lastupdatecheck = strftime('%#D', localtime())      # seconds into string needs %D
                 settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck}')
