@@ -822,7 +822,7 @@ class QVideoPlayerLabel(QtW.QLabel):
     def paintEvent(self, event: QtGui.QPaintEvent):
         if self.pixmap():
             painter = QtGui.QPainter(self)
-            if True:            # TODO add a setting here
+            if settings.checkScaleFiltering.isChecked():
                 painter.setRenderHint(QtGui.QPainter.Antialiasing)
                 painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
                 transformMode = Qt.SmoothTransformation

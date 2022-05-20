@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -223, 346, 1759))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -105, 334, 1780))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -271,6 +271,10 @@ class Ui_settingsDialog(object):
         self.checkShowCoverArt.setChecked(True)
         self.checkShowCoverArt.setObjectName("checkShowCoverArt")
         self.formLayout_8.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.checkShowCoverArt)
+        self.checkScaleFiltering = QtWidgets.QCheckBox(self.groupBox)
+        self.checkScaleFiltering.setChecked(True)
+        self.checkScaleFiltering.setObjectName("checkScaleFiltering")
+        self.formLayout_8.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.checkScaleFiltering)
         self.verticalLayout_7.addLayout(self.formLayout_8)
         self.groupBox_2 = QtWidgets.QGroupBox(self.groupBox)
         self.groupBox_2.setObjectName("groupBox_2")
@@ -1480,6 +1484,10 @@ class Ui_settingsDialog(object):
         self.checkShowCoverArt.setToolTip(_translate("settingsDialog", "If checked, audio files with embedded cover art\n"
 "will have their cover art displayed on the player."))
         self.checkShowCoverArt.setText(_translate("settingsDialog", "Show cover art"))
+        self.checkScaleFiltering.setToolTip(_translate("settingsDialog", "If checked, scaled media will be \"smoothed\" using\n"
+"bilinear filtering as opposed the more pixelated\n"
+"nearest-neighbor scaling (when possible)."))
+        self.checkScaleFiltering.setText(_translate("settingsDialog", "Use bilinear filtering"))
         self.groupBox_2.setTitle(_translate("settingsDialog", "Auto-resizing"))
         self.checkSnapVideos.setText(_translate("settingsDialog", "Videos"))
         self.checkSnapGifs.setText(_translate("settingsDialog", "GIFs"))

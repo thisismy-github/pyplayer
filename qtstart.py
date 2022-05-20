@@ -270,6 +270,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.default_snapshot_path_browse.clicked.connect(self.browse_default_snapshot_path_output)
     settings.buttonHoverFontColor.clicked.connect(self.open_color_picker)
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
+    settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
     settings.buttonCheckForUpdates.clicked.connect(self.handle_updates)
 
     self.position_button_group = QtW.QButtonGroup(settings)

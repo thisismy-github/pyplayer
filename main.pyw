@@ -778,7 +778,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent):             # should these use QWidget.actions() instead of contextMenuEvent?
         ''' Handles creating the context menu (right-click) for the main window. '''
         context = QtW.QMenu(self)
-        if self.actionCrop.isChecked(): context.addAction(self.actionCrop)
+
+        # add crop action if in crop mode or filtering toggle if showing image/gif/cover art
+        if self.actionCrop.isChecked():
+            context.addAction(self.actionCrop)
+        if gif_player.pixmap():
+            toggle_filtering = QtW.QAction('Bilinear filtering')
+            toggle_filtering.setCheckable(True)
+            toggle_filtering.setChecked(self.dialog_settings.checkScaleFiltering.isChecked())
+            toggle_filtering.triggered.connect(self.dialog_settings.checkScaleFiltering.setChecked)
+            context.addAction(toggle_filtering)
+        if context.actions(): context.addSeparator()
+
         context.addAction(self.actionStop)
         context.addMenu(self.menuWindow)
         context.addSeparator()
