@@ -1,6 +1,7 @@
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets as QtW
 from bin.configparsebetter import ConfigParseBetterQt
+import constants
 import qthelpers
 
 import os
@@ -12,7 +13,7 @@ logger = logging.getLogger('config.py')
 cfg = ConfigParseBetterQt(autoread=False, autosave=True, autosaveCallback=False, encoding='utf-16')
 
 
-def loadConfig(gui, filename: str = None) -> ConfigParseBetterQt:
+def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQt:
     start = time.time()
     load = cfg.load
     settings = gui.dialog_settings

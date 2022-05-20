@@ -19,12 +19,14 @@ from traceback import format_exc
 # media_player: ['_as_parameter_', '_instance', 'add_slave', 'audio_get_channel', 'audio_get_delay', 'audio_get_mute', 'audio_get_track', 'audio_get_track_count', 'audio_get_track_description', 'audio_get_volume', 'audio_output_device_enum', 'audio_output_device_get', 'audio_output_device_set', 'audio_output_set', 'audio_set_callbacks', 'audio_set_channel', 'audio_set_delay', 'audio_set_format', 'audio_set_format_callbacks', 'audio_set_mute', 'audio_set_track', 'audio_set_volume', 'audio_set_volume_callback', 'audio_toggle_mute', 'can_pause', 'event_manager', 'from_param', 'get_agl', 'get_chapter', 'get_chapter_count', 'get_chapter_count_for_title', 'get_fps', 'get_full_chapter_descriptions', 'get_full_title_descriptions', 'get_fullscreen', 'get_hwnd', 'get_instance', 'get_length', 'get_media', 'get_nsobject', 'get_position', 'get_rate', 'get_role', 'get_state', 'get_time', 'get_title', 'get_title_count', 'get_xwindow', 'has_vout', 'is_playing', 'is_seekable', 'navigate', 'next_chapter', 'next_frame', 'pause', 'play', 'previous_chapter', 'program_scrambled', 'release', 'retain', 'set_agl', 'set_android_context', 'set_chapter', 'set_equalizer', 'set_evas_object', 'set_fullscreen', 'set_hwnd', 'set_media', 'set_mrl', 'set_nsobject', 'set_pause', 'set_position', 'set_rate', 'set_renderer', 'set_role', 'set_time', 'set_title', 'set_video_title_display', 'set_xwindow', 'stop', 'toggle_fullscreen', 'toggle_teletext', 'video_get_adjust_float', 'video_get_adjust_int', 'video_get_aspect_ratio', 'video_get_chapter_description', 'video_get_crop_geometry', 'video_get_cursor', 'video_get_height', 'video_get_logo_int', 'video_get_marquee_int', 'video_get_marquee_string', 'video_get_scale', 'video_get_size', 'video_get_spu', 'video_get_spu_count', 'video_get_spu_delay', 'video_get_spu_description', 'video_get_teletext', 'video_get_title_description', 'video_get_track', 'video_get_track_count', 'video_get_track_description', 'video_get_width', 'video_set_adjust_float', 'video_set_adjust_int', 'video_set_aspect_ratio', 'video_set_callbacks', 'video_set_crop_geometry', 'video_set_deinterlace', 'video_set_format', 'video_set_format_callbacks', 'video_set_key_input', 'video_set_logo_int', 'video_set_logo_string', 'video_set_marquee_int', 'video_set_marquee_string', 'video_set_mouse_input', 'video_set_scale', 'video_set_spu', 'video_set_spu_delay', 'video_set_subtitle_file', 'video_set_teletext', 'video_set_track', 'video_take_snapshot', 'video_update_viewpoint', 'will_play']
 # media: ['_as_parameter_', '_instance', 'add_option', 'add_option_flag', 'add_options', 'duplicate', 'event_manager', 'from_param', 'get_duration', 'get_instance', 'get_meta', 'get_mrl', 'get_parsed_status', 'get_state', 'get_stats', 'get_tracks_info', 'get_type', 'get_user_data', 'is_parsed', 'parse', 'parse_async', 'parse_stop', 'parse_with_options', 'player_new_from_media', 'release', 'retain', 'save_meta', 'set_meta', 'set_user_data', 'slaves_add', 'slaves_clear', 'slaves_get', 'subitems', 'tracks_get']
 
+
+# ------------------------------------------
+# Aliases (set in main.pyw)
+# ------------------------------------------
+gui: QtW.QMainWindow = None
+app: QtW.QApplication = None
 cfg = None
-app = None
-def init_custom_widgets(cfg_instance, app_instance):
-    global cfg, app
-    cfg = cfg_instance
-    app = app_instance
+settings = None
 
 
 # ------------------------------------------
@@ -49,7 +51,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.player = self.instance.media_player_new()
         self.media = None
         self.event_manager = self.player.event_manager()    # ↓ cannot use .emit as a callback ↓
-        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: self.parent.restart_signal.emit())
+        self.event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda *args: gui.restart_signal.emit())
 
         self.player.stop()                                  # stopping the player at any point fixes the audio-cutoff bug
         self.player.video_set_key_input(False)              # pass VLC key events to widget
@@ -101,14 +103,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         except:
             logging.warning(f'VLC failed to play file {file}: {format_exc()}')
             if not _error:  # _error ensures we only attempt to play previous video once
-                if self.parent.video is None: self.player.stop()    # no previous video to play, so just stop playing
-                else: self.play(self.parent.video, _error=True)     # attempt to play previous working video
+                if gui.video is None: self.player.stop()    # no previous video to play, so just stop playing
+                else: self.play(gui.video, _error=True)     # attempt to play previous working video
             return False
 
 
     def reset_dragdrop_status(self):
         ''' Quickly clears drag-and-drop related messages and properties. '''
-        self.parent.statusbar.clearMessage()
+        gui.statusbar.clearMessage()
         self.show_text('')
         self.dragdrop_last_modifiers = None
         self.dragdrop_in_progress = False
@@ -126,16 +128,16 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             NOTE: VLC supports %-strings: https://wiki.videolan.org/Documentation:Format_String/
                   Escape isolated % characters with %%. Use VideoMarqueeOption.Refresh to auto-update text on
                   an interval. See the bottom of vlc.py for an example implementation of an on-screen clock. '''
-        if not self.parent.dialog_settings.groupText.isChecked(): return    # marquees are completely disabled -> return
+        if not settings.groupText.isChecked(): return           # marquees are completely disabled -> return
         try:
             if position is None: position = self.text_position  # reuse last position if needed
             self.text = (text, timeout, position)               # self.text is read by text_fade_thread
             unique_settings = self.text != self.last_text
             self.last_text = self.text                          # TODO: calling show_text very rapidly results in no fading (text still goes away on time, though)
-            self.text_fade_start_time = time.time() + self.parent.dialog_settings.spinTextFadeDelay.value()   # TODO this doesn't look right at low non-zero values (<0.5)
+            self.text_fade_start_time = time.time() + settings.spinTextFadeDelay.value()            # TODO this doesn't look right at low non-zero values (<0.5)
             self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, self.text_opacity)    # reset opacity to default (repetitive but sometimes necessary)
 
-            if (timeout == 0 and not unique_settings) or self.parent.video is None: return          # avoid repetitive + pointless calls
+            if (timeout == 0 and not unique_settings) or gui.video is None: return                  # avoid repetitive + pointless calls
             if unique_settings:                                                                     # avoid repetitive set_xyz() calls
                 self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Position, position)
                 self.player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, text)             # set new text
@@ -146,7 +148,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def text_fade_thread(self):
-        while not self.parent.closed:
+        while not gui.closed:
             now = time.time()
             fade_time = self.text[1] / 1000                     # self.text[1] = timeout
             if now >= self.text_fade_start_time and fade_time != 0:
@@ -170,19 +172,19 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
     def set_text_height(self, percent: int):
         self.text_height_percent = percent / 100
-        new_size = int(self.parent.vheight * self.text_height_percent)
+        new_size = int(gui.vheight * self.text_height_percent)
         self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Size, new_size)
 
 
     def set_text_x(self, percent: float):
         self.text_x_percent = percent / 100
-        new_x = int(self.parent.vheight * self.text_x_percent)  # offset is relative to media's height for both X and Y
+        new_x = int(gui.vheight * self.text_x_percent)          # offset is relative to media's height for both X and Y
         self.player.video_set_marquee_int(vlc.VideoMarqueeOption.X, new_x)
 
 
     def set_text_y(self, percent: float):
         self.text_y_percent = percent / 100
-        new_y = int(self.parent.vheight * self.text_y_percent)  # offset is relative to media's height for both X and Y
+        new_y = int(gui.vheight * self.text_y_percent)          # offset is relative to media's height for both X and Y
         self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Y, new_y)
 
 
@@ -199,7 +201,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         min_point = None
         for point in self.selection:
             #dist = abs(pos.x() - point.x()) + abs(pos.y() - point.y())     # TODO: verify that manhattanLength is actually better than this
-            dist = (pos - point).manhattanLength()  # https://doc.qt.io/qt-5/qpoint.html#manhattanLength
+            dist = (pos - point).manhattanLength()              # https://doc.qt.io/qt-5/qpoint.html#manhattanLength
             if dist < min_dist:
                 min_dist = dist
                 min_point = point
@@ -212,9 +214,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         s = self.selection
         for index in range(2):  # 0, 1
             if s[index].x() - _range <= pos.x() <= s[index].x() + _range and s[index].y() < pos.y() < s[(index + 2) % 4].y():
-                return 0 if index == 0 else 2   # hovering over left edge if index == 0, else right edge
+                return 0 if index == 0 else 2                   # hovering over left edge if index == 0, else right edge
             elif s[index * 2].y() - _range <= pos.y() <= s[index * 2].y() + _range and s[index * 2].x() < pos.x() < s[(index * 2) + 1].x():
-                return 1 if index == 0 else 3   # hovering over top edge if index == 0, else bottom edge
+                return 1 if index == 0 else 3                   # hovering over top edge if index == 0, else bottom edge
         return None
 
 
@@ -239,8 +241,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             media it is actively resizing, which is why we must calculate it manually. '''
         w = self.width()
         h = self.height()
-        vw = self.parent.vwidth
-        vh = self.parent.vheight
+        vw = gui.vwidth
+        vh = gui.vheight
         ratio = vw / vh                     # native aspect ratio
         widget_ratio = w / h                # aspect ratio of QVideoPlayer
         if widget_ratio < ratio:            # video fills viewport width (there are black bars top/bottom)
@@ -265,17 +267,17 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             QPointF `pos` relative to the media's native resolution. '''
         w = self.width()
         h = self.height()
-        vw = self.parent.vwidth
-        vh = self.parent.vheight
+        vw = gui.vwidth
+        vh = gui.vheight
         ratio = vw / vh
         widget_ratio = w / h
-        if widget_ratio < ratio:    # video fills viewport width (there are black bars top/bottom)
+        if widget_ratio < ratio:                    # video fills viewport width (there are black bars top/bottom)
             factor = vw / w
-            void = ((h * factor) - vh) / 2   # ((h - (w / video_ratio)) / 2)
+            void = ((h * factor) - vh) / 2          # ((h - (w / video_ratio)) / 2)
             x = pos.x() / factor
             y = (pos.y() + void) / factor
             y = max(0, min(y, h))
-        else:                       # video fills viewport height (there are black bars left/right)
+        else:                                       # video fills viewport height (there are black bars left/right)
             factor = vh / h
             void = ((w * factor) - vw) / 2
             x = (pos.x() + void) / factor
@@ -293,13 +295,13 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         h = self.height()
 
         # TODO which one is faster, vsize version or commented-out version? is having vsize JUST for this worth it?
-        #vw = self.parent.vwidth
-        #vh = self.parent.vheight
-        #video_ratio = vw / vh                       # vh is never 0 (handled in parent.open())
+        #vw = gui.vwidth
+        #vh = gui.vheight
+        #video_ratio = vw / vh                       # vh is never 0 (handled in gui.open())
         #widget_ratio = w / h
         #if widget_ratio < video_ratio:              # video fills viewport width (there are black bars top/bottom)
 
-        expected_size = self.parent.vsize.scaled(self.size(), Qt.KeepAspectRatio)
+        expected_size = gui.vsize.scaled(self.size(), Qt.KeepAspectRatio)
         if expected_size.height() < h:              # video fills viewport width (there are black bars top/bottom)
             logging.debug('Video fills viewport width (there are black bars top/bottom)')
             #void = ((h - (w / video_ratio)) / 2)
@@ -324,7 +326,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Updates the geometry for the four QFrames representing cropped out regions. Updates the tooltip to
             include the factored size of the visible region. Saves current set of factored points for later use. '''
         s = self.selection
-        crop_top =    s[0].y()  # TODO make these @property?
+        crop_top =    s[0].y()                      # TODO make these @property?
         crop_left =   s[0].x()
         crop_right =  s[1].x()
         crop_bottom = s[2].y()
@@ -347,7 +349,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     # ---------------------
     def paintEvent(self, event: QtGui.QPaintEvent):
         super().paintEvent(event)                           # TODO this line isn't actually needed?
-        if not self.parent.actionCrop.isChecked(): return   # nothing else to paint if we're not cropping
+        if not gui.actionCrop.isChecked(): return           # nothing else to paint if we're not cropping
 
         s = self.selection
         white = QtGui.QColor(255, 255, 255)
@@ -380,7 +382,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
         ''' Recalculates borders and crop points while resizing, if crop-mode is enabled. '''
-        if self.parent.actionCrop.isChecked():
+        if gui.actionCrop.isChecked():
             self.find_true_borders()
             #self.selection = [self.defactor_point(p) for p in self.last_factored_points]    # this should work but has bizarre side effects
             for index in range(4): self.correct_points(index)
@@ -388,39 +390,39 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         super().resizeEvent(event)
 
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
-        if self.parent.first_video_fully_loaded and self.parent.is_snap_mode_enabled():
-            checked = self.parent.dialog_settings.checkSnapOnResize.checkState()
+        if gui.first_video_fully_loaded and gui.is_snap_mode_enabled():
+            checked = settings.checkSnapOnResize.checkState()
             reverse_behavior = app.keyboardModifiers() & Qt.ControlModifier
             start_snap_timer = checked and not reverse_behavior or not checked and reverse_behavior
             if start_snap_timer:    # only snap if snap is enabled OR it's disabled but ctrl is held while resizing
-                if self.parent.timer_id_resize_snap: self.parent.killTimer(self.parent.timer_id_resize_snap)
-                self.parent.timer_id_resize_snap = self.parent.startTimer(150, Qt.CoarseTimer)
+                if gui.timer_id_resize_snap: gui.killTimer(gui.timer_id_resize_snap)
+                gui.timer_id_resize_snap = gui.startTimer(150, Qt.CoarseTimer)
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         ''' Handles grabbing crop points/edges in crop-mode, as well as detected the
             forwards/backwards buttons and moving through the recent files list. '''
         try:
-            if not self.parent.actionCrop.isChecked():                      # no crop -> check for back/forward buttons
+            if not gui.actionCrop.isChecked():              # no crop -> check for back/forward buttons
                 # NOTE: recent_videos is least recent to most recent -> index 0 is the LEAST recent
                 if event.button() == Qt.BackButton or event.button() == Qt.ForwardButton:
-                    if self.parent.video not in self.parent.recent_videos:  # default to latest file if no valid file is loaded
-                        current_index = len(self.parent.recent_videos)
-                    else: current_index = self.parent.recent_videos.index(self.parent.video)
+                    if gui.video not in gui.recent_videos:  # default to latest file if no valid file is loaded
+                        current_index = len(gui.recent_videos)
+                    else: current_index = gui.recent_videos.index(gui.video)
                     new_index = current_index + (1 if event.button() == Qt.ForwardButton else -1)
-                    if 0 <= new_index <= len(self.parent.recent_videos) - 1:
-                        file = self.parent.recent_videos[new_index]
-                        self.parent.open(file, update_recent_list=False)
-                        self.parent.log(f'Opened recent file #{len(self.parent.recent_videos) - new_index}: {file}')
-                elif event.button() == Qt.LeftButton:                       # get dragging offset for QVideoPlayerLabel
-                    self.parent.gifPlayer._draggingOffset = event.pos() - self.parent.gifPlayer.pixmapPos
+                    if 0 <= new_index <= len(gui.recent_videos) - 1:
+                        file = gui.recent_videos[new_index]
+                        gui.open(file, update_recent_list=False)
+                        gui.log(f'Opened recent file #{len(gui.recent_videos) - new_index}: {file}')
+                elif event.button() == Qt.LeftButton:       # get dragging offset for QVideoPlayerLabel
+                    gui.gifPlayer._draggingOffset = event.pos() - gui.gifPlayer.pixmapPos
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
-            pos = self.mapFromGlobal(QtGui.QCursor.pos())                   # mousePressEvent's event.pos() appears to return incorrect values...
-            self.dragging = self.get_crop_point_index_in_range(pos)         # ...in certain areas, leading to bad offsets and mismatched selections
+            pos = self.mapFromGlobal(QtGui.QCursor.pos())               # mousePressEvent's event.pos() appears to return incorrect values...
+            self.dragging = self.get_crop_point_index_in_range(pos)     # ...in certain areas, leading to bad offsets and mismatched selections
             if self.dragging is not None:
-                self.drag_axis_lock = None                                  # reset axis lock before dragging corners
+                self.drag_axis_lock = None                              # reset axis lock before dragging corners
                 self.dragging_offset = pos - self.selection[self.dragging]
             else:
                 edge_index = self.get_crop_edge_index_in_range(pos)
@@ -446,13 +448,13 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         ''' Allows users to drag crop borders by their corners. '''
-        if not self.parent.actionCrop.isChecked():          # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
+        if not gui.actionCrop.isChecked():                  # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
             if app.mouseButtons() == Qt.LeftButton:         # TODO semi-normal mousePressEvent implementation, why won't event.button() work?
-                self.parent.gifPlayer.pixmapPos = event.pos() - self.parent.gifPlayer._draggingOffset
-                self.parent.gifPlayer._dragging = True
-                self.parent.gifPlayer.update()              # adjust QVideoPlayerLabel's pixmap's position and update
+                gui.gifPlayer.pixmapPos = event.pos() - gui.gifPlayer._draggingOffset
+                gui.gifPlayer._dragging = True
+                gui.gifPlayer.update()                      # adjust QVideoPlayerLabel's pixmap's position and update
 
-            if self.parent.dialog_settings.checkHideIdleCursor.isChecked() and self.parent.video:
+            if settings.checkHideIdleCursor.isChecked() and gui.video:
                 self.last_move_time = time.time()           # update move time if a video is playing and idle timeouts are enabled
             else: self.last_move_time = 0                   # otherwise, keep move time at 0
             return event.ignore()                           # only handle idle timeouts if we're not cropping
@@ -501,8 +503,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                             for point in s: point -= left
                     self.panning = True     # indicate that we have started panning so we don't pause video on release
                 else:
-                    if app.keyboardModifiers() & Qt.ControlModifier:     # TODO this barely works, but it works. for now
-                        self.dragging = 0       # TODO bandaid fix so I don't have to finish all 4 points
+                    if app.keyboardModifiers() & Qt.ControlModifier:    # TODO this barely works, but it works. for now
+                        self.dragging = 0                               # TODO bandaid fix so I don't have to finish all 4 points
                         new_x = new_pos.x()
                         anchor_index = (self.dragging + 1) % 4
                         anchor = s[anchor_index]
@@ -511,18 +513,18 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                             new_y = dragged.y() + (new_x - dragged.x())
                             dragged.setY(new_y)
                             height = s[(self.dragging + 2) % 4].y() - dragged.y()
-                            anchor.setX(new_x + height)   # new_x - height is close to making indexes 1/3 work
+                            anchor.setX(new_x + height)     # new_x - height is close to making indexes 1/3 work
                         else:
                             new_y = dragged.y() - (new_x - dragged.x())
                             dragged.setY(new_y)
                             height = s[(self.dragging + 2) % 4].y() - dragged.y()
-                            anchor.setX(new_x - height)   # new_x - height is close to making indexes 1/3 work
+                            anchor.setX(new_x - height)     # new_x - height is close to making indexes 1/3 work
                         ##dragged.setY(anchor.x() - dragged.x())
                         dragged.setX(new_x)
                         #dragged.setY(new_x)
                         #anchor.setX(anchor.x() - (anchor.x() - dragged.x()))
                         #height = s[(self.dragging + 2) % 4].y() - dragged.y()
-                        #anchor.setX(new_x + height)   # new_x - height is close to making indexes 1/3 work
+                        #anchor.setX(new_x + height)         # new_x - height is close to making indexes 1/3 work
                         self.correct_points(self.dragging)
                         self.correct_points(anchor_index)
                     else:
@@ -533,7 +535,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 self.crop_rect.setBottomRight(s[3])
 
                 self.update_crop_frames()        # update crop frames and factored points
-                self.repaint()                   # repaint QVideoPlayer (TODO update() vs repaint() here)
+                self.repaint()                   # repaint QVideoPlayer (TODO: update() vs repaint() here)
         except TypeError: pass                   # self.dragging is None
         except: logging.warning(f'(!) Unexpected error while dragging crop points: {format_exc()}')
         #return super().mouseMoveEvent(event)    # TODO: required for mouseReleaseEvent to work properly?
@@ -547,20 +549,20 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         if event.button() == Qt.LeftButton:
             if (self.dragging is None or self.dragging == -1) and not self.panning:
                 if self.underMouse():                               # mouse wasn't dragged off player
-                    self.parent.pause()
-                if not self.parent.gifPlayer._dragging:             # reset QVideoPlayerLabel's zoom if we click without dragging
-                    self.parent.gifPlayer.disableZoom()
+                    gui.pause()
+                if not gui.gifPlayer._dragging:                     # reset QVideoPlayerLabel's zoom if we click without dragging
+                    gui.gifPlayer.disableZoom()
         if self.dragging is not None:
             while app.overrideCursor():                             # reset cursor to default
                 app.restoreOverrideCursor()
         #self.panning = False
         self.dragging = None                                        # release drag
-        self.parent.gifPlayer._dragging = False
+        gui.gifPlayer._dragging = False
 
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
         ''' Triggers GUI's fullscreen action after double-clicking the player. '''
-        if event.button() == Qt.LeftButton: self.parent.actionFullscreen.trigger()
+        if event.button() == Qt.LeftButton: gui.actionFullscreen.trigger()
 
 
     def leaveEvent(self, event: QtCore.QEvent):
@@ -588,28 +590,28 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
         ''' Indicates what the currently held button-combination will do once the drag-and-drop finishes on the statusbar and
             player (if possible). Keeps track of currently held button-combination to avoid repetitive statusbar/marquee calls. '''
-        if not self.parent.video:                       # no video is playing, can't show marquee. and don't bother showing special options
-            self.parent.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
+        if not gui.video:                       # no video is playing, can't show marquee. and don't bother showing special options
+            gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
         else:
             mod = event.keyboardModifiers()
             if mod != self.dragdrop_last_modifiers:
                 self.dragdrop_last_modifiers = mod
                 if mod & Qt.ControlModifier:            # ctrl (concat before current)
-                    self.parent.statusbar.showMessage('Drop to concatenate before current media', 0)
+                    gui.statusbar.showMessage('Drop to concatenate before current media', 0)
                     self.show_text('Drop to concatenate before current media', timeout=0, position=0)
                 elif mod & Qt.AltModifier:              # alt (concat after current)
-                    self.parent.statusbar.showMessage('Drop to concatenate after current media', 0)
+                    gui.statusbar.showMessage('Drop to concatenate after current media', 0)
                     self.show_text('Drop to concatenate after current media', timeout=0, position=0)
                 elif mod & Qt.ShiftModifier:            # shift (add audio track)
                     file = [url.toLocalFile() for url in event.mimeData().urls()][0]
-                    if os.path.abspath(file) != self.parent.video:
-                        self.parent.statusbar.showMessage('Drop to add as audio track', 0)
+                    if os.path.abspath(file) != gui.video:
+                        gui.statusbar.showMessage('Drop to add as audio track', 0)
                         self.show_text('Drop to add as audio track', timeout=0, position=0)
                     else:
-                        self.parent.statusbar.showMessage('Drop to add as audio track (disabled due to identical file)', 0)
+                        gui.statusbar.showMessage('Drop to add as audio track (disabled due to identical file)', 0)
                         self.show_text('Drop to add as audio track (disabled due to identical file)', timeout=0, position=0)
                 else:                                   # no modifiers (play file)
-                    self.parent.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift for more options', 0)
+                    gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift for more options', 0)
                     self.show_text('Drop to play media, or hold ctrl/alt/shift for more options', timeout=0, position=0)
         super().dragMoveEvent(event)
 
@@ -622,25 +624,25 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             Shift        -> Concatenates media file(s) to the end of the current media.
             Alt          -> Concatenates media file(s) to the start of the current media. '''
         self.reset_dragdrop_status()
-        focus_window = self.parent.dialog_settings.checkFocusDrop.isChecked()
+        focus_window = settings.checkFocusDrop.isChecked()
         files = [url.toLocalFile() for url in event.mimeData().urls()]
 
-        if self.parent.video:
+        if gui.video:
             mod = event.keyboardModifiers()
             if mod & Qt.ControlModifier:                # ctrl (concat before current)
-                self.parent.concatenate(action=self.parent.actionCatBefore, files=files)
+                gui.concatenate(action=gui.actionCatBefore, files=files)
             elif mod & Qt.AltModifier:                  # alt (concat after current)
-                self.parent.concatenate(action=self.parent.actionCatAfter, files=files)
+                gui.concatenate(action=gui.actionCatAfter, files=files)
             elif mod & Qt.ShiftModifier:                # shift (add audio track, one file at time currently)
                 file = files[0]
-                if os.path.abspath(file) != self.parent.video: self.parent.add_audio(path=file)
-                else: self.parent.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
+                if os.path.abspath(file) != gui.video: gui.add_audio(path=file)
+                else: gui.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
             else:                                       # no modifiers pressed, check if subtitle files were dropped
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
-                if subtitle_files: self.parent.browse_subtitle_file(urls=subtitle_files)
-                else: self.parent.open(files[0], focus_window=focus_window)  # no modifiers, no subtitles -> play dropped file as media
-        else: self.parent.open(files[0], focus_window=focus_window)          # no video playing -> ignore modifiers and play dropped file
-        if self.parent.dialog_settings.checkRememberDropFolder.isChecked():  # update lastdir if desired
+                if subtitle_files: gui.browse_subtitle_file(urls=subtitle_files)
+                else: gui.open(files[0], focus_window=focus_window)  # no modifiers, no subtitles -> play dropped file as media
+        else: gui.open(files[0], focus_window=focus_window)          # no video playing -> ignore modifiers and play dropped file
+        if settings.checkRememberDropFolder.isChecked():             # update lastdir if desired
             cfg.lastdir = os.path.dirname(files[0])
         super().dropEvent(event)                        # run QWidget's built-in behavior
 
@@ -683,7 +685,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.clear()
             self.gif.setFileName('')
         elif gif:
-            scale = self._gifScale                      # load gif into QPixmap first to get its native size
+            scale = self._gifScale      # load gif into QPixmap first to get its native size
             self.art.load(file)
             self.gifSize = self.art.size()
             self.clear()
@@ -694,7 +696,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.setMovie(self.gif)
             if autostart: self.gif.start()
             logging.info('Animated image detected.')
-        else:                                           # static image. if `file` is bytes, it's cover art
+        else:                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
             if isBytes: self.art.loadFromData(file)
             else: self.art.load(file)
@@ -763,7 +765,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         self._gifScale = index
         if self.movie():
             self.setScaledContents(index == 2)
-            self.gif.stop()                             # stop and reset gif to clear cached frames
+            self.gif.stop()                                 # stop and reset gif to clear cached frames
             self.gif.setFileName(self.gif.fileName())
             if index == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
             if index == 1: self._resizeMovieFit()
@@ -831,7 +833,7 @@ class QVideoPlayerLabel(QtW.QLabel):
 class QVideoSlider(QtW.QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setAcceptDrops(True)                       # TODO is having stuff like this here better than in the .ui file?
+        self.setAcceptDrops(True)   # TODO is having stuff like this here better than in the .ui file?
 
         self.last_mouseover_time = 0
         self.last_mouseover_pos = None
@@ -846,48 +848,48 @@ class QVideoSlider(QtW.QSlider):
         self.color_order = (Color('red'), Color('blue'), Color('lime'))
 
     # pass keystrokes through to parent
-    def keyPressEvent(self, event: QtGui.QKeyEvent):   return self.parent.keyPressEvent(event)
-    def keyReleaseEvent(self, event: QtGui.QKeyEvent): return self.parent.keyReleaseEvent(event)
+    def keyPressEvent(self, event: QtGui.QKeyEvent):   return gui.keyPressEvent(event)
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent): return gui.keyReleaseEvent(event)
 
 
     def paintEvent(self, event: QtGui.QPaintEvent):
         ''' Paints timestamps under the mouse cursor corresponding with its position while hovering over the slider.
             Due to the need for the cursor's up-to-date position regardless '''
-        super().paintEvent(event)                       # perform built-in paint immediately so we can paint on top
+        super().paintEvent(event)   # perform built-in paint immediately so we can paint on top
         now = time.time()
 
         # handle QVideoPlayer's idle cursor/fullscreen controls timeout
-        vlc = self.parent.vlc
-        fade_time = max(self.cfg.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 seconds looks instant while avoiding 0-division (no flicker issues)
-        current_opacity = self.parent.dockControls.windowOpacity()
-        min_opacity = self.cfg.spinFullScreenMinOpacity.value() / 100
-        max_opacity = self.cfg.spinFullScreenMaxOpacity.value() / 100
+        vlc = gui.vlc
+        fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 seconds looks instant while avoiding 0-division (no flicker issues)
+        current_opacity = gui.dockControls.windowOpacity()
+        min_opacity = settings.spinFullScreenMinOpacity.value() / 100
+        max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
         try:
-            # we keep track of lock_fullscreen_ui manually instead of repeatedly calling self.parent.dockControls.underMouse()
+            # we keep track of lock_fullscreen_ui manually instead of repeatedly calling gui.dockControls.underMouse()
             # TODO ^^^ is this actually faster, or is underMouse() always kept track of internally?
-            if vlc.last_move_time and not self.parent.lock_fullscreen_ui and vlc.last_move_time + self.parent.dialog_settings.spinHideIdleCursorDuration.value() <= now:
+            if vlc.last_move_time and not gui.lock_fullscreen_ui and vlc.last_move_time + settings.spinHideIdleCursorDuration.value() <= now:
                 vlc.setCursor(Qt.BlankCursor)
                 if current_opacity > min_opacity:
-                    opacity_increment = max_opacity / (fade_time * self.parent.frame_rate_rounded)
-                    self.parent.dockControls.setWindowOpacity(max(current_opacity - opacity_increment, min_opacity))
+                    opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
+                    gui.dockControls.setWindowOpacity(max(current_opacity - opacity_increment, min_opacity))
             else:
                 vlc.unsetCursor()
                 if current_opacity < max_opacity:
-                    opacity_increment = max_opacity / (fade_time * self.parent.frame_rate_rounded)
-                    self.parent.dockControls.setWindowOpacity(min(current_opacity + opacity_increment, max_opacity))
+                    opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
+                    gui.dockControls.setWindowOpacity(min(current_opacity + opacity_increment, max_opacity))
         except:
-            variables = f'fade_time={fade_time} current_opacity={current_opacity} min_opacity={min_opacity} max_opacity={max_opacity} frame_rate_rounded={self.parent.frame_rate_rounded}'
+            variables = f'fade_time={fade_time} current_opacity={current_opacity} min_opacity={min_opacity} max_opacity={max_opacity} frame_rate_rounded={gui.frame_rate_rounded}'
             logging.warning(f'(!) Unexpected error while handling idle-timeout - {variables} - {format_exc()}')
 
         p = QtGui.QPainter()
         p.begin(self)
         try:
             # trim start/end markers
-            if self.clamp_minimum or self.clamp_maximum:    # draw trim-boundaries
+            if self.clamp_minimum or self.clamp_maximum:        # draw trim-boundaries
                 if not self.colors:
                     next_index = self.color_index + 1
                     if next_index > len(self.color_order) - 1: next_index = 0
-                    self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(self.parent.frame_rate * 4)))
+                    self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
                     self.color_index = next_index
                 color = QtGui.QColor(self.colors.pop().get_hex())
                 color.setAlpha(100)
@@ -903,13 +905,13 @@ class QVideoSlider(QtW.QSlider):
 
                 # draw triangle markers for start/end and cover slider outside trim
                 if self.clamp_minimum:
-                    x = self.rangeValueToPixelPos(self.parent.minimum)
+                    x = self.rangeValueToPixelPos(gui.minimum)
                     p.setPen(pen_thick)
                     p.drawRoundedRect(groove_rect.left(), groove_rect.top(), x, groove_rect.height(), 2, 2)
                     p.setPen(pen_thin)
                     p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x - 4, self.height() / 2)]))
                 if self.clamp_maximum:
-                    x = self.rangeValueToPixelPos(self.parent.maximum)
+                    x = self.rangeValueToPixelPos(gui.maximum)
                     p.setPen(pen_thick)
                     p.drawRoundedRect(x, groove_rect.top(), groove_rect.width() - x - 1, groove_rect.height(), 2, 2)
                     p.setPen(pen_thin)
@@ -925,8 +927,8 @@ class QVideoSlider(QtW.QSlider):
             #    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 0), QtCore.QPoint(x, self.height()), QtCore.QPoint(x + 4, self.height() / 2)]))
 
             # hover timestamps
-            if not self.cfg.groupHover.isChecked(): return                          # hover-timestamps are disabled -> return
-            fade_time = max(self.cfg.spinHoverFadeDuration.value(), 0.05)           # 0.05 looks instant but avoids flickers
+            if not settings.groupHover.isChecked(): return                          # hover-timestamps are disabled -> return
+            fade_time = max(settings.spinHoverFadeDuration.value(), 0.05)           # 0.05 looks instant but avoids flickers
             if now <= self.last_mouseover_time + fade_time:
                 if self.underMouse():                                               # reset fade timer if we're still hovering
                     pos = self.mapFromGlobal(QtGui.QCursor().pos())                 # get position relative to widget
@@ -935,11 +937,11 @@ class QVideoSlider(QtW.QSlider):
                 else: pos = self.last_mouseover_pos                                 # use last position if mouse is outside the slider
 
                 frame = self.pixelPosToRangeValue(pos)
-                h, m, s, _ = get_hms(round(self.parent.duration * (frame / self.parent.frame_count), 2))
-                text = f'{m}:{s:02}' if self.parent.duration < 3600 else f'{h}:{m:02}:{s:02}'
+                h, m, s, _ = get_hms(round(gui.duration * (frame / gui.frame_count), 2))
+                text = f'{m}:{s:02}' if gui.duration < 3600 else f'{h}:{m:02}:{s:02}'
 
-                size = self.cfg.spinHoverFontSize.value()
-                font = self.cfg.comboHoverFont.currentFont()    # TODO use currentFontChanged signals + more for performance? not needed?
+                size = settings.spinHoverFontSize.value()
+                font = settings.comboHoverFont.currentFont()    # TODO use currentFontChanged signals + more for performance? not needed?
                 font.setPointSize(size)
                 #font.setPixelSize(size)
                 p.setFont(font)
@@ -949,7 +951,7 @@ class QVideoSlider(QtW.QSlider):
                 # TODO: I sure used a lot of different methods for fading things. should these be more unified?
                 alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
 
-                if self.cfg.checkHoverShadow.isChecked():
+                if settings.checkHoverShadow.isChecked():
                     p.setPen(QtGui.QColor(0, 0, 0, alpha))      # set color to black
                     p.drawText(pos.x() + 1, pos.y() + 1, text)  # draw shadow first
                 self.hover_font_color.setAlpha(alpha)
@@ -957,13 +959,13 @@ class QVideoSlider(QtW.QSlider):
                 p.drawText(pos, text)                           # draw actual text over shadow
 
                 # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
-                #h, m, s, _ = get_hms(round(self.parent.duration * (frame / self.parent.frame_count), 2))
-                #if self.parent.duration < 3600: self.setToolTip(f'{m}:{s:02}')
+                #h, m, s, _ = get_hms(round(gui.duration * (frame / gui.frame_count), 2))
+                #if gui.duration < 3600: self.setToolTip(f'{m}:{s:02}')
                 #else: self.setToolTip(f'{h}:{m:02}:{s:02}')    # use cleaner format for time-strings on videos > 1 hour
         finally: p.end()
 
 
-    def wheelEvent(self, event: QtGui.QWheelEvent):    # https://doc.qt.io/qt-5/qabstractslider.html#SliderAction-enum
+    def wheelEvent(self, event: QtGui.QWheelEvent):             # https://doc.qt.io/qt-5/qabstractslider.html#SliderAction-enum
         ''' Page-steps along the slider while scrolling. Horizontal sliders are increased by
             scrolling down or right, vertical sliders are increased by scrolling up or left. '''
         add = event.angleDelta().y() > 0 or event.angleDelta().x() > 0
@@ -975,7 +977,7 @@ class QVideoSlider(QtW.QSlider):
     def enterEvent(self, event: QtGui.QEnterEvent):
         ''' Marks the current time when mousing-over and forces a paintEvent to begin drawing hover-timestamps.
             Does not require setMouseTracking(True), as enterEvent fires regardless. '''
-        if self.parent.video:
+        if gui.video:
             self.last_mouseover_time = time.time()              # save last mouseover time to use as a fade timer
             self.update()                                       # force-update to draw timestamp in self.paintEvent()
         return super().enterEvent(event)
@@ -988,20 +990,20 @@ class QVideoSlider(QtW.QSlider):
         if event.button() == Qt.LeftButton:
             pos = event.pos()
             frame = self.pixelPosToRangeValue(pos)
-            if self.parent.minimum < frame < self.parent.maximum:
+            if gui.minimum < frame < gui.maximum:
                 self.update_parent_progress(frame)
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
             if self.clamp_minimum or self.clamp_maximum:        # ^ alternate solution by finding points inside QPolygons
                 radius = 12                                     # 12 pixel radius for the handle
                 if self.clamp_minimum:
-                    min_pos = self.rangeValueToPixelPos(self.parent.minimum)
+                    min_pos = self.rangeValueToPixelPos(gui.minimum)
                     if min_pos - radius < pos.x() < min_pos + radius:
                         self.grabbing_clamp_minimum = True
                         self.grabbing_clamp_maximum = False
                         return                                  # return to skip repeating process for maximum
                 if self.clamp_maximum:
-                    max_pos = self.rangeValueToPixelPos(self.parent.maximum)
+                    max_pos = self.rangeValueToPixelPos(gui.maximum)
                     if max_pos - radius < pos.x() < max_pos + radius:
                         self.grabbing_clamp_minimum = False
                         self.grabbing_clamp_maximum = True
@@ -1015,24 +1017,24 @@ class QVideoSlider(QtW.QSlider):
         frame = self.pixelPosToRangeValue(event.pos())          # get frame
         if app.mouseButtons() == Qt.LeftButton:                 # abnormal mousePressEvent implementation, so event.button() is incorrect
             self.update_parent_progress(frame)                  # "grab" handle
-            self.parent.player.set_pause(True)                  # pause player while scrubbing
+            gui.player.set_pause(True)                          # pause player while scrubbing
             self.last_mouseover_time = 0                        # reset last mouseover time to stop drawing timestamp immediately
-            if self.grabbing_clamp_minimum: self.parent.set_trim_start()
-            elif self.grabbing_clamp_maximum: self.parent.set_trim_end()
+            if self.grabbing_clamp_minimum: gui.set_trim_start()
+            elif self.grabbing_clamp_maximum: gui.set_trim_end()
         #self.update()      # TODO <- why doesn't this make the animations smooth?
 
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         ''' Unpauses the player after scrubbing, unless it was paused originally. Does not emit the sliderReleased signal. '''
-        if self.parent.restarted and self.cfg.checkNavigationUnpause.isChecked(): self.parent.pause()   # auto-unpause after restart
-        else: self.parent.player.set_pause(False or self.parent.is_paused)                              # stay paused if we were paused
+        if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
+        else: gui.player.set_pause(False or gui.is_paused)                              # stay paused if we were paused
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
         #if 0 <= event.x() <= self.width() and 0 <= event.y() <= self.height():
         if self.underMouse(): self.last_mouseover_time = time.time()    # resume drawing timestamp after release
         frame = self.pixelPosToRangeValue(event.pos())                  # get frame
-        if frame < self.parent.minimum: self.update_parent_progress(self.parent.minimum)
-        elif frame > self.parent.maximum: self.update_parent_progress(self.parent.maximum)
+        if frame < gui.minimum: self.update_parent_progress(gui.minimum)
+        elif frame > gui.maximum: self.update_parent_progress(gui.maximum)
 
 
     def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:          # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
@@ -1101,7 +1103,7 @@ class QVideoSlider(QtW.QSlider):
 # ------------------------------------------
 # Concatenation Widgets
 # ------------------------------------------
-class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbage collection
+class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any garbage collection
     ''' A list of interactable media files represented by QVideoListItemWidgets within the concatenation menu. '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1136,7 +1138,7 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
         if not item: return                 # no item under mouse, return
 
         action1 = QtW.QAction('&Play')
-        action1.triggered.connect(lambda: self.parent.open(item.toolTip()))
+        action1.triggered.connect(lambda: gui.open(item.toolTip()))
         action2 = QtW.QAction('&Explore')
         action2.triggered.connect(lambda: qthelpers.openPath(item.toolTip(), explore=True))
         action3 = QtW.QAction('&Remove')
@@ -1160,7 +1162,7 @@ class QVideoList(QtW.QListWidget):    # TODO this likely is not doing any garbag
             thumbnail_path = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
             last_modified = time.strftime('%#m/%#d/%y | %#I:%M:%S%p', time.localtime(os.path.getmtime(video))).lower()
             html = f'<html><head/><body><p style="line-height:0.5"><span style="font-family:Yu Gothic; font-size:12pt;">{os.path.basename(video)}</span></p><p><span style="color:#676767;">{last_modified}</span></p></body></html>'
-            item_widget = QVideoListItemWidget(self, thumbnail_path, html, video == self.parent.video)
+            item_widget = QVideoListItemWidget(self, thumbnail_path, html, video == gui.video)
 
             # create and setup QListWidgetItem as the base for our QVideoListItemWidget with our file and QLabel
             if index is not None:   # {index} is used exclusively for moving items (which requires the workaround too)
@@ -1295,9 +1297,9 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         ''' If `escClearsFocus` is set, focus is cleared and returned after Esc is pressed. If `singleSequence` is set,
             sequences are truncated to their last sequence, and ", ..." is stripped from the underlying QLineEdit. '''
-        if event.key() == Qt.Key_Escape:                                  # clear text/focus on Esc
+        if event.key() == Qt.Key_Escape:                                # clear text/focus on Esc
             if self.escClearsSequence: self.clear()
-            if self.escClearsFocus: return self.clearFocus()                     # do NOT use event.ignore() here
+            if self.escClearsFocus: return self.clearFocus()            # do NOT use event.ignore() here
 
         if self.singleSequence:                 # single sequence only
             super().keyPressEvent(event)        # run built-in keyPressEvent first (this emits keySequenceChanged)
@@ -1474,7 +1476,6 @@ class QDraggableWindowFrame(QtW.QFrame):
 #class QCropFrame(QtW.QFrame):
 #    def __init__(self, parent, vlc, index, alpha, *args, **kwargs):
 #        super().__init__(parent, *args, **kwargs)
-#        #self.parent = parent
 #        self.vlc = vlc
 #        self.index = index
 #        self.mousePressEvent = vlc.mousePressEvent
@@ -1539,8 +1540,8 @@ class QDraggableWindowFrame(QtW.QFrame):
 #        self.player.get_state = self.player.state
 #        self.player.get_rate = self.player.playbackRate
 #        self.player.set_rate = self.player.setPlaybackRate
-#        self.player.get_position = lambda: (self.player.position() / 1000) / self.parent.duration
-#        self.player.set_position = lambda pos: self.player.setPosition(pos * self.parent.frame_count * self.parent.delay)
+#        self.player.get_position = lambda: (self.player.position() / 1000) / gui.duration
+#        self.player.set_position = lambda pos: self.player.setPosition(pos * gui.frame_count * gui.delay)
 #        self.player.audio_get_volume = self.player.volume
 #        self.player.audio_set_volume = self.player.setVolume
 #        self.player.audio_get_mute = self.player.isMuted
@@ -1566,8 +1567,8 @@ class QDraggableWindowFrame(QtW.QFrame):
 #        except:
 #            logging.warning(f'QMediaPlayer failed to play video {file}: {format_exc()}')
 #            if not _error:  # _error ensures we only attempt to play previous video once
-#                if self.parent.video is None: self.player.stop()    # no previous video to play, so just stop playing
-#                else: self.play(self.parent.video, _error=True)     # attempt to play previous working video
+#                if gui.video is None: self.player.stop()    # no previous video to play, so just stop playing
+#                else: self.play(gui.video, _error=True)     # attempt to play previous working video
 #            return False
 #
 #
@@ -1577,12 +1578,12 @@ class QDraggableWindowFrame(QtW.QFrame):
 #        #print('mediaplayer release', self.dragging, self.panning)
 #        if event.button() == Qt.LeftButton:                  # left click released
 #            if self.underMouse():                                   # mouse wasn't dragged off player
-#                self.parent.pause()
+#                gui.pause()
 #
 #
 #    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
 #        ''' Triggers GUI's toggle_fullscreen action after double-clicking the player. '''
-#        if event.button() == Qt.LeftButton: self.parent.actionFullscreen.trigger()
+#        if event.button() == Qt.LeftButton: gui.actionFullscreen.trigger()
 #
 #
 #    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):         # accept drag if dragging files (requires self.setAcceptDrops(True))
@@ -1602,26 +1603,26 @@ class QDraggableWindowFrame(QtW.QFrame):
 #    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
 #        ''' Updates the statusbar to indicate what the currently held
 #            button-combination will do once the drag-and-drop finishes. '''
-#        if not self.parent.video:                   # no video is playing, don't bother showing special options
-#            self.parent.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
+#        if not gui.video:                   # no video is playing, don't bother showing special options
+#            gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
 #        else:
 #            mod = event.keyboardModifiers()
 #            if mod & Qt.ControlModifier:     # ctrl (concat before current)
-#                self.parent.statusbar.showMessage('Drop to concatenate before current media', 3000)
+#                gui.statusbar.showMessage('Drop to concatenate before current media', 3000)
 #                #self.show_text('Drop to concatenate before current media', 0)
 #            elif mod & Qt.AltModifier:       # alt (concat after current)
-#                self.parent.statusbar.showMessage('Drop to concatenate after current media', 3000)
+#                gui.statusbar.showMessage('Drop to concatenate after current media', 3000)
 #                #self.show_text('Drop to concatenate after current media', 0)
 #            elif mod & Qt.ShiftModifier:     # shift (add audio track)
 #                file = [url.toLocalFile() for url in event.mimeData().urls()][0]
-#                if os.path.abspath(file) != self.parent.video:
-#                    self.parent.statusbar.showMessage('Drop to add as audio track', 3000)
+#                if os.path.abspath(file) != gui.video:
+#                    gui.statusbar.showMessage('Drop to add as audio track', 3000)
 #                    #self.show_text('Drop to add as audio track', 0)
 #                else:
-#                    self.parent.statusbar.showMessage('Drop to add as audio track (disabled due to identical file)', 3000)
+#                    gui.statusbar.showMessage('Drop to add as audio track (disabled due to identical file)', 3000)
 #                    #self.show_text('Drop to add as audio track (disabled due to identical file)', 0)
 #            else:                                   # no modifiers (play file)
-#                self.parent.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift for more options', 3000)
+#                gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift for more options', 3000)
 #                #self.show_text('Drop to play media, or hold ctrl/alt/shift for more options', 0)
 #        super().dragMoveEvent(event)
 #
@@ -1634,19 +1635,18 @@ class QDraggableWindowFrame(QtW.QFrame):
 #            Shift        -> Concatenates media to the end of the current media.
 #            Alt          -> Concatenates media to the start of the current media. '''
 #        #self.show_text('')
-#        settings = self.parent.dialog_settings
 #        focus_window = settings.checkFocusDrop.isChecked()
 #        file = [url.toLocalFile() for url in event.mimeData().urls()][0]
-#        if self.parent.video:
+#        if gui.video:
 #            mod = event.keyboardModifiers()
 #            if mod & Qt.ControlModifier:     # ctrl (concat before current)
-#                self.parent.concatenate(style='before current', files=(file,))
+#                gui.concatenate(style='before current', files=(file,))
 #            elif mod & Qt.AltModifier:       # alt (concat after current)
-#                self.parent.concatenate(style='after current', files=(file,))
+#                gui.concatenate(style='after current', files=(file,))
 #            elif mod & Qt.ShiftModifier:       # shift (add audio track)
-#                if os.path.abspath(file) != self.parent.video: self.parent.add_audio_track(path=file)
-#                else: self.parent.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
-#            else: self.parent.open(file, focus_window=focus_window)  # video playing but no modifiers -> play dropped file
-#        else: self.parent.open(file, focus_window=focus_window)      # no video playing -> play dropped file
+#                if os.path.abspath(file) != gui.video: gui.add_audio_track(path=file)
+#                else: gui.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
+#            else: gui.open(file, focus_window=focus_window)  # video playing but no modifiers -> play dropped file
+#        else: gui.open(file, focus_window=focus_window)      # no video playing -> play dropped file
 #        self.dragdrop_in_progress = False
 #        super().dropEvent(event)                    # run QWidget's built-in behavior

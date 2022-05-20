@@ -479,13 +479,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuRecent.setToolTipsVisible(True)
         self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuTrimMode)
         self.menuAudio.addAction(self.actionResize)
-        self.vlc.parent = self
         self.player = self.vlc.player                                        # this is a secondary alias for other files to use
-        self.sliderProgress.parent = self
         self.sliderProgress.update_parent_progress = self.set_and_update_progress
         self.sliderVolume.keyPressEvent = self.keyPressEvent                 # pass sliderVolume key presses directly to GUI_Instance
         self.sliderVolume.keyReleaseEvent = self.keyReleaseEvent
-        self.sliderProgress.cfg = self.dialog_settings
         self.sliderProgress.dragEnterEvent = self.vlc.dragEnterEvent         # reuse player's drag-and-drop code for slider
         self.sliderProgress.dropEvent = self.vlc.dropEvent
         self.dockControls.setTitleBarWidget(QtW.QWidget(self.dockControls))  # disables QDockWidget's unique titlebar
@@ -1438,7 +1435,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # extra setup before we absolutely must wait for the media to finish parsing
             self.is_paused = False                  # force_pause could be used here, but it is slightly more efficient this way
             set_pause_button_text('𝗜𝗜')
-            if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())  # force volume to quickly correct gain issue
+            #if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())  # force volume to quickly correct gain issue
             self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
 
             # focus window. if disabled but window is minimized, check for special focus settings. ignore Autoplay focus if desired.
@@ -2176,7 +2173,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # create/setup dialog and connect signals
             from bin.window_cat import Ui_catDialog
             dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_location())
-            dialog.videoList.parent = self                                              # set fake parent for videoList so it can directly access our properties
             dialog.checkOpen.setChecked(cfg.concatenate.open)
             dialog.checkExplore.setChecked(cfg.concatenate.explore)
             dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our current delete setting
@@ -3301,14 +3297,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 #######################################
 if __name__ == "__main__":
     if not constants.IS_COMPILED:
-        import executable.hook                  # manually import launch-hook when running from script
-        from PIL import Image                   # get_PIL_Image sometimes hangs on import when running from script
+        import executable.hook                          # manually import launch-hook when running from script
+        from PIL import Image                           # get_PIL_Image sometimes hangs on import when running from script
     try:
         logging.info(f'PyPlayer opened at {constants.SCRIPT_PATH} with executable {sys.executable}')
         logging.info('Creating QApplication and GUI...')
-        app = QtW.QApplication(sys.argv)        # init qt
-        gui = GUI_Instance(app)                 # init empty GUI instance
-        gui.setup()                             # setup gui's variables, widgets, and threads (0.3mb)
+        app = widgets.app = QtW.QApplication(sys.argv)  # init qt
+        gui = widgets.gui = GUI_Instance(app)           # init empty GUI instance
+        gui.setup()                                     # setup gui's variables, widgets, and threads (0.3mb)
 
         # -----------------------------------------------
         # Aliases for time-sensitive functions/variables
@@ -3334,23 +3330,23 @@ if __name__ == "__main__":
         set_current_time_text = gui.lineCurrentTime.setText
         current_time_lineedit_has_focus = gui.lineCurrentTime.hasFocus
 
-        gui.show()                                              # begin showing UI
-        qtstart.connect_widget_signals(gui)                     # connect signals and slots
-        cfg = config.loadConfig(gui, constants.CONFIG_PATH)     # create and load config
-        gui.refresh_theme_combo(set_theme=cfg.theme)            # load and set themes
-        widgets.init_custom_widgets(cfg, app)                   # set config and app as global objects in widgets.py
-        constants.verify_ffmpeg(gui, warning=True)              # confirm/look for valid ffmpeg path if needed
-        FFPROBE = constants.verify_ffprobe(gui, warning=True)   # confirm/look/return valid ffprobe path if needed
+        gui.show()                                      # begin showing UI
+        qtstart.connect_widget_signals(gui)             # connect signals and slots
+        cfg = widgets.cfg = config.loadConfig(gui)      # create and load config (uses constants.CONFIG_PATH)
+        widgets.settings = gui.dialog_settings          # set settings dialog as global object in widgets.py
+        gui.refresh_theme_combo(set_theme=cfg.theme)    # load and set themes
+        constants.verify_ffmpeg(gui)                    # confirm/look for valid ffmpeg path if needed
+        FFPROBE = constants.verify_ffprobe(gui)         # confirm/look/return valid ffprobe path if needed
 
-        with open(constants.PID_PATH, 'w'):     # create PID file
-            gui.handle_updates(_launch=True)    # check for/download/validate pending updates
-            qtstart.after_show_setup(gui)       # finish up any last second setup
-            gc.collect(generation=2)            # final garbage collection before starting
+        with open(constants.PID_PATH, 'w'):             # create PID file
+            gui.handle_updates(_launch=True)            # check for/download/validate pending updates
+            qtstart.after_show_setup(gui)               # finish up any last second setup
+            gc.collect(generation=2)                    # final garbage collection before starting
             logging.info(f'Starting GUI after {get_time() - constants.SCRIPT_START_TIME:.2f} seconds.')
 
-            if gui.dialog_settings.groupTray.isChecked():       # start system tray icon
+            if cfg.grouptray:                           # start system tray icon
                 logging.info('Creating system tray icon...')
-                app.setQuitOnLastWindowClosed(False)            # ensure qt does not exit until we tell it to
+                app.setQuitOnLastWindowClosed(False)    # ensure qt does not exit until we tell it to
                 gui.tray_icon = qtstart.get_tray_icon(gui)
             else: gui.tray_icon = None
 

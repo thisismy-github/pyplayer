@@ -2,7 +2,6 @@
     that were originally spread across the tops of several files.
     thisismy-github 3/14/22 '''
 
-import config
 import qthelpers
 
 import os
@@ -94,6 +93,7 @@ def verify_ffmpeg(self, warning: bool = True, force_warning: bool = False) -> st
             warn = logging.getLogger('constants.py').warning
             FFMPEG = util.get_from_PATH(filename)
             if FFMPEG == '':
+                import config
                 if config.cfg.ffmpegwarningignored and not force_warning:
                     warn('(!) FFmpeg not detected. Assuming it is still accessible.')
                 elif warning or force_warning:
@@ -149,7 +149,9 @@ If it wasn't, download the FFmpeg essentials below{warning_text}'''
                                         textInformative=popup_text_informative,
                                         icon=QMessageBox.Warning,
                                         **self.get_popup_location()).exec()
-    if not forced and choice == QMessageBox.Cancel: config.cfg.ffmpegwarningignored = True
+    if not forced and choice == QMessageBox.Cancel:
+        import config
+        config.cfg.ffmpegwarningignored = True
     logging.getLogger('constants.py').warning('FFmpeg not detected. Current FFMPEG constant: ' + FFMPEG)
 
 
