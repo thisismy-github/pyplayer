@@ -516,15 +516,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
-        # embed gifPlayer within a QScrollArea for zooming support
-        self.scrollArea = QtW.QScrollArea(self.vlc)
-        self.scrollArea.setWidget(self.gifPlayer)
-        self.scrollArea.setWidgetResizable(True)
-        self.scrollArea.setAlignment(Qt.AlignCenter)
-        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.layoutVLC.addWidget(self.scrollArea, 0, 0, 1, 1)
-
         # TODO: why isn't currentIndexChanged called when the config loads?
         self.gifPlayer.updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
         self.gifPlayer.updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())

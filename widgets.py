@@ -734,7 +734,7 @@ class QVideoPlayerLabel(QtW.QLabel):
 
         self.zoom = zoom
         self.zoomed = True
-        self.resize(new_size)
+        self.update()
         logging.debug(f'QVideoPlayerLabel zoom set to {zoom} (pos={pos} | globalPos={globalPos})')
         return zoom
 
@@ -745,12 +745,18 @@ class QVideoPlayerLabel(QtW.QLabel):
 
     def updateImageScale(self, index: int):
         self._imageScale = index
-        self.update()
+        if self.pixmap():
+            if not self.zoomed:
+                self._calculateCurrentZoom()
+            self.update()
 
 
     def updateArtScale(self, index: int):
         self._artScale = index
-        self.update()
+        if self.pixmap():
+            if not self.zoomed:
+                self._calculateCurrentZoom()
+            self.update()
 
 
     def updateGifScale(self, index: int):
