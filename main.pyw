@@ -728,17 +728,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
         add = event.angleDelta().y() > 0
-        if self.mime_type == 'image':
-            if self.actionCrop.isChecked() or not self.video: return
-            zoom = gif_player.zoom
-            increment = (zoom / 6)
-            gif_player.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
-        else:
-            mod = event.modifiers()                     # just modifiers instead of keyboardModifiers here for some reason
-            if mod & Qt.ControlModifier:                # TODO add more scrolling modifiers and show options like drag/drop does
-                self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
-                self.update_title_signal.emit()
-            else: self.increment_volume(get_volume_scroll_increment() if add else -get_volume_scroll_increment())
+        mod = event.modifiers()                     # just modifiers instead of keyboardModifiers here for some reason
+        if mod & Qt.ControlModifier:                # TODO add more scrolling modifiers and show options like drag/drop does
+            self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
+            self.update_title_signal.emit()
+        else: self.increment_volume(get_volume_scroll_increment() if add else -get_volume_scroll_increment())
         event.accept()
 
 

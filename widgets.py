@@ -414,8 +414,6 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                         file = gui.recent_videos[new_index]
                         gui.open(file, update_recent_list=False)
                         gui.log(f'Opened recent file #{len(gui.recent_videos) - new_index}: {file}')
-                elif event.button() == Qt.LeftButton:       # get dragging offset for QVideoPlayerLabel
-                    gui.gifPlayer._draggingOffset = event.pos() - gui.gifPlayer.pixmapPos
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
@@ -449,11 +447,6 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         ''' Allows users to drag crop borders by their corners. '''
         if not gui.actionCrop.isChecked():                  # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
-            if app.mouseButtons() == Qt.LeftButton:         # TODO semi-normal mousePressEvent implementation, why won't event.button() work?
-                gui.gifPlayer.pixmapPos = event.pos() - gui.gifPlayer._draggingOffset
-                gui.gifPlayer._dragging = True
-                gui.gifPlayer.update()                      # adjust QVideoPlayerLabel's pixmap's position and update
-
             if settings.checkHideIdleCursor.isChecked() and gui.video:
                 self.last_move_time = time.time()           # update move time if a video is playing and idle timeouts are enabled
             else: self.last_move_time = 0                   # otherwise, keep move time at 0
@@ -546,18 +539,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             dragged outside player. Releases dragged crop points/edges if needed, and resets cursor. '''
         #print('release', self.dragging, self.panning)              # TODO: sometimes this STILL pauses
         # left click released and we're either not dragging crop points or we clicked the middle but did not start panning
-        if event.button() == Qt.LeftButton:
-            if (self.dragging is None or self.dragging == -1) and not self.panning:
-                if self.underMouse():                               # mouse wasn't dragged off player
-                    gui.pause()
-                if not gui.gifPlayer._dragging:                     # reset QVideoPlayerLabel's zoom if we click without dragging
-                    gui.gifPlayer.disableZoom()
+        if event.button() == Qt.LeftButton and (self.dragging is None or self.dragging == -1) and not self.panning:
+            if self.underMouse():                                   # mouse wasn't dragged off player
+                gui.pause()
         if self.dragging is not None:
             while app.overrideCursor():                             # reset cursor to default
                 app.restoreOverrideCursor()
         #self.panning = False
         self.dragging = None                                        # release drag
-        gui.gifPlayer._dragging = False
 
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
@@ -676,14 +665,15 @@ class QVideoPlayerLabel(QtW.QLabel):
         ''' Opens `file`. If `gif` is True, it's opened as a QMovie and starts
             playing immediately based on `autostart`. Otherwise if `file` is a
             string, it is displayed as a QPixmap. If `file` is a bytes object,
-            it is decoded as a QPixmap and `isCoverArt` is set to True. If
-            `file` is None, then the label is cleared. '''
+            it is decoded as a QPixmap, `isCoverArt` is set to True, and mouse
+            events are disabled. If `file` is None, the label is cleared. '''
         self.gif.stop()
         self.filename = file
         self.zoomed = False
         if file is None:
             self.clear()
             self.gif.setFileName('')
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         elif gif:
             scale = self._gifScale      # load gif into QPixmap first to get its native size
             self.art.load(file)
@@ -695,6 +685,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             if scale == 1: self._resizeMovieFit()
             self.setMovie(self.gif)
             if autostart: self.gif.start()
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
             logging.info('Animated image detected.')
         else:                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
@@ -702,6 +693,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             else: self.art.load(file)
             self.setPixmap(self.art)
             self.disableZoom()
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, isBytes)
             logging.info(f'Static image/cover art detected. (zoom={self.zoom})')
 
 
@@ -772,8 +764,49 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.gif.start()
 
 
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        ''' Sets the offset between the cursor and our QPixmap's local position. '''
+        if event.button() == Qt.LeftButton and not gui.actionCrop.isChecked():
+            self._draggingOffset = event.pos() - self.pixmapPos
+        return super().mousePressEvent(event)           # QLabel will pass event to underlying widgets (needed for cropping)
+
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        ''' Drags our QPixmap by adjusting its position based on the cursor's
+            position relative to the offset we set in mousePressEvent. '''
+        if not gui.actionCrop.isChecked():
+            if app.mouseButtons() == Qt.LeftButton:     # TODO normal mousePressEvent implementation, why won't event.button() work?
+                self.pixmapPos = event.pos() - self._draggingOffset
+                self._dragging = True
+                self.update()                           # manually update
+        return super().mouseMoveEvent(event)            # QLabel will pass event to underlying widgets (needed for cropping)
+
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        ''' Disables drag-mode on releasing a mouse button. If left-clicking
+            and drag-mode was never enabled, then zoom-mode is disabled. '''
+        if event.button() == Qt.LeftButton:
+            if not self._dragging:                      # reset QVideoPlayerLabel's zoom if we click without dragging
+                self.disableZoom()
+        self._dragging = False
+        return super().mouseReleaseEvent(event)         # QLabel will pass event to underlying widgets (needed for cropping)
+
+
+    def wheelEvent(self, event: QtGui.QWheelEvent):
+        ''' Increments the zoom factor by 1/6th of its current value if we're
+            not cropping. Ctrl zooms twice as much. Shift, half as much. '''
+        event.accept()                                  # accept the wheelEvent or QLabel will pass it through no matter what
+        if gui.actionCrop.isChecked() or not gui.video: return
+        add = event.angleDelta().y() > 0
+        mod = event.modifiers()
+        zoom = self.zoom
+        increment = (zoom / (3 if mod & Qt.ControlModifier else 12 if mod & Qt.ShiftModifier else 6))
+        self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
+
+
     def resizeEvent(self, event: QtGui.QResizeEvent):
-        ''' Handles scaling the GIF/image/cover art while resizing. '''
+        ''' Scales the GIF/image/art while resizing, and calculates
+            what zoom factor the new player size should start from. '''
         if self.hasScaledContents(): return
         if self.movie():
             if self._gifScale == 1: self._resizeMovieFit()
