@@ -41,7 +41,7 @@
       <property name="acceptDrops">
        <bool>true</bool>
       </property>
-      <layout class="QGridLayout" name="gridLayout_4">
+      <layout class="QGridLayout" name="layoutVLC">
        <property name="leftMargin">
         <number>0</number>
        </property>

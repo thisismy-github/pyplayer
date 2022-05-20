@@ -412,6 +412,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                         file = self.parent.recent_videos[new_index]
                         self.parent.open(file, update_recent_list=False)
                         self.parent.log(f'Opened recent file #{len(self.parent.recent_videos) - new_index}: {file}')
+                elif event.button() == Qt.LeftButton:                       # get dragging offset for QVideoPlayerLabel
+                    self.parent.gifPlayer._draggingOffset = event.pos() - self.parent.gifPlayer.pixmapPos
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
@@ -445,6 +447,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         ''' Allows users to drag crop borders by their corners. '''
         if not self.parent.actionCrop.isChecked():          # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
+            if app.mouseButtons() == Qt.LeftButton:         # TODO semi-normal mousePressEvent implementation, why won't event.button() work?
+                self.parent.gifPlayer.pixmapPos = event.pos() - self.parent.gifPlayer._draggingOffset
+                self.parent.gifPlayer._dragging = True
+                self.parent.gifPlayer.update()              # adjust QVideoPlayerLabel's pixmap's position and update
+
             if self.parent.dialog_settings.checkHideIdleCursor.isChecked() and self.parent.video:
                 self.last_move_time = time.time()           # update move time if a video is playing and idle timeouts are enabled
             else: self.last_move_time = 0                   # otherwise, keep move time at 0
@@ -537,14 +544,18 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             dragged outside player. Releases dragged crop points/edges if needed, and resets cursor. '''
         #print('release', self.dragging, self.panning)              # TODO: sometimes this STILL pauses
         # left click released and we're either not dragging crop points or we clicked the middle but did not start panning
-        if event.button() == Qt.LeftButton and (self.dragging is None or self.dragging == -1) and not self.panning:
-            if self.underMouse():                                   # mouse wasn't dragged off player
-                self.parent.pause()
+        if event.button() == Qt.LeftButton:
+            if (self.dragging is None or self.dragging == -1) and not self.panning:
+                if self.underMouse():                               # mouse wasn't dragged off player
+                    self.parent.pause()
+                if not self.parent.gifPlayer._dragging:             # reset QVideoPlayerLabel's zoom if we click without dragging
+                    self.parent.gifPlayer.disableZoom()
         if self.dragging is not None:
             while app.overrideCursor():                             # reset cursor to default
                 app.restoreOverrideCursor()
-        self.dragging = None                                        # release drag
         #self.panning = False
+        self.dragging = None                                        # release drag
+        self.parent.gifPlayer._dragging = False
 
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
@@ -640,16 +651,23 @@ class QVideoPlayerLabel(QtW.QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self._imageScale = 0
-        self._artScale = 0
-        self._gifScale = 0
         self.art = QtGui.QPixmap()
         self.gif = QtGui.QMovie()
-        self.gif.setCacheMode(QtGui.QMovie.CacheAll)    # required for jumpToFrame to work
+
+        self._imageScale = 0                            # 0 -> No scaling (native size)
+        self._artScale = 0                              # 1 -> Fit (keep aspect ratio)
+        self._gifScale = 0                              # 2 -> Fill (ignore aspect ratio)
+        self._dragging = False
+        self._draggingOffset = QtCore.QPoint()          # offset between cursor and image's real pos
+        self.pixmapPos = QtCore.QPoint()                # local position of currently drawn QPixmap
         self.gifSize = None                             # gif's native size (QMovie doesn't track this)
+        self.gif.setCacheMode(QtGui.QMovie.CacheAll)    # required for jumpToFrame to work
         self.image = self.art                           # alias for self.art's QPixmap
+
         self.isCoverArt = False
         self.filename = None
+        self.zoom = 1.0
+        self.zoomed = False
 
 
     def play(self, file, gif: bool = False, autostart: bool = True):
@@ -660,6 +678,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             `file` is None, then the label is cleared. '''
         self.gif.stop()
         self.filename = file
+        self.zoomed = False
         if file is None:
             self.clear()
             self.gif.setFileName('')
@@ -677,30 +696,67 @@ class QVideoPlayerLabel(QtW.QLabel):
             logging.info('Animated image detected.')
         else:                                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
-            scale = self._artScale
-
-            self.setScaledContents(scale == 2)
             if isBytes: self.art.loadFromData(file)
             else: self.art.load(file)
-            if scale == 1: self._resizePixmapFit(self.size())
-            else: self.setPixmap(self.art)
-            logging.info('Static image/cover art detected.')
+            self.setPixmap(self.art)
+            self.disableZoom()
+            logging.info(f'Static image/cover art detected. (zoom={self.zoom})')
+
+
+    def _resizeMovieFit(self):
+        size = QtCore.QSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
+        self.gif.setScaledSize(size)
+
+
+    def _calculateCurrentZoom(self):
+        scale = self._artScale if self.isCoverArt else self._imageScale
+        if scale == 0: self.zoom = 1.0
+        elif scale == 2: self.zoom = self.size().width() / self.art.width()
+        else:
+            newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
+            self.zoom = newSize.width() / self.art.width()
+
+
+    def disableZoom(self):
+        self.zoomed = False
+        self.pixmapPos = self.rect().center() - self.art.rect().center()
+        self.update()
+        self._calculateCurrentZoom()
+
+
+    def setZoom(self, zoom: float, pos: QtCore.QPoint = None, globalPos: QtCore.QPoint = None):
+        zoom = round(min(100.0, max(0.1, zoom)), 3)
+        if zoom == self.zoom: return zoom
+
+        new_size = self.art.size() * zoom
+        if globalPos: pos = self.mapFromGlobal(globalPos)
+        if pos:
+            old_size = self.art.size() * self.zoom
+            old_pos = self.pixmapPos
+            x_offset = ((pos.x() - old_pos.x()) / old_size.width()) * new_size.width()
+            y_offset = ((pos.y() - old_pos.y()) / old_size.height()) * new_size.height()
+            self.pixmapPos = pos - QtCore.QPoint(x_offset, y_offset)
+            self._draggingOffset = pos - self.pixmapPos     # reset offset in case we're dragging + zooming
+
+        self.zoom = zoom
+        self.zoomed = True
+        self.resize(new_size)
+        logging.debug(f'QVideoPlayerLabel zoom set to {zoom} (pos={pos} | globalPos={globalPos})')
+        return zoom
+
+
+    def incrementZoom(self, increment: float, pos: QtCore.QPoint = None, globalPos: QtCore.QPoint = None):
+        return self.setZoom(self.zoom + increment, pos, globalPos)
 
 
     def updateImageScale(self, index: int):
         self._imageScale = index
-        if self.pixmap() and not self.isCoverArt:
-            self.setScaledContents(index == 2)
-            if index != 1: self.setPixmap(self.art)
-            else: self._resizePixmapFit(self.size())
+        self.update()
 
 
     def updateArtScale(self, index: int):
         self._artScale = index
-        if self.pixmap() and self.isCoverArt:
-            self.setScaledContents(index == 2)
-            if index != 1: self.setPixmap(self.art)
-            else: self._resizePixmapFit(self.size())
+        self.update()
 
 
     def updateGifScale(self, index: int):
@@ -714,24 +770,60 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.gif.start()
 
 
-    def _resizePixmapFit(self, size: QtCore.QSize):
-        self.setPixmap(self.art.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-
-
-    def _resizeMovieFit(self):
-        size = QtCore.QSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
-        self.gif.setScaledSize(size)
-
-
     def resizeEvent(self, event: QtGui.QResizeEvent):
         ''' Handles scaling the GIF/image/cover art while resizing. '''
         if self.hasScaledContents(): return
         if self.movie():
             if self._gifScale == 1: self._resizeMovieFit()
-        elif self.pixmap():
-            if self.isCoverArt:                         # "and" not used here for slight optimization
-                if self._artScale == 1: self._resizePixmapFit(event.size())
-            elif self._imageScale == 1: self._resizePixmapFit(event.size())
+        elif self.pixmap() and not self.zoomed: self._calculateCurrentZoom()
+
+
+    def paintEvent(self, event: QtGui.QPaintEvent):
+        if self.pixmap():
+            painter = QtGui.QPainter(self)
+            if True:            # TODO add a setting here
+                painter.setRenderHint(QtGui.QPainter.Antialiasing)
+                painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+                transformMode = Qt.SmoothTransformation
+            else: transformMode = Qt.FastTransformation
+
+            # draw zoomed pixmap by using scale mode and the current zoom to generate new size
+            scale = self._artScale if self.isCoverArt else self._imageScale
+            if self.zoomed:
+                zoom = self.zoom
+
+                # at >1 zoom, drawing to QRect is MUCH faster and looks identical to art.scaled()
+                if zoom >= 1:
+                    if scale == 2: size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
+                    else: size = self.art.size() * zoom
+                    painter.drawPixmap(QtCore.QRect(self.pixmapPos, size), self.art)    # TODO can this deform the image while zooming?
+                    #painter.scale(zoom, zoom)                                          # TODO painter.scale() vs. QRect() -> which is faster?
+                    #painter.drawPixmap(self.pixmapPos / zoom, self.art)
+
+                # at <1 zoom, art.scaled() looks MUCH better and the performance drop is negligible
+                else:
+                    if scale == 2:
+                        size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
+                        aspectRatioMode = Qt.IgnoreAspectRatio
+                    else:
+                        size = self.art.size() * zoom
+                        aspectRatioMode = Qt.KeepAspectRatio
+                    painter.drawPixmap(self.pixmapPos, self.art.scaled(size, aspectRatioMode, transformMode))
+
+            # draw normal pixmap. NOTE: for fill-mode, drawing to a QRect NEVER looks identical (it's much worse)
+            else:
+                #scale = self._artScale if self.isCoverArt else self._imageScale
+                if scale == 0:                          # 0 -> no scaling
+                    self.pixmapPos = self.rect().center() - self.art.rect().center()
+                    painter.drawPixmap(self.pixmapPos, self.art)
+                elif scale == 1:                        # 1 -> fit
+                    scaledPixmap = self.art.scaled(self.size(), Qt.KeepAspectRatio, transformMode)
+                    self.pixmapPos = self.rect().center() - scaledPixmap.rect().center()
+                    painter.drawPixmap(self.pixmapPos, scaledPixmap)
+                elif scale == 2:                        # 2 -> fill
+                    self.pixmapPos = QtCore.QPoint()
+                    painter.drawPixmap(0, 0, self.art.scaled(self.size(), transformMode=transformMode))
+        else: super().paintEvent(event)
 
 
 

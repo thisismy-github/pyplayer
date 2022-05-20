@@ -10,6 +10,7 @@ QLabel { color: rgb(215,215,215); }
 QCheckBox { color: rgb(215,215,215); }
 QStatusBar { color: rgb(150,150,150); }
 QStatusBar::item { border: none; }
+QScrollArea { background-color: transparent }
 
 QVideoPlayer {
 	background-image: url("themes/resources/logo_outline.png");	/* Relative paths are relative to main.exe, NOT the themes folder. */

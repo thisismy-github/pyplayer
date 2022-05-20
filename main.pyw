@@ -519,6 +519,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
+        # embed gifPlayer within a QScrollArea for zooming support
+        self.scrollArea = QtW.QScrollArea(self.vlc)
+        self.scrollArea.setWidget(self.gifPlayer)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setAlignment(Qt.AlignCenter)
+        self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.layoutVLC.addWidget(self.scrollArea, 0, 0, 1, 1)
+
         # TODO: why isn't currentIndexChanged called when the config loads?
         self.gifPlayer.updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
         self.gifPlayer.updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
@@ -722,11 +731,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
         add = event.angleDelta().y() > 0
-        mod = event.modifiers()                         # just modifiers instead of keyboardModifiers here for some reason
-        if mod & Qt.ControlModifier:                    # TODO add more scrolling modifiers and show options like drag/drop does
-            self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
-            self.update_title_signal.emit()
-        else: self.increment_volume(get_volume_scroll_increment() if add else -get_volume_scroll_increment())
+        if self.mime_type == 'image':
+            if self.actionCrop.isChecked() or not self.video: return
+            zoom = gif_player.zoom
+            increment = (zoom / 6)
+            gif_player.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
+        else:
+            mod = event.modifiers()                     # just modifiers instead of keyboardModifiers here for some reason
+            if mod & Qt.ControlModifier:                # TODO add more scrolling modifiers and show options like drag/drop does
+                self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
+                self.update_title_signal.emit()
+            else: self.increment_volume(get_volume_scroll_increment() if add else -get_volume_scroll_increment())
         event.accept()
 
 
@@ -2763,9 +2778,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else:
             vlc = self.vlc
             if self.actionShowMenuBar.isChecked():
-                self.actionShowMenuBar.trigger()    # can't just set to False and reuse actionShowMenuBar.isChecked()...
+                self.actionShowMenuBar.trigger()            # can't just set to False and reuse actionShowMenuBar.isChecked()...
                 self.menubar_visible_before_crop = True     # ...since set_menubar_visible() is more involved than just doing setVisible
             else: self.menubar_visible_before_crop = False
+            gif_player.disableZoom()
 
             self.log('Crop mode enabled. Right-click or press C to exit.')
             vlc.find_true_borders()
@@ -2842,6 +2858,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.actionShowMenuBar.trigger()
             self.menubar.setVisible(True)
             self.menubar_visible_before_crop = False
+        gif_player.update()                                         # repaint gifPlayer to fix background
         self.vlc.setToolTip('')                                     # clear crop-size tooltip
         self.vlc.dragging = None                                    # clear crop-drag
         self.vlc.panning = False                                    # clear crop-pan
