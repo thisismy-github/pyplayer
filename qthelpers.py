@@ -356,7 +356,7 @@ def saveFile(lastdir='.', caption='Save file', filter='All files (*)',
     )
     try:
         path = file.url() if url else file
-        if not path: return (None, '', lastdir) if returnFilter else None, lastdir
+        if not path: return (None, '', lastdir) if returnFilter else (None, lastdir)
         lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
         return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except: return (None, '', lastdir) if returnFilter else (None, lastdir)
