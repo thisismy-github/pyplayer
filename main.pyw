@@ -911,7 +911,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: qthelpers.openPath(cfg.last_snapshot_path, explore=True)
 
         open_action1 = QtW.QAction('Open last snapshot (&PyPlayer)')
-        open_action1.triggered.connect(lambda: self.snapshot(modifiers=Qt.ControlModifier))
+        open_action1.triggered.connect(lambda: self.snapshot(modifiers=Qt.ShiftModifier))
         open_action2 = QtW.QAction('Open last snapshot (&default)')
         open_action2.triggered.connect(lambda: self.snapshot(modifiers=Qt.AltModifier))
         explore_action = QtW.QAction('&Explore last snapshot')
@@ -1741,6 +1741,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         op_trim_end =      self.buttonTrimEnd.isChecked()               # represents both trimming and fading
         op_crop =          self.actionCrop.isChecked()
         if op_crop:
+            if mime == 'audio': return self.log('Please disable crop-mode before saving an audio file (its only meant for screenshotting cover art).')
             crop_selection = tuple(self.vlc.factor_point(point) for point in self.vlc.selection)
             lfp = tuple(self.vlc.last_factored_points)
 
@@ -2376,27 +2377,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.dialog_settings.checkTextOnSubtitleAdded.isChecked(): show_text('Failed to add subtitle file')
 
 
-    def get_size_dialog(self):
-        is_video = self.mime_type == 'video'
+    def get_size_dialog(self, snapshot=False):
+        dimensions = snapshot or self.mime_type == 'video'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
-        dialog = qthelpers.getDialog(title='Input desired ' + 'size' if is_video else 'length',
+        dialog = qthelpers.getDialog(title='Input desired ' + 'size' if dimensions else 'length',
                                      **self.get_popup_location(), fixedSize=(0, 0), flags=Qt.Tool)
 
         layout = QtW.QVBoxLayout(dialog)
         form = QtW.QFormLayout()
         label = QtW.QLabel(dialog)
-        if is_video: label.setText('If width AND height are 0,\nthe native resolution is used.\n\nIf width OR height are 0,\nnative aspect-ratio is used.\n\nSupports percentages,\nsuch as 50%.')
+        if dimensions: label.setText('If width AND height are 0,\nthe native resolution is used.\n\nIf width OR height are 0,\nnative aspect-ratio is used.\n\nSupports percentages,\nsuch as 50%.')
         else: label.setText('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.')
         label.setAlignment(Qt.AlignCenter)
 
-        wline = QtW.QLineEdit('0' if is_video else max_time_string, dialog)
-        wbutton = QtW.QPushButton('Width:' if is_video else 'Length:', dialog)
-        wbutton.clicked.connect(lambda: wline.setText(str(int(vwidth)) if is_video else max_time_string))
-        if is_video: wbutton.setToolTip(f'Reset width to native resolution ({vwidth:.0f} pixels).')
+        wline = QtW.QLineEdit('0' if dimensions else max_time_string, dialog)
+        wbutton = QtW.QPushButton('Width:' if dimensions else 'Length:', dialog)
+        wbutton.clicked.connect(lambda: wline.setText(str(int(vwidth)) if dimensions else max_time_string))
+        if dimensions: wbutton.setToolTip(f'Reset width to native resolution ({vwidth:.0f} pixels).')
         else: wbutton.setToolTip(f'Reset length to native length ({max_time_string}).')
 
-        if is_video:
+        if dimensions:
             hline = QtW.QLineEdit('0', dialog)
             hbutton = QtW.QPushButton('Height:', dialog)
             hbutton.clicked.connect(lambda: hline.setText(str(int(vheight))))
@@ -2411,17 +2412,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         wline.selectAll()                       # start with text in width lineEdit selected, for quicker editing
         form.addRow(label)
         form.addRow(wbutton, wline)
-        if is_video: form.addRow(hbutton, hline)
+        if dimensions: form.addRow(hbutton, hline)
         layout.addLayout(form)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
         def accept():
-            if is_video:
+            if dimensions:                      # if sizes are percents, strip '%' and multiply w/h by percentages.
                 width, height =   wline.text().strip(), hline.text().strip()
                 if '%' in width:  width = round(vwidth * (float(width.strip('%').strip()) / 100))
-                else:             width = int(width)
+                else:             width = int(width) if width else 0                    # blank lineEdit defaults to 0
                 if '%' in height: height = round(vheight * (float(height.strip('%').strip()) / 100))
-                else:             height = int(height)
+                else:             height = int(height) if height else 0                 # blank lineEdit defaults to 0
             else:                               # audio resize, check for timestamp-style string instead (hh:mm:ss.ms)
                 width, height = wline.text().strip(), None
                 if '%' in width: width = 1 / (float(width.strip('%').strip()) / 100)    # convert percentage to tempo-multiplier
@@ -2436,7 +2437,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.width = width
             dialog.height = height
 
-        # open resize dialog. if sizes are percents, strip '%' and multiply w/h by percentages
+        # open resize dialog
         dialog.accepted.connect(accept)
         if not dialog.exec(): return None, None  # cancel selected, return None
         return dialog.width, dialog.height
@@ -2764,7 +2765,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_crop_mode(self, on):     # https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
-        if not self.video or self.mime_type == 'audio':     # reset crop mode if no video is playing
+        if not self.video or (self.mime_type == 'audio' and not gif_player.pixmap()):               # reset crop mode if there's nothing to crop
             return self.actionCrop.trigger() if on else None
         if not on: self.disable_crop_mode()
         else:
@@ -3151,33 +3152,40 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 `i_width` - the snapshot's width.
                 `i_height` - the snapshot's height. '''
         try:
-            d_set = self.dialog_settings
-            if d_set.checkSnapshotPause.isChecked(): player.set_pause(True)    # pause video if desired (undone by finally statement)
+            settings = self.dialog_settings
+            if settings.checkSnapshotPause.isChecked():                 # pause media if desired (undone by finally statement)
+                player.set_pause(True)
+                gif_player.gif.setPaused(True)
             mod = app.keyboardModifiers() if modifiers is None else modifiers
+            mime = self.mime_type
+            if mime == 'image' and not mod: mod = Qt.ControlModifier    # change quick-snapshots to full-snapshots for images
 
-            # no modifiers -> quick snapshot, no dialogs TODO: maybe add default width/height scale settings
+        # >>> quick snapshot, no dialogs (no modifiers) <<<             TODO: maybe add default width/height scale settings
             if not mod:
-                if not self.video: return self.statusbar.showMessage('No video is playing.', 10000)
-                if self.mime_type != 'video':
-                    if self.mime_type == 'image' and self.actionCrop.isChecked(): return self.statusbar.showMessage('Images must be cropped directly, without snapshots.', 10000)
-                    else: return self.statusbar.showMessage('You can only take snapshots of a video.', 10000)
+                if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
+                if mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only screenshot audio with cover art.', 10000)
 
                 # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
-                name_format = d_set.lineSnapshotNameFormat.text().strip() or d_set.lineSnapshotNameFormat.placeholderText()
-                date_format = d_set.lineSnapshotDateFormat.text().strip() or d_set.lineSnapshotDateFormat.placeholderText()
+                name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
                 video_basename = os.path.basename(os.path.splitext(self.video)[0])
                 default_name = name_format.replace('?video', video_basename).replace('?date', strftime(date_format, localtime()))
 
-                format = d_set.comboSnapshotFormat.currentText()
-                dirname = os.path.expandvars(d_set.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
+                format = settings.comboSnapshotFormat.currentText()
+                dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
                 try: os.makedirs(dirname)
                 except FileExistsError: pass
+                path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
 
                 # take and save snapshot
-                path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
-                player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
+                if mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
+                elif mime == 'image': return self.statusbar.showMessage('Quick-snapshotting an image would just be silly, wouldn\'t it?', 10000)
+                elif mime == 'audio':
+                    jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
+                    gif_player.art.save(path, format=format, quality=jpeg_quality)
+
                 cfg.last_snapshot_path = os.path.abspath(path)
-                self.log(f'Snapshot saved to {path}')
+                self.log(f'{"Snapshot" if mime != "audio" else "Cover art"} saved to {path}')
 
                 # crop final snapshot if desired
                 if self.actionCrop.isChecked():
@@ -3186,33 +3194,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     image_data = get_PIL_Image().open(path)
                     image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
                                                   round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
-                    if format == 'JPEG': self.convert_snapshot_to_jpeg(path, image_data)
+                    if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
                     else: image_data.save(path)
 
-                # VLC doesn't support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                elif format == 'JPEG': self.convert_snapshot_to_jpeg(path)
+                # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
 
-            # ctrl pressed -> show resize + save-file dialog
+        # >> snapshot with resize and save-file dialog (ctrl) <<<
             elif mod & Qt.ControlModifier:
-                if not self.video: return self.statusbar.showMessage('No video is playing.', 10000)
-                if self.mime_type != 'video':
-                    if self.mime_type == 'image' and self.actionCrop.isChecked(): return self.statusbar.showMessage('Images must be cropped directly, without snapshots.', 10000)
-                    else: return self.statusbar.showMessage('You can only take snapshots of a video.', 10000)
+                if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
+                if mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only screenshot audio with cover art.', 10000)
+                player.set_pause(True)      # player may have already been paused earlier, but it DEFINITELY needs to be paused now
+                gif_player.gif.setPaused(True)
 
-                player.set_pause(True)     # player may have already been paused earlier, but it DEFINITELY needs to be paused now
                 try:
                     # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
-                    name_format = d_set.lineSnapshotNameFormat.text().strip() or d_set.lineSnapshotNameFormat.placeholderText()
-                    date_format = d_set.lineSnapshotDateFormat.text().strip() or d_set.lineSnapshotDateFormat.placeholderText()
+                    name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                    date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
                     video_basename = os.path.basename(os.path.splitext(self.video)[0])
                     default_name = name_format.replace('?video', video_basename).replace('?date', strftime(date_format, localtime()))
 
-                    width, height = self.get_size_dialog()
+                    width, height = self.get_size_dialog(snapshot=True)
                     if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
 
                     # open save-file dialog
-                    use_snapshot_lastdir = d_set.checkSnapshotRemember.isChecked()
-                    selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if d_set.comboSnapshotFormat.currentText() == 'JPEG' else ''
+                    use_snapshot_lastdir = settings.checkSnapshotRemember.isChecked()
+                    selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if settings.comboSnapshotFormat.currentText() == 'JPEG' else ''
                     directory = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
                     directory = f'{directory}{".png" if not selected_filter else ".jpg"}'
                     path, filter, lastdir = qthelpers.saveFile(lastdir=get_unique_path(directory, key='?count', zeros=1),
@@ -3226,11 +3233,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # 'BMP (*.bmp; *.dib, *.rle);;TIFF (*.tiff; *.tif);;GIF (*.gif);;TGA (*.tga);;WebP (*.webp)'
 
                     # take and save snapshot
-                    player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
+                    if mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
+                    else:
+                        jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
+                        if width or height:
+                            w = width if width else height * (self.vwidth / self.vheight)
+                            h = height if height else width * (self.vheight / self.vwidth)
+                            gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=jpeg_quality)
+                        else: gif_player.art.save(path, quality=jpeg_quality)
+
                     logging.info(f'psz_filepath={path}, i_width={width}, i_height={height}')
                     cfg.last_snapshot_path = os.path.abspath(path)
                     cfg.last_snapshot_folder = os.path.dirname(cfg.last_snapshot_path)
-                    self.log(f'Snapshot saved to {path}')
+                    self.log(f'{"Snapshot" if mime != "audio" else "Cover art"} saved to {path}')
 
                     # crop final snapshot if desired, taking into account the custom width/height
                     if self.actionCrop.isChecked():
@@ -3254,30 +3269,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         image_data = image_data.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
                                                       round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
 
-                        if filter[:4] == 'JPEG': self.convert_snapshot_to_jpeg(path, image_data)
+                        if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
                         else: image_data.save(path)
 
-                    # VLC doesn't support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                    if filter[:4] == 'JPEG': self.convert_snapshot_to_jpeg(path)
+                    # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                    if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
 
                 except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
-                finally: player.set_pause(False or self.is_paused)  # only needed if checkSnapshotPause is False
+                finally:                                            # only needed if checkSnapshotPause is False
+                    player.set_pause(False or self.is_paused)
+                    gif_player.gif.setPaused(False or self.is_paused)
 
-            # shift pressed -> open last snapshot in pyplayer (not in explorer)
+        # >>> open last snapshot in pyplayer, not in explorer (shift) <<<
             elif mod & Qt.ShiftModifier:
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 self.open(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
 
-            # alt pressed -> open last snapshot in default program (not in explorer)
+        # >>> open last snapshot in default program, not in explorer (alt) <<<
             elif mod & Qt.AltModifier:
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 qthelpers.openPath(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
         except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
-        finally: player.set_pause(False or self.is_paused)
+        finally:
+            player.set_pause(False or self.is_paused)
+            gif_player.gif.setPaused(False or self.is_paused)
 
 
     def convert_snapshot_to_jpeg(self, path, image_data=None):      # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
