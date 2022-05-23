@@ -2363,10 +2363,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def browse_subtitle_file(self, urls=None):
         if self.mime_type == 'image': self.statusbar.showMessage('Well that would just be silly, wouldn\'t it?', 10000)
         if urls is None:
-            urls, cfg.lastdir = qthelpers.browseForFiles(cfg.lastdir,
-                                                         caption='Select subtitle file(s) to add',
-                                                         filter='Subtitle Files (*.cdg *.idx *.srt *.sub *.utf *.ass *.ssa *.aqt *.jss *.psb *.it *.sami *smi *.txt *.smil *.stl *.usf *.dks *.pjs *.mpl2 *.mks *.vtt *.tt *.ttml *.dfxp *.scc);;All files (*)',
-                                                         url=True)
+            urls, cfg.lastdir = qthelpers.browseForFiles(
+                cfg.lastdir,
+                caption='Select subtitle file(s) to add',
+                filter='Subtitle Files (*.cdg *.idx *.srt *.sub *.utf *.ass *.ssa *.aqt *.jss *.psb *.it *.sami *smi *.txt *.smil *.stl *.usf *.dks *.pjs *.mpl2 *.mks *.vtt *.tt *.ttml *.dfxp *.scc);;All files (*)',
+                url=True
+            )
         for url in urls:
             url = url.url()
             if player.add_slave(0, url, self.dialog_settings.checkAutoEnableSubtitles.isChecked()) == 0:   # slaves can be subtitles (0) or audio (1). last arg = auto-select
@@ -2378,7 +2380,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def get_size_dialog(self, snapshot=False):
-        dimensions = snapshot or self.mime_type == 'video'
+        dimensions = snapshot or self.mime_type != 'audio'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
         dialog = qthelpers.getDialog(title='Input desired ' + 'size' if dimensions else 'length',
@@ -2387,7 +2389,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         layout = QtW.QVBoxLayout(dialog)
         form = QtW.QFormLayout()
         label = QtW.QLabel(dialog)
-        if dimensions: label.setText('If width AND height are 0,\nthe native resolution is used.\n\nIf width OR height are 0,\nnative aspect-ratio is used.\n\nSupports percentages,\nsuch as 50%.')
+        if dimensions: label.setText(constants.SIZE_DIALOG_DIMENSIONS_LABEL_BASE.replace('?resolution', f'{vwidth}x{vheight}'))
         else: label.setText('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.')
         label.setAlignment(Qt.AlignCenter)
 
@@ -2403,6 +2405,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             hbutton.clicked.connect(lambda: hline.setText(str(int(vheight))))
             hbutton.setToolTip(f'Reset height to native resolution ({vheight:.0f} pixels).')
 
+            if snapshot:                        # add JPEG quality label/spinbox
+                qlabel = QtW.QLabel('Quality:', dialog)
+                qlabel.setMinimumWidth(50)
+                qlabel.setAlignment(Qt.AlignCenter)
+                qlabel.setToolTip('JPEG quality (0-100). Higher is better. Does not apply if saved as PNG format.')
+                qspin = QtW.QSpinBox(dialog)
+                qspin.setValue(self.dialog_settings.spinSnapshotJpegQuality.value())
+                qspin.setMaximum(100)
+
             for w in (wbutton, hbutton): w.setMaximumWidth(50)
             for w in (wline, hline):
                 w.setMaxLength(6)
@@ -2413,6 +2424,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         form.addRow(label)
         form.addRow(wbutton, wline)
         if dimensions: form.addRow(hbutton, hline)
+        if snapshot: form.addRow(qlabel, qspin)
         layout.addLayout(form)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
@@ -2436,11 +2448,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 width = min(2, max(0.5, width))
             dialog.width = width
             dialog.height = height
+            if snapshot: dialog.quality = qspin.value()
 
-        # open resize dialog
+        # open resize dialog. if cancel is selected, return None
         dialog.accepted.connect(accept)
-        if not dialog.exec(): return None, None  # cancel selected, return None
-        return dialog.width, dialog.height
+        if not dialog.exec(): return (None, None, None) if snapshot else (None, None)
+        return (dialog.width, dialog.height, dialog.quality) if snapshot else (dialog.width, dialog.height)
 
 
     def open_color_picker(self):                # NOTE: F suffix is Float -> values are represented from 0-1 (e.g. getRgb() becomes getRgbF())
@@ -3237,7 +3250,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     gif_player.gif.setPaused(True)
                     try:
                         # get dimensions
-                        width, height = self.get_size_dialog(snapshot=True)
+                        width, height, quality = self.get_size_dialog(snapshot=True)
                         if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
 
                         # open save-file dialog
@@ -3264,12 +3277,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             else: ffmpeg_simple(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
                         elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
                         else:
-                            jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
                             if width or height:
                                 w = width if width else height * (self.vwidth / self.vheight)
                                 h = height if height else width * (self.vheight / self.vwidth)
-                                gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=jpeg_quality)
-                            else: gif_player.art.save(path, quality=jpeg_quality)
+                                gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
+                            else: gif_player.art.save(path, quality=quality)
 
                         logging.info(f'psz_filepath={path}, i_width={width}, i_height={height}')
                         cfg.last_snapshot_path = os.path.abspath(path)

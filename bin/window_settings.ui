@@ -35,6 +35,22 @@
    <property name="verticalSpacing">
     <number>8</number>
    </property>
+   <item row="6" column="2">
+    <spacer name="horizontalSpacer_4">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>5</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
    <item row="6" column="1">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
@@ -1646,7 +1662,7 @@ button to see most (but not all) of the available format codes.</string>
                 <item row="6" column="0">
                  <widget class="QLabel" name="label_46">
                   <property name="toolTip">
-                   <string>The quality to use for JPEG-format snapshots.</string>
+                   <string>The quality to use for JPEG-format snapshots. Higher is better.</string>
                   </property>
                   <property name="text">
                    <string>Snapshot JPEG Quality</string>
@@ -3028,22 +3044,6 @@ the currently playing media's height.</string>
       </layout>
      </widget>
     </widget>
-   </item>
-   <item row="6" column="2">
-    <spacer name="horizontalSpacer_4">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>5</width>
-       <height>0</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>

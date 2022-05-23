@@ -63,6 +63,15 @@ Ctrl + click: Immediately delete current media.
 Right-click for more options. Deletion-confirmation
 prompt is shown on exit if any files are marked.'''
 
+SIZE_DIALOG_DIMENSIONS_LABEL_BASE = '''If width AND height are 0,
+the native resolution is used
+(?resolution).
+
+If width OR height are 0,
+native aspect-ratio is used.
+
+Supports percentages, such as 50%.'''
+
 # ---------------------
 
 if IS_COMPILED:
