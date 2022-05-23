@@ -21,6 +21,12 @@ from traceback import format_exc
 
 
 # ------------------------------------------
+# Logger
+# ------------------------------------------
+logger = logging.getLogger('widgets.py')
+
+
+# ------------------------------------------
 # Aliases (set in main.pyw)
 # ------------------------------------------
 gui: QtW.QMainWindow = None
@@ -101,7 +107,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.media.parse_with_options(0x0, 0)       # https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.Media-class.html#parse_with_options
             return True
         except:
-            logging.warning(f'VLC failed to play file {file}: {format_exc()}')
+            logger.warning(f'VLC failed to play file {file}: {format_exc()}')
             if not _error:  # _error ensures we only attempt to play previous video once
                 if gui.video is None: self.player.stop()    # no previous video to play, so just stop playing
                 else: self.play(gui.video, _error=True)     # attempt to play previous working video
@@ -144,7 +150,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             if not self.text_fade_thread_started:
                 Thread(target=self.text_fade_thread, daemon=True).start()
                 self.text_fade_thread_started = True
-        except: logging.warning(f'(!) Unexpected error while showing text overlay: {format_exc()}')
+        except: logger.warning(f'(!) Unexpected error while showing text overlay: {format_exc()}')
 
 
     def text_fade_thread(self):
@@ -303,7 +309,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         expected_size = gui.vsize.scaled(self.size(), Qt.KeepAspectRatio)
         if expected_size.height() < h:              # video fills viewport width (there are black bars top/bottom)
-            logging.debug('Video fills viewport width (there are black bars top/bottom)')
+            logger.debug('Video fills viewport width (there are black bars top/bottom)')
             #void = ((h - (w / video_ratio)) / 2)
             void = (h - expected_size.height()) / 2
             self.true_left =   0
@@ -311,7 +317,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.true_top =    int(void)            # ensure potential error is outside bounds of actual video size
             self.true_bottom = math.ceil(h - void)  # ensure potential error is outside bounds of actual video size
         else:                                       # video fills viewport height (there are black bars left/right)
-            logging.debug('Video fills viewport height (there are black bars left/right)')
+            logger.debug('Video fills viewport height (there are black bars left/right)')
             #void = ((w - (h * video_ratio)) / 2)
             void = (w - expected_size.width()) / 2
             self.true_left =   int(void)            # ensure potential error is outside bounds of actual video size
@@ -319,7 +325,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.true_top =    0
             self.true_bottom = h
         self.true_rect = QtCore.QRect(QtCore.QPoint(self.true_left, self.true_top), QtCore.QPoint(self.true_right, self.true_bottom))
-        logging.debug(f'void={void} w={w} h={h} expected_size={expected_size}')
+        logger.debug(f'void={void} w={w} h={h} expected_size={expected_size}')
 
 
     def update_crop_frames(self):
@@ -376,7 +382,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 p.setPen(QtGui.QPen(white, 6, Qt.SolidLine))                                 # set color to white
                 p.drawText(point.x(), point.y() + self.text_y_offsets[index], text)          # draw actual text over shadow
                 p.drawPoint(point.x(), point.y())                                            # size-6 point to represent handles
-        except: logging.warning(f'(!) Unexpected error while painting crop view from QVideoPlayer: {format_exc()}')
+        except: logger.warning(f'(!) Unexpected error while painting crop view from QVideoPlayer: {format_exc()}')
         p.end()
 
 
@@ -440,7 +446,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                     else: app.changeOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
             event.accept()
             self.update()
-        except: logging.warning(f'(!) Unexpected error while clicking QVideoPlayer: {format_exc()}')
+        except: logger.warning(f'(!) Unexpected error while clicking QVideoPlayer: {format_exc()}')
         return super().mousePressEvent(event)
 
 
@@ -530,7 +536,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 self.update_crop_frames()        # update crop frames and factored points
                 self.repaint()                   # repaint QVideoPlayer (TODO: update() vs repaint() here)
         except TypeError: pass                   # self.dragging is None
-        except: logging.warning(f'(!) Unexpected error while dragging crop points: {format_exc()}')
+        except: logger.warning(f'(!) Unexpected error while dragging crop points: {format_exc()}')
         #return super().mouseMoveEvent(event)    # TODO: required for mouseReleaseEvent to work properly?
 
 
@@ -686,7 +692,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.setMovie(self.gif)
             if autostart: self.gif.start()
             self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-            logging.info('Animated image detected.')
+            logger.info('Animated image detected.')
         else:                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
             if isBytes: self.art.loadFromData(file)
@@ -694,7 +700,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.setPixmap(self.art)
             self.disableZoom()
             self.setAttribute(Qt.WA_TransparentForMouseEvents, isBytes)
-            logging.info(f'Static image/cover art detected. (zoom={self.zoom})')
+            logger.info(f'Static image/cover art detected. (zoom={self.zoom})')
 
 
     def _resizeMovieFit(self):
@@ -735,7 +741,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.zoom = zoom
         self.zoomed = True
         self.update()
-        logging.debug(f'QVideoPlayerLabel zoom set to {zoom} (pos={pos} | globalPos={globalPos})')
+        logger.debug(f'QVideoPlayerLabel zoom set to {zoom} (pos={pos} | globalPos={globalPos})')
         return zoom
 
 
@@ -918,7 +924,7 @@ class QVideoSlider(QtW.QSlider):
                     gui.dockControls.setWindowOpacity(min(current_opacity + opacity_increment, max_opacity))
         except:
             variables = f'fade_time={fade_time} current_opacity={current_opacity} min_opacity={min_opacity} max_opacity={max_opacity} frame_rate_rounded={gui.frame_rate_rounded}'
-            logging.warning(f'(!) Unexpected error while handling idle-timeout - {variables} - {format_exc()}')
+            logger.warning(f'(!) Unexpected error while handling idle-timeout - {variables} - {format_exc()}')
 
         p = QtGui.QPainter()
         p.begin(self)
@@ -1105,7 +1111,7 @@ class QVideoSlider(QtW.QSlider):
                 opt.upsideDown              # upsideDown
             )
         except:
-            logging.warning(f'(!) Unexpected error in pixelPosToRangeValue - {format_exc()}')
+            logger.warning(f'(!) Unexpected error in pixelPosToRangeValue - {format_exc()}')
             return 0                        # return 0 as a failsafe
 
 
@@ -1229,12 +1235,12 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
         cmd_get_thumbnail = f'-ss 3 -i "{video}" -vframes 1 "{temp_path}"'
         cmd_resize_thumbnail = f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"'
-        logging.info(f'Generating thumbnail for "{video}" to "{temp_path}"')
+        logger.info(f'Generating thumbnail for "{video}" to "{temp_path}"')
         subprocess.call(f'{constants.FFMPEG} -y {cmd_get_thumbnail} -hide_banner -loglevel warning', shell=True)
         subprocess.call(f'{constants.FFMPEG} -y {cmd_resize_thumbnail} -hide_banner -loglevel warning', shell=True)
         item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
         try: os.remove(temp_path)
-        except Exception as error: logging.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')
+        except Exception as error: logger.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')
 
 
     def move(self, *args, down=False):
@@ -1611,7 +1617,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 #            self.player.play()
 #            return True
 #        except:
-#            logging.warning(f'QMediaPlayer failed to play video {file}: {format_exc()}')
+#            logger.warning(f'QMediaPlayer failed to play video {file}: {format_exc()}')
 #            if not _error:  # _error ensures we only attempt to play previous video once
 #                if gui.video is None: self.player.stop()    # no previous video to play, so just stop playing
 #                else: self.play(gui.video, _error=True)     # attempt to play previous working video
