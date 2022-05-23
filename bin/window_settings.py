@@ -30,7 +30,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -105, 334, 1780))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 334, 1842))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -481,7 +481,7 @@ class Ui_settingsDialog(object):
         self.formLayout_4.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.lineSnapshotNameFormat)
         self.label_45 = QtWidgets.QLabel(self.groupBox_3)
         self.label_45.setObjectName("label_45")
-        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_45)
+        self.formLayout_4.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_45)
         self.horizontalLayout_7 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_7.setSpacing(2)
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
@@ -529,31 +529,47 @@ class Ui_settingsDialog(object):
         self.buttonSnapshotDateHelp.setText("?")
         self.buttonSnapshotDateHelp.setObjectName("buttonSnapshotDateHelp")
         self.horizontalLayout_7.addWidget(self.buttonSnapshotDateHelp)
-        self.formLayout_4.setLayout(2, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_7)
+        self.formLayout_4.setLayout(4, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_7)
         self.label_48 = QtWidgets.QLabel(self.groupBox_3)
         self.label_48.setObjectName("label_48")
-        self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_48)
+        self.formLayout_4.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_48)
         self.comboSnapshotFormat = QtWidgets.QComboBox(self.groupBox_3)
         self.comboSnapshotFormat.setObjectName("comboSnapshotFormat")
         self.comboSnapshotFormat.addItem("")
         self.comboSnapshotFormat.addItem("")
-        self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.comboSnapshotFormat)
+        self.formLayout_4.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.comboSnapshotFormat)
         self.label_46 = QtWidgets.QLabel(self.groupBox_3)
         self.label_46.setObjectName("label_46")
-        self.formLayout_4.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_46)
+        self.formLayout_4.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.label_46)
         self.spinSnapshotJpegQuality = QtWidgets.QSpinBox(self.groupBox_3)
         self.spinSnapshotJpegQuality.setMaximum(100)
         self.spinSnapshotJpegQuality.setProperty("value", 85)
         self.spinSnapshotJpegQuality.setObjectName("spinSnapshotJpegQuality")
-        self.formLayout_4.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.spinSnapshotJpegQuality)
+        self.formLayout_4.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.spinSnapshotJpegQuality)
         self.checkSnapshotRemember = QtWidgets.QCheckBox(self.groupBox_3)
         self.checkSnapshotRemember.setChecked(True)
         self.checkSnapshotRemember.setObjectName("checkSnapshotRemember")
-        self.formLayout_4.setWidget(5, QtWidgets.QFormLayout.SpanningRole, self.checkSnapshotRemember)
+        self.formLayout_4.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkSnapshotRemember)
         self.checkSnapshotPause = QtWidgets.QCheckBox(self.groupBox_3)
         self.checkSnapshotPause.setChecked(True)
         self.checkSnapshotPause.setObjectName("checkSnapshotPause")
-        self.formLayout_4.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkSnapshotPause)
+        self.formLayout_4.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkSnapshotPause)
+        self.label_54 = QtWidgets.QLabel(self.groupBox_3)
+        self.label_54.setObjectName("label_54")
+        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_54)
+        self.lineSnapshotGifFormat = QtWidgets.QLineEdit(self.groupBox_3)
+        self.lineSnapshotGifFormat.setObjectName("lineSnapshotGifFormat")
+        self.formLayout_4.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.lineSnapshotGifFormat)
+        self.label_55 = QtWidgets.QLabel(self.groupBox_3)
+        self.label_55.setObjectName("label_55")
+        self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_55)
+        self.lineSnapshotArtFormat = QtWidgets.QLineEdit(self.groupBox_3)
+        self.lineSnapshotArtFormat.setObjectName("lineSnapshotArtFormat")
+        self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.lineSnapshotArtFormat)
+        self.checkSnapshotGifPNG = QtWidgets.QCheckBox(self.groupBox_3)
+        self.checkSnapshotGifPNG.setChecked(True)
+        self.checkSnapshotGifPNG.setObjectName("checkSnapshotGifPNG")
+        self.formLayout_4.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkSnapshotGifPNG)
         self.verticalLayout_2.addLayout(self.formLayout_4)
         self.verticalLayout_3.addWidget(self.groupBox_3)
         self.groupText = QtWidgets.QGroupBox(self.tabGeneral)
@@ -723,8 +739,6 @@ class Ui_settingsDialog(object):
         self.formLayout_6.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinTextY)
         self.horizontalLayout_15.addLayout(self.formLayout_6)
         self.verticalLayout_3.addWidget(self.groupText)
-        spacerItem3 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout_3.addItem(spacerItem3)
         self.tabWidget.addTab(self.tabGeneral, "")
         self.tabKeys = QtWidgets.QWidget()
         self.tabKeys.setObjectName("tabKeys")
@@ -1114,14 +1128,14 @@ class Ui_settingsDialog(object):
         self.labelGithub.setAlignment(QtCore.Qt.AlignCenter)
         self.labelGithub.setObjectName("labelGithub")
         self.verticalLayout_6.addWidget(self.labelGithub)
-        spacerItem4 = QtWidgets.QSpacerItem(20, 1276, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout_6.addItem(spacerItem4)
+        spacerItem3 = QtWidgets.QSpacerItem(20, 1276, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout_6.addItem(spacerItem3)
         self.tabWidget.addTab(self.tabUpdates, "")
         self.verticalLayout_4.addWidget(self.tabWidget)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.gridLayout.addWidget(self.scrollArea, 4, 0, 1, 3)
-        spacerItem5 = QtWidgets.QSpacerItem(5, 0, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
-        self.gridLayout.addItem(spacerItem5, 6, 2, 1, 1)
+        spacerItem4 = QtWidgets.QSpacerItem(5, 0, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
+        self.gridLayout.addItem(spacerItem4, 6, 2, 1, 1)
 
         self.retranslateUi(settingsDialog)
         self.tabWidget.setCurrentIndex(0)
@@ -1594,19 +1608,23 @@ class Ui_settingsDialog(object):
         self.lineDefaultSnapshotPath.setText(_translate("settingsDialog", "%USERPROFILE%\\Pictures"))
         self.label_47.setToolTip(_translate("settingsDialog", "The format to use for naming snapshots. The following variables are replaced with their corresponding values:\n"
 "\n"
+"?name    The name (path not included) of the video/image/cover art being snapshotted.\n"
 "?date    The timestamp of the snapshot. See \"Snapshot Date Format\" for more details.\n"
-"?video    The name (path not included) of the video being snapshotted.\n"
-"?count    A number to be used to create unique filenames. If specified, the number is always\n"
-"    included, even if the snapshot name is unique. If not specified and name is not\n"
-"    unique, default Windows-naming conventions will be used: \"base (count).extension\""))
+"?frame    The frame number that was snapshotted.\n"
+"?framecount    The total number of frames in the media that was snapshotted.\n"
+"?count    A number to be used to create unique filenames. If this variable is used, it will always be included,\n"
+"    even if the snapshot name is unique. If not specified and name is not unique, default Windows-naming\n"
+"    conventions will be used: \"base (count).extension\""))
         self.label_47.setText(_translate("settingsDialog", "Snapshot Name Format"))
         self.lineSnapshotNameFormat.setToolTip(_translate("settingsDialog", "The format to use for naming snapshots. The following variables are replaced with their corresponding values:\n"
 "\n"
+"?name    The name (path not included) of the video/image/cover art being snapshotted.\n"
 "?date    The timestamp of the snapshot. See \"Snapshot Date Format\" for more details.\n"
-"?video    The name (path not included) of the video being snapshotted.\n"
-"?count    A number to be used to create unique filenames. If specified, the number is always\n"
-"    included, even if the snapshot name is unique. If not specified and name is not\n"
-"    unique, default Windows-naming conventions will be used: \"base (count).extension\""))
+"?frame    The frame number that was snapshotted.\n"
+"?framecount    The total number of frames in the media that was snapshotted.\n"
+"?count    A number to be used to create unique filenames. If this variable is used, it will always be included,\n"
+"    even if the snapshot name is unique. If not specified and name is not unique, default Windows-naming\n"
+"    conventions will be used: \"base (count).extension\""))
         self.lineSnapshotNameFormat.setText(_translate("settingsDialog", "snap_?date_?count"))
         self.lineSnapshotNameFormat.setPlaceholderText(_translate("settingsDialog", "snap_?date_?count"))
         self.label_45.setToolTip(_translate("settingsDialog", "The format to use for the ?date variable in snapshot names.\n"
@@ -1626,7 +1644,26 @@ class Ui_settingsDialog(object):
         self.checkSnapshotPause.setToolTip(_translate("settingsDialog", "If checked, doing a quick-snapshot will briefly pause the video\n"
 "to get the most accurate snapshot to your initial click as possible.\n"
 "Snapshots using dialogs will pause the video regardless."))
-        self.checkSnapshotPause.setText(_translate("settingsDialog", "Always pause videos with snapshotting"))
+        self.checkSnapshotPause.setText(_translate("settingsDialog", "Always pause videos when snapshotting"))
+        self.label_54.setToolTip(_translate("settingsDialog", "The format to use for naming snapshots of GIFs.\n"
+"See \"Snapshot Name Format\" for more details."))
+        self.label_54.setText(_translate("settingsDialog", "Snapshot GIF Format"))
+        self.lineSnapshotGifFormat.setToolTip(_translate("settingsDialog", "The format to use for naming snapshots of GIFs.\n"
+"See \"Snapshot Name Format\" for more details."))
+        self.lineSnapshotGifFormat.setText(_translate("settingsDialog", "?name_frame?frame"))
+        self.lineSnapshotGifFormat.setPlaceholderText(_translate("settingsDialog", "Use default name format"))
+        self.label_55.setToolTip(_translate("settingsDialog", "The format to use for saving cover art. See\n"
+"\"Snapshot Name Format\" for more details."))
+        self.label_55.setText(_translate("settingsDialog", "Cover Art Name Format"))
+        self.lineSnapshotArtFormat.setToolTip(_translate("settingsDialog", "The format to use for saving cover art. See\n"
+"\"Snapshot Name Format\" for more details."))
+        self.lineSnapshotArtFormat.setText(_translate("settingsDialog", "?name_art"))
+        self.lineSnapshotArtFormat.setPlaceholderText(_translate("settingsDialog", "Use default name format"))
+        self.checkSnapshotGifPNG.setToolTip(_translate("settingsDialog", "If checked, snapshots of GIFs and static images (but not\n"
+"cover art) will default to PNG format, regardless of your\n"
+"preference. JPEG format can still be used if manually\n"
+"chosen while doing a regular snapshot."))
+        self.checkSnapshotGifPNG.setText(_translate("settingsDialog", "Prefer PNG format for GIF/image snapshots"))
         self.groupText.setToolTip(_translate("settingsDialog", "If checked, VLC\'s on-screen-display (OSD or \"marquee\")\n"
 "will be used to briefly overlay messages over your media\n"
 "based on the following criteria.\n"

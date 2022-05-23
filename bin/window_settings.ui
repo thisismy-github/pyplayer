@@ -57,9 +57,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-105</y>
+        <y>0</y>
         <width>334</width>
-        <height>1780</height>
+        <height>1842</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1503,11 +1503,13 @@ visible as a visual cue once the current media finishes.</string>
                   <property name="toolTip">
                    <string>The format to use for naming snapshots. The following variables are replaced with their corresponding values:
 
+?name	The name (path not included) of the video/image/cover art being snapshotted.
 ?date	The timestamp of the snapshot. See &quot;Snapshot Date Format&quot; for more details.
-?video	The name (path not included) of the video being snapshotted.
-?count	A number to be used to create unique filenames. If specified, the number is always
-	included, even if the snapshot name is unique. If not specified and name is not
-	unique, default Windows-naming conventions will be used: &quot;base (count).extension&quot;</string>
+?frame	The frame number that was snapshotted.
+?framecount	The total number of frames in the media that was snapshotted.
+?count	A number to be used to create unique filenames. If this variable is used, it will always be included,
+	even if the snapshot name is unique. If not specified and name is not unique, default Windows-naming
+	conventions will be used: &quot;base (count).extension&quot;</string>
                   </property>
                   <property name="text">
                    <string>Snapshot Name Format</string>
@@ -1519,11 +1521,13 @@ visible as a visual cue once the current media finishes.</string>
                   <property name="toolTip">
                    <string>The format to use for naming snapshots. The following variables are replaced with their corresponding values:
 
+?name	The name (path not included) of the video/image/cover art being snapshotted.
 ?date	The timestamp of the snapshot. See &quot;Snapshot Date Format&quot; for more details.
-?video	The name (path not included) of the video being snapshotted.
-?count	A number to be used to create unique filenames. If specified, the number is always
-	included, even if the snapshot name is unique. If not specified and name is not
-	unique, default Windows-naming conventions will be used: &quot;base (count).extension&quot;</string>
+?frame	The frame number that was snapshotted.
+?framecount	The total number of frames in the media that was snapshotted.
+?count	A number to be used to create unique filenames. If this variable is used, it will always be included,
+	even if the snapshot name is unique. If not specified and name is not unique, default Windows-naming
+	conventions will be used: &quot;base (count).extension&quot;</string>
                   </property>
                   <property name="text">
                    <string>snap_?date_?count</string>
@@ -1533,7 +1537,7 @@ visible as a visual cue once the current media finishes.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0">
+                <item row="4" column="0">
                  <widget class="QLabel" name="label_45">
                   <property name="toolTip">
                    <string>The format to use for the ?date variable in snapshot names.
@@ -1545,7 +1549,7 @@ button to see most (but not all) of the available format codes.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
+                <item row="4" column="1">
                  <layout class="QHBoxLayout" name="horizontalLayout_7">
                   <property name="spacing">
                    <number>2</number>
@@ -1615,14 +1619,14 @@ button to see most (but not all) of the available format codes.</string>
                   </item>
                  </layout>
                 </item>
-                <item row="3" column="0">
+                <item row="5" column="0">
                  <widget class="QLabel" name="label_48">
                   <property name="text">
                    <string>Snapshot Image Format</string>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="1">
+                <item row="5" column="1">
                  <widget class="QComboBox" name="comboSnapshotFormat">
                   <property name="currentIndex">
                    <number>1</number>
@@ -1639,7 +1643,7 @@ button to see most (but not all) of the available format codes.</string>
                   </item>
                  </widget>
                 </item>
-                <item row="4" column="0">
+                <item row="6" column="0">
                  <widget class="QLabel" name="label_46">
                   <property name="toolTip">
                    <string>The quality to use for JPEG-format snapshots.</string>
@@ -1649,7 +1653,7 @@ button to see most (but not all) of the available format codes.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="1">
+                <item row="6" column="1">
                  <widget class="QSpinBox" name="spinSnapshotJpegQuality">
                   <property name="maximum">
                    <number>100</number>
@@ -1659,7 +1663,7 @@ button to see most (but not all) of the available format codes.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="5" column="0" colspan="2">
+                <item row="8" column="0" colspan="2">
                  <widget class="QCheckBox" name="checkSnapshotRemember">
                   <property name="toolTip">
                    <string>If checked, snapshot file-dialogs will default to folders you opened in
@@ -1673,7 +1677,7 @@ other snapshot file-dialogs, as opposed to folders from any file-dialog.</string
                   </property>
                  </widget>
                 </item>
-                <item row="6" column="0" colspan="2">
+                <item row="9" column="0" colspan="2">
                  <widget class="QCheckBox" name="checkSnapshotPause">
                   <property name="toolTip">
                    <string>If checked, doing a quick-snapshot will briefly pause the video
@@ -1681,7 +1685,73 @@ to get the most accurate snapshot to your initial click as possible.
 Snapshots using dialogs will pause the video regardless.</string>
                   </property>
                   <property name="text">
-                   <string>Always pause videos with snapshotting</string>
+                   <string>Always pause videos when snapshotting</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="label_54">
+                  <property name="toolTip">
+                   <string>The format to use for naming snapshots of GIFs.
+See &quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>Snapshot GIF Format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="lineSnapshotGifFormat">
+                  <property name="toolTip">
+                   <string>The format to use for naming snapshots of GIFs.
+See &quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>?name_frame?frame</string>
+                  </property>
+                  <property name="placeholderText">
+                   <string>Use default name format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="label_55">
+                  <property name="toolTip">
+                   <string>The format to use for saving cover art. See
+&quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>Cover Art Name Format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="lineSnapshotArtFormat">
+                  <property name="toolTip">
+                   <string>The format to use for saving cover art. See
+&quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>?name_art</string>
+                  </property>
+                  <property name="placeholderText">
+                   <string>Use default name format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0" colspan="2">
+                 <widget class="QCheckBox" name="checkSnapshotGifPNG">
+                  <property name="toolTip">
+                   <string>If checked, snapshots of GIFs and static images (but not
+cover art) will default to PNG format, regardless of your
+preference. JPEG format can still be used if manually
+chosen while doing a regular snapshot.</string>
+                  </property>
+                  <property name="text">
+                   <string>Prefer PNG format for GIF/image snapshots</string>
                   </property>
                   <property name="checked">
                    <bool>true</bool>
@@ -2208,19 +2278,6 @@ the currently playing media's height.</string>
               </item>
              </layout>
             </widget>
-           </item>
-           <item>
-            <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
            </item>
           </layout>
          </widget>

@@ -3160,146 +3160,160 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             mime = self.mime_type
             if mime == 'image' and not mod: mod = Qt.ControlModifier    # change quick-snapshots to full-snapshots for images
 
-        # >>> quick snapshot, no dialogs (no modifiers) <<<             TODO: maybe add default width/height scale settings
-            if not mod:
-                if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-                if mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only screenshot audio with cover art.', 10000)
-
-                # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
-                name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
-                date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
-                video_basename = os.path.basename(os.path.splitext(self.video)[0])
-                default_name = name_format.replace('?video', video_basename).replace('?date', strftime(date_format, localtime()))
-
-                format = settings.comboSnapshotFormat.currentText()
-                dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
-                try: os.makedirs(dirname)
-                except FileExistsError: pass
-                path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
-
-                # take and save snapshot
-                if mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
-                elif mime == 'image': return self.statusbar.showMessage('Quick-snapshotting an image would just be silly, wouldn\'t it?', 10000)
-                elif mime == 'audio':
-                    jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
-                    gif_player.art.save(path, format=format, quality=jpeg_quality)
-
-                cfg.last_snapshot_path = os.path.abspath(path)
-                self.log(f'{"Snapshot" if mime != "audio" else "Cover art"} saved to {path}')
-
-                # crop final snapshot if desired
-                if self.actionCrop.isChecked():
-                    logging.info('Cropping previously saved snapshot...')
-                    lfp = self.vlc.last_factored_points
-                    image_data = get_PIL_Image().open(path)
-                    image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
-                                                  round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
-                    if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
-                    else: image_data.save(path)
-
-                # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
-
-        # >> snapshot with resize and save-file dialog (ctrl) <<<
-            elif mod & Qt.ControlModifier:
-                if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-                if mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only screenshot audio with cover art.', 10000)
-                player.set_pause(True)      # player may have already been paused earlier, but it DEFINITELY needs to be paused now
-                gif_player.gif.setPaused(True)
-
-                try:
-                    # get default snapshot name (done here in case shift is pressed -> faster to have shift section later)
-                    name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
-                    date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
-                    video_basename = os.path.basename(os.path.splitext(self.video)[0])
-                    default_name = name_format.replace('?video', video_basename).replace('?date', strftime(date_format, localtime()))
-
-                    width, height = self.get_size_dialog(snapshot=True)
-                    if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
-
-                    # open save-file dialog
-                    use_snapshot_lastdir = settings.checkSnapshotRemember.isChecked()
-                    selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if settings.comboSnapshotFormat.currentText() == 'JPEG' else ''
-                    directory = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
-                    directory = f'{directory}{".png" if not selected_filter else ".jpg"}'
-                    path, filter, lastdir = qthelpers.saveFile(lastdir=get_unique_path(directory, key='?count', zeros=1),
-                                                               caption='Save snapshot as',
-                                                               filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
-                                                               selectedFilter=selected_filter,
-                                                               returnFilter=True)
-                    if use_snapshot_lastdir: cfg.last_snapshot_folder = lastdir
-                    else: cfg.lastdir = lastdir
-                    if path is None: return
-                    # 'BMP (*.bmp; *.dib, *.rle);;TIFF (*.tiff; *.tif);;GIF (*.gif);;TGA (*.tga);;WebP (*.webp)'
-
-                    # take and save snapshot
-                    if mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
-                    else:
-                        jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
-                        if width or height:
-                            w = width if width else height * (self.vwidth / self.vheight)
-                            h = height if height else width * (self.vheight / self.vwidth)
-                            gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=jpeg_quality)
-                        else: gif_player.art.save(path, quality=jpeg_quality)
-
-                    logging.info(f'psz_filepath={path}, i_width={width}, i_height={height}')
-                    cfg.last_snapshot_path = os.path.abspath(path)
-                    cfg.last_snapshot_folder = os.path.dirname(cfg.last_snapshot_path)
-                    self.log(f'{"Snapshot" if mime != "audio" else "Cover art"} saved to {path}')
-
-                    # crop final snapshot if desired, taking into account the custom width/height
-                    if self.actionCrop.isChecked():
-                        logging.info('Cropping previously saved snapshot...')
-                        lfp = self.vlc.last_factored_points
-                        image_data = get_PIL_Image().open(path)
-
-                        # calculate factors between media's native resolution and actual desired snapshot resolution
-                        if width or height:                         # custom width and/or height is set
-                            if width:
-                                x_factor = self.vwidth / width
-                                if not height: y_factor = x_factor  # width is set but height isn't -> match factors
-                            if height:
-                                y_factor = self.vheight / height
-                                if not width: x_factor = y_factor   # height is set but width isn't -> match factors
-                        else:                                       # neither is set -> use 1 to avoid division by 0
-                            x_factor = 1
-                            y_factor = 1
-
-                        # use factors to crop snapshot relative to the snapshot's actual resolution for an accurate crop
-                        image_data = image_data.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
-                                                      round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
-
-                        if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
-                        else: image_data.save(path)
-
-                    # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                    if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
-
-                except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
-                finally:                                            # only needed if checkSnapshotPause is False
-                    player.set_pause(False or self.is_paused)
-                    gif_player.gif.setPaused(False or self.is_paused)
-
-        # >>> open last snapshot in pyplayer, not in explorer (shift) <<<
-            elif mod & Qt.ShiftModifier:
+            # >>> open last snapshot in pyplayer, not in explorer (shift) <<<
+            if mod & Qt.ShiftModifier:
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 self.open(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
 
-        # >>> open last snapshot in default program, not in explorer (alt) <<<
+            # >>> open last snapshot in default program, not in explorer (alt) <<<
             elif mod & Qt.AltModifier:
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 qthelpers.openPath(cfg.last_snapshot_path)
                 self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
+
+            elif not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
+            elif mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only screenshot audio with cover art.', 10000)
+
+            else:
+                is_gif = self.extension == 'gif'
+                is_art = mime == 'audio'                                # if it's audio, we already know that it has cover art
+                frame = get_progess_slider()
+                frame_count_str = str(self.frame_count)
+                if (is_gif or mime == 'image') and settings.checkSnapshotGifPNG.isChecked(): format = 'PNG'
+                else: format = settings.comboSnapshotFormat.currentText()
+
+                # NOTE: art and gif snapshots use the default name format's placeholder text
+                if is_art:
+                    frame = 1
+                    frame_count_str = '1'
+                    name_format = settings.lineSnapshotArtFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                elif is_gif: name_format = settings.lineSnapshotGifFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                else: name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+
+                date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
+                video_basename = os.path.basename(os.path.splitext(self.video)[0])
+                default_name = name_format.replace('?name', video_basename) \
+                                          .replace('?date', strftime(date_format, localtime())) \
+                                          .replace('?framecount', frame_count_str) \
+                                          .replace('?frame', str(frame).zfill(len(frame_count_str)))
+
+            # >>> quick snapshot, no dialogs (no modifiers) <<< TODO: maybe add default width/height scale settings
+                if not mod:
+                    dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
+                    try: os.makedirs(dirname)
+                    except FileExistsError: pass
+                    path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
+
+                    # take and save snapshot
+                    if is_gif: ffmpeg_simple(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+                    elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
+                    elif mime == 'image': return self.statusbar.showMessage('Quick-snapshotting an image would just be silly, wouldn\'t it?', 10000)
+                    elif is_art:
+                        jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
+                        gif_player.art.save(path, format=format, quality=jpeg_quality)
+
+                    cfg.last_snapshot_path = os.path.abspath(path)
+                    self.log(f'{"Cover art" if is_art else "GIF frame" if is_gif else "Snapshot"} saved to {path}')
+
+                    # crop final snapshot if desired
+                    if self.actionCrop.isChecked():
+                        logging.info('Cropping previously saved snapshot...')
+                        lfp = self.vlc.last_factored_points
+                        image_data = get_PIL_Image().open(path)
+                        image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
+                                                      round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
+                        if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
+                        else: image_data.save(path)
+
+                    # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                    elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
+
+            # >> snapshot with resize and save-file dialog (ctrl) <<<
+                elif mod & Qt.ControlModifier:
+                    player.set_pause(True)                              # player may have been paused earlier, but it NEEDS to be paused now
+                    gif_player.gif.setPaused(True)
+                    try:
+                        # get dimensions
+                        width, height = self.get_size_dialog(snapshot=True)
+                        if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
+
+                        # open save-file dialog
+                        use_snapshot_lastdir = settings.checkSnapshotRemember.isChecked()
+                        selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if format == 'JPEG' else ''
+                        base_path = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
+                        path = f'{base_path}{".png" if not selected_filter else ".jpg"}'
+                        path, filter, lastdir = qthelpers.saveFile(lastdir=get_unique_path(path, key='?count', zeros=1),
+                                                                   caption='Save snapshot as',
+                                                                   filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
+                                                                   selectedFilter=selected_filter,
+                                                                   returnFilter=True)
+                        if use_snapshot_lastdir: cfg.last_snapshot_folder = lastdir
+                        else: cfg.lastdir = lastdir
+                        if path is None: return
+                        # 'BMP (*.bmp; *.dib, *.rle);;TIFF (*.tiff; *.tif);;GIF (*.gif);;TGA (*.tga);;WebP (*.webp)'
+
+                        # take and save snapshot
+                        if is_gif:
+                            if width or height:                         # use "scale" ffmpeg filter for gifs
+                                w = width if width else -1              # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
+                                h = height if height else -1
+                                ffmpeg_simple(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
+                            else: ffmpeg_simple(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+                        elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
+                        else:
+                            jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
+                            if width or height:
+                                w = width if width else height * (self.vwidth / self.vheight)
+                                h = height if height else width * (self.vheight / self.vwidth)
+                                gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=jpeg_quality)
+                            else: gif_player.art.save(path, quality=jpeg_quality)
+
+                        logging.info(f'psz_filepath={path}, i_width={width}, i_height={height}')
+                        cfg.last_snapshot_path = os.path.abspath(path)
+                        cfg.last_snapshot_folder = os.path.dirname(cfg.last_snapshot_path)
+                        self.log(f'{"Cover art" if is_art else "GIF frame" if is_gif else "Snapshot"} saved to {path}')
+
+                        # crop final snapshot if desired, taking into account the custom width/height
+                        if self.actionCrop.isChecked():
+                            logging.info('Cropping previously saved snapshot...')
+                            lfp = self.vlc.last_factored_points
+                            image_data = get_PIL_Image().open(path)
+
+                            # calculate factors between media's native resolution and actual desired snapshot resolution
+                            if width or height:                         # custom width and/or height is set
+                                if width:
+                                    x_factor = self.vwidth / width
+                                    if not height: y_factor = x_factor  # width is set but height isn't -> match factors
+                                if height:
+                                    y_factor = self.vheight / height
+                                    if not width: x_factor = y_factor   # height is set but width isn't -> match factors
+                            else:                                       # neither is set -> use 1 to avoid division by 0
+                                x_factor = 1
+                                y_factor = 1
+
+                            # use factors to crop snapshot relative to the snapshot's actual resolution for an accurate crop
+                            image_data = image_data.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
+                                                          round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
+
+                            # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                            if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
+                            else: image_data.save(path)
+                        if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
+
+                    except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
+                    finally:                                            # only needed if checkSnapshotPause is False
+                        player.set_pause(False or self.is_paused)
+                        gif_player.gif.setPaused(False or self.is_paused)
         except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
         finally:
             player.set_pause(False or self.is_paused)
             gif_player.gif.setPaused(False or self.is_paused)
 
 
-    def convert_snapshot_to_jpeg(self, path, image_data=None):      # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+    def convert_snapshot_to_jpeg(self, path, image_data=None):          # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
         ''' Saves image at `path` as a JPEG file with the desired quality in the settings
             dialog, using PIL. Assumes that `path` already ends in a valid file-extension. '''
         jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
