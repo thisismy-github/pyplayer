@@ -1918,6 +1918,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally:
             self.locked_video = None                        # unlock video if needed
             self.show_save_progress_signal.emit(False)      # make sure we hide the progress bar no matter what
+            self.setFocus(True)                             # restore keyboard focus so we can use hotkeys again
 
 
     def update_slider_thread(self):

@@ -1385,14 +1385,18 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
 
 
 class QWidgetPassthrough(QtW.QWidget):
-    ''' QWidget which passes desired keypresses to its parent. Specific characters can be ignored,
-        and specific categories (such as letters, integers, and punctuation) can be toggled. The
-        option to automatically clear focus when Esc is pressed is also included. '''
+    ''' QWidget which passes desired keypresses to its parent. Specific
+        characters can be ignored, and specific categories (such as letters,
+        integers, and punctuation) can be toggled. The option to clear or
+        optionally "pass" focus when Esc is pressed is also included. '''
     base = QtW.QWidget      # TODO semi-bandaid fix. without this, we can't access the correct keyPressEvent in subclasses(...?)
 
-    def __init__(self, *args, proxy=None, escClearsFocus=True, alpha=True, punctuation=True, numeric=False, ignored=tuple(), **kwargs):
+    # TODO make the getting/setting syntax fully Qt-like or make it fully normal
+    def __init__(self, *args, proxy=None, escClearsFocus=True, passFocus=True,
+                 alpha=True, punctuation=True, numeric=False, ignored=tuple(), **kwargs):
         super().__init__(*args, **kwargs)       # normally these kwargs are True, False, False, False
         self.escClearsFocus = escClearsFocus
+        self.passFocus = passFocus
         self.ignoreAlpha = alpha
         self.ignorePunctuation = punctuation
         self.ignoreNumeric = numeric
@@ -1426,6 +1430,7 @@ class QWidgetPassthrough(QtW.QWidget):
         self.ignoreNumeric = ignore
 
     def setEscClearsFocus(self, state: bool): self.escClearsFocus = state
+    def setPassFocus(self, state: bool): self.passFocus = state
     def setIgnoreAlpha(self, ignore: bool): self.ignoreAlpha = ignore
     def setIgnorePunctuation(self, ignore: bool): self.ignorePunctuation = ignore
     def setIgnoreNumeric(self, ignore: bool): self.ignoreNumeric = ignore
@@ -1433,7 +1438,9 @@ class QWidgetPassthrough(QtW.QWidget):
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
-        if self.escClearsFocus and key == 16777216: return self.clearFocus()    # esc (clear focus)
+        if self.escClearsFocus and key == 16777216:         # esc (clear/pass focus)
+            if self.passFocus: return self._proxyWidget.setFocus()
+            else: return self.clearFocus()
         text = event.text()
         if any((key in self.ignoredKeys,
                 self.ignoreAlpha and text.isalpha(),
