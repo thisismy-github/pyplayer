@@ -999,7 +999,7 @@ first media file you open.</string>
                    <item>
                     <widget class="QCheckBox" name="checkSnapOnResize">
                      <property name="toolTip">
-                      <string>Hold Shift while resizing to always shrink the window.
+                      <string>NOTE: Hold Shift while resizing to always shrink the window.
 Hold Ctrl while resizing to trigger the opposite behavior (snap
 while snap is disabled, or don't snap while snap is enabled).
 
@@ -1010,11 +1010,7 @@ ratio after resizing, so that no black bars appear.
 
 Partially checked (experimental): window will have a choppy
 animated transition while snapping. This was discovered by
-accident, but I couldn't let it go to waste.
-
-Note: The window will only correct itself once you've stopped
-manually resizing it. This is intentional, and is done as a work-
-around for unwanted Qt/VLC behavior.</string>
+accident, but I couldn't let it go to waste.</string>
                      </property>
                      <property name="text">
                       <string>Snap to native aspect ratio on resize (tristate)</string>

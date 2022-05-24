@@ -1525,7 +1525,7 @@ class Ui_settingsDialog(object):
 "Partially checked - the window will only be resized for the\n"
 "first media file you open."))
         self.checkSnapOnOpen.setText(_translate("settingsDialog", "Snap to native aspect ratio on open (tristate)"))
-        self.checkSnapOnResize.setToolTip(_translate("settingsDialog", "Hold Shift while resizing to always shrink the window.\n"
+        self.checkSnapOnResize.setToolTip(_translate("settingsDialog", "NOTE: Hold Shift while resizing to always shrink the window.\n"
 "Hold Ctrl while resizing to trigger the opposite behavior (snap\n"
 "while snap is disabled, or don\'t snap while snap is enabled).\n"
 "\n"
@@ -1536,11 +1536,7 @@ class Ui_settingsDialog(object):
 "\n"
 "Partially checked (experimental): window will have a choppy\n"
 "animated transition while snapping. This was discovered by\n"
-"accident, but I couldn\'t let it go to waste.\n"
-"\n"
-"Note: The window will only correct itself once you\'ve stopped\n"
-"manually resizing it. This is intentional, and is done as a work-\n"
-"around for unwanted Qt/VLC behavior."))
+"accident, but I couldn\'t let it go to waste."))
         self.checkSnapOnResize.setText(_translate("settingsDialog", "Snap to native aspect ratio on resize (tristate)"))
         self.checkFirstFileTrayReset.setToolTip(_translate("settingsDialog", "If checked, minimizing to the system tray,\n"
 "restoring, and opening a new piece of media\n"

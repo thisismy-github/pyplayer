@@ -233,7 +233,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionShowMenuBar.triggered.connect(self.set_menubar_visible)
     self.actionShowStatusBar.triggered.connect(self.set_statusbar_visible)
     self.actionShowProgressBar.triggered.connect(self.set_progressbar_visible)
-    self.actionShowAdvancedControls.triggered.connect(self.frameAdvancedControls.setVisible)
+    self.actionShowAdvancedControls.triggered.connect(self.set_advancedcontrols_visible)
     self.actionFullscreen.triggered.connect(self.set_fullscreen)
     self.actionSnapSize.triggered.connect(self.snap_to_native_size)
     self.actionSnapRatio.triggered.connect(self.snap_to_player_size)

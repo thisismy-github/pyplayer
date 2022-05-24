@@ -31,9 +31,6 @@ TODO: cropping finally finished. potential improvements:
         - use QDockWidgets instead of frames
 TODO: find interesting use for QtWidgets.QGraphicsScene()? (used in old widgets/main.py files for early crop tests)
 TODO: 47.58fps video NOT behaving well (progress bar is too fast -> 1.25 seconds ahead per minute)
-TODO: refactor:
-        - refactor inconsistent function indentations (especially for qthelpers functions)
-        - refactor inconsistent parent usage (is setParent() and parent() worth the likely performance loss?)
 TODO: improved or improvised status bar? -> half-width and/or custom widgets for things like playback speed, etc.
 TODO: centralwidget's layout column stretch should be a customizable option
 TODO: streamlined way to trim and concat multiple sections of a single video (or just a timeline)
@@ -97,7 +94,6 @@ TODO: app.primaryScreenChanged.connect()
 TODO: is there a way to add/modify libvlc options like "--gain" post-launch? media.add_option() is very limited
 TODO: make logo in about window link somewhere
 TODO: "add subtitle file" but for video/audio tracks? (audio tracks supported, but VLC chooses not to use this)
-TODO: pressing esc on QWidgetPassthrough clears focus, but sometimes clears focus on the entire window
 TODO: ram usage
         - !!! if it fails, update checking adds 15mb of ram that never goes away (~42mb before -> 57mb after)
         - if it doesn't fail, update checking still adds around 6mb on average
@@ -699,10 +695,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def timerEvent(self, event: QtCore.QTimerEvent):
         ''' The base timeout event, used for adjusting the window's aspect ratio after a resize. '''
-        if self.timer_id_resize_snap is not None:
+        if self.timer_id_resize_snap is not None and app.mouseButtons() != Qt.LeftButton:
             self.killTimer(self.timer_id_resize_snap)
             self.timer_id_resize_snap = None
-            shrink = app.keyboardModifiers() & Qt.ShiftModifier         # TODO: would queryKeyboardModifiers be better?
+
+            mod = app.queryKeyboardModifiers()
+            checked = self.dialog_settings.checkSnapOnResize.checkState()
+            reverse_behavior = mod & Qt.ControlModifier
+            if (checked and reverse_behavior) or (not checked and not reverse_behavior): return
+
+            shrink = mod & Qt.ShiftModifier
             force_instant_resize = self.dialog_settings.checkSnapOnResize.checkState() == 0
             self.snap_to_player_size(shrink=shrink, force_instant_resize=force_instant_resize)
         if event: return super().timerEvent(event)
@@ -719,8 +721,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
         add = event.angleDelta().y() > 0
-        mod = event.modifiers()                     # just modifiers instead of keyboardModifiers here for some reason
-        if mod & Qt.ControlModifier:                # TODO add more scrolling modifiers and show options like drag/drop does
+        mod = event.modifiers()                         # just modifiers instead of keyboardModifiers here for some reason
+        if mod & Qt.ControlModifier:                    # TODO add more scrolling modifiers and show options like drag/drop does
             self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
             self.update_title_signal.emit()
         else: self.increment_volume(get_volume_scroll_increment() if add else -get_volume_scroll_increment())
@@ -742,7 +744,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # this is a fix for QShortcuts not working in QSpinBoxPassthrough. it may or may not be changed in the future
         # https://stackoverflow.com/questions/10383418/qkeysequence-to-qkeyevent
-        if self.shortcut_bandaid_fix:       # TODO like in widgets.py, this had "and text" on it. why?
+        if self.shortcut_bandaid_fix:                   # TODO like in widgets.py, this had "and text" on it. why?
             true = QtGui.QKeySequence(event.modifiers() | event.key())
             for primary, secondary in self.shortcuts.values():
                 if primary.key() == true or secondary.key() == true:
@@ -2759,20 +2761,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_progressbar_visible(self, visible: bool):
-        ''' Readjusts the advanced controls' margins based on whether or not the progress bar's frame is `visible`. '''
+        ''' Readjusts the advanced controls' margins based on whether
+            or not the progress bar's frame is `visible`. '''
+        self.vlc.last_invalid_snap_state_time = get_time()
         self.frameProgress.setVisible(visible)
         self.frameAdvancedControls.layout().setContentsMargins(0, 0 if visible else 3, 0, 0 if self.statusbar.isVisible() else 3)       # left/top/right/bottom
 
 
+    def set_advancedcontrols_visible(self, visible: bool):
+        self.vlc.last_invalid_snap_state_time = get_time()
+        self.frameAdvancedControls.setVisible(visible)
+
+
     def set_statusbar_visible(self, visible: bool):
         ''' Readjusts the advanced controls' margins based on whether or not the status bar is `visible`. '''
+        self.vlc.last_invalid_snap_state_time = get_time()
         self.statusbar.setVisible(visible)
         self.frameAdvancedControls.layout().setContentsMargins(0, 0 if self.frameProgress.isVisible() else 3, 0, 0 if visible else 3)   # left/top/right/bottom
 
 
     def set_menubar_visible(self, visible: bool):
-        if visible and self.actionCrop.isChecked():
-            return self.actionShowMenuBar.setChecked(False)
+        if visible:
+            self.vlc.last_invalid_snap_state_time = get_time()
+            if self.actionCrop.isChecked(): return self.actionShowMenuBar.setChecked(False)
         self.menubar.setVisible(visible)
         if not self.isMaximized() and not self.isFullScreen() and self.first_video_fully_loaded:    # do not resize until a video is loaded
             self.resize(self.width(), self.height() + (21 if visible else -21))  # resize window to preserve player size TODO DPI/scale issues probably
@@ -2836,11 +2847,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 }
 
             if not vlc.crop_frames:
-                vlc.crop_frames = (  # can't reuse crop_frames alias here since it is None
-                    QtW.QFrame(self),     # 0 top
-                    QtW.QFrame(self),     # 1 left
-                    QtW.QFrame(self),     # 2 right
-                    QtW.QFrame(self),     # 3 bottom
+                vlc.crop_frames = (     # can't reuse crop_frames alias here since it is None
+                    QtW.QFrame(self),   # 0 top
+                    QtW.QFrame(self),   # 1 left
+                    QtW.QFrame(self),   # 2 right
+                    QtW.QFrame(self),   # 3 bottom
                 )
 
                 for view in vlc.crop_frames:
@@ -2853,7 +2864,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     view.setStyleSheet('background: rgba(0, 0, 0, 115)')    # TODO add setting here?
             else:
                 for view in vlc.crop_frames: view.setVisible(True)
-            vlc.update_crop_frames()  # update crop frames and factored points
+            vlc.update_crop_frames()    # update crop frames and factored points
             while app.overrideCursor(): app.restoreOverrideCursor()         # reset cursor
 
 

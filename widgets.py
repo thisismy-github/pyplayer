@@ -76,6 +76,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         self.last_move_time = 0
         self.idle_cursor_timeout = 2.5
+        self.last_invalid_snap_state_time = 0.0
         self.dragdrop_in_progress = False
         self.dragdrop_last_modifiers = None
 
@@ -387,7 +388,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
-        ''' Recalculates borders and crop points while resizing, if crop-mode is enabled. '''
+        ''' Recalculates borders and crop points while resizing if crop-mode
+            is enabled. Also sets a timer for snapping the window to the
+            current media's aspect ratio, as long as a timer isn't already
+            active, snap-mode is enabled, we haven't recently altered the UI/
+            maximized/fullscreened, and a file has already been loaded. '''
         if gui.actionCrop.isChecked():
             self.find_true_borders()
             #self.selection = [self.defactor_point(p) for p in self.last_factored_points]    # this should work but has bizarre side effects
@@ -395,14 +400,15 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.update_crop_frames()
         super().resizeEvent(event)
 
+        # mark if we were recently fullscreen/maximized so we know not to snap-resize during the next few resizeEvents
+        if gui.isMaximized() or gui.isFullScreen(): self.last_invalid_snap_state_time = time.time()
+
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
-        if gui.first_video_fully_loaded and gui.is_snap_mode_enabled():
-            checked = settings.checkSnapOnResize.checkState()
-            reverse_behavior = app.keyboardModifiers() & Qt.ControlModifier
-            start_snap_timer = checked and not reverse_behavior or not checked and reverse_behavior
-            if start_snap_timer:    # only snap if snap is enabled OR it's disabled but ctrl is held while resizing
-                if gui.timer_id_resize_snap: gui.killTimer(gui.timer_id_resize_snap)
-                gui.timer_id_resize_snap = gui.startTimer(150, Qt.CoarseTimer)
+        elif all((not gui.timer_id_resize_snap,
+                  gui.is_snap_mode_enabled(),
+                  time.time() - self.last_invalid_snap_state_time > 0.35,
+                  gui.first_video_fully_loaded)):
+            gui.timer_id_resize_snap = gui.startTimer(150, Qt.CoarseTimer)
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
