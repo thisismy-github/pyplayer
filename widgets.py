@@ -679,64 +679,101 @@ class QVideoPlayerLabel(QtW.QLabel):
         if file is None:
             self.clear()
             self.gif.setFileName('')
-            self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        elif gif:
+            return self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+
+        if gif:
             scale = self._gifScale      # load gif into QPixmap first to get its native size
             self.art.load(file)
             self.gifSize = self.art.size()
             self.clear()
 
-            self.setScaledContents(scale == 2)
             self.gif.setFileName(file)
             if scale == 1: self._resizeMovieFit()
             self.setMovie(self.gif)
             if autostart: self.gif.start()
-            self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
             logger.info('Animated image detected.')
+
         else:                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
             if isBytes: self.art.loadFromData(file)
             else: self.art.load(file)
             self.setPixmap(self.art)
-            self.disableZoom()
             self.setAttribute(Qt.WA_TransparentForMouseEvents, isBytes)
             logger.info(f'Static image/cover art detected. (zoom={self.zoom})')
+        self.disableZoom()
+
+
+    def _resetMovieCache(self):
+        ''' Stops and resets GIF to clear cached frames.
+            Pause state is restored after reset. '''
+        self.gif.stop()
+        self.gif.setFileName(self.gif.fileName())
+        self.gif.start()
+        self.gif.setPaused(gui.is_paused)
+
+
+    def _resetMovieSize(self):
+        scale = self._gifScale
+        self.setScaledContents(scale == 2)
+        if scale == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
+        elif scale == 1: self._resizeMovieFit()
+        elif scale == 2: self.gif.setScaledSize(self.size())
+        self._resetMovieCache()
 
 
     def _resizeMovieFit(self):
-        size = QtCore.QSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
-        self.gif.setScaledSize(size)
+        self.gif.setScaledSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
 
 
     def _calculateCurrentZoom(self):
-        scale = self._artScale if self.isCoverArt else self._imageScale
-        if scale == 0: self.zoom = 1.0
-        elif scale == 2: self.zoom = self.size().width() / self.art.width()
-        else:
-            newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
-            self.zoom = newSize.width() / self.art.width()
+        if self.movie():
+            scale = self._gifScale
+            if scale == 0: self.zoom = 1.0
+            elif scale == 2: self.zoom = self.size().width() / self.gifSize.width()
+            else: self.zoom = self.gif.scaledSize().width() / self.gifSize.width()
+        elif self.pixmap():
+            scale = self._artScale if self.isCoverArt else self._imageScale
+            if scale == 0: self.zoom = 1.0
+            elif scale == 2: self.zoom = self.size().width() / self.art.width()
+            else:
+                newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
+                self.zoom = newSize.width() / self.art.width()
 
 
     def disableZoom(self):
         self.zoomed = False
         self.pixmapPos = self.rect().center() - self.art.rect().center()
+        if self.movie(): self._resetMovieSize()
+        else: self.setScaledContents(False)
         self.update()
         self._calculateCurrentZoom()
 
 
-    def setZoom(self, zoom: float, pos: QtCore.QPoint = None, globalPos: QtCore.QPoint = None):
-        zoom = round(min(100.0, max(0.1, zoom)), 3)
-        if zoom == self.zoom: return zoom
+    def setZoom(self, zoom: float, pos: QtCore.QPoint = None,
+                globalPos: QtCore.QPoint = None, force: bool = False):
+        max_zoom = 100.0 if not self.movie() else 20.0
+        min_zoom = 0.05
+        zoom = round(min(max_zoom, max(min_zoom, zoom)), 3)
+        if zoom == self.zoom and not force: return zoom
 
-        new_size = self.art.size() * zoom
-        if globalPos: pos = self.mapFromGlobal(globalPos)
-        if pos:
-            old_size = self.art.size() * self.zoom
-            old_pos = self.pixmapPos
-            x_offset = ((pos.x() - old_pos.x()) / old_size.width()) * new_size.width()
-            y_offset = ((pos.y() - old_pos.y()) / old_size.height()) * new_size.height()
-            self.pixmapPos = pos - QtCore.QPoint(x_offset, y_offset)
-            self._draggingOffset = pos - self.pixmapPos     # reset offset in case we're dragging + zooming
+        if self.movie():
+            if self._gifScale == 2:
+                self.setScaledContents(False)
+                new_size = self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * zoom
+            else: new_size = self.gifSize * zoom
+            self.gif.setScaledSize(new_size)
+            self._resetMovieCache()
+        else:
+            new_size = self.art.size() * zoom
+            if globalPos: pos = self.mapFromGlobal(globalPos)
+            if pos:
+                old_size = self.art.size() * self.zoom
+                old_pos = self.pixmapPos
+                x_offset = ((pos.x() - old_pos.x()) / old_size.width()) * new_size.width()
+                y_offset = ((pos.y() - old_pos.y()) / old_size.height()) * new_size.height()
+                self.pixmapPos = pos - QtCore.QPoint(x_offset, y_offset)
+                self._draggingOffset = pos - self.pixmapPos  # reset offset in case we're dragging + zooming
 
         self.zoom = zoom
         self.zoomed = True
@@ -745,8 +782,9 @@ class QVideoPlayerLabel(QtW.QLabel):
         return zoom
 
 
-    def incrementZoom(self, increment: float, pos: QtCore.QPoint = None, globalPos: QtCore.QPoint = None):
-        return self.setZoom(self.zoom + increment, pos, globalPos)
+    def incrementZoom(self, increment: float, pos: QtCore.QPoint = None,
+                      globalPos: QtCore.QPoint = None, force: bool = False):
+        return self.setZoom(self.zoom + increment, pos, globalPos, force)
 
 
     def updateImageScale(self, index: int):
@@ -768,12 +806,10 @@ class QVideoPlayerLabel(QtW.QLabel):
     def updateGifScale(self, index: int):
         self._gifScale = index
         if self.movie():
-            self.setScaledContents(index == 2)
-            self.gif.stop()                                 # stop and reset gif to clear cached frames
-            self.gif.setFileName(self.gif.fileName())
-            if index == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
-            if index == 1: self._resizeMovieFit()
-            self.gif.start()
+            if self.zoomed: self.setZoom(self.zoom, force=True)
+            else:
+                self._resetMovieSize()
+                self._calculateCurrentZoom()
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
@@ -786,7 +822,7 @@ class QVideoPlayerLabel(QtW.QLabel):
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         ''' Drags our QPixmap by adjusting its position based on the cursor's
             position relative to the offset we set in mousePressEvent. '''
-        if not gui.actionCrop.isChecked():
+        if not gui.actionCrop.isChecked() and not self.movie():
             if app.mouseButtons() == Qt.LeftButton:     # TODO normal mousePressEvent implementation, why won't event.button() work?
                 self.pixmapPos = event.pos() - self._draggingOffset
                 self._dragging = True
@@ -798,10 +834,15 @@ class QVideoPlayerLabel(QtW.QLabel):
         ''' Disables drag-mode on releasing a mouse button. If left-clicking
             and drag-mode was never enabled, then zoom-mode is disabled. '''
         if event.button() == Qt.LeftButton:
-            if not self._dragging:                      # reset QVideoPlayerLabel's zoom if we click without dragging
+            if not (self.movie() or self._dragging):    # reset QVideoPlayerLabel's zoom if we click without dragging
                 self.disableZoom()
         self._dragging = False
         return super().mouseReleaseEvent(event)         # QLabel will pass event to underlying widgets (needed for cropping)
+
+
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
+        if self.zoomed and event.button() == Qt.LeftButton: self.disableZoom()
+        else: super().mouseDoubleClickEvent(event)
 
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
@@ -820,9 +861,15 @@ class QVideoPlayerLabel(QtW.QLabel):
         ''' Scales the GIF/image/art while resizing, and calculates
             what zoom factor the new player size should start from. '''
         if self.hasScaledContents(): return
-        if self.movie():
-            if self._gifScale == 1: self._resizeMovieFit()
-        elif self.pixmap() and not self.zoomed: self._calculateCurrentZoom()
+        if not self.zoomed:
+            if self.pixmap(): self._calculateCurrentZoom()
+            elif self.movie():
+                if self._gifScale == 1: self._resizeMovieFit()
+                self._resetMovieCache()
+                self._calculateCurrentZoom()
+        elif self._gifScale == 2:
+            self.gif.setScaledSize(self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * self.zoom)
+            self._resetMovieCache()
 
 
     def paintEvent(self, event: QtGui.QPaintEvent):
@@ -904,11 +951,13 @@ class QVideoSlider(QtW.QSlider):
         now = time.time()
 
         # handle QVideoPlayer's idle cursor/fullscreen controls timeout
-        vlc = gui.vlc
-        fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 seconds looks instant while avoiding 0-division (no flicker issues)
-        current_opacity = gui.dockControls.windowOpacity()
-        min_opacity = settings.spinFullScreenMinOpacity.value() / 100
-        max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
+        try:
+            vlc = gui.vlc
+            fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 seconds looks instant while avoiding 0-division (no flicker issues)
+            current_opacity = gui.dockControls.windowOpacity()
+            min_opacity = settings.spinFullScreenMinOpacity.value() / 100
+            max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
+        except: return
         try:
             # we keep track of lock_fullscreen_ui manually instead of repeatedly calling gui.dockControls.underMouse()
             # TODO ^^^ is this actually faster, or is underMouse() always kept track of internally?
