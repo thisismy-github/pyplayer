@@ -12,7 +12,7 @@ icon sources/inspirations https://www.pinclipart.com/maxpin/hxThoo/ + https://ww
 https://youtu.be/P1qMAupb2_Y?t=2461 VLC devs talk about Qt problems -> making two windows actually behave as one?
 TODO: update boilerplate code with last_window_size/pos changes
 TODO: need a way to deal with VLC registry edits
-TODO: move open_color_picker and other browse dialogs + indeterminate_progress decorator + setCursor(app) and resetCursor(app) to qthelpers?
+TODO: move show_color_picker and other browse dialogs + indeterminate_progress decorator + setCursor(app) and resetCursor(app) to qthelpers/util?
 TODO: better/more fleshed-out themes
 TODO: can't change themes while minimized to system tray (warn with tray icon?)
 TODO: live-themes advanced option? (button that auto-refreshes themes every half-second for theme developers)
@@ -446,7 +446,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_cycle_was_forward = True
         self.last_cycle_index: int = None
 
-        self.video: str = None
+        self.video = ''
         self.video_original_path: str = None
         self.recent_videos = []
         self.locked_video: str = None
@@ -1065,7 +1065,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             or previous openable, non-hidden file that isn't in the `ignore`
             list. If there are no other openable files, nothing happens.
             Otherwise, the new file is opened and returned. '''
-        if self.video is None: return self.statusbar.showMessage('No media is playing.', 10000)    # TODO remember last media's folder?
+        if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)    # TODO remember last media's folder between sessions?
         logging.info(f'Getting {"next" if next else "previous"} media file...')
 
         base_file = self.video_original_path if self.dialog_settings.checkCycleRememberOriginalPath.checkState() else self.video
@@ -1705,11 +1705,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def _save_as(self, caption='Save media as...', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
         ''' Trim and save to a specified path. '''
         logging.info('Opening \'Save As...\' dialogue.')
-        starting_name = self.video if self.dialog_settings.checkSaveAsUseMediaFolder.isChecked() else os.path.join(cfg.lastdir, os.path.basename(self.video))
-        file, cfg.lastdir = qthelpers.saveFile(lastdir=get_unique_path(starting_name),
-                                               caption=caption,
-                                               filter=filter,
-                                               selectedFilter='All files (*)' if 'All files (*)' in filter else '')     # TODO this is a temporary change until all file prompts/editing features become more robust
+        file = self.browse_for_save_file(noun='media', caption=caption, filter=filter)
         if file is None: return
         logging.info(f'Saving as \'{file}\'')
         self._save(dest=file)
@@ -2167,7 +2163,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.mime_type != 'video' and style > 1: return self.statusbar.showMessage('Concatenation is not implemented for audio and image files yet.', 10000)
 
         try:
-            if self.video is None and style > 1: return self.statusbar.showMessage('No video is playing.', 10000)  # for styles that assume a video is playing -> return
+            if style > 1 and not self.video: return self.statusbar.showMessage('No video is playing.', 10000)   # for styles that assume a video is playing -> return
             logging.info(f'Preparing to concatenate videos with style={style} and files={files}')
 
             # create/setup dialog and connect signals
@@ -2179,10 +2175,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.output.setText(self.lineOutput.text().strip())                       # set dialog's output text to our current output text
 
             dialog.add.clicked.connect(dialog.videoList.add)
-            dialog.delete.clicked.connect(lambda: qthelpers.listRemoveSelected(dialog.videoList))   # TODO itemDoubleClicked -> play video?
+            dialog.delete.clicked.connect(lambda: qthelpers.listRemoveSelected(dialog.videoList))           # TODO itemDoubleClicked -> play video?
             dialog.up.clicked.connect(dialog.videoList.move)
             dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
-            dialog.browse.clicked.connect(lambda: self.browse_concatenate_output(dialog.output))
+            dialog.browse.clicked.connect(lambda: self.browse_for_save_file(dialog.output, 'concatenated video'))
             dialog.videoList.itemDoubleClicked.connect(lambda item: self.open(item.toolTip(), focus_window=False))
 
             # getting videos
@@ -2203,8 +2199,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if dialog.exec() == QtW.QDialog.Rejected: return    # cancel selected on dialog -> return
                 files = tuple(item.toolTip() for item in dialog.videoList)
                 logging.info(f'Concatenation dialog files: {files}')
-                if len(files) < 2: return self.log('Not enough videos to concatenate.')   # user ended up with <2 videos in dialog and hit OK -> return
-            elif not dialog.output.text(): self.browse_concatenate_output(dialog.output)  # dialog skipped, but no output text was passed from the main window
+                if len(files) < 2: return self.log('Not enough videos to concatenate.')                     # user ended up with <2 videos in dialog and hit OK -> return
+            elif not dialog.output.text(): self.browse_for_save_file(dialog.output, 'concatenated video')   # dialog skipped, but no output text on main window (set on dialog earlier)
             self.log(f'Concatenating files: {files}')
 
             # preparing videos for concatenation
@@ -2218,8 +2214,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # preparing output destination
             output = dialog.output.text().strip()
-            if not output: output = add_path_suffix(files[0] if style < 2 else self.video, '_concatenated')   # no output name -> default to first file's name + "_concatenated"
-            if not os.path.splitext(output)[-1]: output = f'{output}{os.path.splitext(files[0])[-1]}'   # append appropriate extension if needed
+            if not output: output = add_path_suffix(files[0] if style < 2 else self.video, '_concatenated')  # no output name -> default to first file's name + "_concatenated"
+            if not os.path.splitext(output)[-1]: output = f'{output}{os.path.splitext(files[0])[-1]}'        # append appropriate extension if needed
             output = get_unique_path(output)
             dirname, basename = os.path.split(output)
             if not dirname:                                         # no output directory specified
@@ -2259,7 +2255,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
         ''' Resizes the dimensions of video files, and changes the length of audio files. '''
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-        width, height = self.get_size_dialog()
+        width, height = self.show_size_dialog()
         if width is None: return            # dialog cancelled
         if width == 0: width = -1           # ffmpeg takes -1 as a default value, not 0
         if height == 0: height = -1         # ffmpeg takes -1 as a default value, not 0
@@ -2344,26 +2340,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> PROMPTS <<<
     # ---------------------
-    def browse_default_path_output(self):
-        path, cfg.lastdir = qthelpers.browseForDirectory(cfg.lastdir, caption='Select default output directory')
+    def browse_for_directory(self, lineEdit=None, noun=None, default_path=None):
+        if default_path is None: default_path = cfg.lastdir
+        caption = f'Select {noun} directory' if noun else 'Select directory'
+        path, cfg.lastdir = qthelpers.browseForDirectory(default_path, caption=caption, lineEdit=lineEdit)
         if path is None: return
-        self.dialog_settings.lineDefaultOutputPath.setText(path)
+        return path
 
 
-    def browse_default_snapshot_path_output(self):
-        path, cfg.lastdir = qthelpers.browseForDirectory(cfg.lastdir, caption='Select default snapshot directory')
+    def browse_for_save_file(self, lineEdit=None, noun=None, filter='All files (*)', default_path=None, unique_default=True):
+        if default_path is None or not os.path.exists(os.path.dirname(default_path)):
+            current_path = self.video or '*.*'
+            if self.dialog_settings.checkSaveAsUseMediaFolder.isChecked(): default_path = current_path
+            else: default_path = os.path.join(cfg.lastdir, os.path.basename(current_path))
+        caption = f'Save {noun} as...' if noun else 'Save as...'
+        default_is_dir = os.path.isdir(default_path)
+        if unique_default and not default_is_dir: default_path = get_unique_path(default_path)
+        kwarg = {'directory' if default_is_dir else 'lastdir': default_path}
+        path, cfg.lastdir = qthelpers.saveFile(**kwarg, caption=caption, filter=filter, lineEdit=lineEdit)
         if path is None: return
-        self.dialog_settings.lineDefaultSnapshotPath.setText(path)
+        return path
 
 
-    def browse_concatenate_output(self, lineEdit):
-        starting_name = self.video if self.dialog_settings.checkSaveAsUseMediaFolder.isChecked() else os.path.join(cfg.lastdir, os.path.basename(self.video))
-        file, cfg.lastdir = qthelpers.saveFile(lastdir=get_unique_path(starting_name), caption='Save concatenated video as...', filter='All files (*)')
-        if file is None: return
-        lineEdit.setText(file)
-
-
-    def browse_subtitle_file(self, urls=None):
+    def browse_for_subtitle_file(self, urls=None):
         if self.mime_type == 'image': self.statusbar.showMessage('Well that would just be silly, wouldn\'t it?', 10000)
         if urls is None:
             urls, cfg.lastdir = qthelpers.browseForFiles(
@@ -2382,7 +2381,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.dialog_settings.checkTextOnSubtitleAdded.isChecked(): show_text('Failed to add subtitle file')
 
 
-    def get_size_dialog(self, snapshot=False):
+    def show_size_dialog(self, snapshot=False):
         dimensions = snapshot or self.mime_type != 'audio'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
@@ -2457,22 +2456,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dialog.accepted.connect(accept)
         if not dialog.exec(): return (None, None, None) if snapshot else (None, None)
         return (dialog.width, dialog.height, dialog.quality) if snapshot else (dialog.width, dialog.height)
-
-
-    def open_color_picker(self):                # NOTE: F suffix is Float -> values are represented from 0-1 (e.g. getRgb() becomes getRgbF())
-        ''' Opens color-picking dialog, specifically for the hover-timestamp font color setting.
-            Saves new color and adjusts the color of the color-picker's button through a stylesheet. '''
-        try:                                    # TODO: add support for marquee colors
-            picker = QtW.QColorDialog()
-            #for index, default in enumerate(self.defaults): picker.setCustomColor(index, QtGui.QColor(*default))
-            color = picker.getColor(initial=self.sliderProgress.hover_font_color, parent=self.dialog_settings, title='Picker? I hardly know her!')
-            if not color.isValid(): return
-            self.sliderProgress.hover_font_color = color
-
-            color_string = str(color.getRgb())
-            self.dialog_settings.buttonHoverFontColor.setToolTip(color_string)
-            self.dialog_settings.buttonHoverFontColor.setStyleSheet('QPushButton {background-color: rgb' + color_string + ';border: 1px solid black;}')
-        except: self.log(f'OPEN_COLOR_PICKER FAILED: {format_exc()}')
 
 
     def show_about_dialog(self):                # lazy version of about dialog
@@ -2575,6 +2558,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.info(f'Deletion dialog choice: {dialog.choice}')
             return dialog.choice
         except: self.log(f'(!) DELETION PROMPT FAILED: {format_exc()}')
+
+
+    def show_color_picker(self):                # NOTE: F suffix is Float -> values are represented from 0-1 (e.g. getRgb() becomes getRgbF())
+        ''' Opens color-picking dialog, specifically for the hover-timestamp font color setting.
+            Saves new color and adjusts the color of the color-picker's button through a stylesheet. '''
+        try:                                    # TODO: add support for marquee colors
+            picker = QtW.QColorDialog()
+            #for index, default in enumerate(self.defaults): picker.setCustomColor(index, QtGui.QColor(*default))
+            color = picker.getColor(initial=self.sliderProgress.hover_font_color, parent=self.dialog_settings, title='Picker? I hardly know her!')
+            if not color.isValid(): return
+            self.sliderProgress.hover_font_color = color
+
+            color_string = str(color.getRgb())
+            self.dialog_settings.buttonHoverFontColor.setToolTip(color_string)
+            self.dialog_settings.buttonHoverFontColor.setStyleSheet('QPushButton {background-color: rgb' + color_string + ';border: 1px solid black;}')
+        except: self.log(f'OPEN_COLOR_PICKER FAILED: {format_exc()}')
 
 
     # -------------------------------
@@ -3262,7 +3261,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     gif_player.gif.setPaused(True)
                     try:
                         # get dimensions
-                        width, height, quality = self.get_size_dialog(snapshot=True)
+                        width, height, quality = self.show_size_dialog(snapshot=True)
                         if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
 
                         # open save-file dialog

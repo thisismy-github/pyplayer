@@ -298,7 +298,7 @@ def getDialog(parent=None, title='Dialog', icon='SP_MessageBoxInformation',
 # -------------------------------------------------------
 # File dialogs - https://doc.qt.io/qt-5/qfiledialog.html
 # -------------------------------------------------------
-def browseForDirectory(lastdir='.', caption='Select folder', directory=None, url=False):
+def browseForDirectory(lastdir='.', caption='Select folder', directory=None, url=False, lineEdit=None):
     directory = directory if directory else lastdir
     _dir = (QFileDialog.getExistingDirectoryUrl if url else QFileDialog.getExistingDirectory)(
         caption=caption,
@@ -307,13 +307,14 @@ def browseForDirectory(lastdir='.', caption='Select folder', directory=None, url
     try:
         path = _dir.url() if url else _dir
         if not path: return None, lastdir   # cancel selected
+        if lineEdit: lineEdit.setText(path)
         lastdir = os.path.dirname(_dir.toLocalFile() if url else _dir)
         return _dir, lastdir
     except: return None, lastdir
 
 def browseForFile(lastdir='.', caption='Select file', filter='All files (*)',
                   selectedFilter='', returnFilter=False,
-                  directory=None, name=None, url=False):
+                  directory=None, name=None, url=False, lineEdit=None):
     directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
     file, filter = (QFileDialog.getOpenFileUrl if url else QFileDialog.getOpenFileName)(
         caption=caption,
@@ -324,6 +325,7 @@ def browseForFile(lastdir='.', caption='Select file', filter='All files (*)',
     try:
         path = file.url() if url else file
         if not path: return (None, '', lastdir) if returnFilter else (None, lastdir)
+        if lineEdit: lineEdit.setText(path)
         lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
         return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except: return (None, '', lastdir) if returnFilter else (None, lastdir)
@@ -346,7 +348,7 @@ def browseForFiles(lastdir='.', caption='Select files', filter='All files (*)',
 
 def saveFile(lastdir='.', caption='Save file', filter='All files (*)',
              selectedFilter='', returnFilter=False,
-             directory=None, name=None, url=False):
+             directory=None, name=None, url=False, lineEdit=None):
     directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
     file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(
         caption=caption,
@@ -357,6 +359,7 @@ def saveFile(lastdir='.', caption='Save file', filter='All files (*)',
     try:
         path = file.url() if url else file
         if not path: return (None, '', lastdir) if returnFilter else (None, lastdir)
+        if lineEdit: lineEdit.setText(path)
         lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
         return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except: return (None, '', lastdir) if returnFilter else (None, lastdir)

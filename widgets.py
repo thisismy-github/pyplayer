@@ -110,8 +110,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         except:
             logger.warning(f'VLC failed to play file {file}: {format_exc()}')
             if not _error:  # _error ensures we only attempt to play previous video once
-                if gui.video is None: self.player.stop()    # no previous video to play, so just stop playing
-                else: self.play(gui.video, _error=True)     # attempt to play previous working video
+                if not gui.video: self.player.stop()     # no previous video to play, so just stop playing
+                else: self.play(gui.video, _error=True)  # attempt to play previous working video
             return False
 
 
@@ -144,7 +144,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.text_fade_start_time = time.time() + settings.spinTextFadeDelay.value()            # TODO this doesn't look right at low non-zero values (<0.5)
             self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, self.text_opacity)    # reset opacity to default (repetitive but sometimes necessary)
 
-            if (timeout == 0 and not unique_settings) or gui.video is None: return                  # avoid repetitive + pointless calls
+            if (timeout == 0 and not unique_settings) or not gui.video: return                      # avoid repetitive + pointless calls
             if unique_settings:                                                                     # avoid repetitive set_xyz() calls
                 self.player.video_set_marquee_int(vlc.VideoMarqueeOption.Position, position)
                 self.player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, text)             # set new text
@@ -640,7 +640,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 else: gui.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
             else:                                       # no modifiers pressed, check if subtitle files were dropped
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
-                if subtitle_files: gui.browse_subtitle_file(urls=subtitle_files)
+                if subtitle_files: gui.browse_for_subtitle_file(urls=subtitle_files)
                 else: gui.open(files[0], focus_window=focus_window)  # no modifiers, no subtitles -> play dropped file as media
         else: gui.open(files[0], focus_window=focus_window)          # no video playing -> ignore modifiers and play dropped file
         if settings.checkRememberDropFolder.isChecked():             # update lastdir if desired
@@ -1674,7 +1674,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 #        except:
 #            logger.warning(f'QMediaPlayer failed to play video {file}: {format_exc()}')
 #            if not _error:  # _error ensures we only attempt to play previous video once
-#                if gui.video is None: self.player.stop()    # no previous video to play, so just stop playing
+#                if not gui.video: self.player.stop()        # no previous video to play, so just stop playing
 #                else: self.play(gui.video, _error=True)     # attempt to play previous working video
 #            return False
 #
