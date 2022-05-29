@@ -2630,7 +2630,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     certifi.core.where = lambda: cacert_override_path
 
                 import update
-                Thread(target=update.check_for_update, args=(self, just_updated)).start()
+                Thread(target=update.check_for_update, args=(self, not just_updated, _launch)).start()
 
                 cfg.lastupdatecheck = strftime('%#D', localtime())      # seconds into string needs %D
                 settings.labelLastCheck.setText(f'Last check: {cfg.lastupdatecheck}')

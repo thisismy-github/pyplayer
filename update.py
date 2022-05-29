@@ -24,7 +24,7 @@ def get_later_version(version_a: str, version_b: str) -> str:
     return version_a if atuple > btuple else version_b
 
 
-def check_for_update(self, no_log: bool = False) -> None:
+def check_for_update(self, log: bool = True, _launch: bool = False) -> None:
     ''' The following format is assumed:
             > constants.REPOSITORY_URL -- https://github.com/thisismy-github/PyPlayer
             > constants.VERSION        -- pyplayer 0.1.0 beta
@@ -83,7 +83,10 @@ def check_for_update(self, no_log: bool = False) -> None:
                          text=f'An update is available on Github ({current_version} -> {latest_version}).',
                          textInformative=f'{reason}You can view the {HYPERLINK}')
                 )
-        elif not no_log: self.log('You\'re up to date!')
+        elif log: self.log('You\'re up to date!')
+    except requests.exceptions.ConnectionError:
+        if _launch: logging.warning('Update check was unable to reach GitHub (no internet connection?).')
+        else: self.log('Update check was unable to reach GitHub (no internet connection?).')
     except: self.log(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
     self._handle_updates_signal.emit({}, {})                                # call empty signal to perform cleanup
 
