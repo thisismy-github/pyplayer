@@ -8,6 +8,7 @@ import sys
 import glob
 import shutil
 import platform
+import subprocess
 
 
 pjoin = os.path.join
@@ -26,19 +27,18 @@ if 'venv' not in sys.executable.split(os.sep):
     if PLATFORM == 'Windows': venv = pjoin(VENV_DIR, 'Scripts', 'python.exe')
     else: venv = pjoin(VENV_DIR, 'bin', 'python3')
     if os.path.exists(venv):
-        import subprocess
-        print('Restarting with virtual environment at ' + venv)
-        process = subprocess.Popen(f'{venv} {sys.argv[0]}', shell=True)
+        print(f'Restarting with virtual environment at "{venv}"')
+        process = subprocess.Popen(f'"{venv}" "{sys.argv[0]}"', shell=True)
         process.wait()
         sys.exit(0)
 
 
 def compile():
-    print(f'\nCompiling PyPlayer (sys.executable={sys.executable})...\n')
-    pyinstaller = sys.executable + ' -m PyInstaller'
-    args = f'--distpath {pjoin(CWD, "compiled")} --workpath {pjoin(CWD, "build")}'
-    os.system(f'{pyinstaller} {pjoin(CWD, "main.spec")} --noconfirm {args}')
-    os.system(f'{pyinstaller} {pjoin(CWD, "updater.spec")} --noconfirm {args}')
+    print(f'\nCompiling PyPlayer (sys.executable="{sys.executable}")...\n')
+    pyinstaller = f'"{sys.executable}" -m PyInstaller'
+    args = f'--distpath "{pjoin(CWD, "compiled")}" --workpath "{pjoin(CWD, "build")}"'
+    subprocess.call(f'{pyinstaller} "{pjoin(CWD, "main.spec")}" --noconfirm {args}')
+    subprocess.call(f'{pyinstaller} "{pjoin(CWD, "updater.spec")}" --noconfirm {args}')
 
     print('Copying cacert.pem...')
     certifi_dir = pjoin(RELEASE_DIR, 'certifi')

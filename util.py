@@ -1,8 +1,19 @@
 ''' Generic, non-Qt-related utility functions.
     thisismy-github 4/23/22 '''
 
-import os
 import constants
+
+import os
+import logging
+import subprocess
+
+
+def ffmpeg(cmd: str) -> None:   # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    cmd = f'"{constants.FFMPEG}" -y {cmd} -hide_banner -loglevel warning'.replace('""', '"')
+    logging.info('FFmpeg command: ' + cmd)
+    subprocess.call(cmd, startupinfo=startupinfo, shell=True)
 
 
 def get_unique_path(path: str, start: int = 2, key: str = None, zeros: int = 0, strict: bool = False) -> str:

@@ -4,7 +4,7 @@ from PyQt5 import QtWidgets as QtW
 
 import constants
 import qthelpers
-from util import get_unique_path, get_hms
+from util import ffmpeg, get_unique_path, get_hms
 
 import os
 import time
@@ -1288,11 +1288,9 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             and updates the QVideoListItemWidget `item_widget` with the thumbnail.
             constants.FFMPEG is verified beforehand and assumed to be valid. '''
         temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
-        cmd_get_thumbnail = f'-ss 3 -i "{video}" -vframes 1 "{temp_path}"'
-        cmd_resize_thumbnail = f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"'
+        ffmpeg(f'-ss 3 -i "{video}" -vframes 1 "{temp_path}"')                      # generate thumbnail from 3 seconds in
+        ffmpeg(f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"')              # resize thumbnail
         logger.info(f'Generating thumbnail for "{video}" to "{temp_path}"')
-        subprocess.call(f'{constants.FFMPEG} -y {cmd_get_thumbnail} -hide_banner -loglevel warning', shell=True)
-        subprocess.call(f'{constants.FFMPEG} -y {cmd_resize_thumbnail} -hide_banner -loglevel warning', shell=True)
         item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
         try: os.remove(temp_path)
         except Exception as error: logger.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')

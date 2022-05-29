@@ -190,7 +190,7 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from util import get_unique_path, add_path_suffix, get_hms, get_aspect_ratio, file_is_hidden
+from util import ffmpeg, get_unique_path, add_path_suffix, get_hms, get_aspect_ratio, file_is_hidden
 from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 
@@ -246,19 +246,22 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -----------------------------
 # Additional utility functions
 # -----------------------------
-def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
+def ffmpeg_in_place(infile: str, cmd: str, outfile: str = None) -> str:
     start = get_time()
     logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})...')
 
-    # create temp file if '%tp' is in ffmpeg command (and we have a valid `out` file)
+    if not outfile: outfile = infile
+    if '%out' not in cmd: cmd += ' %out'                                # ensure %out is present
+
+    # create temp file if infile and outfile are the same
     temp_path = ''
-    if '%tp' in cmd and infile and os.path.exists(infile):
+    if infile == outfile:
         temp_path = add_path_suffix(infile, '_temp', unique=True)
-        if infile == gui.locked_video: gui.locked_video = temp_path    # update locked video if needed TODO does this make sense...?
-        os.renames(infile, temp_path)                                  # rename `out` to temp name
+        if infile == gui.locked_video: gui.locked_video = temp_path     # update locked video if needed TODO does this make sense...?
+        os.renames(infile, temp_path)                                   # rename `out` to temp name
 
     # run final ffmpeg command
-    try: ffmpeg_simple(cmd.replace("%tp", temp_path))
+    try: ffmpeg(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
     except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
     # cleanup temp file, if needed
@@ -266,19 +269,11 @@ def ffmpeg(infile: str, cmd: str, outfile: str = '') -> str:
         if os.path.exists(infile):
             try: os.remove(temp_path)
             except: logging.warning(f'Temporary FFmpeg file {temp_path} could not be deleted')
-        else:   # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_file line up there
+        else:   # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_video line up there
             if temp_path == gui.locked_video: gui.locked_video = infile
             os.renames(temp_path, infile)
     gui.log(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
     return outfile
-
-
-def ffmpeg_simple(cmd: str) -> None:    # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    cmd = f'{constants.FFMPEG} -y {cmd} -hide_banner -loglevel warning'
-    logging.info('FFmpeg command: ' + cmd)
-    subprocess.Popen(cmd, startupinfo=startupinfo, shell=True).wait()
 
 
 def get_PIL_Image():
@@ -1363,13 +1358,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             if int(probe_data['format']['size']) == os.path.getsize(file):
                                 logging.info('Reusing previously parsed metadata.')
                             else:
-                                Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
+                                Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
                                 logging.info('Previously parsed metadata is now out-of-date. Re-probing with FFprobe.')
                         except:
                             try: os.remove(probe_file)
                             except: logging.warning('FAILED TO DELETE PROBE FILE: ' + probe_file)
-                            Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
-                else: Thread(target=subprocess.Popen, args=(f'{FFPROBE} -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
+                            Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
+                else: Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
             else: probe_file = None                 # no FFprobe -> no probe file (even if one exists already)
 
             # get mime type of file (if called from cycle, then this part was worked out beforehand)
@@ -1801,31 +1796,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # check for specific operations
             if op_replace_audio is not None:
                 self.log('Audio replacement requested.')
-                audio = op_replace_audio    # TODO -shortest (before "{dest}") results in audio cutting out ~1 second before end of video despite the audio being longer
-                intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0 "{dest}"', dest)
+                audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
+                intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0', dest)
             if op_add_audio is not None:                    # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
                 self.log('Additional audio track requested.')
                 audio = op_add_audio        # TODO :duration=shortest (after amix=inputs=2) has same issue as above
                 if mime != 'image':         # normal audio mixing does NOT work if the video has 0 audio tracks
                     the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
-                    intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -i "{audio}" {the_important_part} "{dest}"', dest)
-                elif mime == 'audio': intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -i "{audio}" -filter_complex amix=inputs=2 "{dest}"', dest)
-                else: intermediate_file = ffmpeg(intermediate_file, f'-loop 1 -i "%tp" -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest "{dest}"', dest)
+                    intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in -i "{audio}" {the_important_part}', dest)
+                elif mime == 'audio': intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in -i "{audio}" -filter_complex amix=inputs=2', dest)
+                else: intermediate_file = ffmpeg_in_place(intermediate_file, f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest', dest)
             if op_remove_track is not None:                 # NOTE: This can degrade audio quality slightly.
                 self.log(f'{op_remove_track.title()}-track removal requested.')
-                intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" {"-q:a 0 -map a" if op_remove_track == "video" else "-c copy -an"} "{dest}"', dest)
+                intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in {"-q:a 0 -map a" if op_remove_track == "video" else "-c copy -an"}', dest)
             if op_amplify_audio is not None:
                 self.log('Audio amplification requested.')
-                intermediate_file = ffmpeg(intermediate_file, f'-i "{video}" -filter:a "volume={op_amplify_audio}" "{dest}"', dest)
+                intermediate_file = ffmpeg_in_place(intermediate_file, f'-i "{video}" -filter:a "volume={op_amplify_audio}"', dest)
             if op_resize is not None:                       # audio -> https://stackoverflow.com/questions/25635941/ffmpeg-modify-audio-length-size-stretch-or-shrink
                 log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (Note: this should be a VERY quick operation)' if mime == 'audio' else ''
                 self.log(f'{mime.title()} resize requested{log_note}.')
                 width, height = op_resize                   # for audio, width is the percentage and height is None
-                if mime == 'audio': intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -filter:a atempo="{width}" "{dest}"', dest)
-                else: intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -vf "scale={width}:{height}" -crf 28 -c:a copy "{dest}"', dest)
+                if mime == 'audio': intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
+                else: intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in -vf "scale={width}:{height}" -crf 28 -c:a copy', dest)
             if op_rotate_video is not None:
                 self.log('Video rotation/flip requested (this is a time-consuming task).')
-                intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" -vf "{op_rotate_video}" -crf 28 -c:a copy "{dest}"', dest)
+                intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy', dest)
 
             # trim -> https://trac.ffmpeg.org/wiki/Seeking TODO: -vf trim filter should be used in here
             if op_trim_start or op_trim_end:
@@ -1840,7 +1835,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     trim_cmd_parts = []
                     if minimum > 0:           trim_cmd_parts.append(f'-ss {minimum / frame_rate}')
                     if maximum < frame_count: trim_cmd_parts.append(f'-to {maximum / frame_rate}')  # "-c:v libx264" vs "-c:v copy"
-                    if trim_cmd_parts: intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" {" ".join(trim_cmd_parts)}{cmd_parameters}"{dest}"', dest)
+                    if trim_cmd_parts: intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in {" ".join(trim_cmd_parts)}{cmd_parameters}%out', dest)
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 else:
@@ -1867,7 +1862,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             delta = duration - seconds
                             fade_parts.append(f'afade=t=out:st={seconds}:d={delta}')
                         if fade_parts: fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
-                    if fade_cmd_parts: intermediate_file = ffmpeg(intermediate_file, f'-i "%tp" {" ".join(fade_cmd_parts)} "{dest}"', dest)
+                    if fade_cmd_parts: intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in {" ".join(fade_cmd_parts)}', dest)
 
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
             if op_crop:     # ffmpeg cropping is not 100% accurate, final dimensions may be off by ~1 pixel
@@ -1887,7 +1882,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         image_data = get_PIL_Image().open(video)
                         image_data.crop((round(lfp[0].x()), round(lfp[0].y()),              # left/top/right/bottom (crop takes a tuple)
                                          round(lfp[1].x()), round(lfp[2].y()))).save(dest)  # round QPointFs
-                    else: ffmpeg(intermediate_file, f'-i "%tp" -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}" "{dest}"')
+                    else: ffmpeg_in_place(intermediate_file, f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"')
 
             # confirm our operations, clean up temp files/base video, and get final path
             if operations_detected:                         # double-check that we've actually done anything at all
@@ -2210,7 +2205,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try: os.remove(intermediate_file)
                 except: pass
                 intermediate_files.append(intermediate_file)
-                ffmpeg_simple(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
+                ffmpeg(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
 
             # preparing output destination
             output = dialog.output.text().strip()
@@ -2226,7 +2221,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # actually concatentating videos
             if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{output}"'
             else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}"'
-            ffmpeg_simple(cmd)
+            ffmpeg(cmd)
             for intermediate_file in intermediate_files:
                 try: os.remove(intermediate_file)
                 except: pass
@@ -3232,7 +3227,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
 
                     # take and save snapshot
-                    if is_gif: ffmpeg_simple(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+                    if is_gif: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
                     elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
                     elif mime == 'image': return self.statusbar.showMessage('Quick-snapshotting an image would just be silly, wouldn\'t it?', 10000)
                     elif is_art:
@@ -3284,8 +3279,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             if width or height:                         # use "scale" ffmpeg filter for gifs
                                 w = width if width else -1              # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
                                 h = height if height else -1
-                                ffmpeg_simple(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
-                            else: ffmpeg_simple(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+                                ffmpeg(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
+                            else: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
                         elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
                         else:
                             if width or height:
