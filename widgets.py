@@ -2,6 +2,7 @@ from PyQt5 import QtGui, QtCore  # QtMultimedia, QtMultimediaWidgets
 from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets as QtW
 
+import qtstart
 import constants
 import qthelpers
 from util import ffmpeg, get_unique_path, get_hms
@@ -10,7 +11,7 @@ import os
 import time
 import math
 import logging
-import subprocess
+
 import vlc
 from colour import Color
 from threading import Thread
@@ -53,7 +54,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.setMinimumHeight(10)
 
         # setup VLC instance
-        self.instance = vlc.Instance(['--gain=6.0'])        # TODO allow ability to pass VLC arguments here?
+        self.instance = vlc.Instance(qtstart.args.vlc)      # VLC arguments can be passed through the --vlc argument
         self.player = self.instance.media_player_new()
         self.media = None
         self.event_manager = self.player.event_manager()    # ↓ cannot use .emit as a callback ↓
