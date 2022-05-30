@@ -502,7 +502,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonOpenMediaLocation.contextMenuEvent = self.openMediaLocationButtonContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
-        self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
+        self.buttonSnapshot.contextMenuEvent = lambda event: self.menuSnapshots.exec(event.globalPos())
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
@@ -794,6 +794,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addAction(self.actionSettings)
         context.addAction(self.actionLoop)
         context.addAction(self.actionAutoplay)
+        context.addMenu(self.menuSnapshots)
+
         context.addSeparator()
         context.addMenu(self.menuFile)
         context.addMenu(self.menuEdit)
@@ -824,7 +826,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def trimButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles creating the context menu (right-click) for the start/end trim buttons. Includes
+        ''' Handles creating the context (right-click) menu for the start/end trim buttons. Includes
             the fade-mode menu, actions for instantly setting new start/end positions, and disabled
             (grayed out) actions containing information about the current start/end positions. '''
         if not self.video: return       # do not render context menu if no media is playing
@@ -879,7 +881,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def openMediaLocationButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles creating the context menu (right-click) for the open media location button. '''
+        ''' Handles creating the context (right-click) menu for the open media location button. '''
         if not self.video: return       # do not render context menu if no media is playing
         context = QtW.QMenu(self)
         context.addAction(self.actionOpenMediaLocation)
@@ -888,8 +890,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def buttonMarkDeletedContextMenuEvent(self, event: QtGui.QContextMenuEvent):    # should these use QWidget.actions() instead of contextMenuEvent?
-        ''' Handles creating the context menu (right-click) for buttonMarkDeleted. Due to the uniqueness of
-            each context menu, contextMenuEvent is replaced directly instead of subclassing the entire widget. '''
+        ''' Handles creating the context (right-click) menu for buttonMarkDeleted. '''
         context = QtW.QMenu(self)
         context.setToolTipsVisible(True)
         context.addAction(self.actionMarkDeleted)
@@ -900,32 +901,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
-    def buttonSnapshotContextMenuEvent(self, event: QtGui.QContextMenuEvent):       # should these use QWidget.actions() instead of contextMenuEvent?
-        ''' Handles creating the context menu (right-click) for buttonSnapshot. Due to the uniqueness of
-            each context menu, contextMenuEvent is replaced directly instead of subclassing the entire widget. '''
-        def explore_last_screenshot():
-            if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-            else: qthelpers.openPath(cfg.last_snapshot_path, explore=True)
-
-        open_action1 = QtW.QAction('Open last snapshot (&PyPlayer)')
-        open_action1.triggered.connect(lambda: self.snapshot(modifiers=Qt.ShiftModifier))
-        open_action2 = QtW.QAction('Open last snapshot (&default)')
-        open_action2.triggered.connect(lambda: self.snapshot(modifiers=Qt.AltModifier))
-        explore_action = QtW.QAction('&Explore last snapshot')
-        explore_action.triggered.connect(explore_last_screenshot)
-
-        context = QtW.QMenu(self)
-        context.addAction(open_action1)
-        context.addAction(open_action2)
-        context.addAction(explore_action)
-        context.addSeparator()
-        context.addAction(self.actionQuickSnapshot)         # quick snapshot action
-        context.addAction(self.actionSnapshot)              # regular snapshot action
-        context.exec(event.globalPos())
-
-
     def menuRecentContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles context menus for individual recent files. '''
+        ''' Handles creating the context (right-click) menus for individual recent files. '''
         action = self.menuRecent.actionAt(event.pos())
         if action is self.actionClearRecent or not action: return
         path = action.toolTip()
@@ -1110,25 +1087,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return self.log('This is the only playable media file in this folder.')
 
 
-    def explore_media_location(self, path: str = None):
-        ''' Opens `path` (or self.video if not provided) in the default
-            file explorer, with `path` pre-selected if possible. '''
+    def explore_media_location(self, path: str = None, noun: str = 'Recent file'):
+        ''' Opens `path` (or self.video if not provided) in the default file
+            explorer, with `path` pre-selected if possible. `noun` controls
+            how `path` is described in any log messages.'''
         if not path: path = self.video if self.video else cfg.lastdir
         if not os.path.exists(path):
-            if path in self.recent_vidoes:
+            if path in self.recent_videos:
                 self.recent_videos.remove(path)
-            return self.log(f'Recent file "{path}" no longer exists.')
+            return self.log(f'{noun} "{path}" no longer exists.')
         else: qthelpers.openPath(path, explore=True)
 
 
-    def copy_media_location(self, path: str = None):
+    def copy_media_location(self, path: str = None, noun: str = 'Recent file'):
         ''' Copies `path` (or self.video if not provided) to the clipboard,
-            surrounded by quotes and with backslashes escaped (if desired). '''
+            with backslashes escaped (if desired) and surrounded by quotes.
+            `noun` controls how `path` is described in any log messages. '''
         if not path: path = self.video if self.video else cfg.lastdir
         if not os.path.exists(path):
-            if path in self.recent_vidoes:
+            if path in self.recent_videos:
                 self.recent_videos.remove(path)
-            return self.log(f'Recent file "{path}" no longer exists.')
+            return self.log(f'{noun} "{path}" no longer exists.')
         else:
             if self.dialog_settings.checkCopyEscapeBackslashes.isChecked():
                 sep = '\\'
@@ -1734,7 +1713,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         op_trim_end =      self.buttonTrimEnd.isChecked()               # represents both trimming and fading
         op_crop =          self.actionCrop.isChecked()
         if op_crop:
-            if mime == 'audio': return self.log('Please disable crop-mode before saving an audio file (its only meant for screenshotting cover art).')
+            if mime == 'audio': return self.log('Please disable crop-mode before saving an audio file (its only meant for cropping cover art snapshots).')
             crop_selection = tuple(self.vlc.factor_point(point) for point in self.vlc.selection)
             lfp = tuple(self.vlc.last_factored_points)
 
@@ -2740,8 +2719,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.sliderVolume.setEnabled(True)
             self.sliderVolume.setToolTip(f'{volume}%')
             if self.dialog_settings.checkTextOnVolume.isChecked(): show_text(f'{volume}%%', 200)
-        except: logging.error(format_exc())
-        self.update_title_signal.emit()
+            self.update_title_signal.emit()
+        except:
+            if self.first_video_fully_loaded:
+                logging.error(format_exc())
 
 
     def toggle_mute(self):
@@ -3167,7 +3148,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             Parameters:
                 `p_mi` - media player instance.
                 `num` - number of video output (typically 0 for the first/only one).
-                `psz_filepath` - the path of a file or a folder to save the screenshot into.
+                `psz_filepath` - the path of a file or a folder to save the snapshot into.
                 `i_width` - the snapshot's width.
                 `i_height` - the snapshot's height. '''
         try:
@@ -3184,17 +3165,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 self.open(cfg.last_snapshot_path)
-                self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
+                self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
 
             # >>> open last snapshot in default program, not in explorer (alt) <<<
             elif mod & Qt.AltModifier:
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 qthelpers.openPath(cfg.last_snapshot_path)
-                self.log(f'Opening last screenshot at {cfg.last_snapshot_path}.')
+                self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
 
             elif not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-            elif mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only screenshot audio with cover art.', 10000)
+            elif mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only snapshot audio with cover art.', 10000)
 
             else:
                 is_gif = self.extension == 'gif'

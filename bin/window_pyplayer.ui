@@ -78,7 +78,7 @@
      <x>0</x>
      <y>0</y>
      <width>757</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -107,10 +107,23 @@
     <property name="title">
      <string>&amp;Edit</string>
     </property>
+    <widget class="QMenu" name="menuSnapshots">
+     <property name="title">
+      <string>S&amp;napshots</string>
+     </property>
+     <addaction name="actionSnapshot"/>
+     <addaction name="actionQuickSnapshot"/>
+     <addaction name="separator"/>
+     <addaction name="actionSnapshotOpenLast"/>
+     <addaction name="actionSnapshotOpenLastInDefault"/>
+     <addaction name="actionSnapshotExploreLast"/>
+     <addaction name="actionSnapshotCopyLast"/>
+    </widget>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
     <addaction name="actionLoop"/>
     <addaction name="actionAutoplay"/>
+    <addaction name="menuSnapshots"/>
     <addaction name="separator"/>
     <addaction name="actionMarkDeleted"/>
     <addaction name="actionClearMarked"/>
@@ -196,9 +209,6 @@
     </widget>
     <addaction name="menuSubtitles"/>
     <addaction name="menuVideoTracks"/>
-    <addaction name="separator"/>
-    <addaction name="actionSnapshot"/>
-    <addaction name="actionQuickSnapshot"/>
     <addaction name="separator"/>
     <addaction name="menuConcatenate"/>
     <addaction name="menuRotate"/>
@@ -792,7 +802,7 @@ prompt is shown on exit if any files are marked.</string>
                <enum>Qt::NoFocus</enum>
               </property>
               <property name="toolTip">
-               <string>Takes a screenshot of the current media at its current position.
+               <string>Takes a snapshot of the current media at its current position.
 
 Ctrl + click: Opens size and save-file dialogs for your snapshot.
 Shift + click: Opens the last snapshot in PyPlayer.
@@ -1477,6 +1487,26 @@ for deletion, without actually deleting them.</string>
   <action name="actionSnapRatioShrink">
    <property name="text">
     <string>Shrink to media's aspect ratio</string>
+   </property>
+  </action>
+  <action name="actionSnapshotOpenLast">
+   <property name="text">
+    <string>Open last snapshot (&amp;PyPlayer)</string>
+   </property>
+  </action>
+  <action name="actionSnapshotOpenLastInDefault">
+   <property name="text">
+    <string>Open last snapshot (&amp;default)</string>
+   </property>
+  </action>
+  <action name="actionSnapshotExploreLast">
+   <property name="text">
+    <string>&amp;Explore last snapshot</string>
+   </property>
+  </action>
+  <action name="actionSnapshotCopyLast">
+   <property name="text">
+    <string>Copy last snapshot path</string>
    </property>
   </action>
  </widget>
