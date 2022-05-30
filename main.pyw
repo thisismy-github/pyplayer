@@ -500,7 +500,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
-        self.buttonOpenMediaLocation.contextMenuEvent = self.openMediaLocationButtonContextMenuEvent
+        self.buttonExploreMediaPath.contextMenuEvent = self.openMediaLocationButtonContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = lambda event: self.menuSnapshots.exec(event.globalPos())
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
@@ -884,8 +884,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles creating the context (right-click) menu for the open media location button. '''
         if not self.video: return       # do not render context menu if no media is playing
         context = QtW.QMenu(self)
-        context.addAction(self.actionOpenMediaLocation)
-        context.addAction(self.actionCopyMediaLocation)
+        context.addAction(self.actionExploreMediaPath)
+        context.addAction(self.actionCopyMediaPath)
         context.exec(event.globalPos())
 
 
@@ -908,9 +908,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         path = action.toolTip()
 
         explore_action = QtW.QAction('M&edia location')
-        explore_action.triggered.connect(lambda: self.explore_media_location(path))
+        explore_action.triggered.connect(lambda: self.explore(path))
         copy_action = QtW.QAction('&Copy media path')
-        copy_action.triggered.connect(lambda: self.copy_media_location(path))
+        copy_action.triggered.connect(lambda: self.copy(path))
         remove_action = QtW.QAction('&Remove from recent files')
         remove_action.triggered.connect(lambda: (self.recent_videos.remove(path), self.refresh_recent_menu()))
 
@@ -1087,7 +1087,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return self.log('This is the only playable media file in this folder.')
 
 
-    def explore_media_location(self, path: str = None, noun: str = 'Recent file'):
+    def explore(self, path: str = None, noun: str = 'Recent file'):
         ''' Opens `path` (or self.video if not provided) in the default file
             explorer, with `path` pre-selected if possible. `noun` controls
             how `path` is described in any log messages.'''
@@ -1099,7 +1099,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else: qthelpers.openPath(path, explore=True)
 
 
-    def copy_media_location(self, path: str = None, noun: str = 'Recent file'):
+    def copy(self, path: str = None, noun: str = 'Recent file'):
         ''' Copies `path` (or self.video if not provided) to the clipboard,
             with backslashes escaped (if desired) and surrounded by quotes.
             `noun` controls how `path` is described in any log messages. '''

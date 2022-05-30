@@ -93,8 +93,8 @@
     </widget>
     <addaction name="actionOpen"/>
     <addaction name="menuRecent"/>
-    <addaction name="actionOpenMediaLocation"/>
-    <addaction name="actionCopyMediaLocation"/>
+    <addaction name="actionExploreMediaPath"/>
+    <addaction name="actionCopyMediaPath"/>
     <addaction name="separator"/>
     <addaction name="actionSave"/>
     <addaction name="actionSaveAs"/>
@@ -116,8 +116,8 @@
      <addaction name="separator"/>
      <addaction name="actionSnapshotOpenLast"/>
      <addaction name="actionSnapshotOpenLastInDefault"/>
-     <addaction name="actionSnapshotExploreLast"/>
-     <addaction name="actionSnapshotCopyLast"/>
+     <addaction name="actionSnapshotExploreLastPath"/>
+     <addaction name="actionSnapshotCopyLastPath"/>
     </widget>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
@@ -709,7 +709,7 @@ Right-click for more options.</string>
              <number>0</number>
             </property>
             <item>
-             <widget class="QPushButton" name="buttonOpenMediaLocation">
+             <widget class="QPushButton" name="buttonExploreMediaPath">
               <property name="minimumSize">
                <size>
                 <width>22</width>
@@ -1180,7 +1180,7 @@ skip over files that have been marked for deletion.</string>
     <string>&amp;After this clip</string>
    </property>
   </action>
-  <action name="actionOpenMediaLocation">
+  <action name="actionExploreMediaPath">
    <property name="text">
     <string>M&amp;edia location</string>
    </property>
@@ -1469,7 +1469,7 @@ for deletion, without actually deleting them.</string>
     <string>&amp;Clear recent files</string>
    </property>
   </action>
-  <action name="actionCopyMediaLocation">
+  <action name="actionCopyMediaPath">
    <property name="text">
     <string>&amp;Copy media path</string>
    </property>
@@ -1499,12 +1499,12 @@ for deletion, without actually deleting them.</string>
     <string>Open last snapshot (&amp;default)</string>
    </property>
   </action>
-  <action name="actionSnapshotExploreLast">
+  <action name="actionSnapshotExploreLastPath">
    <property name="text">
     <string>&amp;Explore last snapshot</string>
    </property>
   </action>
-  <action name="actionSnapshotCopyLast">
+  <action name="actionSnapshotCopyLastPath">
    <property name="text">
     <string>Copy last snapshot path</string>
    </property>
