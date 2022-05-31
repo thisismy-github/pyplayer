@@ -727,7 +727,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def keyPressEvent(self, event: QtGui.QKeyEvent):    # TODO 3.10 match case
         key =  event.key()
         mod =  event.modifiers()
-        text = event.text()
 
         # if a lineEdit has focus, ignore keypresses except for esc, which can be used to clear focus. spinboxes use QSpinBoxPassthrough
         editable = (self.lineOutput, self.lineCurrentTime)
@@ -746,6 +745,40 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     primary.activated.emit()
         self.shortcut_bandaid_fix = False
 
+        # numbers 0-9
+        if 48 <= key <= 57:
+            s = self.dialog_settings
+            jump_progress = False
+            play_recent = False
+
+            if not self.first_video_fully_loaded and s.checkNumKeysRecentFilesOnLaunch.isChecked():
+                play_recent = True
+            else:
+                #modifiers = {0: Qt.ControlModifier, 1: Qt.AltModifier}
+                #modifier = modifiers[s.comboNumKeysSecondaryModifier.currentIndex()]
+                if mod & Qt.ControlModifier:
+                    secondary = s.comboNumKeysSecondary.currentIndex()
+                    jump_progress = secondary == 1
+                    play_recent = secondary == 2
+                else:
+                    primary = s.comboNumKeysPrimary.currentIndex()
+                    jump_progress = primary == 1
+                    play_recent = primary == 2
+
+            if jump_progress:
+                self.set_and_update_progress(int(self.frame_count / 10 * (key - 48)))
+            elif play_recent:
+                if not self.recent_videos: return self.statusbar.showMessage('No recent files available.')
+                if key == 48:
+                    if s.checkNumKeys0PlaysLeastRecentFile.isChecked(): index = 0
+                    else: index = -10
+                else: index = -(key - 48)
+                path = self.recent_videos[max(index, -len(self.recent_videos))]
+                if os.path.exists(path): self.open(path, update_recent_list=False)
+                else:
+                    self.log(f'Recent file {path} does not exist anymore.')
+                    self.recent_videos.remove(path)
+
         # handle individual keys. TODO: change these to their enums? (70 -> Qt.Key.Key_F)
         if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.trigger()   # esc (fullscreen only)
 
@@ -758,7 +791,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     else: self.actionSave.trigger()                         # ctrl + s (save)
             elif mod & Qt.AltModifier:
                 if key == 81: self.actionExit.trigger()                     # alt + q (exit)
-        logging.debug(f'PRESSED key={key} mod={int(mod)} text="{text}"')
+        logging.debug(f'PRESSED key={key} mod={int(mod)} text="{event.text()}"')
 
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent):                      # 3.10 match case
@@ -2960,7 +2993,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
         # get list of all keySequenceEdits
         all_key_sequence_edits = []
-        for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.tabKeys.layout(), 1):
+        for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.formKeys, 1):
             for child in qthelpers.layoutGetItems(layout):
                 all_key_sequence_edits.append(child)
 
@@ -3074,7 +3107,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuRecent.clear()
         get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
         for index, video in enumerate(reversed(self.recent_videos)):         # reversed to show most recent first
-            action = QtW.QAction(f'&{index + 1}. {os.path.basename(video)}', self.menuRecent)
+            number = str(index + 1)
+            action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(video)}', self.menuRecent)
             action.triggered.connect(get_open_lambda(video))                 # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)

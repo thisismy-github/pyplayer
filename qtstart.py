@@ -167,16 +167,14 @@ def connect_shortcuts(self: QtW.QMainWindow):
     self.shortcuts = {action_name: (QtW.QShortcut(self, context=3), QtW.QShortcut(self, context=3)) for action_name in shortcut_actions}
     #self.shortcuts = {action_name: (Qtself.QKeySequence(), Qtself.QKeySequence()) for action_name in shortcut_actions}
 
-    for widget in qthelpers.formGetItemsInColumn(self.dialog_settings.tabKeys.layout(), 1):
-        for keySequenceEdit in qthelpers.layoutGetItems(widget):
+    get_refresh_shortcuts_lambda = lambda widget: lambda: self.refresh_shortcuts(widget)
+    for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.formKeys, 1):
+        for keySequenceEdit in qthelpers.layoutGetItems(layout):
             name = keySequenceEdit.objectName()
             index = 0 if name[-1] != '_' else 1
             name = name.rstrip('_')
             self.shortcuts[name][index].activated.connect(shortcut_actions[name])
-    get_refresh_shortcuts_lambda = lambda widget: lambda: self.refresh_shortcuts(widget)
-    for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.tabKeys.layout(), 1):
-        for child in qthelpers.layoutGetItems(layout):
-            child.editingFinished.connect(get_refresh_shortcuts_lambda(child))  # workaround for python bug/oddity involving creating lambdas in iterables
+            keySequenceEdit.editingFinished.connect(get_refresh_shortcuts_lambda(keySequenceEdit))  # lambda-in-iterable workaround
     self.refresh_shortcuts()
 
 

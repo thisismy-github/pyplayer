@@ -57,8 +57,8 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     del hoverfontcolor
 
     cfg.setSection('keys')
-    for widget in qthelpers.formGetItemsInColumn(settings.tabKeys.layout(), 1):
-        items = tuple(qthelpers.layoutGetItems(widget))
+    for layout in qthelpers.formGetItemsInColumn(settings.formKeys, 1):
+        items = tuple(qthelpers.layoutGetItems(layout))
         name = items[0].objectName().rstrip('_')
 
         # <|> as delimiter to avoid accdientally reading sequences as delimiters and vice-versa
@@ -106,7 +106,7 @@ def saveConfig(gui, filename: str = None):
     save('hoverfontcolor', gui.sliderProgress.hover_font_color.getRgb(), delimiter=',')
 
     cfg.setSection('keys')
-    for widget in qthelpers.formGetItemsInColumn(gui.dialog_settings.tabKeys.layout(), 1):
+    for widget in qthelpers.formGetItemsInColumn(gui.dialog_settings.formKeys, 1):
         items = tuple(qthelpers.layoutGetItems(widget))
         save(items[0].objectName().rstrip('_'), *(item.keySequence().toString() for item in items), delimiter='<|>')
 
