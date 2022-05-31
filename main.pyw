@@ -1478,10 +1478,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # update UI with new media's duration
             h, m, s, ms = get_hms(self.duration)
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
-            self.spinHour.setEnabled(h != 0)        # spinSecond does not need to be adjusted here
+            if h:                                   # spinSecond does not need to be adjusted here
+                self.spinHour.setMaximum(h)
+                self.spinHour.setEnabled(True)
+            else: self.spinHour.setEnabled(False)
             self.spinMinute.setEnabled(m != 0)
-            self.spinHour.setMaximum(h)
-            self.spinMinute.setMaximum(m)
             self.spinFrame.setMaximum(self.frame_count)
             self.spinFrame.setPrefix(f'{self.frame_rate_rounded} FPS: ')
 
@@ -2050,8 +2051,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             old_frame = self.spinFrame.value()
             excess_frames = old_frame % self.frame_rate
             new_frame = math.ceil((seconds * self.frame_rate) + excess_frames)  # ceil() to ensure we don't overshoot frame_count on the next frame
-            if new_frame > self.frame_count: new_frame = old_frame
-            set_and_update_progress(new_frame)
+            if new_frame > self.frame_count: update_progress(old_frame)
+            else: set_and_update_progress(new_frame)
 
             logging.debug(f'Manually updating time-spins: seconds={seconds} frame {old_frame} -> {new_frame} ({excess_frames} excess frame(s))')
         except: logging.error(f'(!) UPDATE_TIME_SPINS FAILED: {format_exc()}')
