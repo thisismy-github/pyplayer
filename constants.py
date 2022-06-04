@@ -98,16 +98,15 @@ def verify_ffmpeg(self, warning: bool = True, force_warning: bool = False) -> st
             if PLATFORM == 'Windows': FFMPEG = FFMPEG[:-4]  # strip '.exe'
         else:
             import util
-            import logging
-            warn = logging.getLogger('constants.py').warning
             FFMPEG = util.get_from_PATH(filename)
             if FFMPEG == '':
                 import config
                 if config.cfg.ffmpegwarningignored and not force_warning:
+                    import logging
+                    warn = logging.getLogger('constants.py').warning
                     warn('(!) FFmpeg not detected. Assuming it is still accessible.')
                 elif warning or force_warning:
                     _display_ffmpeg_warning(self, forced=force_warning)
-            warn('FFmpeg not detected. Current FFMPEG constant: ' + FFMPEG)
     return FFMPEG
 
 
@@ -125,18 +124,13 @@ def verify_ffprobe(self, warning: bool = True) -> str:
         expected_path = (FFPROBE + '.exe') if PLATFORM == 'Windows' else FFPROBE
         filename = 'ffprobe.exe' if PLATFORM == 'Windows' else 'ffprobe'
         if not os.path.exists(expected_path):                       # FFprobe not in expected path
-            import logging
-            logging.getLogger('constants.py').warning(f'Apparently {expected_path} is missing.')
             if os.path.exists(filename):
                 FFPROBE = os.path.realpath(filename)                # ffprobe.exe exists in root
                 if PLATFORM == 'Windows': FFPROBE = FFPROBE[:-4]    # strip '.exe'
             else:
                 import util
-                import logging
-                warn = logging.getLogger('constants.py').warning
                 FFPROBE = util.get_from_PATH(filename)
                 if FFPROBE == '' and warning: _display_ffprobe_warning(self)
-                warn('FFprobe not detected. Current FFPROBE constant: ' + FFPROBE)
     return FFPROBE
 
 

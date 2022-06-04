@@ -103,19 +103,31 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
 # GUI Setup
 # ---------------------
 def after_show_setup(self: QtW.QMainWindow):
+    self.handle_updates_signal.emit(True)           # check for/download/validate pending updates
+    self.recent_videos = [file for file in config.cfg.load('recent_videos', '', '<|>', section='general') if os.path.exists(file)][-10:]
+
     if args.file:
-        if not os.path.exists(args.file): self.log(f'Command-line file {args.file} does not exist.')
+        if not os.path.exists(args.file):
+            self.update_title_signal.emit()
+            self.log(f'Command-line file {args.file} does not exist.')
         else:
             try:
                 logging.info(f'Opening pre-selected path: {args.file}')
                 self.open(args.file)
                 self.log(f'Command-line path opened: {args.file}')
             except:
+                self.update_title_signal.emit()
                 self.log(f'Failed to open pre-selected path: {args.file}')
                 logging.error(format_exc())
+    else: self.update_title_signal.emit()
+
+    if config.cfg.grouptray:                        # start system tray icon
+        logging.info('Creating system tray icon...')
+        self.app.setQuitOnLastWindowClosed(False)   # ensure qt does not exit until we tell it to
+        self.tray_icon = get_tray_icon(self)
+
     Thread(target=self.fast_start_interface_thread, daemon=True).start()
-    self.update_title_signal.emit()
-    connect_shortcuts(self)
+    connect_shortcuts(self)                         # setup and connect hotkeys
 
 
 def connect_shortcuts(self: QtW.QMainWindow):
@@ -190,6 +202,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.update_title_signal.connect(self.update_title)
     self.show_save_progress_signal.connect(self.save_progress_bar.setVisible)
     self.disable_crop_mode_signal.connect(self.disable_crop_mode)
+    self.handle_updates_signal.connect(self.handle_updates)
     self._handle_updates_signal.connect(self._handle_updates)
     self.log_signal.connect(self.log_slot)
     self.log = self.log_signal.emit

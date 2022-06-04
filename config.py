@@ -34,7 +34,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('lastupdatecheck')
     load('theme', 'Midnight')
 
-    cfg.setSection('general')
+    cfg.setSection('general')   # NOTE: 'recent_videos' gets loaded in qtstart.after_show_setup()
     load('lastdir', '.')
     load('last_snapshot_path')
     load('last_snapshot_folder', '%USERPROFILE%\\Pictures')
@@ -44,7 +44,6 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('trimmodeselected', False)
     load('ffmpegwarningignored', False)
     load('minimizedtotraywarningignored', False)
-    gui.recent_videos = [file for file in load('recent_videos', '', '<|>') if os.path.exists(file)][-10:]
 
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, settings.tabUpdates, ignore=('comboThemes',))

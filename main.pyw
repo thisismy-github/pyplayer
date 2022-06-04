@@ -398,6 +398,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     log_signal = QtCore.pyqtSignal(str)
     show_save_progress_signal = QtCore.pyqtSignal(bool)
     disable_crop_mode_signal = QtCore.pyqtSignal()
+    handle_updates_signal = QtCore.pyqtSignal(bool)
     _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
 
     def __init__(self, app, *args, **kwargs):
@@ -3393,27 +3394,20 @@ if __name__ == "__main__":
         set_current_time_text = gui.lineCurrentTime.setText
         current_time_lineedit_has_focus = gui.lineCurrentTime.hasFocus
 
-        gui.show()                                      # begin showing UI
         qtstart.connect_widget_signals(gui)             # connect signals and slots
         cfg = widgets.cfg = config.loadConfig(gui)      # create and load config (uses constants.CONFIG_PATH)
-        widgets.settings = gui.dialog_settings          # set settings dialog as global object in widgets.py
         gui.refresh_theme_combo(set_theme=cfg.theme)    # load and set themes
+        gui.show()                                      # show UI
+
         constants.verify_ffmpeg(gui)                    # confirm/look for valid ffmpeg path if needed
         FFPROBE = constants.verify_ffprobe(gui)         # confirm/look/return valid ffprobe path if needed
+        widgets.settings = gui.dialog_settings          # set settings dialog as global object in widgets.py
+        qtstart.after_show_setup(gui)                   # perform final bits of misc setup before showing UI
 
         with open(constants.PID_PATH, 'w'):             # create PID file
-            gui.handle_updates(_launch=True)            # check for/download/validate pending updates
-            qtstart.after_show_setup(gui)               # finish up any last second setup
             gc.collect(generation=2)                    # final garbage collection before starting
-            logging.info(f'Starting GUI after {get_time() - constants.SCRIPT_START_TIME:.2f} seconds.')
-
-            if cfg.grouptray:                           # start system tray icon
-                logging.info('Creating system tray icon...')
-                app.setQuitOnLastWindowClosed(False)    # ensure qt does not exit until we tell it to
-                gui.tray_icon = qtstart.get_tray_icon(gui)
-            else: gui.tray_icon = None
-
             constants.APP_RUNNING = True
+            logging.info(f'Starting GUI after {get_time() - constants.SCRIPT_START_TIME:.2f} seconds.')
             try: app.exec()
             except: logging.critical(f'(!) GUI FAILED TO EXECUTE: {format_exc()}')
             logging.info('Application execution has finished.')
