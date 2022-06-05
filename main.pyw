@@ -773,9 +773,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if key == 48:
                     if s.checkNumKeys0PlaysLeastRecentFile.isChecked(): index = 0
                     else: index = -10
+                elif key == 49 and s.checkNumKeys1SkipsActiveFiles.isChecked() and self.recent_videos[-1] == self.video:
+                    index = -2
                 else: index = -(key - 48)
                 path = self.recent_videos[max(index, -len(self.recent_videos))]
-                if os.path.exists(path): self.open(path, update_recent_list=False)
+                if os.path.exists(path): self.open(path, update_recent_list=s.checkNumKeysUpdateRecentFiles.isChecked())
                 else:
                     self.log(f'Recent file {path} does not exist anymore.')
                     self.recent_videos.remove(path)
@@ -1459,27 +1461,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.log(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (video parsing failed).')
                     return -1
 
+                # update marquee size and offset relative to video's dimensions
+                vlc = self.vlc
+                set_marquee_int = player.video_set_marquee_int
+                set_marquee_int(VideoMarqueeOption.Size, int(self.vheight * vlc.text_height_percent))
+                set_marquee_int(VideoMarqueeOption.X, int(self.vheight * vlc.text_x_percent))
+                set_marquee_int(VideoMarqueeOption.Y, int(self.vheight * vlc.text_y_percent))
+
             if not remember_old_file or not self.video_original_path: self.video_original_path = file
 
             # update recent media list
             if update_recent_list:
                 recent_videos = self.recent_videos
-                if file in recent_videos:
+                if file in recent_videos:                           # move pre-existing recent file to front
                     recent_videos.append(recent_videos.pop(recent_videos.index(file)))
                 else:
                     recent_videos.append(file)
-                    if len(recent_videos) > 10:     # do NOT use the recent_videos alias here
-                        self.recent_videos = self.recent_videos[-10:]
-
-            # update marquee size and offset relative to media's dimensions
-            player.video_set_marquee_int(VideoMarqueeOption.Size, int(self.vheight * self.vlc.text_height_percent))
-            player.video_set_marquee_int(VideoMarqueeOption.X, int(self.vheight * self.vlc.text_x_percent))
-            player.video_set_marquee_int(VideoMarqueeOption.Y, int(self.vheight * self.vlc.text_y_percent))
+                    max_len = self.dialog_settings.spinRecentFiles.value()
+                    self.recent_videos = recent_videos[-max_len:]   # do NOT use the recent_videos alias here
 
             # update UI with new media's duration
             h, m, s, ms = get_hms(self.duration)
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
-            if h:                                   # spinSecond does not need to be adjusted here
+            if h:                                                   # spinSecond does not need to be adjusted here
                 self.spinHour.setMaximum(h)
                 self.spinHour.setEnabled(True)
             else: self.spinHour.setEnabled(False)
@@ -3107,15 +3111,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def refresh_recent_menu(self):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
+        if len(self.recent_videos) > 25:
+            self.menuRecent.addAction(self.actionClearRecent)               # add separator and clear action at top for very long lists
+            self.menuRecent.addSeparator()
+
         get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
-        for index, video in enumerate(reversed(self.recent_videos)):         # reversed to show most recent first
+        for index, video in enumerate(reversed(self.recent_videos)):        # reversed to show most recent first
             number = str(index + 1)
             action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(video)}', self.menuRecent)
-            action.triggered.connect(get_open_lambda(video))                 # workaround for python bug/oddity involving creating lambdas in iterables
+            action.triggered.connect(get_open_lambda(video))                # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)
-        self.menuRecent.addSeparator()
-        self.menuRecent.addAction(self.actionClearRecent)                    # add separator and clear action at bottom
+
+        if len(self.recent_videos) <= 25:
+            self.menuRecent.addSeparator()
+            self.menuRecent.addAction(self.actionClearRecent)               # add separator and clear action at bottom for shorter lists
 
 
     def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable

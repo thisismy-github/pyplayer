@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('file', nargs='?', help='Specifies a filepath to open')     # '?' allows for optional positionals
 parser.add_argument('--exit', action='store_true', help='Instantly exits. Used when sending media to other instances')
 parser.add_argument('--play-and-exit', action='store_true', help='Automatically exits at the conclusion of a media file')
-parser.add_argument('-v', '--vlc', default='--gain=3.0', help='Specifies arguments to pass to the underlying VLC instance')
+parser.add_argument('-v', '--vlc', default='--gain=2.0', help='Specifies arguments to pass to the underlying VLC instance')
 args = parser.parse_args()
 if args.exit: sys.exit(100)
 
@@ -104,7 +104,6 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
 # ---------------------
 def after_show_setup(self: QtW.QMainWindow):
     self.handle_updates_signal.emit(True)           # check for/download/validate pending updates
-    self.recent_videos = [file for file in config.cfg.load('recent_videos', '', '<|>', section='general') if os.path.exists(file)][-10:]
 
     if args.file:
         if not os.path.exists(args.file):
@@ -120,6 +119,16 @@ def after_show_setup(self: QtW.QMainWindow):
                 self.log(f'Failed to open pre-selected path: {args.file}')
                 logging.error(format_exc())
     else: self.update_title_signal.emit()
+
+    recent_files_count = self.dialog_settings.spinRecentFiles.value()
+    files = config.cfg.load('recent_files', '', '<|>', section='general')
+    if recent_files_count <= 25:
+        recent_files = self.recent_videos
+        append = recent_files.append
+        for file in files:
+            if os.path.isfile(file) and file not in recent_files: append(file)
+            if len(recent_files) == recent_files_count: break
+    else: self.recent_files += files[-recent_files_count:]
 
     if config.cfg.grouptray:                        # start system tray icon
         logging.info('Creating system tray icon...')

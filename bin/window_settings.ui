@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>353</width>
+    <width>400</width>
     <height>730</height>
    </rect>
   </property>
@@ -48,8 +48,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>399</width>
-        <height>2018</height>
+        <width>387</width>
+        <height>2016</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -226,7 +226,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
-             <item row="3" column="0">
+             <item row="4" column="0">
               <widget class="QLabel" name="label_50">
                <property name="toolTip">
                 <string>The location where popups and other dialogs will initially appear.</string>
@@ -236,7 +236,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="1">
+             <item row="4" column="1">
               <widget class="QComboBox" name="comboDialogPosition">
                <item>
                 <property name="text">
@@ -255,7 +255,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </widget>
              </item>
-             <item row="4" column="0">
+             <item row="5" column="0">
               <widget class="QCheckBox" name="checkHideIdleCursor">
                <property name="toolTip">
                 <string>If checked, your cursor will disappear until moved
@@ -270,7 +270,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="5" column="1">
               <widget class="QDoubleSpinBox" name="spinHideIdleCursorDuration">
                <property name="prefix">
                 <string>After: </string>
@@ -295,7 +295,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0" colspan="2">
+             <item row="6" column="0" colspan="2">
               <widget class="QCheckBox" name="checkHighPrecisionProgress">
                <property name="toolTip">
                 <string>If checked, the progress slider for your media will be simulated in
@@ -304,7 +304,7 @@ once per frame, at a rate equal to your media's native FPS.
 
 If not checked, VLC's native updates will be used.
 
-Note: This setting requires a mid/high-end device to run properly,
+NOTE: This setting requires a mid/high-end device to run properly,
 otherwise, the progress bar will fall behind and start to desync.</string>
                </property>
                <property name="text">
@@ -315,7 +315,7 @@ otherwise, the progress bar will fall behind and start to desync.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkFFprobe">
                <property name="toolTip">
                 <string>If checked, FFprobe will be used (if it exists) to parse media files
@@ -339,7 +339,7 @@ opening media, you can try disabling this setting.</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAlwaysSaveAs">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -357,7 +357,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRenameMissingImages">
                <property name="toolTip">
                 <string>If checked, renaming an image file that doesn't
@@ -375,7 +375,7 @@ doesn't exist anymore will do nothing.</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default
@@ -391,7 +391,7 @@ folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
                 <string>If checked, the media player will completely stop
@@ -399,7 +399,7 @@ upon the completion of a media file, instead of
 just pausing the media. This is how VLC handles
 media files.
 
-Note: If the player is not stopped, the media file
+NOTE: If the player is not stopped, the media file
 will still be considered &quot;in-use&quot; by your OS. If you
 need to get around this, you can stop the player
 manually by right clicking the pause button or by
@@ -410,7 +410,7 @@ going to &quot;File-&gt;Stop Player&quot; in the menubar.</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationWrap">
                <property name="toolTip">
                 <string>If checked, using the arrow keys or J/L to navigate forwards or backwards in a video
@@ -426,7 +426,7 @@ Example: If you're at the end of a video and press ➞, you'll be placed back at
                </property>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkNavigationUnpause">
                <property name="toolTip">
                 <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
@@ -440,7 +440,7 @@ has finished will automatically unpause the media and resume playback.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
                <property name="toolTip">
                 <string>If checked, copying a media's path to your clipboard
@@ -458,7 +458,7 @@ systems do not use backslashes in their paths.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRememberDropFolder">
                <property name="toolTip">
                 <string>If checked, dragging and dropping media will remember
@@ -475,7 +475,7 @@ folders remembered.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -490,7 +490,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -516,7 +516,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="18" column="0" colspan="2">
+             <item row="19" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -530,7 +530,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="17" column="0" colspan="2">
+             <item row="18" column="0" colspan="2">
               <widget class="QCheckBox" name="checkFirstFileTrayReset">
                <property name="toolTip">
                 <string>If checked, minimizing to the system tray,
@@ -547,6 +547,43 @@ file you open.&quot;</string>
                </property>
                <property name="tristate">
                 <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_58">
+               <property name="toolTip">
+                <string>The number of files to remember between sessions
+after being played.
+
+NOTE: Setting this to 0 will not clear the existing list
+unless you manually clear it or restart PyPlayer.
+
+NOTE: At greater than 25, files will be loaded as-is
+each session, even if some of the files no longer exist.
+Otherwise, the recent files are validated on launch.</string>
+               </property>
+               <property name="text">
+                <string>Recent files to track</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QSpinBox" name="spinRecentFiles">
+               <property name="specialValueText">
+                <string>Do not track recent files</string>
+               </property>
+               <property name="suffix">
+                <string> file(s)</string>
+               </property>
+               <property name="prefix">
+                <string>The last </string>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>25</number>
                </property>
               </widget>
              </item>
@@ -631,7 +668,7 @@ allows you to use keyboard shortcuts right away.</string>
 give it focus. This brings the window to the foreground and
 allows you to use keyboard shortcuts right away.
 
-Note: This only applies when this is the default program for
+NOTE: This only applies when this is the default program for
 the media you're opening, or you use the &quot;Open with&quot; dialog.</string>
                   </property>
                   <property name="text">
@@ -1028,7 +1065,7 @@ it to your system tray. You can still fully exit
 by going to &quot;File-&gt;Exit&quot; or by right-clicking
 the system tray icon.
 
-Note: After minimizing to the system tray,
+NOTE: After minimizing to the system tray,
 PyPlayer will take roughly 50-60mb of RAM.
 After several minutes of being idle, this will
 lower significantly and settle around 7-8mb
@@ -1049,7 +1086,7 @@ lower significantly and settle around 7-8mb
 it to your system tray. You cannot minimize the
 window normally while this setting is active.
 
-Note: After minimizing to the system tray,
+NOTE: After minimizing to the system tray,
 PyPlayer will take roughly 50-60mb of RAM.
 After several minutes of being idle, this will
 lower significantly and settle around 7-8mb
@@ -1730,7 +1767,7 @@ chosen while doing a regular snapshot.</string>
 will be used to briefly overlay messages over your media
 based on the following criteria.
 
-Note: OSD does not work with audio files
+NOTE: OSD does not work with audio files
 or while the player is otherwise stopped.
 
 -- UNFINISHED --
@@ -2398,6 +2435,19 @@ the 5th most recently played file.</string>
                   <number>7</number>
                  </property>
                  <item>
+                  <widget class="QCheckBox" name="checkNumKeysUpdateRecentFiles">
+                   <property name="toolTip">
+                    <string>If checked, using the number keys
+to play a recent file will update the
+order of the recent files, moving
+the newly played file to the top.</string>
+                   </property>
+                   <property name="text">
+                    <string>Update recent files order</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QCheckBox" name="checkNumKeysRecentFilesOnLaunch">
                    <property name="toolTip">
                     <string>If checked, pressing a number key without any
@@ -2426,6 +2476,19 @@ file #30). Otherwise, it will play the 10th most recent file.</string>
                    </property>
                    <property name="checked">
                     <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="checkNumKeys1SkipsActiveFiles">
+                   <property name="toolTip">
+                    <string>If checked, pressing 1 will play the most recent
+file that ISN'T currently playing. Normally, if you
+press 1 while watching media, that media will
+simply be replayed as it is the most recent file.</string>
+                   </property>
+                   <property name="text">
+                    <string>1 never plays the current file</string>
                    </property>
                   </widget>
                  </item>
@@ -3147,6 +3210,9 @@ file #30). Otherwise, it will play the 10th most recent file.</string>
              </item>
              <item row="1" column="1">
               <widget class="QSpinBox" name="spinUpdateFrequency">
+               <property name="specialValueText">
+                <string>Once every launch</string>
+               </property>
                <property name="suffix">
                 <string> day(s)</string>
                </property>

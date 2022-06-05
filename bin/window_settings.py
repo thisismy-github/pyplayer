@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_settingsDialog(object):
     def setupUi(self, settingsDialog):
         settingsDialog.setObjectName("settingsDialog")
-        settingsDialog.resize(353, 730)
+        settingsDialog.resize(400, 730)
         settingsDialog.setMinimumSize(QtCore.QSize(353, 353))
         self.gridLayout = QtWidgets.QGridLayout(settingsDialog)
         self.gridLayout.setContentsMargins(0, 0, 0, 8)
@@ -25,7 +25,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 399, 2018))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 387, 2016))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -96,17 +96,17 @@ class Ui_settingsDialog(object):
         self.formLayout.setLayout(2, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2)
         self.label_50 = QtWidgets.QLabel(self.tabGeneral)
         self.label_50.setObjectName("label_50")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_50)
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_50)
         self.comboDialogPosition = QtWidgets.QComboBox(self.tabGeneral)
         self.comboDialogPosition.setObjectName("comboDialogPosition")
         self.comboDialogPosition.addItem("")
         self.comboDialogPosition.addItem("")
         self.comboDialogPosition.addItem("")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.comboDialogPosition)
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.comboDialogPosition)
         self.checkHideIdleCursor = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkHideIdleCursor.setChecked(True)
         self.checkHideIdleCursor.setObjectName("checkHideIdleCursor")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.checkHideIdleCursor)
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.checkHideIdleCursor)
         self.spinHideIdleCursorDuration = QtWidgets.QDoubleSpinBox(self.tabGeneral)
         self.spinHideIdleCursorDuration.setDecimals(1)
         self.spinHideIdleCursorDuration.setMinimum(0.0)
@@ -114,64 +114,72 @@ class Ui_settingsDialog(object):
         self.spinHideIdleCursorDuration.setSingleStep(0.1)
         self.spinHideIdleCursorDuration.setProperty("value", 1.5)
         self.spinHideIdleCursorDuration.setObjectName("spinHideIdleCursorDuration")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.spinHideIdleCursorDuration)
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.spinHideIdleCursorDuration)
         self.checkHighPrecisionProgress = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkHighPrecisionProgress.setChecked(True)
         self.checkHighPrecisionProgress.setObjectName("checkHighPrecisionProgress")
-        self.formLayout.setWidget(5, QtWidgets.QFormLayout.SpanningRole, self.checkHighPrecisionProgress)
+        self.formLayout.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkHighPrecisionProgress)
         self.checkFFprobe = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkFFprobe.setChecked(True)
         self.checkFFprobe.setObjectName("checkFFprobe")
-        self.formLayout.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
+        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
         self.checkAlwaysSaveAs = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAlwaysSaveAs.setChecked(True)
         self.checkAlwaysSaveAs.setObjectName("checkAlwaysSaveAs")
-        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
+        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
         self.checkRenameMissingImages = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRenameMissingImages.setChecked(True)
         self.checkRenameMissingImages.setObjectName("checkRenameMissingImages")
-        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
+        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
         self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkSaveAsUseMediaFolder.setChecked(True)
         self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
-        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
+        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
         self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkStopOnFinish.setObjectName("checkStopOnFinish")
-        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
+        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
         self.checkNavigationWrap = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkNavigationWrap.setChecked(True)
         self.checkNavigationWrap.setObjectName("checkNavigationWrap")
-        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationWrap)
+        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationWrap)
         self.checkNavigationUnpause = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkNavigationUnpause.setChecked(True)
         self.checkNavigationUnpause.setObjectName("checkNavigationUnpause")
-        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationUnpause)
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkNavigationUnpause)
         self.checkCopyEscapeBackslashes = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCopyEscapeBackslashes.setChecked(True)
         self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
         self.checkRememberDropFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRememberDropFolder.setChecked(True)
         self.checkRememberDropFolder.setObjectName("checkRememberDropFolder")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
+        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
         self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.formLayout.setWidget(19, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.checkFirstFileTrayReset = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkFirstFileTrayReset.setChecked(True)
         self.checkFirstFileTrayReset.setTristate(True)
         self.checkFirstFileTrayReset.setObjectName("checkFirstFileTrayReset")
-        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkFirstFileTrayReset)
+        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkFirstFileTrayReset)
+        self.label_58 = QtWidgets.QLabel(self.tabGeneral)
+        self.label_58.setObjectName("label_58")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_58)
+        self.spinRecentFiles = QtWidgets.QSpinBox(self.tabGeneral)
+        self.spinRecentFiles.setMaximum(1000)
+        self.spinRecentFiles.setProperty("value", 25)
+        self.spinRecentFiles.setObjectName("spinRecentFiles")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinRecentFiles)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 5, -1, 5)
@@ -763,6 +771,9 @@ class Ui_settingsDialog(object):
         self.verticalLayout_10.setContentsMargins(-1, 2, -1, 7)
         self.verticalLayout_10.setSpacing(3)
         self.verticalLayout_10.setObjectName("verticalLayout_10")
+        self.checkNumKeysUpdateRecentFiles = QtWidgets.QCheckBox(self.groupBox_6)
+        self.checkNumKeysUpdateRecentFiles.setObjectName("checkNumKeysUpdateRecentFiles")
+        self.verticalLayout_10.addWidget(self.checkNumKeysUpdateRecentFiles)
         self.checkNumKeysRecentFilesOnLaunch = QtWidgets.QCheckBox(self.groupBox_6)
         self.checkNumKeysRecentFilesOnLaunch.setChecked(True)
         self.checkNumKeysRecentFilesOnLaunch.setObjectName("checkNumKeysRecentFilesOnLaunch")
@@ -771,6 +782,9 @@ class Ui_settingsDialog(object):
         self.checkNumKeys0PlaysLeastRecentFile.setChecked(True)
         self.checkNumKeys0PlaysLeastRecentFile.setObjectName("checkNumKeys0PlaysLeastRecentFile")
         self.verticalLayout_10.addWidget(self.checkNumKeys0PlaysLeastRecentFile)
+        self.checkNumKeys1SkipsActiveFiles = QtWidgets.QCheckBox(self.groupBox_6)
+        self.checkNumKeys1SkipsActiveFiles.setObjectName("checkNumKeys1SkipsActiveFiles")
+        self.verticalLayout_10.addWidget(self.checkNumKeys1SkipsActiveFiles)
         self.formLayout_9.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.groupBox_6)
         self.formLayout_3.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.groupBox_5)
         self.label_33 = QtWidgets.QLabel(self.tabKeys)
@@ -1400,7 +1414,7 @@ class Ui_settingsDialog(object):
 "\n"
 "If not checked, VLC\'s native updates will be used.\n"
 "\n"
-"Note: This setting requires a mid/high-end device to run properly,\n"
+"NOTE: This setting requires a mid/high-end device to run properly,\n"
 "otherwise, the progress bar will fall behind and start to desync."))
         self.checkHighPrecisionProgress.setText(_translate("settingsDialog", "High-precision progress slider (resource-intensive)"))
         self.checkFFprobe.setToolTip(_translate("settingsDialog", "If checked, FFprobe will be used (if it exists) to parse media files\n"
@@ -1440,7 +1454,7 @@ class Ui_settingsDialog(object):
 "just pausing the media. This is how VLC handles\n"
 "media files.\n"
 "\n"
-"Note: If the player is not stopped, the media file\n"
+"NOTE: If the player is not stopped, the media file\n"
 "will still be considered \"in-use\" by your OS. If you\n"
 "need to get around this, you can stop the player\n"
 "manually by right clicking the pause button or by\n"
@@ -1492,6 +1506,19 @@ class Ui_settingsDialog(object):
 "for any setting that mentions \"the first media\n"
 "file you open.\""))
         self.checkFirstFileTrayReset.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
+        self.label_58.setToolTip(_translate("settingsDialog", "The number of files to remember between sessions\n"
+"after being played.\n"
+"\n"
+"NOTE: Setting this to 0 will not clear the existing list\n"
+"unless you manually clear it or restart PyPlayer.\n"
+"\n"
+"NOTE: At greater than 25, files will be loaded as-is\n"
+"each session, even if some of the files no longer exist.\n"
+"Otherwise, the recent files are validated on launch."))
+        self.label_58.setText(_translate("settingsDialog", "Recent files to track"))
+        self.spinRecentFiles.setSpecialValueText(_translate("settingsDialog", "Do not track recent files"))
+        self.spinRecentFiles.setSuffix(_translate("settingsDialog", " file(s)"))
+        self.spinRecentFiles.setPrefix(_translate("settingsDialog", "The last "))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkMinimizePause.setToolTip(_translate("settingsDialog", "If checked, media will automatically pause when minimizing the window."))
         self.checkMinimizePause.setText(_translate("settingsDialog", "Pause on minimize"))
@@ -1506,7 +1533,7 @@ class Ui_settingsDialog(object):
 "give it focus. This brings the window to the foreground and\n"
 "allows you to use keyboard shortcuts right away.\n"
 "\n"
-"Note: This only applies when this is the default program for\n"
+"NOTE: This only applies when this is the default program for\n"
 "the media you\'re opening, or you use the \"Open with\" dialog."))
         self.checkFocusDoubleClick.setText(_translate("settingsDialog", "Focus window on double-click"))
         self.checkFocusMinimized.setToolTip(_translate("settingsDialog", "If checked, the window will always raise and be given\n"
@@ -1593,7 +1620,7 @@ class Ui_settingsDialog(object):
 "by going to \"File->Exit\" or by right-clicking\n"
 "the system tray icon.\n"
 "\n"
-"Note: After minimizing to the system tray,\n"
+"NOTE: After minimizing to the system tray,\n"
 "PyPlayer will take roughly 50-60mb of RAM.\n"
 "After several minutes of being idle, this will\n"
 "lower significantly and settle around 7-8mb\n"
@@ -1603,7 +1630,7 @@ class Ui_settingsDialog(object):
 "it to your system tray. You cannot minimize the\n"
 "window normally while this setting is active.\n"
 "\n"
-"Note: After minimizing to the system tray,\n"
+"NOTE: After minimizing to the system tray,\n"
 "PyPlayer will take roughly 50-60mb of RAM.\n"
 "After several minutes of being idle, this will\n"
 "lower significantly and settle around 7-8mb\n"
@@ -1707,7 +1734,7 @@ class Ui_settingsDialog(object):
 "will be used to briefly overlay messages over your media\n"
 "based on the following criteria.\n"
 "\n"
-"Note: OSD does not work with audio files\n"
+"NOTE: OSD does not work with audio files\n"
 "or while the player is otherwise stopped.\n"
 "\n"
 "-- UNFINISHED --\n"
@@ -1813,6 +1840,11 @@ class Ui_settingsDialog(object):
         self.comboNumKeysSecondary.setItemText(1, _translate("settingsDialog", "Jump progress"))
         self.comboNumKeysSecondary.setItemText(2, _translate("settingsDialog", "Play recent file"))
         self.groupBox_6.setTitle(_translate("settingsDialog", "Playing recent files with number keys"))
+        self.checkNumKeysUpdateRecentFiles.setToolTip(_translate("settingsDialog", "If checked, using the number keys\n"
+"to play a recent file will update the\n"
+"order of the recent files, moving\n"
+"the newly played file to the top."))
+        self.checkNumKeysUpdateRecentFiles.setText(_translate("settingsDialog", "Update recent files order"))
         self.checkNumKeysRecentFilesOnLaunch.setToolTip(_translate("settingsDialog", "If checked, pressing a number key without any\n"
 "modifiers before your first media file has been\n"
 "played will always play a recent file, regardless\n"
@@ -1823,6 +1855,11 @@ class Ui_settingsDialog(object):
 "available (e.g. if you\'ve played 30 files, Ctrl+0 will play\n"
 "file #30). Otherwise, it will play the 10th most recent file."))
         self.checkNumKeys0PlaysLeastRecentFile.setText(_translate("settingsDialog", "0 plays the least recent file instead of file #10"))
+        self.checkNumKeys1SkipsActiveFiles.setToolTip(_translate("settingsDialog", "If checked, pressing 1 will play the most recent\n"
+"file that ISN\'T currently playing. Normally, if you\n"
+"press 1 while watching media, that media will\n"
+"simply be replayed as it is the most recent file."))
+        self.checkNumKeys1SkipsActiveFiles.setText(_translate("settingsDialog", "1 never plays the current file"))
         self.label_33.setText(_translate("settingsDialog", "Scrollwheel volume"))
         self.spinVolumeScroll.setSuffix(_translate("settingsDialog", "%"))
         self.spinVolumeScroll.setPrefix(_translate("settingsDialog", "Increments volume by "))
@@ -1883,6 +1920,7 @@ class Ui_settingsDialog(object):
         self.labelCurrentVersion.setText(_translate("settingsDialog", "Current version: 0.0.0"))
         self.labelLastCheck.setText(_translate("settingsDialog", "Last check: never"))
         self.buttonCheckForUpdates.setText(_translate("settingsDialog", "Check for updates"))
+        self.spinUpdateFrequency.setSpecialValueText(_translate("settingsDialog", "Once every launch"))
         self.spinUpdateFrequency.setSuffix(_translate("settingsDialog", " day(s)"))
         self.spinUpdateFrequency.setPrefix(_translate("settingsDialog", "Once every "))
         self.checkAutoUpdateCheck.setText(_translate("settingsDialog", "Auto-check for updates"))
