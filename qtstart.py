@@ -177,6 +177,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'loop':               toggle_loop,
         'nextmedia':          self.cycle_media,
         'previousmedia':      lambda: self.cycle_media(next=False),
+        'forward':            lambda: self.cycle_recent_files(forward=True),
+        'back':               lambda: self.cycle_recent_files(forward=False),
         'plussubtitledelay':  increment_subtitle_delay,
         'minussubtitledelay': lambda: increment_subtitle_delay(-50),
         'cyclesubtitles':     self.cycle_subtitle_track,

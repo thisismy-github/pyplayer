@@ -1123,6 +1123,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return self.log('This is the only playable media file in this folder.')
 
 
+    def cycle_recent_files(self, forward: bool = True):
+        # NOTE: recent_files is least recent to most recent -> index 0 is the LEAST recent
+        if self.video not in self.recent_videos:  # default to latest file if no valid file is loaded
+            current_index = len(self.recent_videos)
+        else: current_index = self.recent_videos.index(self.video)
+        new_index = current_index + (1 if forward else -1)
+        if 0 <= new_index <= len(self.recent_videos) - 1:
+            file = self.recent_videos[new_index]
+            self.open(file, update_recent_list=False)
+            self.log(f'Opened recent file #{len(self.recent_videos) - new_index}: {file}')
+
+
     def explore(self, path: str = None, noun: str = 'Recent file'):
         ''' Opens `path` (or self.video if not provided) in the default file
             explorer, with `path` pre-selected if possible. `noun` controls
@@ -1626,21 +1638,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.force_pause(True)
 
 
-    def get_renamed_output(self, new_name: str = None):
-        ''' Returns `new_name` or self.lineOutput as a valid, sanitized, unique path.
-            If `new_name` ends up being the same as self.video, no media is playing,
-            or `new_name` and self.lineOutput are both blank, then None is returned. '''
-        if not self.video or (not new_name and not self.lineOutput.text().strip()): return None
-        try:
-            old_oscwd = os.getcwd()
-            os.chdir(os.path.dirname(self.video))       # set os module's CWD to self.video's folder -> allows things like abspath, '.', and '..'
-
-            dirname, basename = os.path.split(new_name or self.lineOutput.text().strip())
-            new_name = os.path.abspath(os.path.join(dirname, sanitize(basename)))
-            if not os.path.splitext(new_name)[-1]: new_name = f'{new_name}{os.path.splitext(self.video)[-1]}'   # append extension if needed
-            if new_name == self.video: return None      # make sure new name isn't the same as the old name
-            return get_unique_path(new_name)            # TODO make this a setting (use os.replace instead of renames)
-        finally: os.chdir(old_oscwd)                    # reset os module's CWD before returning
+    def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable
+        if self.mime_type == 'image': return self.cycle_media(next=forward)  # cycle images with basic navigation keys
+        old_frame = get_progess_slider()
+        if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
+            if old_frame == self.frame_count and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = 0
+            else: new_frame = min(self.frame_count, old_frame + self.frame_rate_rounded * seconds)
+        else:   # TODO use vvv this line vvv as workaround to VLC bug that sometimes causes media to play 1 frame when wrapping?
+            #if old_frame <= 1 and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
+            if old_frame == 0 and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
+            else: new_frame = max(0, old_frame - self.frame_rate_rounded * seconds)
+        set_and_update_progress(new_frame)
+        if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
+        if self.isFullScreen() and self.dialog_settings.checkTextOnFullScreenPosition.isChecked():   # if we're in fullscreen mode, show the current position as a marquee
+            h, m, s, _ = get_hms(self.current_time)
+            current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
+            max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
+            show_text(f'{current_text}/{max_text}')
 
 
     def rename(self, new_name: str = None):
@@ -1703,6 +1717,178 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not os.path.exists(file):    # if file doesn't exist, unmark file (even if error occurred)
                 if file in self.recent_videos: self.recent_videos.remove(file)
                 if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
+
+
+    def snapshot(self, *args, modifiers=None):  # uses libvlc_video_take_snapshot. *args to capture unused signal args
+        ''' libvlc_video_take_snapshot's docstring:         TODO: add a real docstring here
+            "Take a snapshot of the current video window. If `i_width` AND `i_height` is 0, original
+            size is used. If `i_width` XOR `i_height` is 0, original aspect-ratio is preserved."
+            Returns: 0 on success, -1 if the video was not found.
+            Parameters:
+                `p_mi` - media player instance.
+                `num` - number of video output (typically 0 for the first/only one).
+                `psz_filepath` - the path of a file or a folder to save the snapshot into.
+                `i_width` - the snapshot's width.
+                `i_height` - the snapshot's height. '''
+        try:
+            settings = self.dialog_settings
+            if settings.checkSnapshotPause.isChecked():                 # pause media if desired (undone by finally statement)
+                player.set_pause(True)
+                gif_player.gif.setPaused(True)
+            mod = app.keyboardModifiers() if modifiers is None else modifiers
+            mime = self.mime_type
+            if mime == 'image' and not mod: mod = Qt.ControlModifier    # change quick-snapshots to full-snapshots for images
+
+            # >>> open last snapshot in pyplayer, not in explorer (shift) <<<
+            if mod & Qt.ShiftModifier:
+                if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
+                if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
+                self.open(cfg.last_snapshot_path)
+                self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
+
+            # >>> open last snapshot in default program, not in explorer (alt) <<<
+            elif mod & Qt.AltModifier:
+                if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
+                if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
+                qthelpers.openPath(cfg.last_snapshot_path)
+                self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
+
+            elif not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
+            elif mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only snapshot audio with cover art.', 10000)
+
+            else:
+                is_gif = self.extension == 'gif'
+                is_art = mime == 'audio'                                # if it's audio, we already know that it has cover art
+                frame = get_progess_slider()
+                frame_count_str = str(self.frame_count)
+                if (is_gif or mime == 'image') and settings.checkSnapshotGifPNG.isChecked(): format = 'PNG'
+                else: format = settings.comboSnapshotFormat.currentText()
+
+                # NOTE: art and gif snapshots use the default name format's placeholder text
+                if is_art:
+                    frame = 1
+                    frame_count_str = '1'
+                    name_format = settings.lineSnapshotArtFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                elif is_gif: name_format = settings.lineSnapshotGifFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                else: name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+
+                date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
+                video_basename = os.path.basename(os.path.splitext(self.video)[0])
+                default_name = name_format.replace('?name', video_basename) \
+                                          .replace('?date', strftime(date_format, localtime())) \
+                                          .replace('?framecount', frame_count_str) \
+                                          .replace('?frame', str(frame).zfill(len(frame_count_str)))
+
+            # >>> quick snapshot, no dialogs (no modifiers) <<< TODO: maybe add default width/height scale settings
+                if not mod:
+                    dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
+                    try: os.makedirs(dirname)
+                    except FileExistsError: pass
+                    path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
+
+                    # take and save snapshot
+                    if is_gif: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+                    elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
+                    elif mime == 'image': return self.statusbar.showMessage('Quick-snapshotting an image would just be silly, wouldn\'t it?', 10000)
+                    elif is_art:
+                        jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
+                        gif_player.art.save(path, format=format, quality=jpeg_quality)
+
+                    cfg.last_snapshot_path = os.path.abspath(path)
+                    self.log(f'{"Cover art" if is_art else "GIF frame" if is_gif else "Snapshot"} saved to {path}')
+
+                    # crop final snapshot if desired
+                    if self.actionCrop.isChecked():
+                        logging.info('Cropping previously saved snapshot...')
+                        lfp = self.vlc.last_factored_points
+                        image_data = get_PIL_Image().open(path)
+                        image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
+                                                      round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
+                        if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
+                        else: image_data.save(path)
+
+                    # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                    elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
+
+            # >> snapshot with resize and save-file dialog (ctrl) <<<
+                elif mod & Qt.ControlModifier:
+                    player.set_pause(True)                              # player may have been paused earlier, but it NEEDS to be paused now
+                    gif_player.gif.setPaused(True)
+                    try:
+                        # get dimensions
+                        width, height, quality = self.show_size_dialog(snapshot=True)
+                        if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
+
+                        # open save-file dialog
+                        use_snapshot_lastdir = settings.checkSnapshotRemember.isChecked()
+                        selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if format == 'JPEG' else ''
+                        base_path = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
+                        path = f'{base_path}{".png" if not selected_filter else ".jpg"}'
+                        path, filter, lastdir = qthelpers.saveFile(lastdir=get_unique_path(path, key='?count', zeros=1),
+                                                                   caption='Save snapshot as',
+                                                                   filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
+                                                                   selectedFilter=selected_filter,
+                                                                   returnFilter=True)
+                        if use_snapshot_lastdir: cfg.last_snapshot_folder = lastdir
+                        else: cfg.lastdir = lastdir
+                        if path is None: return
+                        # 'BMP (*.bmp; *.dib, *.rle);;TIFF (*.tiff; *.tif);;GIF (*.gif);;TGA (*.tga);;WebP (*.webp)'
+
+                        # take and save snapshot
+                        if is_gif:
+                            if width or height:                         # use "scale" ffmpeg filter for gifs
+                                w = width if width else -1              # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
+                                h = height if height else -1
+                                ffmpeg(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
+                            else: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+                        elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
+                        else:
+                            if width or height:
+                                w = width if width else height * (self.vwidth / self.vheight)
+                                h = height if height else width * (self.vheight / self.vwidth)
+                                gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
+                            else: gif_player.art.save(path, quality=quality)
+
+                        logging.info(f'psz_filepath={path}, i_width={width}, i_height={height}')
+                        cfg.last_snapshot_path = os.path.abspath(path)
+                        cfg.last_snapshot_folder = os.path.dirname(cfg.last_snapshot_path)
+                        self.log(f'{"Cover art" if is_art else "GIF frame" if is_gif else "Snapshot"} saved to {path}')
+
+                        # crop final snapshot if desired, taking into account the custom width/height
+                        if self.actionCrop.isChecked():
+                            logging.info('Cropping previously saved snapshot...')
+                            lfp = self.vlc.last_factored_points
+                            image_data = get_PIL_Image().open(path)
+
+                            # calculate factors between media's native resolution and actual desired snapshot resolution
+                            if width or height:                         # custom width and/or height is set
+                                if width:
+                                    x_factor = self.vwidth / width
+                                    if not height: y_factor = x_factor  # width is set but height isn't -> match factors
+                                if height:
+                                    y_factor = self.vheight / height
+                                    if not width: x_factor = y_factor   # height is set but width isn't -> match factors
+                            else:                                       # neither is set -> use 1 to avoid division by 0
+                                x_factor = 1
+                                y_factor = 1
+
+                            # use factors to crop snapshot relative to the snapshot's actual resolution for an accurate crop
+                            image_data = image_data.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
+                                                          round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
+
+                            # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                            if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
+                            else: image_data.save(path)
+                        if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
+
+                    except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
+                    finally:                                            # only needed if checkSnapshotPause is False
+                        player.set_pause(False or self.is_paused)
+                        gif_player.gif.setPaused(False or self.is_paused)
+        except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
+        finally:
+            player.set_pause(False or self.is_paused)
+            gif_player.gif.setPaused(False or self.is_paused)
 
 
     def save_as(self, *args, caption='Save media as...', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
@@ -1932,6 +2118,48 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.setFocus(True)                             # restore keyboard focus so we can use hotkeys again
 
 
+    def update_progress(self, frame: int):
+        ''' Updates every section of the UI to reflect the current `frame`. Restarts the
+            player if called while the video has ended. Clamps playback to desired trims. '''
+        if not self.minimum <= frame <= self.maximum:
+            if not (self.sliderProgress.grabbing_clamp_minimum or self.sliderProgress.grabbing_clamp_maximum):
+                frame = min(self.maximum, max(self.minimum, frame))
+                if frame == self.maximum and self.buttonTrimEnd.isChecked():
+                    self.force_pause(True)
+        self.current_time = round(self.duration * (frame / self.frame_count), 3)
+        h, m, s, ms = get_hms(self.current_time)
+
+        set_progress_slider(frame)
+        if not current_time_lineedit_has_focus():       # use cleaner format for time-strings on videos > 1 hour
+            set_current_time_text(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
+
+        self.lock_spin_updates = True                   # lock spins from actually updating player so we don't get recursion
+        set_hour_spin(h)
+        set_minute_spin(m)
+        set_second_spin(s)
+        set_frame_spin(frame)
+        self.lock_spin_updates = False                  # unlock spins so they can be edited by hand again
+
+
+    def update_progress_slot(self, frame: float):
+        ''' A slot for update_progress_signal which updates our progress in a thread-safe manner and without slowing
+            down update_slider_thread. Takes `frame` as a float in order to handle partial frames caused by
+            non-1 playback speeds. Saves the partial frame for later use as updates use an integer frame. '''
+        # TODO: fractional_frame might not work as well as I hope
+        frame += self.fractional_frame                  # add previous partial frame to get true position
+        int_frame = int(frame)
+        update_progress(int_frame)                      # update with an integer frame
+        self.fractional_frame = frame - int_frame       # save new partial frame for later use
+
+
+    def set_and_update_progress(self, frame: int = 0):
+        ''' Simultaneously sets VLC/gif player position and updates progress on GUI. '''
+        set_player_position(frame / self.frame_count)
+        #self.set_player_time(round(frame * (1000 / self.frame_rate)))
+        update_progress(frame)
+        set_gif_position(frame)
+
+
     def update_slider_thread(self):
         ''' Handles updating the progress bar. This includes both slider-types and swapping between them.
             frame_override can be set to override the next pending frame (circumventing timing-related
@@ -1998,48 +2226,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if new_frame >= current_frame(): update_progress_signal.emit(new_frame)    # make sure VLC didn't literally go backwards (pretty common)
                         #else: update_progress_signal.emit(int(new_frame + (self.frame_rate / 5)))  # simulate a non-backwards update TODO this actually makes it look worse
         return logging.info('Program closed. Ending update_slider thread.')
-
-
-    def set_and_update_progress(self, frame: int = 0):
-        ''' Simultaneously sets VLC/gif player position and updates progress on GUI. '''
-        set_player_position(frame / self.frame_count)
-        #self.set_player_time(round(frame * (1000 / self.frame_rate)))
-        update_progress(frame)
-        set_gif_position(frame)
-
-
-    def update_progress_slot(self, frame: float):
-        ''' A slot for update_progress_signal which updates our progress in a thread-safe manner and without slowing
-            down update_slider_thread. Takes `frame` as a float in order to handle partial frames caused by
-            non-1 playback speeds. Saves the partial frame for later use as updates use an integer frame. '''
-        # TODO: fractional_frame might not work as well as I hope
-        frame += self.fractional_frame                  # add previous partial frame to get true position
-        int_frame = int(frame)
-        update_progress(int_frame)                      # update with an integer frame
-        self.fractional_frame = frame - int_frame       # save new partial frame for later use
-
-
-    def update_progress(self, frame: int):
-        ''' Updates every section of the UI to reflect the current `frame`. Restarts the
-            player if called while the video has ended. Clamps playback to desired trims. '''
-        if not self.minimum <= frame <= self.maximum:
-            if not (self.sliderProgress.grabbing_clamp_minimum or self.sliderProgress.grabbing_clamp_maximum):
-                frame = min(self.maximum, max(self.minimum, frame))
-                if frame == self.maximum and self.buttonTrimEnd.isChecked():
-                    self.force_pause(True)
-        self.current_time = round(self.duration * (frame / self.frame_count), 3)
-        h, m, s, ms = get_hms(self.current_time)
-
-        set_progress_slider(frame)
-        if not current_time_lineedit_has_focus():       # use cleaner format for time-strings on videos > 1 hour
-            set_current_time_text(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
-
-        self.lock_spin_updates = True                   # lock spins from actually updating player so we don't get recursion
-        set_hour_spin(h)
-        set_minute_spin(m)
-        set_second_spin(s)
-        set_frame_spin(frame)
-        self.lock_spin_updates = False                  # unlock spins so they can be edited by hand again
 
 
     def update_time_spins(self):
@@ -2682,6 +2868,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if settings_were_open: self.dialog_settings.show()          # restore settings if they were originally open
 
 
+    def get_renamed_output(self, new_name: str = None):
+        ''' Returns `new_name` or self.lineOutput as a valid, sanitized, unique path.
+            If `new_name` ends up being the same as self.video, no media is playing,
+            or `new_name` and self.lineOutput are both blank, then None is returned. '''
+        if not self.video or (not new_name and not self.lineOutput.text().strip()): return None
+        try:
+            old_oscwd = os.getcwd()
+            os.chdir(os.path.dirname(self.video))       # set os module's CWD to self.video's folder -> allows things like abspath, '.', and '..'
+
+            dirname, basename = os.path.split(new_name or self.lineOutput.text().strip())
+            new_name = os.path.abspath(os.path.join(dirname, sanitize(basename)))
+            if not os.path.splitext(new_name)[-1]: new_name = f'{new_name}{os.path.splitext(self.video)[-1]}'   # append extension if needed
+            if new_name == self.video: return None      # make sure new name isn't the same as the old name
+            return get_unique_path(new_name)            # TODO make this a setting (use os.replace instead of renames)
+        finally: os.chdir(old_oscwd)                    # reset os module's CWD before returning
+
+
     def get_popup_location(self):
         ''' Returns keyword arguments as a dictionary for the center-parameters of popups and dialogs. '''
         index = self.dialog_settings.comboDialogPosition.currentIndex()
@@ -2996,48 +3199,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.setWindowTitle(title.strip())
 
 
-    def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
-        # get list of all keySequenceEdits
-        all_key_sequence_edits = []
-        for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.formKeys, 1):
-            for child in qthelpers.layoutGetItems(layout):
-                all_key_sequence_edits.append(child)
-
-        # check and swap any keySequenceEdits that have the same keySequence as the one we just set
-        if last_edit is not None:
-            name = last_edit.objectName()
-            index = 0 if name[-1] != '_' else 1
-            name = name.rstrip('_')
-            new_key_sequence = last_edit.keySequence()
-            if new_key_sequence:            # empty key sequence -> don't check for duplicates
-                for other_edit in all_key_sequence_edits:
-                    if other_edit.keySequence() == new_key_sequence and other_edit is not last_edit:
-                        other_name = other_edit.objectName()
-                        other_index = 0 if other_name[-1] != '_' else 1
-                        other_name = other_name.rstrip('_')
-
-                        old_shortcut_key = self.shortcuts[name][index].key()
-                        other_edit.setKeySequence(old_shortcut_key)
-                        self.shortcuts[other_name][other_index].setKey(old_shortcut_key)
-            self.shortcuts[name][index].setKey(new_key_sequence)
-
-
-        # check and clear any instance of two keySequenceEdits having the same keySequence (higher in the menu = higher priority)
-        else:                               # this is meant for use at startup only -> clearing duplicates caused by manual config editing
-            for edit in all_key_sequence_edits:
-                name = edit.objectName()
-                index = 0 if name[-1] != '_' else 1
-                name = name.rstrip('_')
-                for other_edit in all_key_sequence_edits:   # loop over every keySequenceEdit for every keySequenceEdit to compare all of them
-                    if edit.keySequence() == other_edit.keySequence() and edit is not other_edit:
-                        other_name = other_edit.objectName()
-                        other_index = 0 if other_name[-1] != '_' else 1
-                        other_name = other_name.rstrip('_')
-                        other_edit.setKeySequence(0)
-                        self.shortcuts[other_name][other_index].setKey(other_edit.keySequence())
-                self.shortcuts[name][index].setKey(edit.keySequence())
-
-
     def cycle_subtitle_track(self):
         track_count = player.video_get_spu_count() - 1
         if track_count > 0:
@@ -3112,39 +3273,62 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
         if len(self.recent_videos) > 25:
-            self.menuRecent.addAction(self.actionClearRecent)               # add separator and clear action at top for very long lists
+            self.menuRecent.addAction(self.actionClearRecent)           # add separator and clear action at top for very long lists
             self.menuRecent.addSeparator()
 
         get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
-        for index, video in enumerate(reversed(self.recent_videos)):        # reversed to show most recent first
+        for index, video in enumerate(reversed(self.recent_videos)):    # reversed to show most recent first
             number = str(index + 1)
             action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(video)}', self.menuRecent)
-            action.triggered.connect(get_open_lambda(video))                # workaround for python bug/oddity involving creating lambdas in iterables
+            action.triggered.connect(get_open_lambda(video))            # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)
 
         if len(self.recent_videos) <= 25:
             self.menuRecent.addSeparator()
-            self.menuRecent.addAction(self.actionClearRecent)               # add separator and clear action at bottom for shorter lists
+            self.menuRecent.addAction(self.actionClearRecent)           # add separator and clear action at bottom for shorter lists
 
 
-    def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable
-        if self.mime_type == 'image': return self.cycle_media(next=forward)  # cycle images with basic navigation keys
-        old_frame = get_progess_slider()
-        if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
-            if old_frame == self.frame_count and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = 0
-            else: new_frame = min(self.frame_count, old_frame + self.frame_rate_rounded * seconds)
-        else:   # TODO use vvv this line vvv as workaround to VLC bug that sometimes causes media to play 1 frame when wrapping?
-            #if old_frame <= 1 and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            if old_frame == 0 and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            else: new_frame = max(0, old_frame - self.frame_rate_rounded * seconds)
-        set_and_update_progress(new_frame)
-        if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
-        if self.isFullScreen() and self.dialog_settings.checkTextOnFullScreenPosition.isChecked():   # if we're in fullscreen mode, show the current position as a marquee
-            h, m, s, _ = get_hms(self.current_time)
-            current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
-            max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
-            show_text(f'{current_text}/{max_text}')
+    def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
+        # get list of all keySequenceEdits
+        all_key_sequence_edits = []
+        for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.formKeys, 1):
+            for child in qthelpers.layoutGetItems(layout):
+                all_key_sequence_edits.append(child)
+
+        # check and swap any keySequenceEdits that have the same keySequence as the one we just set
+        if last_edit is not None:
+            name = last_edit.objectName()
+            index = 0 if name[-1] != '_' else 1
+            name = name.rstrip('_')
+            new_key_sequence = last_edit.keySequence()
+            if new_key_sequence:            # empty key sequence -> don't check for duplicates
+                for other_edit in all_key_sequence_edits:
+                    if other_edit.keySequence() == new_key_sequence and other_edit is not last_edit:
+                        other_name = other_edit.objectName()
+                        other_index = 0 if other_name[-1] != '_' else 1
+                        other_name = other_name.rstrip('_')
+
+                        old_shortcut_key = self.shortcuts[name][index].key()
+                        other_edit.setKeySequence(old_shortcut_key)
+                        self.shortcuts[other_name][other_index].setKey(old_shortcut_key)
+            self.shortcuts[name][index].setKey(new_key_sequence)
+
+
+        # check and clear any instance of two keySequenceEdits having the same keySequence (higher in the menu = higher priority)
+        else:                               # this is meant for use at startup only -> clearing duplicates caused by manual config editing
+            for edit in all_key_sequence_edits:
+                name = edit.objectName()
+                index = 0 if name[-1] != '_' else 1
+                name = name.rstrip('_')
+                for other_edit in all_key_sequence_edits:   # loop over every keySequenceEdit for every keySequenceEdit to compare all of them
+                    if edit.keySequence() == other_edit.keySequence() and edit is not other_edit:
+                        other_name = other_edit.objectName()
+                        other_index = 0 if other_name[-1] != '_' else 1
+                        other_name = other_name.rstrip('_')
+                        other_edit.setKeySequence(0)
+                        self.shortcuts[other_name][other_index].setKey(other_edit.keySequence())
+                self.shortcuts[name][index].setKey(edit.keySequence())
 
 
     def page_step_slider(self, action):
@@ -3184,178 +3368,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.actionMarkDeleted.setChecked(False)
         self.buttonMarkDeleted.setChecked(False)
         self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', '0'))
-
-
-    def snapshot(self, *args, modifiers=None):  # uses libvlc_video_take_snapshot. *args to capture unused signal args
-        ''' libvlc_video_take_snapshot's docstring:         TODO: add a real docstring here
-            "Take a snapshot of the current video window. If `i_width` AND `i_height` is 0, original
-            size is used. If `i_width` XOR `i_height` is 0, original aspect-ratio is preserved."
-            Returns: 0 on success, -1 if the video was not found.
-            Parameters:
-                `p_mi` - media player instance.
-                `num` - number of video output (typically 0 for the first/only one).
-                `psz_filepath` - the path of a file or a folder to save the snapshot into.
-                `i_width` - the snapshot's width.
-                `i_height` - the snapshot's height. '''
-        try:
-            settings = self.dialog_settings
-            if settings.checkSnapshotPause.isChecked():                 # pause media if desired (undone by finally statement)
-                player.set_pause(True)
-                gif_player.gif.setPaused(True)
-            mod = app.keyboardModifiers() if modifiers is None else modifiers
-            mime = self.mime_type
-            if mime == 'image' and not mod: mod = Qt.ControlModifier    # change quick-snapshots to full-snapshots for images
-
-            # >>> open last snapshot in pyplayer, not in explorer (shift) <<<
-            if mod & Qt.ShiftModifier:
-                if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
-                if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-                self.open(cfg.last_snapshot_path)
-                self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
-
-            # >>> open last snapshot in default program, not in explorer (alt) <<<
-            elif mod & Qt.AltModifier:
-                if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
-                if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
-                qthelpers.openPath(cfg.last_snapshot_path)
-                self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
-
-            elif not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-            elif mime == 'audio' and not gif_player.pixmap(): return self.statusbar.showMessage('You can only snapshot audio with cover art.', 10000)
-
-            else:
-                is_gif = self.extension == 'gif'
-                is_art = mime == 'audio'                                # if it's audio, we already know that it has cover art
-                frame = get_progess_slider()
-                frame_count_str = str(self.frame_count)
-                if (is_gif or mime == 'image') and settings.checkSnapshotGifPNG.isChecked(): format = 'PNG'
-                else: format = settings.comboSnapshotFormat.currentText()
-
-                # NOTE: art and gif snapshots use the default name format's placeholder text
-                if is_art:
-                    frame = 1
-                    frame_count_str = '1'
-                    name_format = settings.lineSnapshotArtFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
-                elif is_gif: name_format = settings.lineSnapshotGifFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
-                else: name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
-
-                date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
-                video_basename = os.path.basename(os.path.splitext(self.video)[0])
-                default_name = name_format.replace('?name', video_basename) \
-                                          .replace('?date', strftime(date_format, localtime())) \
-                                          .replace('?framecount', frame_count_str) \
-                                          .replace('?frame', str(frame).zfill(len(frame_count_str)))
-
-            # >>> quick snapshot, no dialogs (no modifiers) <<< TODO: maybe add default width/height scale settings
-                if not mod:
-                    dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
-                    try: os.makedirs(dirname)
-                    except FileExistsError: pass
-                    path = get_unique_path(f'{os.path.join(dirname, default_name)}.{"jpg" if format == "JPEG" else "png"}', key='?count')
-
-                    # take and save snapshot
-                    if is_gif: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
-                    elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=0, i_height=0)
-                    elif mime == 'image': return self.statusbar.showMessage('Quick-snapshotting an image would just be silly, wouldn\'t it?', 10000)
-                    elif is_art:
-                        jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
-                        gif_player.art.save(path, format=format, quality=jpeg_quality)
-
-                    cfg.last_snapshot_path = os.path.abspath(path)
-                    self.log(f'{"Cover art" if is_art else "GIF frame" if is_gif else "Snapshot"} saved to {path}')
-
-                    # crop final snapshot if desired
-                    if self.actionCrop.isChecked():
-                        logging.info('Cropping previously saved snapshot...')
-                        lfp = self.vlc.last_factored_points
-                        image_data = get_PIL_Image().open(path)
-                        image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
-                                                      round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
-                        if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
-                        else: image_data.save(path)
-
-                    # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                    elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
-
-            # >> snapshot with resize and save-file dialog (ctrl) <<<
-                elif mod & Qt.ControlModifier:
-                    player.set_pause(True)                              # player may have been paused earlier, but it NEEDS to be paused now
-                    gif_player.gif.setPaused(True)
-                    try:
-                        # get dimensions
-                        width, height, quality = self.show_size_dialog(snapshot=True)
-                        if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
-
-                        # open save-file dialog
-                        use_snapshot_lastdir = settings.checkSnapshotRemember.isChecked()
-                        selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if format == 'JPEG' else ''
-                        base_path = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
-                        path = f'{base_path}{".png" if not selected_filter else ".jpg"}'
-                        path, filter, lastdir = qthelpers.saveFile(lastdir=get_unique_path(path, key='?count', zeros=1),
-                                                                   caption='Save snapshot as',
-                                                                   filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
-                                                                   selectedFilter=selected_filter,
-                                                                   returnFilter=True)
-                        if use_snapshot_lastdir: cfg.last_snapshot_folder = lastdir
-                        else: cfg.lastdir = lastdir
-                        if path is None: return
-                        # 'BMP (*.bmp; *.dib, *.rle);;TIFF (*.tiff; *.tif);;GIF (*.gif);;TGA (*.tga);;WebP (*.webp)'
-
-                        # take and save snapshot
-                        if is_gif:
-                            if width or height:                         # use "scale" ffmpeg filter for gifs
-                                w = width if width else -1              # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
-                                h = height if height else -1
-                                ffmpeg(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
-                            else: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
-                        elif mime == 'video': player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
-                        else:
-                            if width or height:
-                                w = width if width else height * (self.vwidth / self.vheight)
-                                h = height if height else width * (self.vheight / self.vwidth)
-                                gif_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
-                            else: gif_player.art.save(path, quality=quality)
-
-                        logging.info(f'psz_filepath={path}, i_width={width}, i_height={height}')
-                        cfg.last_snapshot_path = os.path.abspath(path)
-                        cfg.last_snapshot_folder = os.path.dirname(cfg.last_snapshot_path)
-                        self.log(f'{"Cover art" if is_art else "GIF frame" if is_gif else "Snapshot"} saved to {path}')
-
-                        # crop final snapshot if desired, taking into account the custom width/height
-                        if self.actionCrop.isChecked():
-                            logging.info('Cropping previously saved snapshot...')
-                            lfp = self.vlc.last_factored_points
-                            image_data = get_PIL_Image().open(path)
-
-                            # calculate factors between media's native resolution and actual desired snapshot resolution
-                            if width or height:                         # custom width and/or height is set
-                                if width:
-                                    x_factor = self.vwidth / width
-                                    if not height: y_factor = x_factor  # width is set but height isn't -> match factors
-                                if height:
-                                    y_factor = self.vheight / height
-                                    if not width: x_factor = y_factor   # height is set but width isn't -> match factors
-                            else:                                       # neither is set -> use 1 to avoid division by 0
-                                x_factor = 1
-                                y_factor = 1
-
-                            # use factors to crop snapshot relative to the snapshot's actual resolution for an accurate crop
-                            image_data = image_data.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
-                                                          round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
-
-                            # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                            if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
-                            else: image_data.save(path)
-                        if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
-
-                    except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
-                    finally:                                            # only needed if checkSnapshotPause is False
-                        player.set_pause(False or self.is_paused)
-                        gif_player.gif.setPaused(False or self.is_paused)
-        except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
-        finally:
-            player.set_pause(False or self.is_paused)
-            gif_player.gif.setPaused(False or self.is_paused)
 
 
     def convert_snapshot_to_jpeg(self, path, image_data=None):          # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/

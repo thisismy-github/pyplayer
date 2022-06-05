@@ -416,17 +416,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Handles grabbing crop points/edges in crop-mode, as well as detected the
             forwards/backwards buttons and moving through the recent files list. '''
         try:
-            if not gui.actionCrop.isChecked():              # no crop -> check for back/forward buttons
-                # NOTE: recent_videos is least recent to most recent -> index 0 is the LEAST recent
-                if event.button() == Qt.BackButton or event.button() == Qt.ForwardButton:
-                    if gui.video not in gui.recent_videos:  # default to latest file if no valid file is loaded
-                        current_index = len(gui.recent_videos)
-                    else: current_index = gui.recent_videos.index(gui.video)
-                    new_index = current_index + (1 if event.button() == Qt.ForwardButton else -1)
-                    if 0 <= new_index <= len(gui.recent_videos) - 1:
-                        file = gui.recent_videos[new_index]
-                        gui.open(file, update_recent_list=False)
-                        gui.log(f'Opened recent file #{len(gui.recent_videos) - new_index}: {file}')
+            if not gui.actionCrop.isChecked():                          # no crop -> check for back/forward buttons
+                if event.button() == Qt.BackButton: gui.cycle_recent_files(forward=False)
+                elif event.button() == Qt.ForwardButton: gui.cycle_recent_files(forward=True)
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
