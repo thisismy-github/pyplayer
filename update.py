@@ -252,3 +252,4 @@ def update_migration(self, old_version: str) -> None:
         new_format = self.dialog_settings.lineSnapshotNameFormat.text().strip().replace('?video', '?name')
         self.dialog_settings.lineSnapshotNameFormat.setText(new_format)
         config.cfg.saveTo('settings', 'linesnapshotnameformat', new_format)
+        self.recent_files += config.cfg.load('recent_videos', '', '<|>', section='general')

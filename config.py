@@ -34,7 +34,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('lastupdatecheck')
     load('theme', 'Midnight')
 
-    cfg.setSection('general')   # NOTE: 'recent_videos' gets loaded in qtstart.after_show_setup()
+    cfg.setSection('general')   # NOTE: 'recent_files' gets loaded in qtstart.after_show_setup()
     load('lastdir', '.')
     load('last_snapshot_path')
     load('last_snapshot_folder', '%USERPROFILE%\\Pictures')
@@ -97,7 +97,7 @@ def saveConfig(gui, filename: str = None):
     save('windowstyle', gui.app.style().objectName())
 
     cfg.setSection('general')
-    save('recent_videos', gui.recent_videos, delimiter='<|>')
+    save('recent_files', gui.recent_files, delimiter='<|>')
 
     cfg.setSection('settings')
     for action in gui.trim_mode_action_group.actions():

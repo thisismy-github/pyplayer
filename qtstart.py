@@ -123,7 +123,7 @@ def after_show_setup(self: QtW.QMainWindow):
     recent_files_count = self.dialog_settings.spinRecentFiles.value()
     files = config.cfg.load('recent_files', '', '<|>', section='general')
     if recent_files_count <= 25:
-        recent_files = self.recent_videos
+        recent_files = self.recent_files
         append = recent_files.append
         for file in files:
             if os.path.isfile(file) and file not in recent_files: append(file)
@@ -222,7 +222,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.buttonPause.clicked.connect(self.pause)
     self.actionOpen.triggered.connect(self.open)
     self.menuRecent.aboutToShow.connect(self.refresh_recent_menu)
-    self.actionClearRecent.triggered.connect(lambda: self.recent_videos.clear())    # TODO why won't .clear work on its own?
+    self.actionClearRecent.triggered.connect(lambda: self.recent_files.clear())    # TODO why won't .clear work on its own?
     self.actionExploreMediaPath.triggered.connect(self.explore)
     self.actionCopyMediaPath.triggered.connect(self.copy)
     self.actionSave.triggered.connect(self.save)

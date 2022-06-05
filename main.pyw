@@ -444,8 +444,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.video = ''
         self.video_original_path: str = None
-        self.recent_videos = []
         self.locked_video: str = None
+        self.recent_files = []
         self.mime_type = 'image'    # defaults to 'image' since self.pause() is disabled for 'image' mime_types
         self.extension: str = None
 
@@ -769,18 +769,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if jump_progress:
                 self.set_and_update_progress(int(self.frame_count / 10 * (key - 48)))
             elif play_recent:
-                if not self.recent_videos: return self.statusbar.showMessage('No recent files available.')
+                if not self.recent_files: return self.statusbar.showMessage('No recent files available.')
                 if key == 48:
                     if s.checkNumKeys0PlaysLeastRecentFile.isChecked(): index = 0
                     else: index = -10
-                elif key == 49 and s.checkNumKeys1SkipsActiveFiles.isChecked() and self.recent_videos[-1] == self.video:
+                elif key == 49 and s.checkNumKeys1SkipsActiveFiles.isChecked() and self.recent_files[-1] == self.video:
                     index = -2
                 else: index = -(key - 48)
-                path = self.recent_videos[max(index, -len(self.recent_videos))]
+                path = self.recent_files[max(index, -len(self.recent_files))]
                 if os.path.exists(path): self.open(path, update_recent_list=s.checkNumKeysUpdateRecentFiles.isChecked())
                 else:
                     self.log(f'Recent file {path} does not exist anymore.')
-                    self.recent_videos.remove(path)
+                    self.recent_files.remove(path)
 
         # handle individual keys. TODO: change these to their enums? (70 -> Qt.Key.Key_F)
         if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.trigger()   # esc (fullscreen only)
@@ -948,7 +948,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         copy_action = QtW.QAction('&Copy media path')
         copy_action.triggered.connect(lambda: self.copy(path))
         remove_action = QtW.QAction('&Remove from recent files')
-        remove_action.triggered.connect(lambda: (self.recent_videos.remove(path), self.refresh_recent_menu()))
+        remove_action.triggered.connect(lambda: (self.recent_files.remove(path), self.refresh_recent_menu()))
 
         context = QtW.QMenu(self)
         context.addAction(remove_action)
@@ -1125,14 +1125,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def cycle_recent_files(self, forward: bool = True):
         # NOTE: recent_files is least recent to most recent -> index 0 is the LEAST recent
-        if self.video not in self.recent_videos:  # default to latest file if no valid file is loaded
-            current_index = len(self.recent_videos)
-        else: current_index = self.recent_videos.index(self.video)
+        if self.video not in self.recent_files:  # default to latest file if no valid file is loaded
+            current_index = len(self.recent_files)
+        else: current_index = self.recent_files.index(self.video)
         new_index = current_index + (1 if forward else -1)
-        if 0 <= new_index <= len(self.recent_videos) - 1:
-            file = self.recent_videos[new_index]
+        if 0 <= new_index <= len(self.recent_files) - 1:
+            file = self.recent_files[new_index]
             self.open(file, update_recent_list=False)
-            self.log(f'Opened recent file #{len(self.recent_videos) - new_index}: {file}')
+            self.log(f'Opened recent file #{len(self.recent_files) - new_index}: {file}')
 
 
     def explore(self, path: str = None, noun: str = 'Recent file'):
@@ -1141,8 +1141,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             how `path` is described in any log messages.'''
         if not path: path = self.video if self.video else cfg.lastdir
         if not os.path.exists(path):
-            if path in self.recent_videos:
-                self.recent_videos.remove(path)
+            if path in self.recent_files:
+                self.recent_files.remove(path)
             return self.log(f'{noun} "{path}" no longer exists.')
         else: qthelpers.openPath(path, explore=True)
 
@@ -1153,8 +1153,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             `noun` controls how `path` is described in any log messages. '''
         if not path: path = self.video if self.video else cfg.lastdir
         if not os.path.exists(path):
-            if path in self.recent_videos:
-                self.recent_videos.remove(path)
+            if path in self.recent_files:
+                self.recent_files.remove(path)
             return self.log(f'{noun} "{path}" no longer exists.')
         else:
             if self.dialog_settings.checkCopyEscapeBackslashes.isChecked():
@@ -1484,13 +1484,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # update recent media list
             if update_recent_list:
-                recent_videos = self.recent_videos
-                if file in recent_videos:                           # move pre-existing recent file to front
-                    recent_videos.append(recent_videos.pop(recent_videos.index(file)))
+                recent_files = self.recent_files
+                if file in recent_files:                           # move pre-existing recent file to front
+                    recent_files.append(recent_files.pop(recent_files.index(file)))
                 else:
-                    recent_videos.append(file)
+                    recent_files.append(file)
                     max_len = self.dialog_settings.spinRecentFiles.value()
-                    self.recent_videos = recent_videos[-max_len:]   # do NOT use the recent_videos alias here
+                    self.recent_files = recent_files[-max_len:]   # do NOT use the recent_files alias here
 
             # update UI with new media's duration
             h, m, s, ms = get_hms(self.duration)
@@ -1689,7 +1689,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         elif self.mime_type != 'image':
             self.vlc.play(self.video)
             set_player_position(get_progess_slider() / self.frame_count)    # set VLC back to current position
-        self.recent_videos[-1] = self.video                                 # update recent video's list with new name
+        self.recent_files[-1] = self.video                                 # update recent video's list with new name
 
 
     def delete(self, files):
@@ -1715,7 +1715,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 logging.info(f'File {file} {verb}ed successfully.')
             except Exception as error: self.log(f'File could not be deleted: {file} - {error}')
             if not os.path.exists(file):    # if file doesn't exist, unmark file (even if error occurred)
-                if file in self.recent_videos: self.recent_videos.remove(file)
+                if file in self.recent_files: self.recent_files.remove(file)
                 if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
 
 
@@ -3272,19 +3272,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def refresh_recent_menu(self):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
-        if len(self.recent_videos) > 25:
+        if len(self.recent_files) > 25:
             self.menuRecent.addAction(self.actionClearRecent)           # add separator and clear action at top for very long lists
             self.menuRecent.addSeparator()
 
-        get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_videos.remove(path))
-        for index, video in enumerate(reversed(self.recent_videos)):    # reversed to show most recent first
+        get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_files.remove(path))
+        for index, video in enumerate(reversed(self.recent_files)):    # reversed to show most recent first
             number = str(index + 1)
             action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(video)}', self.menuRecent)
             action.triggered.connect(get_open_lambda(video))            # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(video)
             self.menuRecent.addAction(action)
 
-        if len(self.recent_videos) <= 25:
+        if len(self.recent_files) <= 25:
             self.menuRecent.addSeparator()
             self.menuRecent.addAction(self.actionClearRecent)           # add separator and clear action at bottom for shorter lists
 
