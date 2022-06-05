@@ -777,10 +777,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     index = -2
                 else: index = -(key - 48)
                 path = self.recent_files[max(index, -len(self.recent_files))]
-                if os.path.exists(path): self.open(path, update_recent_list=s.checkNumKeysUpdateRecentFiles.isChecked())
-                else:
-                    self.log(f'Recent file {path} does not exist anymore.')
-                    self.recent_files.remove(path)
+                self.open_recent_file(path, update=s.checkNumKeysUpdateRecentFiles.isChecked())
 
         # handle individual keys. TODO: change these to their enums? (70 -> Qt.Key.Key_F)
         if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.trigger()   # esc (fullscreen only)
@@ -949,12 +946,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         copy_action.triggered.connect(lambda: self.copy(path))
         remove_action = QtW.QAction('&Remove from recent files')
         remove_action.triggered.connect(lambda: (self.recent_files.remove(path), self.refresh_recent_menu()))
+        open_update_action = QtW.QAction('&Open and move to top')
+        open_update_action.triggered.connect(lambda: self.open_recent_file(path, update=True))
+        open_no_update_action = QtW.QAction('&Open without moving to top')
+        open_no_update_action.triggered.connect(lambda: self.open_recent_file(path, update=False))
 
         context = QtW.QMenu(self)
         context.addAction(remove_action)
         context.addSeparator()
         context.addAction(explore_action)
         context.addAction(copy_action)
+        context.addSeparator()
+        context.addAction(open_update_action)
+        context.addAction(open_no_update_action)
         context.exec(event.globalPos())
 
 
@@ -1130,9 +1134,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else: current_index = self.recent_files.index(self.video)
         new_index = current_index + (1 if forward else -1)
         if 0 <= new_index <= len(self.recent_files) - 1:
-            file = self.recent_files[new_index]
-            self.open(file, update_recent_list=False)
-            self.log(f'Opened recent file #{len(self.recent_files) - new_index}: {file}')
+            path = self.recent_files[new_index]
+            self.open_recent_file(path, update=False)
+
+
+    def open_recent_file(self, path: str, update: bool):
+        try:
+            if os.path.isfile(path):
+                self.open(path, update_recent_list=update)
+                self.log(f'Opened recent file #{len(self.recent_files) - self.recent_files.index(path)}: {path}')
+            else:
+                self.log(f'Recent file {path} no longer exists.')
+                self.recent_files.remove(path)
+        except ValueError: pass                 # ValueError -> path was not actually in recent_files
 
 
     def explore(self, path: str = None, noun: str = 'Recent file'):
@@ -3273,20 +3287,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
         if len(self.recent_files) > 25:
-            self.menuRecent.addAction(self.actionClearRecent)           # add separator and clear action at top for very long lists
+            self.menuRecent.addAction(self.actionClearRecent)       # add separator and clear action at top for very long lists
             self.menuRecent.addSeparator()
 
-        get_open_lambda = lambda path: lambda: self.open(path) if os.path.exists(path) else (self.log(f'Recent file {path} does not exist anymore.'), self.recent_files.remove(path))
-        for index, video in enumerate(reversed(self.recent_files)):    # reversed to show most recent first
+        update = self.dialog_settings.checkRecentFilesReorderFromMenu.isChecked()
+        get_open_lambda = lambda path: lambda: self.open_recent_file(path, update=update)
+        for index, file in enumerate(reversed(self.recent_files)):  # reversed to show most recent first
             number = str(index + 1)
-            action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(video)}', self.menuRecent)
-            action.triggered.connect(get_open_lambda(video))            # workaround for python bug/oddity involving creating lambdas in iterables
-            action.setToolTip(video)
+            action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(file)}', self.menuRecent)
+            action.triggered.connect(get_open_lambda(file))         # workaround for python bug/oddity involving creating lambdas in iterables
+            action.setToolTip(file)
             self.menuRecent.addAction(action)
 
         if len(self.recent_files) <= 25:
             self.menuRecent.addSeparator()
-            self.menuRecent.addAction(self.actionClearRecent)           # add separator and clear action at bottom for shorter lists
+            self.menuRecent.addAction(self.actionClearRecent)       # add separator and clear action at bottom for shorter lists
 
 
     def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
