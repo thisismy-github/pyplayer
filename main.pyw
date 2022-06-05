@@ -439,6 +439,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.was_paused = False
         self.lock_fullscreen_ui = False
         self.menubar_visible_before_crop = False
+        self.ignore_next_alt = False
         self.last_cycle_was_forward = True
         self.last_cycle_index: int = None
 
@@ -725,10 +726,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         event.accept()
 
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent):    # TODO 3.10 match case
-        key =  event.key()
-        mod =  event.modifiers()
-
+    def keyPressEvent(self, event: QtGui.QKeyEvent):    # NOTE: the arrow keys seemingly do not get caught here
+        key = event.key()
+        mod = event.modifiers()
         # if a lineEdit has focus, ignore keypresses except for esc, which can be used to clear focus. spinboxes use QSpinBoxPassthrough
         editable = (self.lineOutput, self.lineCurrentTime)
         if any(w.hasFocus() for w in editable):
@@ -745,6 +745,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if primary.key() == true or secondary.key() == true:
                     primary.activated.emit()
         self.shortcut_bandaid_fix = False
+
+        # if AltModifier is True but we aren't pressing alt, ignore next alt release
+        if key != 16777251 and mod & Qt.AltModifier: self.ignore_next_alt = True
 
         # numbers 0-9
         if 48 <= key <= 57:
@@ -780,7 +783,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.open_recent_file(path, update=s.checkNumKeysUpdateRecentFiles.isChecked())
 
         # handle individual keys. TODO: change these to their enums? (70 -> Qt.Key.Key_F)
-        if key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.trigger()   # esc (fullscreen only)
+        elif key == 16777216 and self.actionFullscreen.isChecked(): self.actionFullscreen.trigger()   # esc (fullscreen only)
 
         # emulate menubar shortcuts when menubar is not visible (which disables shortcuts for some reason)
         elif not self.menubar.isVisible():
@@ -794,18 +797,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{event.text()}"')
 
 
-    def keyReleaseEvent(self, event: QtGui.QKeyEvent):                      # 3.10 match case
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent):
         editable = (self.lineOutput, self.lineCurrentTime, self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame)
-        if any(w.hasFocus() for w in editable): return                      # TODO
+        if any(w.hasFocus() for w in editable): return  # TODO
 
         key = event.key()
-        if key == 16777251 and not self.vlc.dragdrop_in_progress:           # alt (ignore this if we're dragging files since alt affects that)
-            self.actionShowMenuBar.trigger()                                # manually trigger actions to keep the menus & widgets consistent
-        else: super().keyReleaseEvent(event)
+        if key != 16777251:                             # AltModifier is True but we aren't releasing alt, ignore next alt release
+            if event.modifiers() & Qt.AltModifier:
+                self.ignore_next_alt = True
+        else:                                           # alt (ignore while dragging files or pressing other keys)
+            if self.ignore_next_alt:
+                self.ignore_next_alt = False
+            elif not self.vlc.dragdrop_in_progress:
+                self.actionShowMenuBar.trigger()
         logging.debug(f'RELEASED key={key} text="{event.text()}"')
 
 
-    def contextMenuEvent(self, event: QtGui.QContextMenuEvent):             # should these use QWidget.actions() instead of contextMenuEvent?
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles creating the context menu (right-click) for the main window. '''
         context = QtW.QMenu(self)
 
