@@ -1344,15 +1344,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         size = gif.frameRect().size()
                         self.vwidth, self.vheight = size.width(), size.height()
                     self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
-                else:
+                else:   # TODO: other formats have EXIF data but .getexif() is slow for images without EXIF data (except for jpegs)
+                    if extension == 'jpeg':                         # use PIL to get EXIF data from jpegs
+                        image = get_PIL_Image().open(file)          # opening with PIL is fast if we don't do any operations
+                        orientation = image.getexif().get(0x0112)
+                        if orientation:
+                            if   orientation == 3: angle = 180
+                            elif orientation == 6: angle = 90       # actually represents 270 counter-clockwise
+                            elif orientation == 8: angle = 270      # actually represents 90 counter-clockwise
+                            else: angle = 0
+                            if angle: gif_player.art = gif_player.art.transformed(QtGui.QTransform().rotate(angle))
+                        try: self.vwidth, self.vheight = image.size
+                        except AttributeError:
+                            self.vwidth = gif_player.art.width()
+                            self.vheight = gif_player.art.height()
+                    else:
+                        self.vwidth = gif_player.art.width()
+                        self.vheight = gif_player.art.height()
                     self.duration = 0.0000001       # low duration to avoid errors but still show up as 0 on the UI
                     self.frame_count = 1
                     self.frame_rate = 1
                     self.frame_rate_rounded = 1
-                    try: self.vwidth, self.vheight = get_PIL_Image().open(file).size
-                    except AttributeError: self.vwidth, self.vheight = 1, 1
-                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
                     self.delay = 0.2                # run update_slider_thread only 5 times/second
+                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
 
             assert self.duration != 0, f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid duration).'
         except:
