@@ -299,6 +299,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
     settings.buttonCheckForUpdates.clicked.connect(self.handle_updates)
+    settings.spinMinimumZoomFactor.valueChanged.connect(lambda: settings.check1ZoomAutoDisable.setEnabled(settings.spinMinimumZoomFactor.value() == 1))
 
     self.position_button_group = QtW.QButtonGroup(settings)
     for button in (settings.radioTextPosition0, settings.radioTextPosition1, settings.radioTextPosition2,

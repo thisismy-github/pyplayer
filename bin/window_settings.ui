@@ -47,9 +47,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-794</y>
         <width>387</width>
-        <height>2039</height>
+        <height>2158</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -225,6 +225,43 @@ Leave blank to always save unspecified videos to their source folder.</string>
                 </widget>
                </item>
               </layout>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_58">
+               <property name="toolTip">
+                <string>The number of files to remember between sessions
+after being played.
+
+NOTE: Setting this to 0 will not clear the existing list
+unless you manually clear it or restart PyPlayer.
+
+NOTE: At greater than 25, files will be loaded as-is
+each session, even if some of the files no longer exist.
+Otherwise, the recent files are validated on launch.</string>
+               </property>
+               <property name="text">
+                <string>Recent files to track</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QSpinBox" name="spinRecentFiles">
+               <property name="specialValueText">
+                <string>Do not track recent files</string>
+               </property>
+               <property name="suffix">
+                <string> file(s)</string>
+               </property>
+               <property name="prefix">
+                <string>The last </string>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>25</number>
+               </property>
+              </widget>
              </item>
              <item row="4" column="0">
               <widget class="QLabel" name="label_50">
@@ -490,6 +527,18 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
+             <item row="17" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
+               <property name="toolTip">
+                <string>If checked, opening recent files through
+the menu will update their order, moving
+the newly played file to the top.</string>
+               </property>
+               <property name="text">
+                <string>Opening recent files from the menu updates their order</string>
+               </property>
+              </widget>
+             </item>
              <item row="18" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
@@ -516,20 +565,6 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="20" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRecycleBin">
-               <property name="toolTip">
-                <string>If checked, files marked for deletion are sent to your computer's
-recycle bin instead of being immediately/permanently deleted.</string>
-               </property>
-               <property name="text">
-                <string>Deleted files are moved to recycle bin</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
              <item row="19" column="0" colspan="2">
               <widget class="QCheckBox" name="checkFirstFileTrayReset">
                <property name="toolTip">
@@ -550,52 +585,17 @@ file you open.&quot;</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_58">
+             <item row="20" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
-                <string>The number of files to remember between sessions
-after being played.
-
-NOTE: Setting this to 0 will not clear the existing list
-unless you manually clear it or restart PyPlayer.
-
-NOTE: At greater than 25, files will be loaded as-is
-each session, even if some of the files no longer exist.
-Otherwise, the recent files are validated on launch.</string>
+                <string>If checked, files marked for deletion are sent to your computer's
+recycle bin instead of being immediately/permanently deleted.</string>
                </property>
                <property name="text">
-                <string>Recent files to track</string>
+                <string>Deleted files are moved to recycle bin</string>
                </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QSpinBox" name="spinRecentFiles">
-               <property name="specialValueText">
-                <string>Do not track recent files</string>
-               </property>
-               <property name="suffix">
-                <string> file(s)</string>
-               </property>
-               <property name="prefix">
-                <string>The last </string>
-               </property>
-               <property name="maximum">
-                <number>1000</number>
-               </property>
-               <property name="value">
-                <number>25</number>
-               </property>
-              </widget>
-             </item>
-             <item row="17" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
-               <property name="toolTip">
-                <string>If checked, opening recent files through
-the menu will update their order, moving
-the newly played file to the top.</string>
-               </property>
-               <property name="text">
-                <string>Opening recent files from the menu updates their order</string>
+               <property name="checked">
+                <bool>true</bool>
                </property>
               </widget>
              </item>
@@ -1279,6 +1279,92 @@ away after removing your mouse from the progress bar.</string>
                <widget class="QLabel" name="label_41">
                 <property name="text">
                  <string>Fade duration</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_7">
+             <property name="title">
+              <string>Zooming</string>
+             </property>
+             <layout class="QFormLayout" name="formLayout_10">
+              <property name="horizontalSpacing">
+               <number>5</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>3</number>
+              </property>
+              <property name="topMargin">
+               <number>5</number>
+              </property>
+              <property name="rightMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_61">
+                <property name="toolTip">
+                 <string>The minimum zoom factor allowed for media,
+relative to the current size of your window.</string>
+                </property>
+                <property name="text">
+                 <string>Minimum zoom</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="spinMinimumZoomFactor">
+                <property name="suffix">
+                 <string>x the current window size</string>
+                </property>
+                <property name="minimum">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.250000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QCheckBox" name="check1ZoomAutoDisable">
+                <property name="toolTip">
+                 <string>If checked and &quot;Minimum zoom&quot; is set to 1.00x,
+decreasing the zoom to 1.00x will disable zoom-
+mode and reset the media's position.</string>
+                </property>
+                <property name="text">
+                 <string>Auto-disable zoom at 1x size</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QCheckBox" name="checkForceMinimumZoom">
+                <property name="toolTip">
+                 <string>If checked, and the minimum zoom factor cannot
+actually be reached (i.e. the media is very small
+to begin with), the minimum zoom will be set
+relative to the media's size, not the window's.</string>
+                </property>
+                <property name="text">
+                 <string>Zoom relative to media's size if
+minimum zoom cannot be reached</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>

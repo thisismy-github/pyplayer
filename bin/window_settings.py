@@ -25,7 +25,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 387, 2039))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -794, 387, 2158))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -94,6 +94,14 @@ class Ui_settingsDialog(object):
         self.buttonBrowseDefaultOutputPath.setObjectName("buttonBrowseDefaultOutputPath")
         self.horizontalLayout_2.addWidget(self.buttonBrowseDefaultOutputPath)
         self.formLayout.setLayout(2, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2)
+        self.label_58 = QtWidgets.QLabel(self.tabGeneral)
+        self.label_58.setObjectName("label_58")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_58)
+        self.spinRecentFiles = QtWidgets.QSpinBox(self.tabGeneral)
+        self.spinRecentFiles.setMaximum(1000)
+        self.spinRecentFiles.setProperty("value", 25)
+        self.spinRecentFiles.setObjectName("spinRecentFiles")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinRecentFiles)
         self.label_50 = QtWidgets.QLabel(self.tabGeneral)
         self.label_50.setObjectName("label_50")
         self.formLayout.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_50)
@@ -158,31 +166,23 @@ class Ui_settingsDialog(object):
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
         self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
+        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
         self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
-        self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRecycleBin.setChecked(True)
-        self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(20, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.checkFirstFileTrayReset = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkFirstFileTrayReset.setChecked(True)
         self.checkFirstFileTrayReset.setTristate(True)
         self.checkFirstFileTrayReset.setObjectName("checkFirstFileTrayReset")
         self.formLayout.setWidget(19, QtWidgets.QFormLayout.SpanningRole, self.checkFirstFileTrayReset)
-        self.label_58 = QtWidgets.QLabel(self.tabGeneral)
-        self.label_58.setObjectName("label_58")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_58)
-        self.spinRecentFiles = QtWidgets.QSpinBox(self.tabGeneral)
-        self.spinRecentFiles.setMaximum(1000)
-        self.spinRecentFiles.setProperty("value", 25)
-        self.spinRecentFiles.setObjectName("spinRecentFiles")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinRecentFiles)
-        self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
-        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
+        self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRecycleBin.setChecked(True)
+        self.checkRecycleBin.setObjectName("checkRecycleBin")
+        self.formLayout.setWidget(20, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 5, -1, 5)
@@ -393,6 +393,32 @@ class Ui_settingsDialog(object):
         self.label_41.setObjectName("label_41")
         self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_41)
         self.verticalLayout_3.addWidget(self.groupHover)
+        self.groupBox_7 = QtWidgets.QGroupBox(self.tabGeneral)
+        self.groupBox_7.setObjectName("groupBox_7")
+        self.formLayout_10 = QtWidgets.QFormLayout(self.groupBox_7)
+        self.formLayout_10.setContentsMargins(-1, 5, 5, 6)
+        self.formLayout_10.setHorizontalSpacing(5)
+        self.formLayout_10.setVerticalSpacing(3)
+        self.formLayout_10.setObjectName("formLayout_10")
+        self.label_61 = QtWidgets.QLabel(self.groupBox_7)
+        self.label_61.setObjectName("label_61")
+        self.formLayout_10.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_61)
+        self.spinMinimumZoomFactor = QtWidgets.QDoubleSpinBox(self.groupBox_7)
+        self.spinMinimumZoomFactor.setMinimum(0.05)
+        self.spinMinimumZoomFactor.setMaximum(1.0)
+        self.spinMinimumZoomFactor.setSingleStep(0.05)
+        self.spinMinimumZoomFactor.setProperty("value", 0.25)
+        self.spinMinimumZoomFactor.setObjectName("spinMinimumZoomFactor")
+        self.formLayout_10.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.spinMinimumZoomFactor)
+        self.check1ZoomAutoDisable = QtWidgets.QCheckBox(self.groupBox_7)
+        self.check1ZoomAutoDisable.setChecked(True)
+        self.check1ZoomAutoDisable.setObjectName("check1ZoomAutoDisable")
+        self.formLayout_10.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.check1ZoomAutoDisable)
+        self.checkForceMinimumZoom = QtWidgets.QCheckBox(self.groupBox_7)
+        self.checkForceMinimumZoom.setChecked(True)
+        self.checkForceMinimumZoom.setObjectName("checkForceMinimumZoom")
+        self.formLayout_10.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.checkForceMinimumZoom)
+        self.verticalLayout_3.addWidget(self.groupBox_7)
         self.groupBox_4 = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupBox_4.setObjectName("groupBox_4")
         self.formLayout_5 = QtWidgets.QFormLayout(self.groupBox_4)
@@ -1428,6 +1454,19 @@ class Ui_settingsDialog(object):
 "?ratio        The aspect ratio of the media being played.\n"
 "?volume        The volume of the media being played.\n"
 "?speed        The playback speed of the media being played."))
+        self.label_58.setToolTip(_translate("settingsDialog", "The number of files to remember between sessions\n"
+"after being played.\n"
+"\n"
+"NOTE: Setting this to 0 will not clear the existing list\n"
+"unless you manually clear it or restart PyPlayer.\n"
+"\n"
+"NOTE: At greater than 25, files will be loaded as-is\n"
+"each session, even if some of the files no longer exist.\n"
+"Otherwise, the recent files are validated on launch."))
+        self.label_58.setText(_translate("settingsDialog", "Recent files to track"))
+        self.spinRecentFiles.setSpecialValueText(_translate("settingsDialog", "Do not track recent files"))
+        self.spinRecentFiles.setSuffix(_translate("settingsDialog", " file(s)"))
+        self.spinRecentFiles.setPrefix(_translate("settingsDialog", "The last "))
         self.label_50.setToolTip(_translate("settingsDialog", "The location where popups and other dialogs will initially appear."))
         self.label_50.setText(_translate("settingsDialog", "Center dialogs over"))
         self.comboDialogPosition.setItemText(0, _translate("settingsDialog", "Window"))
@@ -1516,6 +1555,10 @@ class Ui_settingsDialog(object):
 "enabled if they\'re available. This includes both\n"
 "pre-existing tracks and manually-added tracks."))
         self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
+        self.checkRecentFilesReorderFromMenu.setToolTip(_translate("settingsDialog", "If checked, opening recent files through\n"
+"the menu will update their order, moving\n"
+"the newly played file to the top."))
+        self.checkRecentFilesReorderFromMenu.setText(_translate("settingsDialog", "Opening recent files from the menu updates their order"))
         self.checkCycleRememberOriginalPath.setToolTip(_translate("settingsDialog", "Tristate:\n"
 "\n"
 "Fully checked: media that is renamed and/or edited will act\n"
@@ -1528,32 +1571,15 @@ class Ui_settingsDialog(object):
 "file #5, but then rename it so that it becomes file #1, the\n"
 "next file that will play will still be file #6."))
         self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
-        self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
-"recycle bin instead of being immediately/permanently deleted."))
-        self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
         self.checkFirstFileTrayReset.setToolTip(_translate("settingsDialog", "If checked, minimizing to the system tray,\n"
 "restoring, and opening a new piece of media\n"
 "will count as opening media for the first time,\n"
 "for any setting that mentions \"the first media\n"
 "file you open.\""))
         self.checkFirstFileTrayReset.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
-        self.label_58.setToolTip(_translate("settingsDialog", "The number of files to remember between sessions\n"
-"after being played.\n"
-"\n"
-"NOTE: Setting this to 0 will not clear the existing list\n"
-"unless you manually clear it or restart PyPlayer.\n"
-"\n"
-"NOTE: At greater than 25, files will be loaded as-is\n"
-"each session, even if some of the files no longer exist.\n"
-"Otherwise, the recent files are validated on launch."))
-        self.label_58.setText(_translate("settingsDialog", "Recent files to track"))
-        self.spinRecentFiles.setSpecialValueText(_translate("settingsDialog", "Do not track recent files"))
-        self.spinRecentFiles.setSuffix(_translate("settingsDialog", " file(s)"))
-        self.spinRecentFiles.setPrefix(_translate("settingsDialog", "The last "))
-        self.checkRecentFilesReorderFromMenu.setToolTip(_translate("settingsDialog", "If checked, opening recent files through\n"
-"the menu will update their order, moving\n"
-"the newly played file to the top."))
-        self.checkRecentFilesReorderFromMenu.setText(_translate("settingsDialog", "Opening recent files from the menu updates their order"))
+        self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
+"recycle bin instead of being immediately/permanently deleted."))
+        self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkMinimizePause.setToolTip(_translate("settingsDialog", "If checked, media will automatically pause when minimizing the window."))
         self.checkMinimizePause.setText(_translate("settingsDialog", "Pause on minimize"))
@@ -1681,6 +1707,21 @@ class Ui_settingsDialog(object):
 "away after removing your mouse from the progress bar."))
         self.spinHoverFadeDuration.setSuffix(_translate("settingsDialog", " seconds"))
         self.label_41.setText(_translate("settingsDialog", "Fade duration"))
+        self.groupBox_7.setTitle(_translate("settingsDialog", "Zooming"))
+        self.label_61.setToolTip(_translate("settingsDialog", "The minimum zoom factor allowed for media,\n"
+"relative to the current size of your window."))
+        self.label_61.setText(_translate("settingsDialog", "Minimum zoom"))
+        self.spinMinimumZoomFactor.setSuffix(_translate("settingsDialog", "x the current window size"))
+        self.check1ZoomAutoDisable.setToolTip(_translate("settingsDialog", "If checked and \"Minimum zoom\" is set to 1.00x,\n"
+"decreasing the zoom to 1.00x will disable zoom-\n"
+"mode and reset the media\'s position."))
+        self.check1ZoomAutoDisable.setText(_translate("settingsDialog", "Auto-disable zoom at 1x size"))
+        self.checkForceMinimumZoom.setToolTip(_translate("settingsDialog", "If checked, and the minimum zoom factor cannot\n"
+"actually be reached (i.e. the media is very small\n"
+"to begin with), the minimum zoom will be set\n"
+"relative to the media\'s size, not the window\'s."))
+        self.checkForceMinimumZoom.setText(_translate("settingsDialog", "Zoom relative to media\'s size if\n"
+"minimum zoom cannot be reached"))
         self.groupBox_4.setTitle(_translate("settingsDialog", "Fullscreen controls"))
         self.label_36.setToolTip(_translate("settingsDialog", "The percentage of the screen that the\n"
 "fullscreen controls take up, width-wise."))

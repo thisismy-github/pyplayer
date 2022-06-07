@@ -17,9 +17,9 @@ from colour import Color
 from threading import Thread
 from traceback import format_exc
 
+# TODO: I absolutely cannot decide what should be camelCase and what should be underscores. It's becoming an issue.
 # media_player: ['_as_parameter_', '_instance', 'add_slave', 'audio_get_channel', 'audio_get_delay', 'audio_get_mute', 'audio_get_track', 'audio_get_track_count', 'audio_get_track_description', 'audio_get_volume', 'audio_output_device_enum', 'audio_output_device_get', 'audio_output_device_set', 'audio_output_set', 'audio_set_callbacks', 'audio_set_channel', 'audio_set_delay', 'audio_set_format', 'audio_set_format_callbacks', 'audio_set_mute', 'audio_set_track', 'audio_set_volume', 'audio_set_volume_callback', 'audio_toggle_mute', 'can_pause', 'event_manager', 'from_param', 'get_agl', 'get_chapter', 'get_chapter_count', 'get_chapter_count_for_title', 'get_fps', 'get_full_chapter_descriptions', 'get_full_title_descriptions', 'get_fullscreen', 'get_hwnd', 'get_instance', 'get_length', 'get_media', 'get_nsobject', 'get_position', 'get_rate', 'get_role', 'get_state', 'get_time', 'get_title', 'get_title_count', 'get_xwindow', 'has_vout', 'is_playing', 'is_seekable', 'navigate', 'next_chapter', 'next_frame', 'pause', 'play', 'previous_chapter', 'program_scrambled', 'release', 'retain', 'set_agl', 'set_android_context', 'set_chapter', 'set_equalizer', 'set_evas_object', 'set_fullscreen', 'set_hwnd', 'set_media', 'set_mrl', 'set_nsobject', 'set_pause', 'set_position', 'set_rate', 'set_renderer', 'set_role', 'set_time', 'set_title', 'set_video_title_display', 'set_xwindow', 'stop', 'toggle_fullscreen', 'toggle_teletext', 'video_get_adjust_float', 'video_get_adjust_int', 'video_get_aspect_ratio', 'video_get_chapter_description', 'video_get_crop_geometry', 'video_get_cursor', 'video_get_height', 'video_get_logo_int', 'video_get_marquee_int', 'video_get_marquee_string', 'video_get_scale', 'video_get_size', 'video_get_spu', 'video_get_spu_count', 'video_get_spu_delay', 'video_get_spu_description', 'video_get_teletext', 'video_get_title_description', 'video_get_track', 'video_get_track_count', 'video_get_track_description', 'video_get_width', 'video_set_adjust_float', 'video_set_adjust_int', 'video_set_aspect_ratio', 'video_set_callbacks', 'video_set_crop_geometry', 'video_set_deinterlace', 'video_set_format', 'video_set_format_callbacks', 'video_set_key_input', 'video_set_logo_int', 'video_set_logo_string', 'video_set_marquee_int', 'video_set_marquee_string', 'video_set_mouse_input', 'video_set_scale', 'video_set_spu', 'video_set_spu_delay', 'video_set_subtitle_file', 'video_set_teletext', 'video_set_track', 'video_take_snapshot', 'video_update_viewpoint', 'will_play']
 # media: ['_as_parameter_', '_instance', 'add_option', 'add_option_flag', 'add_options', 'duplicate', 'event_manager', 'from_param', 'get_duration', 'get_instance', 'get_meta', 'get_mrl', 'get_parsed_status', 'get_state', 'get_stats', 'get_tracks_info', 'get_type', 'get_user_data', 'is_parsed', 'parse', 'parse_async', 'parse_stop', 'parse_with_options', 'player_new_from_media', 'release', 'retain', 'save_meta', 'set_meta', 'set_user_data', 'slaves_add', 'slaves_clear', 'slaves_get', 'subitems', 'tracks_get']
-
 
 # ------------------------------------------
 # Logger
@@ -663,6 +663,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.isCoverArt = False
         self.filename = None
         self.zoom = 1.0
+        self._baseZoom = 1.0
         self.zoomed = False
 
 
@@ -725,53 +726,63 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.gif.setScaledSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
 
 
-    def _calculateCurrentZoom(self):
+    def _calculateCurrentZoom(self) -> float:
         if self.movie():
             scale = self._gifScale
-            if scale == 0: self.zoom = 1.0
-            elif scale == 2: self.zoom = self.size().width() / self.gifSize.width()
-            else: self.zoom = self.gif.scaledSize().width() / self.gifSize.width()
+            if scale == 0: zoom = 1.0
+            elif scale == 2: zoom = self.size().width() / self.gifSize.width()
+            else: zoom = self.gif.scaledSize().width() / self.gifSize.width()
         elif self.pixmap():
             scale = self._artScale if self.isCoverArt else self._imageScale
-            if scale == 0: self.zoom = 1.0
-            elif scale == 2: self.zoom = self.size().width() / self.art.width()
+            if scale == 0: zoom = 1.0
+            elif scale == 2: zoom = self.size().width() / self.art.width()
             else:
                 newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
-                self.zoom = newSize.width() / self.art.width()
+                zoom = newSize.width() / self.art.width()
+        zoom = round(zoom, 4)
+        self.zoom = self._baseZoom = zoom
+        return zoom
 
 
-    def disableZoom(self):
+    def disableZoom(self) -> float:
         self.zoomed = False
         self.pixmapPos = self.rect().center() - self.art.rect().center()
         if self.movie(): self._resetMovieSize()
         else: self.setScaledContents(False)
         self.update()
-        self._calculateCurrentZoom()
+        return self._calculateCurrentZoom()
 
 
     def setZoom(self, zoom: float, pos: QtCore.QPoint = None,
-                globalPos: QtCore.QPoint = None, force: bool = False):
-        max_zoom = 100.0 if not self.movie() else 20.0
-        min_zoom = 0.05
-        zoom = round(min(max_zoom, max(min_zoom, zoom)), 3)
-        if zoom == self.zoom and not force: return zoom
+                globalPos: QtCore.QPoint = None, force: bool = False) -> float:
+        maxZoom = 100.0 if not self.movie() else 20.0
+        minZoomFactor = settings.spinMinimumZoomFactor.value()
+        minZoom = self._baseZoom * minZoomFactor
+        if settings.checkForceMinimumZoom.isChecked():
+            minZoom = min(minZoomFactor, minZoom)
+
+        zoom = round(min(maxZoom, max(minZoom, zoom)), 4)
+        if zoom == self.zoom and not force:
+            if minZoomFactor == 1.0 and settings.check1ZoomAutoDisable.isChecked():
+                return self.disableZoom()
+            return zoom
 
         if self.movie():
             if self._gifScale == 2:
                 self.setScaledContents(False)
-                new_size = self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * zoom
-            else: new_size = self.gifSize * zoom
-            self.gif.setScaledSize(new_size)
+                newSize = self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * zoom
+            else: newSize = self.gifSize * zoom
+            self.gif.setScaledSize(newSize)
             self._resetMovieCache()
         else:
-            new_size = self.art.size() * zoom
+            newSize = self.art.size() * zoom
             if globalPos: pos = self.mapFromGlobal(globalPos)
             if pos:
-                old_size = self.art.size() * self.zoom
-                old_pos = self.pixmapPos
-                x_offset = ((pos.x() - old_pos.x()) / old_size.width()) * new_size.width()
-                y_offset = ((pos.y() - old_pos.y()) / old_size.height()) * new_size.height()
-                self.pixmapPos = pos - QtCore.QPoint(x_offset, y_offset)
+                oldSize = self.art.size() * self.zoom
+                oldPos = self.pixmapPos
+                xOffset = ((pos.x() - oldPos.x()) / oldSize.width()) * newSize.width()
+                yOffset = ((pos.y() - oldPos.y()) / oldSize.height()) * newSize.height()
+                self.pixmapPos = pos - QtCore.QPoint(xOffset, yOffset)
                 self._draggingOffset = pos - self.pixmapPos  # reset offset in case we're dragging + zooming
 
         self.zoom = zoom
@@ -782,7 +793,7 @@ class QVideoPlayerLabel(QtW.QLabel):
 
 
     def incrementZoom(self, increment: float, pos: QtCore.QPoint = None,
-                      globalPos: QtCore.QPoint = None, force: bool = False):
+                      globalPos: QtCore.QPoint = None, force: bool = False) -> float:
         return self.setZoom(self.zoom + increment, pos, globalPos, force)
 
 
