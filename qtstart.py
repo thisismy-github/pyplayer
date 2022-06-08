@@ -183,8 +183,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minussubtitledelay': lambda: increment_subtitle_delay(-50),
         'cyclesubtitles':     self.cycle_subtitle_track,
         'markdeleted':        self.actionMarkDeleted.trigger,
-        'deleteimmediately':  lambda: self.mark_for_deletion(modifiers=Qt.ControlModifier),
-        'snapshot':           lambda: self.snapshot(modifiers=Qt.ControlModifier),
+        'deleteimmediately':  self.delete,
+        'snapshot':           lambda: self.snapshot(mode='full'),
         'quicksnapshot':      self.snapshot,
     }
     self.shortcuts = {action_name: (QtW.QShortcut(self, context=3), QtW.QShortcut(self, context=3)) for action_name in shortcut_actions}
@@ -233,17 +233,17 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionSettings.triggered.connect(self.dialog_settings.exec)
     self.actionLoop.triggered.connect(self.buttonLoop.setChecked)
     self.actionAutoplay.triggered.connect(self.buttonAutoplay.setChecked)
-    self.actionSnapshot.triggered.connect(lambda: self.snapshot(modifiers=Qt.ControlModifier))
+    self.actionSnapshot.triggered.connect(lambda: self.snapshot(mode='full'))
     self.actionQuickSnapshot.triggered.connect(self.snapshot)
-    self.actionSnapshotOpenLast.triggered.connect(lambda: self.snapshot(modifiers=Qt.ShiftModifier))
-    self.actionSnapshotOpenLastInDefault.triggered.connect(lambda: self.snapshot(modifiers=Qt.AltModifier))
+    self.actionSnapshotOpenLast.triggered.connect(lambda: self.snapshot(mode='open'))
+    self.actionSnapshotOpenLastInDefault.triggered.connect(lambda: self.snapshot(mode='view'))
     self.actionSnapshotExploreLastPath.triggered.connect(lambda: self.explore(config.cfg.last_snapshot_path, 'Last snapshot'))
     self.actionSnapshotCopyLastPath.triggered.connect(lambda: self.copy(config.cfg.last_snapshot_path, 'Last snapshot'))
     self.actionMarkDeleted.triggered.connect(self.buttonMarkDeleted.setChecked)
     self.actionMarkDeleted.triggered.connect(self.mark_for_deletion)
     self.actionClearMarked.triggered.connect(self.clear_marked_for_deletion)
     self.actionShowDeletePrompt.triggered.connect(self.show_delete_prompt)
-    self.actionDeleteImmediately.triggered.connect(lambda: self.mark_for_deletion(modifiers=Qt.ControlModifier))
+    self.actionDeleteImmediately.triggered.connect(self.delete)
     self.menuConcatenate.triggered.connect(self.concatenate)
     self.menuVideoTracks.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuVideoTracks))
     self.menuSubtitles.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuSubtitles))

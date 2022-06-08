@@ -1725,11 +1725,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         elif self.mime_type != 'image':
             self.vlc.play(self.video)
             set_player_position(get_progess_slider() / self.frame_count)    # set VLC back to current position
-        self.recent_files[-1] = self.video                                 # update recent video's list with new name
+        self.recent_files[-1] = self.video                                  # update recent video's list with new name
 
 
-    def delete(self, files):
-        if isinstance(files, str): files = (files,)
+    def delete(self, files=None):
+        ''' Deletes (or recycles) a list of `files`. If `files` is a string,
+            it becomes a single-length tuple. If `files` is None, self.video
+            is used. If self.video is within `files`, all players are stopped,
+            and the media is cycled if possible before deleting. '''
+        if not files: files = (self.video,)
+        elif isinstance(files, str): files = (files,)
         if self.video in files:                         # cycle media before deleting if current video is about to be deleted
             if self.extension == 'gif': self.stop()     # gif_player's QMovie must have its filename changed to unlock it
             old_file = self.video                       # self.video will likely change after media is cycled
@@ -1755,7 +1760,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
 
 
-    def snapshot(self, *args, modifiers=None):  # uses libvlc_video_take_snapshot. *args to capture unused signal args
+    def snapshot(self, *args, mode=None):   # uses libvlc_video_take_snapshot. *args to capture unused signal args
         ''' libvlc_video_take_snapshot's docstring:         TODO: add a real docstring here
             "Take a snapshot of the current video window. If `i_width` AND `i_height` is 0, original
             size is used. If `i_width` XOR `i_height` is 0, original aspect-ratio is preserved."
@@ -1768,22 +1773,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 `i_height` - the snapshot's height. '''
         try:
             settings = self.dialog_settings
-            if settings.checkSnapshotPause.isChecked():                 # pause media if desired (undone by finally statement)
+            if settings.checkSnapshotPause.isChecked():             # pause media if desired (undone by finally statement)
                 player.set_pause(True)
                 gif_player.gif.setPaused(True)
-            mod = app.keyboardModifiers() if modifiers is None else modifiers
-            mime = self.mime_type
-            if mime == 'image' and not mod: mod = Qt.ControlModifier    # change quick-snapshots to full-snapshots for images
 
-            # >>> open last snapshot in pyplayer, not in explorer (shift) <<<
-            if mod & Qt.ShiftModifier:
+            mime = self.mime_type
+            if mode is None:
+                mod = app.keyboardModifiers()
+                if not mod: mode = 'quick'                          # instant snapshot with formatted name
+                elif mod & Qt.ControlModifier: mode = 'full'        # snapshot with dialogs and custom name
+                elif mod & Qt.ShiftModifier: mode = 'open'          # open last snapshot in PyPlayer
+                elif mod & Qt.AltModifier: mode = 'view'            # view last snapshot in default program
+                else: mode = 'quick'                                # yes, this is here twice
+            else: mode = mode.lower()
+            if mime == 'image' and mode == 'quick': mode = 'full'   # change quick-snapshots to full-snapshots for images
+
+        # actually handle different `mode`s
+            # >>> open last snapshot in pyplayer, not in explorer <<<
+            if mode == 'open':
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 self.open(cfg.last_snapshot_path)
                 self.log(f'Opening last snapshot at {cfg.last_snapshot_path}.')
 
-            # >>> open last snapshot in default program, not in explorer (alt) <<<
-            elif mod & Qt.AltModifier:
+            # >>> open last snapshot in default program, not in explorer <<<
+            elif mode == 'view':
                 if not cfg.last_snapshot_path: return self.statusbar.showMessage('No snapshots have been taken yet.', 10000)
                 if not os.path.exists(cfg.last_snapshot_path): return self.log(f'Previous snapshot at {cfg.last_snapshot_path} no longer exists.')
                 qthelpers.openPath(cfg.last_snapshot_path)
@@ -1794,7 +1808,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             else:
                 is_gif = self.extension == 'gif'
-                is_art = mime == 'audio'                                # if it's audio, we already know that it has cover art
+                is_art = mime == 'audio'                            # if it's audio, we already know that it has cover art
                 frame = get_progess_slider()
                 frame_count_str = str(self.frame_count)
                 if (is_gif or mime == 'image') and settings.checkSnapshotGifPNG.isChecked(): format = 'PNG'
@@ -1815,8 +1829,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                           .replace('?framecount', frame_count_str) \
                                           .replace('?frame', str(frame).zfill(len(frame_count_str)))
 
-            # >>> quick snapshot, no dialogs (no modifiers) <<< TODO: maybe add default width/height scale settings
-                if not mod:
+            # >>> quick snapshot, no dialogs <<< TODO: maybe add default width/height scale settings
+                if mode == 'quick':
                     dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
                     try: os.makedirs(dirname)
                     except FileExistsError: pass
@@ -1846,14 +1860,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
                     elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
 
-            # >> snapshot with resize and save-file dialog (ctrl) <<<
-                elif mod & Qt.ControlModifier:
-                    player.set_pause(True)                              # player may have been paused earlier, but it NEEDS to be paused now
+            # >> snapshot with resize and save-file dialog <<<
+                elif mode == 'full':
+                    player.set_pause(True)                          # player may have been paused earlier, but it NEEDS to be paused now
                     gif_player.gif.setPaused(True)
                     try:
                         # get dimensions
                         width, height, quality = self.show_size_dialog(snapshot=True)
-                        if width is None: return                        # dialog cancelled (finally-statement ensures we unpause if needed)
+                        if width is None: return                    # dialog cancelled (finally-statement ensures we unpause if needed)
 
                         # open save-file dialog
                         use_snapshot_lastdir = settings.checkSnapshotRemember.isChecked()
@@ -1872,8 +1886,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                         # take and save snapshot
                         if is_gif:
-                            if width or height:                         # use "scale" ffmpeg filter for gifs
-                                w = width if width else -1              # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
+                            if width or height:                     # use "scale" ffmpeg filter for gifs
+                                w = width if width else -1          # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
                                 h = height if height else -1
                                 ffmpeg(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
                             else: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
@@ -2007,8 +2021,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.rename(dest)                    # no operations, but name is changed. do a normal rename and return (not thread safe?)
             return self.log_on_player('No changes have been made.', log=False)
 
-        # ffmpeg is required after this point, so check that it's actually present
-        # because we're in a thread, we skip the warning and display it separately through a signal
+        # ffmpeg is required after this point, so check that it's actually present, and because...
+        # ...we're in a thread, we skip the warning and display it separately through a signal
         if not constants.verify_ffmpeg(self, warning=False, force_warning=False):
             self.show_ffmpeg_warning_signal.emit(self)
             return self.log_on_player('You don\'t have FFmpeg installed!')
@@ -2131,7 +2145,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     os.remove(dest)
                     raise AssertionError('(!) Media saved without error, but is completely empty. Likely an FFmpeg error.')
 
-                if delete_after_save == FULL_DELETE: self.mark_for_deletion(modifiers=Qt.ControlModifier)
+                if delete_after_save == FULL_DELETE: self.delete(video)
                 else:                                       # we either don't want to delete or we want to only mark it for now
                     if dest == video:                       # destination has same name as original video, but we don't want to delete it (yet)
                         temp_name = add_path_suffix(video, '_original', unique=True)
@@ -2472,8 +2486,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if dialog.checkExplore.isChecked(): qthelpers.openPath(output, explore=True)
             if dialog.checkOpen.isChecked(): self.open(output)
             if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
-            elif dialog.checkDelete.checkState() == 2:
-                for file in files: self.mark_for_deletion(file=file, modifiers=Qt.ControlModifier)
+            elif dialog.checkDelete.checkState() == 2: self.delete(files)
         except: logging.error(f'(!) CONCATENATION FAILED: {format_exc()}')
         finally:
             try:
@@ -3309,7 +3322,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Clears and refreshes the recent files submenu. '''
         self.menuRecent.clear()
         if len(self.recent_files) > 25:
-            self.menuRecent.addAction(self.actionClearRecent)       # add separator and clear action at top for very long lists
+            self.menuRecent.addAction(self.actionClearRecent)   # add separator and clear action at top for very long lists
             self.menuRecent.addSeparator()
 
         update = self.dialog_settings.checkRecentFilesReorderFromMenu.isChecked()
@@ -3317,13 +3330,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         for index, file in enumerate(reversed(self.recent_files)):  # reversed to show most recent first
             number = str(index + 1)
             action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {os.path.basename(file)}', self.menuRecent)
-            action.triggered.connect(get_open_lambda(file))         # workaround for python bug/oddity involving creating lambdas in iterables
+            action.triggered.connect(get_open_lambda(file))     # workaround for python bug/oddity involving creating lambdas in iterables
             action.setToolTip(file)
             self.menuRecent.addAction(action)
 
         if len(self.recent_files) <= 25:
             self.menuRecent.addSeparator()
-            self.menuRecent.addAction(self.actionClearRecent)       # add separator and clear action at bottom for shorter lists
+            self.menuRecent.addAction(self.actionClearRecent)   # add separator and clear action at bottom for shorter lists
 
 
     def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
@@ -3358,7 +3371,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 name = edit.objectName()
                 index = 0 if name[-1] != '_' else 1
                 name = name.rstrip('_')
-                for other_edit in all_key_sequence_edits:   # loop over every keySequenceEdit for every keySequenceEdit to compare all of them
+                for other_edit in all_key_sequence_edits:       # loop over every keySequenceEdit for every keySequenceEdit to compare all of them
                     if edit.keySequence() == other_edit.keySequence() and edit is not other_edit:
                         other_name = other_edit.objectName()
                         other_index = 0 if other_name[-1] != '_' else 1
@@ -3381,16 +3394,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
 
 
-    def mark_for_deletion(self, checked: bool = False, file=None, modifiers=None):
+    def mark_for_deletion(self, checked: bool = False, file=None, mode=None):
         if not self.video:
             if checked: self.actionMarkDeleted.trigger()
             return self.statusbar.showMessage('No media is playing.', 10000)
         file = file or self.video
-        logging.info(f'Marking file {file} for deletion: {checked}')
-        mod = app.keyboardModifiers() if modifiers is None else modifiers
 
-        if file and mod & Qt.ControlModifier: self.delete(file)                     # ctrl pressed -> immediately delete video
-        elif mod & Qt.ShiftModifier: self.show_delete_prompt()                      # shift pressed -> show deletion prompt
+        if mode is None:
+            mod = app.keyboardModifiers()
+            if mod:
+                if mod & Qt.ControlModifier: mode = 'delete'    # ctrl pressed -> immediately delete video
+                elif mod & Qt.ShiftModifier: mode = 'prompt'    # shift pressed -> show deletion prompt
+        else: mode = mode.lower()
+        logging.info(f'Marking file {file} for deletion: {checked}. Mode: {mode}')
+
+        if mode == 'delete': self.delete(file)
+        elif mode == 'prompt': self.show_delete_prompt()
         elif checked and file: self.marked_for_deletion.add(file)
         elif not checked:
             try: self.marked_for_deletion.remove(file)
@@ -3407,7 +3426,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', '0'))
 
 
-    def convert_snapshot_to_jpeg(self, path, image_data=None):          # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+    def convert_snapshot_to_jpeg(self, path, image_data=None):  # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
         ''' Saves image at `path` as a JPEG file with the desired quality in the settings
             dialog, using PIL. Assumes that `path` already ends in a valid file-extension. '''
         jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
