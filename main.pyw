@@ -1281,7 +1281,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             cover_art = tag.get_image()
                             if cover_art and self.dialog_settings.checkShowCoverArt.isChecked():
                                 gif_player.play(cover_art)          # cover art is bytes -> set to gif_player's QPixmap, open QPixmap with PIL
-                                self.vwidth, self.vheight = get_PIL_Image().fromqpixmap(gif_player.art).size
+                                self.vwidth, self.vheight = gif_player.art.size
                             else:
                                 self.vwidth = 16
                                 self.vheight = 9
@@ -1346,18 +1346,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
                 else:   # TODO: other formats have EXIF data but .getexif() is slow for images without EXIF data (except for jpegs)
                     if extension == 'jpeg':                         # use PIL to get EXIF data from jpegs
-                        image = get_PIL_Image().open(file)          # opening with PIL is fast if we don't do any operations
-                        orientation = image.getexif().get(0x0112)
-                        if orientation:
-                            if   orientation == 3: angle = 180
-                            elif orientation == 6: angle = 90       # actually represents 270 counter-clockwise
-                            elif orientation == 8: angle = 270      # actually represents 90 counter-clockwise
-                            else: angle = 0
-                            if angle: gif_player.art = gif_player.art.transformed(QtGui.QTransform().rotate(angle))
-                        try: self.vwidth, self.vheight = image.size
-                        except AttributeError:
-                            self.vwidth = gif_player.art.width()
-                            self.vheight = gif_player.art.height()
+                        with get_PIL_Image().open(file) as image:   # opening with PIL is fast if we don't do any operations
+                            orientation = image.getexif().get(0x0112)
+                            if orientation:
+                                if   orientation == 3: angle = 180
+                                elif orientation == 6: angle = 90   # actually represents 270 counter-clockwise
+                                elif orientation == 8: angle = 270  # actually represents 90 counter-clockwise
+                                else: angle = 0
+                                if angle: gif_player.art = gif_player.art.transformed(QtGui.QTransform().rotate(angle))
+                            try: self.vwidth, self.vheight = image.size
+                            except AttributeError:
+                                self.vwidth = gif_player.art.width()
+                                self.vheight = gif_player.art.height()
                     else:
                         self.vwidth = gif_player.art.width()
                         self.vheight = gif_player.art.height()
@@ -1851,11 +1851,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if self.actionCrop.isChecked():
                         logging.info('Cropping previously saved snapshot...')
                         lfp = self.vlc.last_factored_points
-                        image_data = get_PIL_Image().open(path)
-                        image_data = image_data.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
-                                                      round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
-                        if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
-                        else: image_data.save(path)
+                        with get_PIL_Image().open(path) as image:
+                            image = image.crop((round(lfp[0].x()), round(lfp[0].y()),     # left/top/right/bottom (crop takes a tuple)
+                                                round(lfp[1].x()), round(lfp[2].y())))    # round QPointFs
+                            if format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image)
+                            else: image.save(path)
 
                     # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
                     elif format == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
@@ -1908,31 +1908,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if self.actionCrop.isChecked():
                             logging.info('Cropping previously saved snapshot...')
                             lfp = self.vlc.last_factored_points
-                            image_data = get_PIL_Image().open(path)
 
-                            # calculate factors between media's native resolution and actual desired snapshot resolution
-                            if width or height:                         # custom width and/or height is set
-                                if width:
-                                    x_factor = self.vwidth / width
-                                    if not height: y_factor = x_factor  # width is set but height isn't -> match factors
-                                if height:
-                                    y_factor = self.vheight / height
-                                    if not width: x_factor = y_factor   # height is set but width isn't -> match factors
-                            else:                                       # neither is set -> use 1 to avoid division by 0
-                                x_factor = 1
-                                y_factor = 1
+                            with get_PIL_Image().open(path) as image:
+                                # calculate factors between media's native resolution and actual desired snapshot resolution
+                                if width or height:                         # custom width and/or height is set
+                                    if width:
+                                        x_factor = self.vwidth / width
+                                        if not height: y_factor = x_factor  # width is set but height isn't -> match factors
+                                    if height:
+                                        y_factor = self.vheight / height
+                                        if not width: x_factor = y_factor   # height is set but width isn't -> match factors
+                                else:                                       # neither is set -> use 1 to avoid division by 0
+                                    x_factor = 1
+                                    y_factor = 1
 
-                            # use factors to crop snapshot relative to the snapshot's actual resolution for an accurate crop
-                            image_data = image_data.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
-                                                          round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
+                                # use factors to crop snapshot relative to the snapshot's actual resolution for an accurate crop
+                                image = image.crop((round(lfp[0].x() / x_factor), round(lfp[0].y() / y_factor),   # left/top/right/bottom (crop takes a tuple)
+                                                    round(lfp[1].x() / x_factor), round(lfp[2].y() / y_factor)))  # round QPointFs
 
-                            # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-                            if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image_data)
-                            else: image_data.save(path)
+                                # VLC doesn't actually support jpeg snapshots -> convert manually https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
+                                if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path, image)
+                                else: image.save(path)
                         if filter[:4] == 'JPEG' and mime == 'video': self.convert_snapshot_to_jpeg(path)
 
                     except: self.log(f'(!) NORMAL/CUSTOM SNAPSHOT FAILED: {format_exc()}')
-                    finally:                                            # only needed if checkSnapshotPause is False
+                    finally:                                                # only needed if checkSnapshotPause is False
                         player.set_pause(False or self.is_paused)
                         gif_player.gif.setPaused(False or self.is_paused)
         except: self.log(f'(!) SNAPSHOT FAILED: {format_exc()}')
@@ -2133,9 +2133,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     operations_detected = non_crop_operations_detected              # see if any other operations were detected beforehand
                 else:
                     if self.mime_type == 'image':
-                        image_data = get_PIL_Image().open(video)
-                        image_data.crop((round(lfp[0].x()), round(lfp[0].y()),              # left/top/right/bottom (crop takes a tuple)
-                                         round(lfp[1].x()), round(lfp[2].y()))).save(dest)  # round QPointFs
+                        with get_PIL_Image().open(video) as image:
+                            image.crop((round(lfp[0].x()), round(lfp[0].y()),              # left/top/right/bottom (crop takes a tuple)
+                                        round(lfp[1].x()), round(lfp[2].y()))).save(dest)  # round QPointFs
                     else: ffmpeg_in_place(intermediate_file, f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"')
 
             # confirm our operations, clean up temp files/base video, and get final path
@@ -3431,7 +3431,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog, using PIL. Assumes that `path` already ends in a valid file-extension. '''
         jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
         self.log(f'Saving JPEG snapshot at {jpeg_quality}% quality to {path}.')
-        if image_data is None: image_data = get_PIL_Image().open(path)
+        if image_data is None:
+            with get_PIL_Image().open(path) as image:
+                self.convert_snapshot_to_jpeg(path, image)
         image_data.convert('RGB')
         image_data.save(path, quality=jpeg_quality)
 
