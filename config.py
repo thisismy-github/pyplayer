@@ -4,7 +4,6 @@ from bin.configparsebetter import ConfigParseBetterQt
 import constants
 import qthelpers
 
-import os
 import time
 import logging
 
@@ -92,8 +91,10 @@ def saveConfig(gui, filename: str = None):
         save('size', gui.size().width(), gui.size().height())
         save('pos', gui.pos().x(), gui.pos().y())
     else:
-        save('size', gui.last_window_size.width(), gui.last_window_size.height())
-        save('pos', gui.last_window_pos.x(), gui.last_window_pos.y())
+        try:
+            save('size', gui.last_window_size.width(), gui.last_window_size.height())
+            save('pos', gui.last_window_pos.x(), gui.last_window_pos.y())
+        except Exception as error: logger.warning(f'(!) Failed to save size and position: {error}')
     save('windowstyle', gui.app.style().objectName())
 
     cfg.setSection('general')

@@ -440,6 +440,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.lock_fullscreen_ui = False
         self.menubar_visible_before_crop = False
         self.ignore_next_alt = False
+
+        self.last_window_size: QtCore.QSize = None
+        self.last_window_pos: QtCore.QPoint = None
+        self.last_move_time = 0.0
         self.last_cycle_was_forward = True
         self.last_cycle_index: int = None
 
@@ -662,6 +666,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def moveEvent(self, event: QtGui.QMoveEvent):
         if not self.isMaximized():  # don't save position if we're currently maximized
             self.last_window_pos = event.oldPos()
+            self.last_move_time = get_time()
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
@@ -695,6 +700,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.timer_id_resize_snap is not None and app.mouseButtons() != Qt.LeftButton:
             self.killTimer(self.timer_id_resize_snap)
             self.timer_id_resize_snap = None
+            if get_time() - self.last_move_time < 1: return super().timerEvent(event)
 
             mod = app.queryKeyboardModifiers()
             checked = self.dialog_settings.checkSnapOnResize.checkState()

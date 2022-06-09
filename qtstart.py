@@ -120,6 +120,9 @@ def after_show_setup(self: QtW.QMainWindow):
                 logging.error(format_exc())
     else: self.update_title_signal.emit()
 
+    if self.last_window_size is None: self.last_window_size = self.size()
+    if self.last_window_pos is None: self.last_window_pos = self.pos()
+
     recent_files_count = self.dialog_settings.spinRecentFiles.value()
     files = config.cfg.load('recent_files', '', '<|>', section='general')
     if recent_files_count <= 25:
