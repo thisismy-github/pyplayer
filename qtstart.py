@@ -302,7 +302,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
     settings.buttonCheckForUpdates.clicked.connect(self.handle_updates)
-    settings.spinMinimumZoomFactor.valueChanged.connect(lambda: settings.check1ZoomAutoDisable.setEnabled(settings.spinMinimumZoomFactor.value() == 1))
+    settings.spinZoomMinimumFactor.valueChanged.connect(lambda: settings.checkZoomAutoDisable1x.setEnabled(settings.spinZoomMinimumFactor.value() == 1))
+    settings.spinZoomSmoothFactor.valueChanged.connect(self.gifPlayer._updateSmoothZoomFactor)
 
     self.position_button_group = QtW.QButtonGroup(settings)
     for button in (settings.radioTextPosition0, settings.radioTextPosition1, settings.radioTextPosition2,
@@ -314,9 +315,9 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.spinTextX.valueChanged.connect(self.vlc.set_text_x)
     settings.spinTextY.valueChanged.connect(self.vlc.set_text_y)
     settings.spinTextOpacity.valueChanged.connect(self.vlc.set_text_opacity)
-    settings.comboScaleImages.currentIndexChanged.connect(self.gifPlayer.updateImageScale)
-    settings.comboScaleArt.currentIndexChanged.connect(self.gifPlayer.updateArtScale)
-    settings.comboScaleGifs.currentIndexChanged.connect(self.gifPlayer.updateGifScale)
+    settings.comboScaleImages.currentIndexChanged.connect(self.gifPlayer._updateImageScale)
+    settings.comboScaleArt.currentIndexChanged.connect(self.gifPlayer._updateArtScale)
+    settings.comboScaleGifs.currentIndexChanged.connect(self.gifPlayer._updateGifScale)
 
     # NOTE: this looks weird if the gif has custom frame-by-frame delays, but it's perfectly fine
     self.gifPlayer.gif.frameChanged.connect(self.update_progress)

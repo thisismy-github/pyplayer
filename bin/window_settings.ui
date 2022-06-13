@@ -47,9 +47,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-794</y>
-        <width>387</width>
-        <height>2158</height>
+        <y>-688</y>
+        <width>381</width>
+        <height>1995</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1307,6 +1307,46 @@ away after removing your mouse from the progress bar.</string>
                <number>6</number>
               </property>
               <item row="0" column="0">
+               <widget class="QCheckBox" name="checkZoomSmooth">
+                <property name="toolTip">
+                 <string>If checked, zooming will smoothly transition between zoom levels.</string>
+                </property>
+                <property name="text">
+                 <string>Smooth zooming</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QSpinBox" name="spinZoomSmoothFactor">
+                <property name="toolTip">
+                 <string>The speed at which the smooth zooming effect takes place.
+
+NOTE: The &quot;speed&quot; actually refers to the factor used during
+each step of the smoothing animation. For example, if you
+zoom from 1x to 10x 50% speed, the animation would be:
+1x → 5x → 7.5x → 8.75x → etc.
+
+This setting may have different effects for any additional
+animation types added in the future.</string>
+                </property>
+                <property name="suffix">
+                 <string>% speed</string>
+                </property>
+                <property name="minimum">
+                 <number>15</number>
+                </property>
+                <property name="maximum">
+                 <number>65</number>
+                </property>
+                <property name="value">
+                 <number>33</number>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
                <widget class="QLabel" name="label_61">
                 <property name="toolTip">
                  <string>The minimum zoom factor allowed for media,
@@ -1317,8 +1357,8 @@ relative to the current size of your window.</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
-               <widget class="QDoubleSpinBox" name="spinMinimumZoomFactor">
+              <item row="1" column="1">
+               <widget class="QDoubleSpinBox" name="spinZoomMinimumFactor">
                 <property name="suffix">
                  <string>x the current window size</string>
                 </property>
@@ -1336,8 +1376,8 @@ relative to the current size of your window.</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
-               <widget class="QCheckBox" name="check1ZoomAutoDisable">
+              <item row="2" column="1">
+               <widget class="QCheckBox" name="checkZoomAutoDisable1x">
                 <property name="toolTip">
                  <string>If checked and &quot;Minimum zoom&quot; is set to 1.00x,
 decreasing the zoom to 1.00x will disable zoom-
@@ -1351,8 +1391,8 @@ mode and reset the media's position.</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
-               <widget class="QCheckBox" name="checkForceMinimumZoom">
+              <item row="3" column="1">
+               <widget class="QCheckBox" name="checkZoomForceMinimum">
                 <property name="toolTip">
                  <string>If checked, and the minimum zoom factor cannot
 actually be reached (i.e. the media is very small
@@ -1392,6 +1432,37 @@ minimum zoom cannot be reached</string>
               <property name="bottomMargin">
                <number>6</number>
               </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_43">
+                <property name="text">
+                 <string>Fade duration</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QDoubleSpinBox" name="spinFullScreenFadeDuration">
+                <property name="toolTip">
+                 <string>The duration, in seconds, that the fullscreen
+controls take to fade away after leaving your
+mouse idle or moving it to a different monitor.</string>
+                </property>
+                <property name="suffix">
+                 <string> seconds</string>
+                </property>
+                <property name="minimum">
+                 <double>0.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>10.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.200000000000000</double>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="0">
                <widget class="QLabel" name="label_36">
                 <property name="toolTip">
@@ -1473,37 +1544,6 @@ will not appear at all.</string>
                 </property>
                 <property name="value">
                  <number>80</number>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QDoubleSpinBox" name="spinFullScreenFadeDuration">
-                <property name="toolTip">
-                 <string>The duration, in seconds, that the fullscreen
-controls take to fade away after leaving your
-mouse idle or moving it to a different monitor.</string>
-                </property>
-                <property name="suffix">
-                 <string> seconds</string>
-                </property>
-                <property name="minimum">
-                 <double>0.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>10.000000000000000</double>
-                </property>
-                <property name="singleStep">
-                 <double>0.050000000000000</double>
-                </property>
-                <property name="value">
-                 <double>0.200000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_43">
-                <property name="text">
-                 <string>Fade duration</string>
                 </property>
                </widget>
               </item>
@@ -3649,12 +3689,12 @@ simply be replayed as it is the most recent file.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>89</x>
-     <y>161</y>
+     <x>92</x>
+     <y>-508</y>
     </hint>
     <hint type="destinationlabel">
-     <x>311</x>
-     <y>162</y>
+     <x>358</x>
+     <y>-507</y>
     </hint>
    </hints>
   </connection>
@@ -3665,12 +3705,12 @@ simply be replayed as it is the most recent file.</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>143</x>
-     <y>372</y>
+     <x>157</x>
+     <y>-142</y>
     </hint>
     <hint type="destinationlabel">
-     <x>214</x>
-     <y>370</y>
+     <x>347</x>
+     <y>-142</y>
     </hint>
    </hints>
   </connection>
@@ -3681,12 +3721,12 @@ simply be replayed as it is the most recent file.</string>
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>109</x>
-     <y>441</y>
+     <x>122</x>
+     <y>-103</y>
     </hint>
     <hint type="destinationlabel">
-     <x>53</x>
-     <y>465</y>
+     <x>80</x>
+     <y>-83</y>
     </hint>
    </hints>
   </connection>
@@ -3697,11 +3737,27 @@ simply be replayed as it is the most recent file.</string>
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>75</x>
-     <y>442</y>
+     <x>88</x>
+     <y>-103</y>
     </hint>
     <hint type="destinationlabel">
-     <x>122</x>
+     <x>149</x>
+     <y>-65</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkZoomSmooth</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinZoomSmoothFactor</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>91</x>
+     <y>484</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>216</x>
      <y>485</y>
     </hint>
    </hints>

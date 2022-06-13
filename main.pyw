@@ -514,9 +514,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
         # TODO: why isn't currentIndexChanged called when the config loads?
-        self.gifPlayer.updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
-        self.gifPlayer.updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
-        self.gifPlayer.updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
+        self.gifPlayer._updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
+        self.gifPlayer._updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
+        self.gifPlayer._updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
         Thread(target=self.update_slider_thread, daemon=True).start()
 
 
@@ -698,8 +698,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def timerEvent(self, event: QtCore.QTimerEvent):
         ''' The base timeout event, used for adjusting the window's aspect ratio after a resize. '''
         if self.timer_id_resize_snap is not None and app.mouseButtons() != Qt.LeftButton:
-            self.killTimer(self.timer_id_resize_snap)
-            self.timer_id_resize_snap = None
+            self.timer_id_resize_snap = self.killTimer(self.timer_id_resize_snap)
             if get_time() - self.last_move_time < 1: return super().timerEvent(event)
 
             mod = app.queryKeyboardModifiers()

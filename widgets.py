@@ -656,15 +656,19 @@ class QVideoPlayerLabel(QtW.QLabel):
         self._dragging = False
         self._draggingOffset = QtCore.QPoint()          # offset between cursor and image's real pos
         self.pixmapPos = QtCore.QPoint()                # local position of currently drawn QPixmap
-        self.gifSize = None                             # gif's native size (QMovie doesn't track this)
+        self.gifSize = None                             # gif's native size (not tracked by QMovie)
         self.gif.setCacheMode(QtGui.QMovie.CacheAll)    # required for jumpToFrame to work
         self.image = self.art                           # alias for self.art's QPixmap
-
         self.isCoverArt = False
         self.filename = None
-        self.zoom = 1.0
-        self._baseZoom = 1.0
-        self.zoomed = False
+
+        self.zoom = 1.0                                 # the true, current zoom level
+        self._baseZoom = 1.0                            # base zoom level for the current window size
+        self._targetZoom = 1.0                          # the zoom level we're trying to reach
+        self._smoothZoomTimerID = None                  # the ID for the smooth zoom timer, if any
+        self._smoothZoomPos = QtCore.QPoint()           # the pos a smooth zoom should zoom in on
+        self._smoothZoomFactor = 0.33                   # the "speed" at which a smooth zoom occurs
+        self.zoomed = False                             # whether or not zoom-mode is enabled
 
 
     def play(self, file, gif: bool = False, autostart: bool = True):
@@ -704,6 +708,40 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.disableZoom()
 
 
+    def _updateImageScale(self, index: int):
+        ''' Updates the scaling mode for images (excluding cover art). '''
+        self._imageScale = index
+        if self.pixmap():
+            if not self.zoomed:
+                self._calculateBaseZoom()
+            self.update()
+
+
+    def _updateArtScale(self, index: int):
+        ''' Updates the scaling mode specifically for cover art. '''
+        self._artScale = index
+        if self.pixmap():
+            if not self.zoomed:
+                self._calculateBaseZoom()
+            self.update()
+
+
+    def _updateGifScale(self, index: int):
+        ''' Updates the scaling mode for animated GIFs. '''
+        self._gifScale = index
+        if self.movie():
+            if self.zoomed: self.setZoom(self.zoom, force=True)
+            else:
+                self._resetMovieSize()
+                self._calculateBaseZoom()
+
+
+    def _updateSmoothZoomFactor(self, factor: int):
+        ''' Updates the smooth zoom "speed" `factor`. The QSpinBox is
+            a percentage from 0-100 to make it easier to understand. '''
+        self._smoothZoomFactor = factor / 100
+
+
     def _resetMovieCache(self):
         ''' Stops and resets GIF to clear cached frames.
             Pause state is restored after reset. '''
@@ -726,7 +764,8 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.gif.setScaledSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
 
 
-    def _calculateCurrentZoom(self) -> float:
+    def _calculateBaseZoom(self) -> float:
+        ''' Calculates the default zoom level for the current window size. '''
         if self.movie():
             scale = self._gifScale
             if scale == 0: zoom = 1.0
@@ -740,32 +779,31 @@ class QVideoPlayerLabel(QtW.QLabel):
                 newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
                 zoom = newSize.width() / self.art.width()
         zoom = round(zoom, 4)
-        self.zoom = self._baseZoom = zoom
+        self.zoom = self._baseZoom = self._targetZoom = zoom
         return zoom
 
 
-    def disableZoom(self) -> float:
-        self.zoomed = False
-        self.pixmapPos = self.rect().center() - self.art.rect().center()
-        if self.movie(): self._resetMovieSize()
-        else: self.setScaledContents(False)
-        self.update()
-        return self._calculateCurrentZoom()
-
-
     def setZoom(self, zoom: float, pos: QtCore.QPoint = None,
-                globalPos: QtCore.QPoint = None, force: bool = False) -> float:
+                globalPos: QtCore.QPoint = None,
+                force: bool = False, _smooth: bool = False) -> float:
         maxZoom = 100.0 if not self.movie() else 20.0
-        minZoomFactor = settings.spinMinimumZoomFactor.value()
+        minZoomFactor = settings.spinZoomMinimumFactor.value()
         minZoom = self._baseZoom * minZoomFactor
-        if settings.checkForceMinimumZoom.isChecked():
+        if settings.checkZoomForceMinimum.isChecked():
             minZoom = min(minZoomFactor, minZoom)
 
-        zoom = round(min(maxZoom, max(minZoom, zoom)), 4)
+        if not _smooth: zoom = round(min(maxZoom, max(minZoom, zoom)), 4)
         if zoom == self.zoom and not force:
-            if minZoomFactor == 1.0 and settings.check1ZoomAutoDisable.isChecked():
+            if minZoomFactor == 1.0 and settings.checkZoomAutoDisable1x.isChecked():
                 return self.disableZoom()
             return zoom
+
+        willSmooth = not _smooth and settings.checkZoomSmooth.isChecked()
+        if willSmooth:                                  # about to start smoothing -> do first zoom-step now, start timer
+            self._targetZoom = zoom
+            if self._smoothZoomTimerID is None:
+                zoom += (zoom - self.zoom) * self._smoothZoomFactor
+                self._smoothZoomTimerID = self.startTimer(17, Qt.PreciseTimer)      # 17ms timer ~= 59fps
 
         if self.movie():
             if self._gifScale == 2:
@@ -775,20 +813,22 @@ class QVideoPlayerLabel(QtW.QLabel):
             self.gif.setScaledSize(newSize)
             self._resetMovieCache()
         else:
-            newSize = self.art.size() * zoom
             if globalPos: pos = self.mapFromGlobal(globalPos)
             if pos:
-                oldSize = self.art.size() * self.zoom
-                oldPos = self.pixmapPos
-                xOffset = ((pos.x() - oldPos.x()) / oldSize.width()) * newSize.width()
-                yOffset = ((pos.y() - oldPos.y()) / oldSize.height()) * newSize.height()
-                self.pixmapPos = pos - QtCore.QPoint(xOffset, yOffset)
-                self._draggingOffset = pos - self.pixmapPos  # reset offset in case we're dragging + zooming
+                if willSmooth: self._smoothZoomPos = pos                            # set pos for smooth zoom to re-use
+                else:
+                    newSize = self.art.size() * zoom
+                    oldSize = self.art.size() * self.zoom
+                    oldPos = self.pixmapPos
+                    xOffset = ((pos.x() - oldPos.x()) / oldSize.width()) * newSize.width()
+                    yOffset = ((pos.y() - oldPos.y()) / oldSize.height()) * newSize.height()
+                    self.pixmapPos = pos - QtCore.QPoint(xOffset, yOffset)
+                    if not _smooth: self._draggingOffset = pos - self.pixmapPos     # drag + zoom is bad unless it's a smooth zoom
 
-        self.zoom = zoom
+        if not willSmooth: self.zoom = zoom
         self.zoomed = True
         self.update()
-        logger.debug(f'QVideoPlayerLabel zoom set to {zoom} (pos={pos} | globalPos={globalPos})')
+        if not _smooth: logger.debug(f'QVideoPlayerLabel zoom set to {zoom} (pos={pos} | globalPos={globalPos})')
         return zoom
 
 
@@ -797,29 +837,14 @@ class QVideoPlayerLabel(QtW.QLabel):
         return self.setZoom(self.zoom + increment, pos, globalPos, force)
 
 
-    def updateImageScale(self, index: int):
-        self._imageScale = index
-        if self.pixmap():
-            if not self.zoomed:
-                self._calculateCurrentZoom()
-            self.update()
-
-
-    def updateArtScale(self, index: int):
-        self._artScale = index
-        if self.pixmap():
-            if not self.zoomed:
-                self._calculateCurrentZoom()
-            self.update()
-
-
-    def updateGifScale(self, index: int):
-        self._gifScale = index
-        if self.movie():
-            if self.zoomed: self.setZoom(self.zoom, force=True)
-            else:
-                self._resetMovieSize()
-                self._calculateCurrentZoom()
+    def disableZoom(self) -> float:
+        self.zoomed = False
+        self.pixmapPos = self.rect().center() - self.art.rect().center()
+        if self._smoothZoomTimerID: self._smoothZoomTimerID = self.killTimer(self._smoothZoomTimerID)
+        if self.movie(): self._resetMovieSize()
+        else: self.setScaledContents(False)
+        self.update()
+        return self._calculateBaseZoom()
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
@@ -862,7 +887,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         if gui.actionCrop.isChecked() or not gui.video: return
         add = event.angleDelta().y() > 0
         mod = event.modifiers()
-        zoom = self.zoom
+        zoom = self._targetZoom if settings.checkZoomSmooth.isChecked() else self.zoom
         increment = (zoom / (3 if mod & Qt.ControlModifier else 12 if mod & Qt.ShiftModifier else 6))
         self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
 
@@ -872,14 +897,28 @@ class QVideoPlayerLabel(QtW.QLabel):
             what zoom factor the new player size should start from. '''
         if self.hasScaledContents(): return
         if not self.zoomed:
-            if self.pixmap(): self._calculateCurrentZoom()
+            if self.pixmap(): self._calculateBaseZoom()
             elif self.movie():
                 if self._gifScale == 1: self._resizeMovieFit()
                 self._resetMovieCache()
-                self._calculateCurrentZoom()
+                self._calculateBaseZoom()
         elif self._gifScale == 2:
             self.gif.setScaledSize(self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * self.zoom)
             self._resetMovieCache()
+
+
+    def timerEvent(self, event: QtCore.QTimerEvent):    # TODO why is zooming out so slow at lower smoothZoomFactors??
+        if self._smoothZoomTimerID is not None:
+            currentZoom = self.zoom
+            if self._targetZoom == currentZoom:
+                self._smoothZoomTimerID = self.killTimer(self._smoothZoomTimerID)
+                self.setZoom(self._targetZoom, pos=self._smoothZoomPos, _smooth=True)
+            else:
+                digits = 4 - (int(math.log10(self._targetZoom)) + 1)                        # smaller zoom, round to more digits
+                newZoom = round(currentZoom + (self._targetZoom - currentZoom) * self._smoothZoomFactor, digits)
+                if newZoom == currentZoom: newZoom = self._targetZoom
+                self.setZoom(newZoom, pos=self._smoothZoomPos, _smooth=True)
+        return super().timerEvent(event)
 
 
     def paintEvent(self, event: QtGui.QPaintEvent):
@@ -1414,8 +1453,7 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
                 if not self._editing:
                     self.clear()
             else:                               # timer running + actively editing the sequence -> kill/reset timer (we're still editing)
-                self.killTimer(self._timerID)
-                self._timerID = None
+                self._timerID = self.killTimer(self._timerID)
             self._editing = True                # mark that we're actively editing
         super().keyPressEvent(event)            # run built-in keyPressEvent last (this emits the first keySequenceChanged signal)
 
@@ -1439,8 +1477,7 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
         if self._timerID is not None:                                   # timerID means a custom timer active
             self.keySequenceChanged.emit(self.keySequence())            # emit second keySequenceChanged signal
             self.editingFinished.emit()
-            self.killTimer(self._timerID)                               # kill timer and remove ID
-            self._timerID = None
+            self._timerID = self.killTimer(self._timerID)               # kill timer and remove ID
             self.lineEdit.setText(self.keySequence().toString())        # strip ", ..." from underlying QLineEdit
         return super().timerEvent(event)
 
