@@ -302,6 +302,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
     settings.buttonCheckForUpdates.clicked.connect(self.handle_updates)
+    settings.checkZoomPrecise.toggled.connect(self.gifPlayer._updatePreciseZoom)
     settings.spinZoomMinimumFactor.valueChanged.connect(lambda: settings.checkZoomAutoDisable1x.setEnabled(settings.spinZoomMinimumFactor.value() == 1))
     settings.spinZoomSmoothFactor.valueChanged.connect(self.gifPlayer._updateSmoothZoomFactor)
 

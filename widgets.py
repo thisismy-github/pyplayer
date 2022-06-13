@@ -742,6 +742,17 @@ class QVideoPlayerLabel(QtW.QLabel):
         self._smoothZoomFactor = factor / 100
 
 
+    def _updatePreciseZoom(self, checked: bool):
+        ''' Updates the "precise zoom" mode by swapping `pixmapPos`'s type
+            between QPoint and QPointF to minimize errors. Precise zooming
+            uses QPointF, normal zooming uses QPoint. '''
+        if checked:
+            if isinstance(self.pixmapPos, QtCore.QPoint):
+                self.pixmapPos = QtCore.QPointF(self.pixmapPos)
+        elif isinstance(self.pixmapPos, QtCore.QPointF):
+            self.pixmapPos = self.pixmapPos.toPoint()
+
+
     def _resetMovieCache(self):
         ''' Stops and resets GIF to clear cached frames.
             Pause state is restored after reset. '''
@@ -816,6 +827,14 @@ class QVideoPlayerLabel(QtW.QLabel):
             if globalPos: pos = self.mapFromGlobal(globalPos)
             if pos:
                 if willSmooth: self._smoothZoomPos = pos                            # set pos for smooth zoom to re-use
+                elif settings.checkZoomPrecise.isChecked():
+                    newSize = QtCore.QSizeF(self.art.size()) * zoom
+                    oldSize = QtCore.QSizeF(self.art.size()) * self.zoom
+                    oldPos = self.pixmapPos
+                    xOffset = ((pos.x() - oldPos.x()) / oldSize.width()) * newSize.width()
+                    yOffset = ((pos.y() - oldPos.y()) / oldSize.height()) * newSize.height()
+                    self.pixmapPos = pos - QtCore.QPointF(xOffset, yOffset)
+                    if not _smooth: self._draggingOffset = pos - self.pixmapPos     # drag + zoom is bad unless it's a smooth zoom
                 else:
                     newSize = self.art.size() * zoom
                     oldSize = self.art.size() * self.zoom
@@ -936,22 +955,29 @@ class QVideoPlayerLabel(QtW.QLabel):
                 zoom = self.zoom
 
                 # at >1 zoom, drawing to QRect is MUCH faster and looks identical to art.scaled()
-                if zoom >= 1:
-                    if scale == 2: size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
-                    else: size = self.art.size() * zoom
-                    painter.drawPixmap(QtCore.QRect(self.pixmapPos, size), self.art)    # TODO can this deform the image while zooming?
-                    #painter.scale(zoom, zoom)                                          # TODO painter.scale() vs. QRect() -> which is faster?
-                    #painter.drawPixmap(self.pixmapPos / zoom, self.art)
+                try:
+                    if zoom >= 1:
+                        if settings.checkZoomPrecise.isChecked():
+                            if scale == 2: size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
+                            else: size = QtCore.QSizeF(self.art.size()) * zoom
+                            painter.drawPixmap(QtCore.QRectF(self.pixmapPos, size).toRect(), self.art)
+                        else:
+                            if scale == 2: size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
+                            else: size = self.art.size() * zoom
+                            painter.drawPixmap(QtCore.QRect(self.pixmapPos, size), self.art)    # TODO can this deform the image while zooming?
+                        #painter.scale(zoom, zoom)                                              # TODO painter.scale() vs. QRect() -> which is faster?
+                        #painter.drawPixmap(self.pixmapPos / zoom, self.art)
 
-                # at <1 zoom, art.scaled() looks MUCH better and the performance drop is negligible
-                else:
-                    if scale == 2:
-                        size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
-                        aspectRatioMode = Qt.IgnoreAspectRatio
+                    # at <1 zoom, art.scaled() looks MUCH better and the performance drop is negligible
                     else:
-                        size = self.art.size() * zoom
-                        aspectRatioMode = Qt.KeepAspectRatio
-                    painter.drawPixmap(self.pixmapPos, self.art.scaled(size, aspectRatioMode, transformMode))
+                        if scale == 2:
+                            size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
+                            aspectRatioMode = Qt.IgnoreAspectRatio
+                        else:
+                            size = self.art.size() * zoom
+                            aspectRatioMode = Qt.KeepAspectRatio
+                        painter.drawPixmap(self.pixmapPos, self.art.scaled(size, aspectRatioMode, transformMode))
+                except TypeError: logger.warning('QVideoPlayerLabel paintEvent failed due to mismatched pixmapPos type.')
 
             # draw normal pixmap. NOTE: for fill-mode, drawing to a QRect NEVER looks identical (it's much worse)
             else:
