@@ -25,7 +25,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -688, 381, 2016))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -735, 381, 2154))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -34,6 +34,7 @@ class Ui_settingsDialog(object):
         self.tabGeneral = QtWidgets.QWidget()
         self.tabGeneral.setObjectName("tabGeneral")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.tabGeneral)
+        self.verticalLayout_3.setSpacing(16)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.formLayout = QtWidgets.QFormLayout()
         self.formLayout.setVerticalSpacing(3)
@@ -400,48 +401,65 @@ class Ui_settingsDialog(object):
         self.formLayout_10.setHorizontalSpacing(5)
         self.formLayout_10.setVerticalSpacing(3)
         self.formLayout_10.setObjectName("formLayout_10")
-        self.checkZoomSmooth = QtWidgets.QCheckBox(self.groupBox_7)
-        self.checkZoomSmooth.setChecked(True)
-        self.checkZoomSmooth.setObjectName("checkZoomSmooth")
-        self.formLayout_10.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.checkZoomSmooth)
-        self.spinZoomSmoothFactor = QtWidgets.QSpinBox(self.groupBox_7)
-        self.spinZoomSmoothFactor.setMinimum(15)
-        self.spinZoomSmoothFactor.setMaximum(65)
-        self.spinZoomSmoothFactor.setProperty("value", 33)
-        self.spinZoomSmoothFactor.setObjectName("spinZoomSmoothFactor")
-        self.formLayout_10.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.spinZoomSmoothFactor)
-        self.label_61 = QtWidgets.QLabel(self.groupBox_7)
-        self.label_61.setObjectName("label_61")
-        self.formLayout_10.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_61)
-        self.spinZoomMinimumFactor = QtWidgets.QDoubleSpinBox(self.groupBox_7)
-        self.spinZoomMinimumFactor.setMinimum(0.05)
-        self.spinZoomMinimumFactor.setMaximum(1.0)
-        self.spinZoomMinimumFactor.setSingleStep(0.05)
-        self.spinZoomMinimumFactor.setProperty("value", 0.25)
-        self.spinZoomMinimumFactor.setObjectName("spinZoomMinimumFactor")
-        self.formLayout_10.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinZoomMinimumFactor)
-        self.checkZoomAutoDisable1x = QtWidgets.QCheckBox(self.groupBox_7)
-        self.checkZoomAutoDisable1x.setChecked(True)
-        self.checkZoomAutoDisable1x.setObjectName("checkZoomAutoDisable1x")
-        self.formLayout_10.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.checkZoomAutoDisable1x)
-        self.checkZoomForceMinimum = QtWidgets.QCheckBox(self.groupBox_7)
-        self.checkZoomForceMinimum.setChecked(True)
-        self.checkZoomForceMinimum.setObjectName("checkZoomForceMinimum")
-        self.formLayout_10.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.checkZoomForceMinimum)
-        self.checkZoomSmooth = QtWidgets.QCheckBox(self.groupBox_7)
-        self.checkZoomSmooth.setChecked(True)
-        self.checkZoomSmooth.setObjectName("checkZoomSmooth")
-        self.formLayout_10.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.checkZoomSmooth)
         self.checkZoomPrecise = QtWidgets.QCheckBox(self.groupBox_7)
         self.checkZoomPrecise.setChecked(True)
         self.checkZoomPrecise.setObjectName("checkZoomPrecise")
         self.formLayout_10.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.checkZoomPrecise)
+        self.checkZoomSmooth = QtWidgets.QCheckBox(self.groupBox_7)
+        self.checkZoomSmooth.setChecked(True)
+        self.checkZoomSmooth.setObjectName("checkZoomSmooth")
+        self.formLayout_10.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.checkZoomSmooth)
         self.spinZoomSmoothFactor = QtWidgets.QSpinBox(self.groupBox_7)
         self.spinZoomSmoothFactor.setMinimum(15)
         self.spinZoomSmoothFactor.setMaximum(65)
         self.spinZoomSmoothFactor.setProperty("value", 33)
         self.spinZoomSmoothFactor.setObjectName("spinZoomSmoothFactor")
         self.formLayout_10.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.spinZoomSmoothFactor)
+        self.label_62 = QtWidgets.QLabel(self.groupBox_7)
+        self.label_62.setObjectName("label_62")
+        self.formLayout_10.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_62)
+        self.spinZoomIncrement = QtWidgets.QSpinBox(self.groupBox_7)
+        self.spinZoomIncrement.setMinimum(1)
+        self.spinZoomIncrement.setMaximum(100)
+        self.spinZoomIncrement.setProperty("value", 8)
+        self.spinZoomIncrement.setObjectName("spinZoomIncrement")
+        self.formLayout_10.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinZoomIncrement)
+        self.label_61 = QtWidgets.QLabel(self.groupBox_7)
+        self.label_61.setObjectName("label_61")
+        self.formLayout_10.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_61)
+        self.spinZoomMinimumFactor = QtWidgets.QDoubleSpinBox(self.groupBox_7)
+        self.spinZoomMinimumFactor.setMinimum(0.05)
+        self.spinZoomMinimumFactor.setMaximum(1.0)
+        self.spinZoomMinimumFactor.setSingleStep(0.05)
+        self.spinZoomMinimumFactor.setProperty("value", 0.25)
+        self.spinZoomMinimumFactor.setObjectName("spinZoomMinimumFactor")
+        self.formLayout_10.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.spinZoomMinimumFactor)
+        self.checkZoomAutoDisable1x = QtWidgets.QCheckBox(self.groupBox_7)
+        self.checkZoomAutoDisable1x.setChecked(True)
+        self.checkZoomAutoDisable1x.setObjectName("checkZoomAutoDisable1x")
+        self.formLayout_10.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.checkZoomAutoDisable1x)
+        self.checkZoomForceMinimum = QtWidgets.QCheckBox(self.groupBox_7)
+        self.checkZoomForceMinimum.setChecked(True)
+        self.checkZoomForceMinimum.setObjectName("checkZoomForceMinimum")
+        self.formLayout_10.setWidget(7, QtWidgets.QFormLayout.FieldRole, self.checkZoomForceMinimum)
+        self.label_63 = QtWidgets.QLabel(self.groupBox_7)
+        self.label_63.setObjectName("label_63")
+        self.formLayout_10.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_63)
+        self.spinZoomCtrlIncrement = QtWidgets.QSpinBox(self.groupBox_7)
+        self.spinZoomCtrlIncrement.setMinimum(1)
+        self.spinZoomCtrlIncrement.setMaximum(100)
+        self.spinZoomCtrlIncrement.setProperty("value", 3)
+        self.spinZoomCtrlIncrement.setObjectName("spinZoomCtrlIncrement")
+        self.formLayout_10.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinZoomCtrlIncrement)
+        self.label_64 = QtWidgets.QLabel(self.groupBox_7)
+        self.label_64.setObjectName("label_64")
+        self.formLayout_10.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_64)
+        self.spinZoomShiftIncrement = QtWidgets.QSpinBox(self.groupBox_7)
+        self.spinZoomShiftIncrement.setMinimum(1)
+        self.spinZoomShiftIncrement.setMaximum(100)
+        self.spinZoomShiftIncrement.setProperty("value", 24)
+        self.spinZoomShiftIncrement.setObjectName("spinZoomShiftIncrement")
+        self.formLayout_10.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.spinZoomShiftIncrement)
         self.verticalLayout_3.addWidget(self.groupBox_7)
         self.groupBox_4 = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupBox_4.setObjectName("groupBox_4")
@@ -1733,6 +1751,15 @@ class Ui_settingsDialog(object):
         self.spinHoverFadeDuration.setSuffix(_translate("settingsDialog", " seconds"))
         self.label_41.setText(_translate("settingsDialog", "Fade duration"))
         self.groupBox_7.setTitle(_translate("settingsDialog", "Zooming"))
+        self.checkZoomPrecise.setToolTip(_translate("settingsDialog", "If checked, the position being zoomed in on will be far more precise.\n"
+"Normally, calculations for position, size, and zoom use QRect, QSize,\n"
+"and QPoint, which lack floating point precision. This forces QRectF,\n"
+"QSizeF, and QPointF to be used instead, which massively increases\n"
+"precision at the cost of being far more resource intensive. Low-end\n"
+"systems will see noticable lag.\n"
+"\n"
+"NOTE: This setting is far more intense with smooth zooming enabled."))
+        self.checkZoomPrecise.setText(_translate("settingsDialog", "Precise zooming (resource intensive)"))
         self.checkZoomSmooth.setToolTip(_translate("settingsDialog", "If checked, zooming will smoothly transition between zoom levels."))
         self.checkZoomSmooth.setText(_translate("settingsDialog", "Smooth zooming"))
         self.spinZoomSmoothFactor.setToolTip(_translate("settingsDialog", "The speed at which the smooth zooming effect takes place.\n"
@@ -1745,6 +1772,17 @@ class Ui_settingsDialog(object):
 "This setting may have different effects for any additional\n"
 "animation types added in the future."))
         self.spinZoomSmoothFactor.setSuffix(_translate("settingsDialog", "% speed"))
+        self.label_62.setToolTip(_translate("settingsDialog", "The value used when incrementing the zoom.\n"
+"A higher denominator means smaller jumps\n"
+"between levels.\n"
+"\n"
+"The increment is relative to the current zoom\n"
+"level in order to provide a more proportional\n"
+"jump between zoom levels: the larger the\n"
+"zoom, the larger the jump."))
+        self.label_62.setText(_translate("settingsDialog", "Zoom increment"))
+        self.spinZoomIncrement.setSuffix(_translate("settingsDialog", " the current zoom"))
+        self.spinZoomIncrement.setPrefix(_translate("settingsDialog", "1/"))
         self.label_61.setToolTip(_translate("settingsDialog", "The minimum zoom factor allowed for media,\n"
 "relative to the current size of your window."))
         self.label_61.setText(_translate("settingsDialog", "Minimum zoom"))
@@ -1759,27 +1797,29 @@ class Ui_settingsDialog(object):
 "relative to the media\'s size, not the window\'s."))
         self.checkZoomForceMinimum.setText(_translate("settingsDialog", "Zoom relative to media\'s size if\n"
 "minimum zoom cannot be reached"))
-        self.checkZoomSmooth.setToolTip(_translate("settingsDialog", "If checked, zooming will smoothly transition between zoom levels."))
-        self.checkZoomSmooth.setText(_translate("settingsDialog", "Smooth zooming"))
-        self.checkZoomPrecise.setToolTip(_translate("settingsDialog", "If checked, the position being zoomed in on will be far more precise.\n"
-"Normally, calculations for position, size, and zoom use QRect, QSize,\n"
-"and QPoint, which lack floating point precision. This forces QRectF,\n"
-"QSizeF, and QPointF to be used instead, which massively increases\n"
-"precision at the cost of being far more resource intensive. Low-end\n"
-"systems will see noticable lag.\n"
+        self.label_63.setToolTip(_translate("settingsDialog", "The value used when incrementing the zoom\n"
+"while holding Ctrl. A higher denominator\n"
+"means smaller jumps between levels.\n"
 "\n"
-"NOTE: This setting is far more intense with smooth zooming enabled."))
-        self.checkZoomPrecise.setText(_translate("settingsDialog", "Precise zooming (resource intensive)"))
-        self.spinZoomSmoothFactor.setToolTip(_translate("settingsDialog", "The speed at which the smooth zooming effect takes place.\n"
+"The increment is relative to the current zoom\n"
+"level in order to provide a more proportional\n"
+"jump between zoom levels: the larger the\n"
+"zoom, the larger the jump."))
+        self.label_63.setText(_translate("settingsDialog", "Ctrl-Zoom increment"))
+        self.spinZoomCtrlIncrement.setSuffix(_translate("settingsDialog", " the current zoom"))
+        self.spinZoomCtrlIncrement.setPrefix(_translate("settingsDialog", "1/"))
+        self.label_64.setToolTip(_translate("settingsDialog", "The value used when incrementing the zoom\n"
+"while holding Shift. A higher denominator\n"
+"means smaller jumps between levels.\n"
 "\n"
-"NOTE: The \"speed\" actually refers to the factor used during\n"
-"each step of the smoothing animation. For example, if you\n"
-"zoom from 1x to 10x 50% speed, the animation would be:\n"
-"1x → 5x → 7.5x → 8.75x → etc.\n"
-"\n"
-"This setting may have different effects for any additional\n"
-"animation types added in the future."))
-        self.spinZoomSmoothFactor.setSuffix(_translate("settingsDialog", "% speed"))
+"The increment is relative to the current zoom\n"
+"level in order to provide a more proportional\n"
+"jump between zoom levels: the larger the\n"
+"zoom, the larger the jump. A higher value\n"
+"here means smaller jumps between levels."))
+        self.label_64.setText(_translate("settingsDialog", "Shift-Zoom increment"))
+        self.spinZoomShiftIncrement.setSuffix(_translate("settingsDialog", " the current zoom"))
+        self.spinZoomShiftIncrement.setPrefix(_translate("settingsDialog", "1/"))
         self.groupBox_4.setTitle(_translate("settingsDialog", "Fullscreen controls"))
         self.label_43.setText(_translate("settingsDialog", "Fade duration"))
         self.spinFullScreenFadeDuration.setToolTip(_translate("settingsDialog", "The duration, in seconds, that the fullscreen\n"

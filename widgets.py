@@ -907,7 +907,11 @@ class QVideoPlayerLabel(QtW.QLabel):
         add = event.angleDelta().y() > 0
         mod = event.modifiers()
         zoom = self._targetZoom if settings.checkZoomSmooth.isChecked() else self.zoom
-        increment = (zoom / (3 if mod & Qt.ControlModifier else 12 if mod & Qt.ShiftModifier else 6))
+        if not mod: factor = settings.spinZoomIncrement.value()
+        elif mod & Qt.ShiftModifier: factor = settings.spinZoomShiftIncrement.value()
+        elif mod & Qt.ControlModifier: factor = settings.spinZoomCtrlIncrement.value()
+        else: factor = settings.spinZoomIncrement.value()   # defined twice as a slight optimization for normal zooming
+        increment = (zoom / factor)
         self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
 
 

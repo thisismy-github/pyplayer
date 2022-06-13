@@ -47,9 +47,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-688</y>
+        <y>-735</y>
         <width>381</width>
-        <height>2016</height>
+        <height>2154</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -63,6 +63,9 @@
            <string>&amp;General</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_3">
+           <property name="spacing">
+            <number>16</number>
+           </property>
            <item>
             <layout class="QFormLayout" name="formLayout">
              <property name="verticalSpacing">
@@ -1306,81 +1309,6 @@ away after removing your mouse from the progress bar.</string>
               <property name="bottomMargin">
                <number>6</number>
               </property>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_61">
-                <property name="toolTip">
-                 <string>The minimum zoom factor allowed for media,
-relative to the current size of your window.</string>
-                </property>
-                <property name="text">
-                 <string>Minimum zoom</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QDoubleSpinBox" name="spinZoomMinimumFactor">
-                <property name="suffix">
-                 <string>x the current window size</string>
-                </property>
-                <property name="minimum">
-                 <double>0.050000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>1.000000000000000</double>
-                </property>
-                <property name="singleStep">
-                 <double>0.050000000000000</double>
-                </property>
-                <property name="value">
-                 <double>0.250000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QCheckBox" name="checkZoomAutoDisable1x">
-                <property name="toolTip">
-                 <string>If checked and &quot;Minimum zoom&quot; is set to 1.00x,
-decreasing the zoom to 1.00x will disable zoom-
-mode and reset the media's position.</string>
-                </property>
-                <property name="text">
-                 <string>Auto-disable zoom at 1x size</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QCheckBox" name="checkZoomForceMinimum">
-                <property name="toolTip">
-                 <string>If checked, and the minimum zoom factor cannot
-actually be reached (i.e. the media is very small
-to begin with), the minimum zoom will be set
-relative to the media's size, not the window's.</string>
-                </property>
-                <property name="text">
-                 <string>Zoom relative to media's size if
-minimum zoom cannot be reached</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QCheckBox" name="checkZoomSmooth">
-                <property name="toolTip">
-                 <string>If checked, zooming will smoothly transition between zoom levels.</string>
-                </property>
-                <property name="text">
-                 <string>Smooth zooming</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
               <item row="0" column="0" colspan="2">
                <widget class="QCheckBox" name="checkZoomPrecise">
                 <property name="toolTip">
@@ -1395,6 +1323,19 @@ NOTE: This setting is far more intense with smooth zooming enabled.</string>
                 </property>
                 <property name="text">
                  <string>Precise zooming (resource intensive)</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="checkZoomSmooth">
+                <property name="toolTip">
+                 <string>If checked, zooming will smoothly transition between zoom levels.</string>
+                </property>
+                <property name="text">
+                 <string>Smooth zooming</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
@@ -1425,6 +1366,177 @@ animation types added in the future.</string>
                 </property>
                 <property name="value">
                  <number>33</number>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_62">
+                <property name="toolTip">
+                 <string>The value used when incrementing the zoom.
+A higher denominator means smaller jumps
+between levels.
+
+The increment is relative to the current zoom
+level in order to provide a more proportional
+jump between zoom levels: the larger the
+zoom, the larger the jump.</string>
+                </property>
+                <property name="text">
+                 <string>Zoom increment</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QSpinBox" name="spinZoomIncrement">
+                <property name="suffix">
+                 <string> the current zoom</string>
+                </property>
+                <property name="prefix">
+                 <string>1/</string>
+                </property>
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>6</number>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="label_61">
+                <property name="toolTip">
+                 <string>The minimum zoom factor allowed for media,
+relative to the current size of your window.</string>
+                </property>
+                <property name="text">
+                 <string>Minimum zoom</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QDoubleSpinBox" name="spinZoomMinimumFactor">
+                <property name="suffix">
+                 <string>x the current window size</string>
+                </property>
+                <property name="minimum">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.250000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QCheckBox" name="checkZoomAutoDisable1x">
+                <property name="toolTip">
+                 <string>If checked and &quot;Minimum zoom&quot; is set to 1.00x,
+decreasing the zoom to 1.00x will disable zoom-
+mode and reset the media's position.</string>
+                </property>
+                <property name="text">
+                 <string>Auto-disable zoom at 1x size</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QCheckBox" name="checkZoomForceMinimum">
+                <property name="toolTip">
+                 <string>If checked, and the minimum zoom factor cannot
+actually be reached (i.e. the media is very small
+to begin with), the minimum zoom will be set
+relative to the media's size, not the window's.</string>
+                </property>
+                <property name="text">
+                 <string>Zoom relative to media's size if
+minimum zoom cannot be reached</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="label_63">
+                <property name="toolTip">
+                 <string>The value used when incrementing the zoom
+while holding Ctrl. A higher denominator
+means smaller jumps between levels.
+
+The increment is relative to the current zoom
+level in order to provide a more proportional
+jump between zoom levels: the larger the
+zoom, the larger the jump.</string>
+                </property>
+                <property name="text">
+                 <string>Ctrl-Zoom increment</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QSpinBox" name="spinZoomCtrlIncrement">
+                <property name="suffix">
+                 <string> the current zoom</string>
+                </property>
+                <property name="prefix">
+                 <string>1/</string>
+                </property>
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>3</number>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="QLabel" name="label_64">
+                <property name="toolTip">
+                 <string>The value used when incrementing the zoom
+while holding Shift. A higher denominator
+means smaller jumps between levels.
+
+The increment is relative to the current zoom
+level in order to provide a more proportional
+jump between zoom levels: the larger the
+zoom, the larger the jump. A higher value
+here means smaller jumps between levels.</string>
+                </property>
+                <property name="text">
+                 <string>Shift-Zoom increment</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="1">
+               <widget class="QSpinBox" name="spinZoomShiftIncrement">
+                <property name="suffix">
+                 <string> the current zoom</string>
+                </property>
+                <property name="prefix">
+                 <string>1/</string>
+                </property>
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>24</number>
                 </property>
                </widget>
               </item>
