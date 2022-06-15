@@ -47,7 +47,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-735</y>
+        <y>-1465</y>
         <width>381</width>
         <height>2154</height>
        </rect>
@@ -2518,7 +2518,7 @@ the currently playing media's height.</string>
                    <double>0.100000000000000</double>
                   </property>
                   <property name="value">
-                   <double>1.600000000000000</double>
+                   <double>2.900000000000000</double>
                   </property>
                  </widget>
                 </item>
@@ -2537,7 +2537,7 @@ the currently playing media's height.</string>
                    <double>0.100000000000000</double>
                   </property>
                   <property name="value">
-                   <double>1.600000000000000</double>
+                   <double>2.900000000000000</double>
                   </property>
                  </widget>
                 </item>

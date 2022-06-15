@@ -805,24 +805,25 @@ class QVideoPlayerLabel(QtW.QLabel):
 
         if not _smooth: zoom = round(min(maxZoom, max(minZoom, zoom)), 4)
         if zoom == self.zoom and not force:
-            if minZoomFactor == 1.0 and settings.checkZoomAutoDisable1x.isChecked():
-                return self.disableZoom()
+            if minZoomFactor == 1.0 and zoom == self._baseZoom and settings.checkZoomAutoDisable1x.isChecked():
+                return self.disableZoom()   # _baseZoom == _targetZoom -> faster reset during smooth zoom (not worth it)
             return zoom
 
         willSmooth = not _smooth and settings.checkZoomSmooth.isChecked()
-        if willSmooth:                                  # about to start smoothing -> do first zoom-step now, start timer
+        if willSmooth:                      # about to start smoothing -> do first zoom-step now, start timer
             self._targetZoom = zoom
             if self._smoothZoomTimerID is None:
                 zoom += (zoom - self.zoom) * self._smoothZoomFactor
                 self._smoothZoomTimerID = self.startTimer(17, Qt.PreciseTimer)      # 17ms timer ~= 59fps
 
         if self.movie():
-            if self._gifScale == 2:
-                self.setScaledContents(False)
-                newSize = self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * zoom
-            else: newSize = self.gifSize * zoom
-            self.gif.setScaledSize(newSize)
-            self._resetMovieCache()
+            if not willSmooth:
+                if self._gifScale == 2:
+                    self.setScaledContents(False)
+                    newSize = self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * zoom
+                else: newSize = self.gifSize * zoom
+                self.gif.setScaledSize(newSize)
+                self._resetMovieCache()     # you can smooth zoom without freezing, but it's SLOWER than spam-resetting
         else:
             if globalPos: pos = self.mapFromGlobal(globalPos)
             if pos:
@@ -930,12 +931,13 @@ class QVideoPlayerLabel(QtW.QLabel):
             self._resetMovieCache()
 
 
-    def timerEvent(self, event: QtCore.QTimerEvent):    # TODO why is zooming out so slow at lower smoothZoomFactors??
+    def timerEvent(self, event: QtCore.QTimerEvent):        # TODO why is zooming out so slow at lower smoothZoomFactors??
         if self._smoothZoomTimerID is not None:
             currentZoom = self.zoom
             if self._targetZoom == currentZoom:
                 self._smoothZoomTimerID = self.killTimer(self._smoothZoomTimerID)
                 self.setZoom(self._targetZoom, pos=self._smoothZoomPos, _smooth=True)
+                #if self.movie(): self._resetMovieCache()    # only reset gif cache after smooth zoom is finished
             else:
                 digits = 4 - (int(math.log10(self._targetZoom)) + 1)                        # smaller zoom, round to more digits
                 newZoom = round(currentZoom + (self._targetZoom - currentZoom) * self._smoothZoomFactor, digits)
