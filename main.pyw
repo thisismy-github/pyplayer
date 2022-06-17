@@ -2059,8 +2059,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.locked_video = video
             logging.info(f'Video locked during edits: {self.locked_video}')
 
+        # display indeterminant progress bar, set busy cursor, and update UI to frame 0
         #self.frame_override = 0
-        self.show_save_progress_signal.emit(True)           # show transparent indeterminant progress bar over statusbar
+        self.show_save_progress_signal.emit(True)
+        self.setCursor(Qt.BusyCursor)
         update_progress_signal.emit(0)
 
         try:
@@ -2191,7 +2193,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: self.log(f'(!) SAVE FAILED: {format_exc()}')
         finally:
             self.locked_video = None                        # unlock video if needed
-            self.show_save_progress_signal.emit(False)      # make sure we hide the progress bar no matter what
+            self.show_save_progress_signal.emit(False)      # hide the progress bar no matter what
+            self.unsetCursor()                              # restore cursor no matter what
             self.setFocus(True)                             # restore keyboard focus so we can use hotkeys again
 
 
