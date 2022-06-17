@@ -1948,27 +1948,37 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             gif_player.gif.setPaused(False or self.is_paused)
 
 
-    def save_as(self, *args, caption='Save media as...', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
+    def save_as(self, *args, noun='media', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
+        ''' Opens a file dialog with `filter` and the caption "Save `noun`
+            as...", before saving to the user-selected path, if any.
+            See `save()` for more details. '''
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-        Thread(target=self._save_as, args=(caption, filter), daemon=True).start()
+        Thread(target=self._save_as, args=(noun, filter), daemon=True).start()
 
 
     def save(self, *args, dest=None, ext_hint=None):    # *args to capture unused signal args
+        ''' Checks for any edit operations, applies them to the current media,
+            and saves the new file to `dest`. If `dest` is None, `save_as()`
+            is called. If `dest` has no extension, `ext_hint` will be used.
+            If `ext_hint` is None, PyPlayer will guess the extension.
+            NOTE: Saving occurs in a separate thread. '''
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
         Thread(target=self._save, args=(dest, ext_hint), daemon=True).start()
 
 
-    def _save_as(self, caption='Save media as...', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
-        ''' Trim and save to a specified path. '''
-        logging.info('Opening \'Save As...\' dialogue.')
-        file = self.browse_for_save_file(noun='media', caption=caption, filter=filter)
-        if file is None: return
-        logging.info(f'Saving as \'{file}\'')
-        self._save(dest=file)
+    def _save_as(self, noun='media', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
+        ''' Do not call this directly. Use `save_as()` instead. '''
+        try:
+            logging.info('Opening \'Save As...\' dialogue.')
+            file = self.browse_for_save_file(noun=noun, filter=filter)
+            if file is None: return
+            logging.info(f'Saving as \'{file}\'')
+            self._save(dest=file)
+        except: self.log(f'(!) SAVE_AS FAILED: {format_exc()}')
 
 
     def _save(self, dest=None, ext_hint=None):
-        ''' Current iteration: IV '''
+        ''' Do not call this directly. Use `save()` instead. Iteration: IV '''
         start_time = get_time()
 
         # save copies of all critical properties that could potentially change while we're saving
@@ -2527,7 +2537,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.operations['resize'] = (width, height)
         if self.lineOutput.text().strip(): self.save()
-        else: self.save_as('Save resized media as...')
+        else: self.save_as('resized media')
 
 
     def rotate_video(self, action: QtW.QAction):
@@ -2541,8 +2551,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.actionFlipHorizontally: 'hflip'
         }
         self.operations['rotate video'] = rotation_presets[action]
-        if self.lineOutput.text().strip(): self.save()                 # TODO this defeats the purpose of self.operations
-        else: self.save_as('Save rotated video/image as...', filter='All files(*)')     # TODO better filter/hint
+        if self.lineOutput.text().strip(): self.save()                      # TODO this defeats the purpose of self.operations
+        else: self.save_as('rotated video/image', filter='All files(*)')    # TODO better filter/hint
 
 
     def amplify_audio(self):                # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
@@ -2563,7 +2573,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.last_amplify_audio_value = spin.value()                     # save value to re-display it next time
             self.operations['amplify audio'] = round(spin.value() / 100, 2)  # convert volume to 0-1 range
             if self.lineOutput.text().strip(): self.save()
-            else: self.save_as('Save amplified video/audio as...')
+            else: self.save_as('amplified video/audio')
 
         dialog.accepted.connect(accept)
         dialog.exec()
@@ -2578,7 +2588,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not path: return                                             # cancel selected
             self.operations['replace audio'] = path
             if self.lineOutput.text().strip(): self.save()
-            else: self.save_as('Save video with replaced audio track as...')
+            else: self.save_as('video with replaced audio track')
         except: self.log(f'(!) REPLACE_AUDIO FAILED: {format_exc()}')
 
 
@@ -2589,7 +2599,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not path: return                                             # cancel selected
             self.operations['add audio'] = path
             if self.lineOutput.text().strip(): self.save()
-            else: self.save_as('Save media with additional audio track as...', filter='All files (*)')  # TODO better filter/hint
+            else: self.save_as('media with additional audio track', filter='All files (*)')     # TODO better filter/hint
         except: self.log(f'(!) ADD_AUDIO_TRACK FAILED: {format_exc()}')
 
 
@@ -2597,8 +2607,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
         if self.mime_type != 'video': return self.statusbar.showMessage('Well that would just be silly, wouldn\'t it?', 10000)
         self.operations['remove track'] = 'audio' if audio else 'video'
-        if self.lineOutput.text().strip(): self.save(ext_hint=None if audio else '.mp3')           # give hint for extension
-        else: self.save_as(caption=f'Save {self.operations["remove track"]} as...',     # TODO set "save as" default filter to .mp3 for video-removal as well?
+        if self.lineOutput.text().strip(): self.save(ext_hint=None if audio else '.mp3')        # give hint for extension
+        else: self.save_as(caption=f'{self.operations["remove track"]}',    # TODO set "save as" default filter to .mp3 for video-removal as well?
                            filter=f'{"MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;" if not audio else ""}MP4 files (*.mp4);;All files (*)')
 
 
