@@ -509,7 +509,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonExploreMediaPath.contextMenuEvent = self.openMediaLocationButtonContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
-        self.buttonSnapshot.contextMenuEvent = lambda event: self.menuSnapshots.exec(event.globalPos())
+        self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
@@ -866,6 +866,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def pauseButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
+        ''' Handles the context (right-click) menu for the pause button. '''
         context = QtW.QMenu(self)
         context.addAction(self.actionStop)
         context.addAction('Restart', set_and_update_progress)          # TODO this might have timing issues with update_thread
@@ -873,9 +874,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def trimButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles creating the context (right-click) menu for the start/end trim buttons. Includes
-            the fade-mode menu, actions for instantly setting new start/end positions, and disabled
-            (grayed out) actions containing information about the current start/end positions. '''
+        ''' Handles the context (right-click) menu for the start/end
+            trim buttons. Includes the fade-mode menu, actions for
+            instantly setting new start/end positions, and disabled
+            actions displaying information about the current trim. '''
         is_trim_mode = self.is_trim_mode()
         show_length_label = is_trim_mode and self.minimum or self.maximum != self.frame_count
 
@@ -929,7 +931,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def openMediaLocationButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles creating the context (right-click) menu for the open media location button. '''
+        ''' Handles the context (right-click) menu for the open media location button. '''
         if not self.video: return       # do not render context menu if no media is playing
         context = QtW.QMenu(self)
         context.addAction(self.actionExploreMediaPath)
@@ -938,7 +940,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def buttonMarkDeletedContextMenuEvent(self, event: QtGui.QContextMenuEvent):    # should these use QWidget.actions() instead of contextMenuEvent?
-        ''' Handles creating the context (right-click) menu for buttonMarkDeleted. '''
+        ''' Handles the context (right-click) menu for buttonMarkDeleted. '''
         context = QtW.QMenu(self)
         context.setToolTipsVisible(True)
         context.addAction(self.actionMarkDeleted)
@@ -949,8 +951,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
+    def buttonSnapshotContextMenuEvent(self, event):
+        ''' Handles the context (right-click) menu for the snapshot button.
+            Side note: PyQt does NOT like it if you do QMenu.exec() in a
+            lambda. As soon as it returns, you get: `TypeError: invalid
+            argument to sipBadCatcherResult()`. And it's uncatchable. '''
+        self.menuSnapshots.exec(event.globalPos())
+
+
     def menuRecentContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles creating the context (right-click) menus for individual recent files. '''
+        ''' Handles the context (right-click) menus for individual recent files. '''
         action = self.menuRecent.actionAt(event.pos())
         if action is self.actionClearRecent or not action: return
         path = action.toolTip()
@@ -1753,7 +1763,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.log('There are no remaining files to play.')
 
         recycle = self.dialog_settings.checkRecycleBin.isChecked()
-        verb = 'recycl' if recycle else 'delet'
+        verb = 'recycl' if recycle else 'delet'         # we're appending "ing" to these words
         if recycle: import send2trash
         logging.info(f'{verb.capitalize()}ing {len(files)} files...')
 
@@ -1762,12 +1772,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 send2trash.send2trash(file) if recycle else os.remove(file)
                 logging.info(f'File {file} {verb}ed successfully.')
             except Exception as error: self.log(f'File could not be deleted: {file} - {error}')
-            if not os.path.exists(file):    # if file doesn't exist, unmark file (even if error occurred)
+            if not os.path.exists(file):                # if file doesn't exist, unmark file (even if error occurred)
                 if file in self.recent_files: self.recent_files.remove(file)
                 if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
 
 
-    def snapshot(self, *args, mode=None):   # uses libvlc_video_take_snapshot. *args to capture unused signal args
+    def snapshot(self, *args, mode=None):               # *args to capture unused signal args
         ''' libvlc_video_take_snapshot's docstring:         TODO: add a real docstring here
             "Take a snapshot of the current video window. If `i_width` AND `i_height` is 0, original
             size is used. If `i_width` XOR `i_height` is 0, original aspect-ratio is preserved."
@@ -3460,10 +3470,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Saves image at `path` as a JPEG file with the desired quality in the settings
             dialog, using PIL. Assumes that `path` already ends in a valid file-extension. '''
         jpeg_quality = self.dialog_settings.spinSnapshotJpegQuality.value()
-        self.log(f'Saving JPEG snapshot at {jpeg_quality}% quality to {path}.')
         if image_data is None:
             with get_PIL_Image().open(path) as image:
-                self.convert_snapshot_to_jpeg(path, image)
+                return self.convert_snapshot_to_jpeg(path, image)
+        self.log(f'Saving JPEG snapshot at {jpeg_quality}% quality to {path}.')
         image_data.convert('RGB')
         image_data.save(path, quality=jpeg_quality)
 
