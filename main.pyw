@@ -876,8 +876,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles creating the context (right-click) menu for the start/end trim buttons. Includes
             the fade-mode menu, actions for instantly setting new start/end positions, and disabled
             (grayed out) actions containing information about the current start/end positions. '''
-        if not self.video: return       # do not render context menu if no media is playing
-
         is_trim_mode = self.is_trim_mode()
         show_length_label = is_trim_mode and self.minimum or self.maximum != self.frame_count
 
@@ -908,11 +906,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: length_label_action = QtW.QAction(f'Length: {h}:{m:02}:{s:02} ({frames} frames)')
             length_label_action.setEnabled(False)
 
-        # actions for force-setting start/end times
+        # actions for force-setting start/end times (disabled when no/useless media is playing)
         set_start_action = QtW.QAction('Set &start to current position', self)
         set_start_action.triggered.connect(lambda: self.set_trim_start(force=True))
         set_end_action = QtW.QAction('Set &end to current position', self)
         set_end_action.triggered.connect(lambda: self.set_trim_end(force=True))
+        if not self.video or self.mime_type == 'image':
+            set_start_action.setEnabled(False)
+            set_end_action.setEnabled(False)
 
         # create context menu
         context = QtW.QMenu(self)
