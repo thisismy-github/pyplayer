@@ -2088,8 +2088,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     while not cfg.trimmodeselected: sleep(0.2)
                     start_time = get_time()                 # reset start_time to undo time spent waiting for dialog
                 if self.is_trim_mode():
-                    precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.extension in constants.SPECIAL_TRIM_EXTENSIONS
-                    self.log(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
+                    is_auto_precise = True
+                    trim_duration = (maximum - minimum) / self.frame_rate
+                    if self.duration <= 10: precise = True  # always use precise trimming for very short media or short clips on semi-short media
+                    elif self.duration <= 30 and trim_duration <= 5: precise = True
+                    else:
+                        is_auto_precise = False
+                        precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.extension in constants.SPECIAL_TRIM_EXTENSIONS
+
+                    if is_auto_precise: message = 'Precise trim auto-detected (short trims on short media always use precise trimming).'
+                    else: message = f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.'
+                    self.log(message)
+
                     cmd_parameters = f' -c:v {"libx264" if precise else "copy"} -c:a {"aac" if precise else "copy -avoid_negative_ts make_zero"} '
                     trim_cmd_parts = []
                     if minimum > 0:           trim_cmd_parts.append(f'-ss {minimum / frame_rate}')
@@ -2741,19 +2751,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             label = QtW.QLabel(
                 'Which trimming style would you prefer? You can change this '
-                'setting in the future by right-clicking the \'Start\' and '
-                '\'End\' buttons, or by using the \'Video\' menu.')
+                'setting in the future through the \'Video\' menu, or by '
+                'right-clicking the \'Start\' and \'End\' buttons.\n\nNote: '
+                'The end of a trim is always accurate for both trim types.')
             button_precise = QtW.QCommandLinkButton(
                 'Precise trim',
-                'Re-encode your trim. This is a slow process, but will always be '
-                '100% accurate. Recommended if you need the start of a trim to be '
-                'accurate down to the frame, or if you use a variety of formats.')
+                'Re-encode your trim. Slow, but 100% accurate. Works across most '
+                'formats. For short trims on short media, this is used no matter what.')
             button_auto = QtW.QCommandLinkButton(
                 'Auto trim',
                 'Instantly trim your clip by rounding the start back to the last keyframe '
                 'and cutting from there. Some formats/encoders may be corrupted or briefly '
-                'frozen at the start (formats like MP4 usuallly work better). PyPlayer '
-                'will try falling back to precise trimming when possible.')
+                'frozen at the start (formats like MP4 usually work better). PyPlayer '
+                'will *try* to fall back to precise trimming when possible.')
 
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
