@@ -248,30 +248,31 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -----------------------------
 def ffmpeg_in_place(infile: str, cmd: str, outfile: str = None) -> str:
     start = get_time()
-    logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})...')
-
     if not outfile: outfile = infile
     if '%out' not in cmd: cmd += ' %out'                                # ensure %out is present
+    logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
     # create temp file if infile and outfile are the same
-    temp_path = ''
     if infile == outfile:
         temp_path = add_path_suffix(infile, '_temp', unique=True)
         if infile == gui.locked_video: gui.locked_video = temp_path     # update locked video if needed TODO does this make sense...?
         os.renames(infile, temp_path)                                   # rename `out` to temp name
+        logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
+    else: temp_path = infile
 
     # run final ffmpeg command
     try: ffmpeg(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
     except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
     # cleanup temp file, if needed
-    if temp_path:
+    if temp_path != infile:
         if os.path.exists(infile):
             try: os.remove(temp_path)
             except: logging.warning(f'Temporary FFmpeg file {temp_path} could not be deleted')
         else:   # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_video line up there
             if temp_path == gui.locked_video: gui.locked_video = infile
             os.renames(temp_path, infile)
+            logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{infile}"')
     gui.log(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
     return outfile
 
@@ -285,7 +286,7 @@ def get_PIL_Image():
     try:    # prepare PIL for importing if it hasn't been imported yet (once imported, it's imported for good)
         PIL_already_imported = 'PIL.Image' in sys.modules
         if not PIL_already_imported and constants.IS_COMPILED:
-            logging.info('Import PIL for the first time...')
+            logging.info('Importing PIL for the first time...')
             join = os.path.join                 # create alias due to high usage
             exists = os.path.exists             # create alias due to high usage
             files_moved = []
@@ -2104,7 +2105,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     trim_cmd_parts = []
                     if minimum > 0:           trim_cmd_parts.append(f'-ss {minimum / frame_rate}')
                     if maximum < frame_count: trim_cmd_parts.append(f'-to {maximum / frame_rate}')  # "-c:v libx264" vs "-c:v copy"
-                    if trim_cmd_parts: intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in {" ".join(trim_cmd_parts)}{cmd_parameters}%out', dest)
+                    if trim_cmd_parts: intermediate_file = ffmpeg_in_place(intermediate_file, f'-i %in {" ".join(trim_cmd_parts)}{cmd_parameters}', dest)
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 else:
@@ -2151,7 +2152,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         with get_PIL_Image().open(video) as image:
                             image.crop((round(lfp[0].x()), round(lfp[0].y()),              # left/top/right/bottom (crop takes a tuple)
                                         round(lfp[1].x()), round(lfp[2].y()))).save(dest)  # round QPointFs
-                    else: ffmpeg_in_place(intermediate_file, f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"')
+                    else: ffmpeg_in_place(intermediate_file, f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"', dest)
 
             # confirm our operations, clean up temp files/base video, and get final path
             if operations_detected:                         # double-check that we've actually done anything at all
@@ -3080,7 +3081,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.actionShowMenuBar.trigger()            # can't just set to False and reuse actionShowMenuBar.isChecked()...
                 self.menubar_visible_before_crop = True     # ...since set_menubar_visible() is more involved than just doing setVisible
             else: self.menubar_visible_before_crop = False
-            gif_player.disableZoom()
+            if gif_player.zoomed: gif_player.disableZoom()
 
             self.log('Crop mode enabled. Right-click or press C to exit.')
             vlc.find_true_borders()

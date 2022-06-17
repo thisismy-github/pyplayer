@@ -789,6 +789,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             else:
                 newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
                 zoom = newSize.width() / self.art.width()
+        else: return 1.0
         zoom = round(zoom, 4)
         self.zoom = self._baseZoom = self._targetZoom = zoom
         return zoom
