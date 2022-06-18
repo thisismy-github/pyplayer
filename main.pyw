@@ -667,7 +667,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def moveEvent(self, event: QtGui.QMoveEvent):
         if not self.isMaximized():  # don't save position if we're currently maximized
             self.last_window_pos = event.oldPos()
-            self.last_move_time = get_time()
+            if self.timer_id_resize_snap is None or app.mouseButtons() != Qt.LeftButton:
+                self.last_move_time = get_time()    # don't save move time if we're actually resizing
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
@@ -1298,7 +1299,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             cover_art = tag.get_image()
                             if cover_art and self.dialog_settings.checkShowCoverArt.isChecked():
                                 gif_player.play(cover_art)          # cover art is bytes -> set to gif_player's QPixmap, open QPixmap with PIL
-                                self.vwidth, self.vheight = gif_player.art.size
+                                size = gif_player.art.size()
+                                self.vwidth = size.width()
+                                self.vheight = size.height()
                             else:
                                 self.vwidth = 16
                                 self.vheight = 9
@@ -2621,7 +2624,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.mime_type != 'video': return self.statusbar.showMessage('Well that would just be silly, wouldn\'t it?', 10000)
         self.operations['remove track'] = 'audio' if audio else 'video'
         if self.lineOutput.text().strip(): self.save(ext_hint=None if audio else '.mp3')        # give hint for extension
-        else: self.save_as(caption=f'{self.operations["remove track"]}',    # TODO set "save as" default filter to .mp3 for video-removal as well?
+        else: self.save_as(noun=f'{self.operations["remove track"]}',   # TODO set "save as" default filter to .mp3 for video-removal as well?
                            filter=f'{"MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;" if not audio else ""}MP4 files (*.mp4);;All files (*)')
 
 
