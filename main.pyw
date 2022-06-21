@@ -514,10 +514,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonAutoplay.setIcon(self.icons['autoplay'])
 
-        # TODO: why isn't currentIndexChanged called when the config loads?
-        self.gifPlayer._updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
-        self.gifPlayer._updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
-        self.gifPlayer._updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
         Thread(target=self.update_slider_thread, daemon=True).start()
 
 

@@ -138,6 +138,14 @@ def after_show_setup(self: QtW.QMainWindow):
         self.app.setQuitOnLastWindowClosed(False)   # ensure qt does not exit until we tell it to
         self.tray_icon = get_tray_icon(self)
 
+    # TODO: why aren't currentIndexChanged and valueChanged called when the config loads?
+    self.gifPlayer._updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
+    self.gifPlayer._updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
+    self.gifPlayer._updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
+    self.vlc.set_text_height(self.dialog_settings.spinTextHeight.value())
+    self.vlc.set_text_x(self.dialog_settings.spinTextX.value())
+    self.vlc.set_text_y(self.dialog_settings.spinTextY.value())
+
     Thread(target=self.fast_start_interface_thread, daemon=True).start()
     connect_shortcuts(self)                         # setup and connect hotkeys
 
