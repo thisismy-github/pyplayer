@@ -1511,6 +1511,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # extra setup before we absolutely must wait for the media to finish parsing
             self.is_paused = False                  # force_pause could be used here, but it is slightly more efficient this way
             set_pause_button_text('𝗜𝗜')
+            self.restarted = False
             #if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())  # force volume to quickly correct gain issue
             self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
 
@@ -1696,17 +1697,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def navigate(self, forward=True, seconds=5):    # slightly longer than it could be, but cleaner/more readable
         if self.mime_type == 'image': return self.cycle_media(next=forward)  # cycle images with basic navigation keys
+
+        # calculate and update to new frame
         old_frame = get_progess_slider()
         if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
             if old_frame == self.frame_count and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = 0
             else: new_frame = min(self.frame_count, old_frame + self.frame_rate_rounded * seconds)
-        else:   # TODO use vvv this line vvv as workaround to VLC bug that sometimes causes media to play 1 frame when wrapping?
+        else:   # TODO use "<= 1" as workaround for bug that causes media sometimes to play 1 frame when wrapping?
             #if old_frame <= 1 and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
             if old_frame == 0 and self.dialog_settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
             else: new_frame = max(0, old_frame - self.frame_rate_rounded * seconds)
         set_and_update_progress(new_frame)
-        if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.pause()  # auto-unpause after restart
-        if self.isFullScreen() and self.dialog_settings.checkTextOnFullScreenPosition.isChecked():   # if we're in fullscreen mode, show the current position as a marquee
+
+        # auto-unpause after restart and show current position as a marquee, if desired
+        if self.restarted and self.dialog_settings.checkNavigationUnpause.isChecked(): self.force_pause(False)
+        if self.isFullScreen() and self.dialog_settings.checkTextOnFullScreenPosition.isChecked():
             h, m, s, _ = get_hms(self.current_time)
             current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
             max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
