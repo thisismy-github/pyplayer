@@ -1962,12 +1962,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             gif_player.gif.setPaused(False or self.is_paused)
 
 
-    def save_as(self, *args, noun='media', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
+    def save_as(
+        self,
+        *args,
+        noun='media',
+        filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
+        unique_default=True
+    ):
         ''' Opens a file dialog with `filter` and the caption "Save `noun`
             as...", before saving to the user-selected path, if any.
             See `save()` for more details. '''
         if not self.video: return self.statusbar.showMessage('No media is playing.', 10000)
-        Thread(target=self._save_as, args=(noun, filter), daemon=True).start()
+        Thread(target=self._save_as, args=(noun, filter, unique_default), daemon=True).start()
 
 
     def save(self, *args, dest=None, ext_hint=None):    # *args to capture unused signal args
@@ -1980,11 +1986,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         Thread(target=self._save, args=(dest, ext_hint), daemon=True).start()
 
 
-    def _save_as(self, noun='media', filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'):
+    def _save_as(
+        self,
+        noun='media',
+        filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
+        unique_default=True
+    ):
         ''' Do not call this directly. Use `save_as()` instead. '''
         try:
             logging.info('Opening \'Save As...\' dialogue.')
-            file = self.browse_for_save_file(noun=noun, filter=filter)
+            file = self.browse_for_save_file(noun=noun, filter=filter, unique_default=unique_default)
             if file is None: return
             logging.info(f'Saving as \'{file}\'')
             self._save(dest=file)
@@ -2032,7 +2043,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not output_text or output_text == video:
                 no_name_specified = True
                 if delete_after_save == FULL_DELETE: dest = video
-                elif self.dialog_settings.checkAlwaysSaveAs.isChecked(): return self._save_as()
+                elif self.dialog_settings.checkAlwaysSaveAs.isChecked(): return self._save_as(unique_default=False)
                 else: dest = add_path_suffix(video, '_edited', unique=True)
             else:
                 dest = output_text
