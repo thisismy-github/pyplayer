@@ -2055,6 +2055,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     dest = f'{dest}{new_ext}'               # use extension hint if specified, otherwise just use source file's extension
             dirname, basename = os.path.split(dest)         # sanitize our custom destination (sanitize() does not account for full paths)
             dest = os.path.join(dirname, sanitize(basename))
+        dest = os.path.abspath(dest)                        # clean up destination
 
         # no operations means we'll be returning early, but we might still be renaming the video
         if not operations_detected:
@@ -2207,6 +2208,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         video = temp_name
                     if delete_after_save == MARK_DELETE: self.marked_for_deletion.add(video)
 
+                if self.video == final_dest: self.stop()    # stop player if user started playing file that's being changed
                 if os.path.exists(final_dest): os.replace(dest, final_dest)
                 else: os.renames(dest, final_dest)
 
