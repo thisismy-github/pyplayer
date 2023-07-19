@@ -133,7 +133,7 @@ background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgb
           <string notr="true"/>
          </property>
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p style=&quot;line-height:0.7&quot;&gt;?version&lt;/p&gt;&lt;p style=&quot;line-height:0.3&quot;&gt;&lt;span style=&quot;font-size:10.5pt;&quot;&gt;&lt;a href=&quot;https://www.github.com/thisismy-github/pyplayer&quot;&gt;&lt;span style=&quot;font-size:10.5pt; text-decoration: underline; color:#00aaff;&quot;&gt;github&lt;/span&gt;&lt;/a&gt; created 2022 by thisismy-github&lt;/span&gt;&lt;/p&gt;&lt;p &gt;&lt;a href=&quot;https://www.thisismywebsite.net/&quot;&gt;&lt;span style=&quot;font-size:10.5pt; text-decoration: underline; color:#00aaff;&quot;&gt;https://www.thisismywebsite.net/&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p style=&quot;line-height:0.7&quot;&gt;?version&lt;/p&gt;&lt;p style=&quot;line-height:0.3&quot;&gt;&lt;span style=&quot;font-size:10.5pt;&quot;&gt;&lt;a href=&quot;https://www.github.com/thisismy-github/pyplayer&quot;&gt;&lt;span style=&quot;font-size:10.5pt; text-decoration: underline; color:#00aaff;&quot;&gt;github&lt;/span&gt;&lt;/a&gt; 2022-2023 by thisismy-github&lt;/span&gt;&lt;/p&gt;&lt;p &gt;&lt;a href=&quot;https://www.thisismywebsite.net/&quot;&gt;&lt;span style=&quot;font-size:10.5pt; text-decoration: underline; color:#00aaff;&quot;&gt;https://www.thisismywebsite.net/&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
