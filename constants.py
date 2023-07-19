@@ -23,27 +23,58 @@ PLATFORM = platform.system()
 SCRIPT_PATH = sys.executable if IS_COMPILED else os.path.realpath(__file__)
 CWD = os.path.dirname(SCRIPT_PATH)
 
-BIN_DIR = os.path.join(CWD, 'bin' if not IS_COMPILED else 'PyQt5')
-TEMP_DIR = os.path.join(BIN_DIR, 'temp')
-PROBE_DIR = os.path.join(TEMP_DIR, 'probed')
-THEME_DIR = os.path.join(CWD, 'themes')
-RESOURCE_DIR = os.path.join(THEME_DIR, 'resources')
-LOG_PATH = os.path.join(CWD, 'pyplayer.log')
-CONFIG_PATH = os.path.join(CWD, 'config.ini')
-PID_PATH = os.path.join(TEMP_DIR, f'{os.getpid()}.pid')
+_sep = os.sep
+BIN_DIR = f'{CWD}{_sep}{"PyQt5" if IS_COMPILED else "bin"}'
+TEMP_DIR = f'{BIN_DIR}{_sep}temp'
+PROBE_DIR = f'{TEMP_DIR}{_sep}probed'
+THEME_DIR = f'{CWD}{_sep}themes'
+RESOURCE_DIR = f'{THEME_DIR}{_sep}resources'
+LOG_PATH = f'{CWD}{_sep}pyplayer.log'
+CONFIG_PATH = f'{CWD}{_sep}config.ini'
+PID_PATH = f'{TEMP_DIR}{_sep}{os.getpid()}.pid'
+THUMBNAIL_DIR = f'{TEMP_DIR}{_sep}thumbnails'
 
-THUMBNAIL_DIR = os.path.join(TEMP_DIR, 'thumbnails')
 for _dir in (THEME_DIR, TEMP_DIR, PROBE_DIR, THUMBNAIL_DIR):
     try: os.makedirs(_dir)
     except: continue
 
 # ---------------------
 
-SUBTITLE_EXTENSIONS = ('.cdg', '.idx', '.srt', '.sub', '.utf', '.ass', '.ssa', '.aqt', '.jss',
-                       '.psb', '.it', '.sami', 'smi', '.txt', '.smil', '.stl', '.usf', '.dks',
-                       '.pjs', '.mpl2', '.mks', '.vtt', '.tt', '.ttml', '.dfxp', '.scc')
+SUBTITLE_EXTENSIONS = ('.cdg', '.idx', '.srt', '.sub', '.utf', '.ass', '.ssa',
+                       '.aqt', '.jss', '.psb', '.it', '.sami', 'smi', '.txt',
+                       '.smil', '.stl', '.usf', '.dks', '.pjs', '.mpl2',
+                       '.mks', '.vtt', '.tt', '.ttml', '.dfxp', '.scc')
 
 SPECIAL_TRIM_EXTENSIONS = ('x-msvideo', 'quicktime', 'x-flv', 'webm', 'mpeg', 'ogg')
+
+VIDEO_EXTENSIONS = ('.mp4', '.mpeg', '.m1v', '.mpe', '.mpg', '.mov', '.qt',
+                    '.webm', '.avi', '.movie', '.264', '.3g2', '.3gp', '.3gp2',
+                    '.3gpp', '.amv', '.asf', '.asx', '.divx', '.dv', '.evo',
+                    '.f4v', '.flv', '.h264', '.hdmov', '.IVF', '.m2t', '.m2ts',
+                    '.m2v', '.m4a', '.m4v', '.mk3d', '.mkv', '.mod', '.mp2v',
+                    '.mp4v', '.mpv2', '.mpv4', '.mts', '.mxf', '.ogm', '.ogv',
+                    '.ogx', '.rm', '.rmvb', '.tod', '.tp', '.ts', '.tts',
+                    '.uvu', '.video', '.vob', '.wm', '.wmv', '.wmx', '.wvx')
+
+AUDIO_EXTENSIONS = ('.m3u', '.m3u8', '.au', '.snd', '.mp3', '.mp2', '.aif',
+                    '.aifc', '.aiff', '.ra', '.wav', '.mpa', '.aa', '.aac',
+                    '.aax', '.ac3', '.adt', '.adts', '.ape', '.ec3', '.flac',
+                    '.lpcm', '.m4b', '.m4p', '.m4r', '.mid', '.midi', '.mka',
+                    '.mpc', '.oga', '.ogg', '.opus', '.pls', '.rmi', '.tak',
+                    '.wave', '.wax', '.weba', '.wma', '.wv')
+
+IMAGE_EXTENSIONS = ('.bmp', '.gif', '.ief', '.jpg', '.jpe', '.jpeg', '.png',
+                    '.svg', '.tiff', '.tif', '.ico', '.ras', '.pnm', '.pbm',
+                    '.pgm', '.ppm', '.rgb', '.xbm', '.xpm', '.xwd', '.3fr',
+                    '.ari', '.arw', '.bay', '.cap', '.cb7', '.cbr', '.cbz',
+                    '.cr2', '.cr3', '.crw', '.dcr', '.dcs', '.dds', '.dib',
+                    '.dng', '.drf', '.eip', '.emf', '.erf', '.fff', '.iiq',
+                    '.jfif', '.jxr', '.k25', '.kdc', '.mef', '.mos', '.mrw',
+                    '.nef', '.nrw', '.orf', '.ori', '.pef', '.ptx', '.pxn',
+                    '.raf', '.raw', '.rw2', '.rwl', '.sr2', '.srw', '.wdp',
+                    '.webp', '.wmf', '.x3f')
+
+ALL_MEDIA_EXTENSIONS = VIDEO_EXTENSIONS + AUDIO_EXTENSIONS + IMAGE_EXTENSIONS
 
 # ---------------------
 
@@ -63,6 +94,15 @@ Ctrl + click: Immediately delete current media.
 Right-click for more options. Deletion-confirmation
 prompt is shown on exit if any files are marked.'''
 
+SNAPSHOT_TOOLTIP_BASE = '''Takes a snapshot of the current media at its current position.
+
+Click: ?click
+Shift + click: ?shiftclick
+Ctrl + click: ?ctrlclick
+Alt + click: ?altclick
+
+Right-click for more options.'''
+
 SIZE_DIALOG_DIMENSIONS_LABEL_BASE = '''If width AND height are 0,
 the native resolution is used
 (?resolution).
@@ -75,12 +115,12 @@ Supports percentages, such as 50%.'''
 # ---------------------
 
 if IS_COMPILED:
-    FFMPEG = os.path.join(CWD, 'plugins', 'ffmpeg', 'ffmpeg')
-    FFPROBE = os.path.join(CWD, 'plugins', 'ffmpeg', 'ffprobe')
+    FFMPEG = f'{CWD}{_sep}plugins{_sep}ffmpeg{_sep}ffmpeg'
+    FFPROBE = f'{CWD}{_sep}plugins{_sep}ffmpeg{_sep}ffprobe'
 else:
     folder = 'ffmpeg-windows' if PLATFORM == 'Windows' else 'ffmpeg-unix'
-    FFMPEG = os.path.join(CWD, 'executable', 'include', folder, 'ffmpeg')
-    FFPROBE = os.path.join(CWD, 'executable', 'include', folder, 'ffprobe')
+    FFMPEG = f'{CWD}{_sep}executable{_sep}include{_sep}{folder}{_sep}ffmpeg'
+    FFPROBE = f'{CWD}{_sep}executable{_sep}include{_sep}{folder}{_sep}ffprobe'
 
 
 def verify_ffmpeg(self, warning: bool = True, force_warning: bool = False) -> str:
