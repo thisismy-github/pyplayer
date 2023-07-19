@@ -385,4 +385,4 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.spinNavigation4.valueChanged.connect(refresh_navigation_labels)
 
     # NOTE: this looks weird if the gif has custom frame-by-frame delays, but it's perfectly fine
-    self.gifPlayer.gif.frameChanged.connect(self.update_progress)
+    self.gifPlayer.gif.frameChanged.connect(self.update_gif_progress)

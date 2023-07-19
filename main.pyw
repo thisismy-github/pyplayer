@@ -2795,6 +2795,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.set_save_progress_current_signal.emit(0)
 
 
+    def update_gif_progress(self, frame: int):
+        ''' Updates animated GIF progress by manually looping
+            the GIF when outside the designated trim markers. '''
+        if self.minimum <= frame <= self.maximum: update_progress(frame)
+        else: set_and_update_progress(self.minimum)
+
+
     def update_progress(self, frame: int):
         ''' Updates every section of the UI to reflect the
             current `frame`. Clamps playback to desired trims.
