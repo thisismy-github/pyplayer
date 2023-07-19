@@ -1416,6 +1416,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 magic = QtCore.QByteArray()         # you HAVE to do these two lines
                 stream << magic                     # we are bitshifting literally nothing into the data stream
                 mime.setData('Preferred DropEffect', data)
+                if path == self.video: self.stop()  # stop player if necessary so we can actually paste the file somewhere
             else:                                   # TODO crossplatform linux/mac support
                 return show_on_statusbar('Cutting files is limited to Windows for now.')
             log_on_statusbar(f'File "{os.path.basename(path)}" cut to clipboard.')
