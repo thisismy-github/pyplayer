@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>353</width>
     <height>730</height>
    </rect>
   </property>
@@ -35,6 +35,32 @@
    <property name="verticalSpacing">
     <number>8</number>
    </property>
+   <item row="5" column="2" rowspan="2">
+    <spacer name="horizontalSpacer_4">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>5</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="5" column="1" rowspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
    <item row="4" column="0" colspan="3">
     <widget class="QScrollArea" name="scrollArea">
      <property name="horizontalScrollBarPolicy">
@@ -47,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1465</y>
-        <width>381</width>
-        <height>2154</height>
+        <y>0</y>
+        <width>339</width>
+        <height>2377</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -146,7 +172,8 @@ following variables are replaced with their corresponding values:
 ?paused		The pause-state of the media being played (▶/𝗜𝗜/■).
 ?fps		The FPS of the media being played.
 ?duration		The duration of the media being played.
-?size		The dimensions of the media being played.
+?size		The filesize of the media being played.
+?resolution		The dimensions of the media being played.
 ?ratio		The aspect ratio of the media being played.
 ?volume		The volume of the media being played.
 ?speed		The playback speed of the media being played.</string>
@@ -173,13 +200,14 @@ following variables are replaced with their corresponding values:
 ?paused		The pause-state of the media being played (▶/𝗜𝗜/■).
 ?fps		The FPS of the media being played.
 ?duration		The duration of the media being played.
-?size		The dimensions of the media being played.
+?size		The filesize of the media being played.
+?resolution		The dimensions of the media being played.
 ?ratio		The aspect ratio of the media being played.
 ?volume		The volume of the media being played.
 ?speed		The playback speed of the media being played.</string>
                </property>
                <property name="text">
-                <string notr="true">?paused ?name (?duration | ?fpsfps)</string>
+                <string notr="true">?paused ?name (?duration | ?fpsfps | ?size)</string>
                </property>
               </widget>
              </item>
@@ -434,16 +462,14 @@ folder from any dialog.</string>
              <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
-                <string>If checked, the media player will completely stop
-upon the completion of a media file, instead of
-just pausing the media. This is how VLC handles
-media files.
+                <string>If checked, the media player will completely stop upon the
+completion of a media file, instead of just pausing the media.
+This is how VLC handles media files.
 
-NOTE: If the player is not stopped, the media file
-will still be considered &quot;in-use&quot; by your OS. If you
-need to get around this, you can stop the player
-manually by right clicking the pause button or by
-going to &quot;File-&gt;Stop Player&quot; in the menubar.</string>
+NOTE: If the player is not stopped, video and audio files will
+still be considered &quot;in-use&quot; by your OS. You can manually
+stop the player by right-clicking the player or pause button,
+or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
                </property>
                <property name="text">
                 <string>Stop player after media has finished (VLC behavior)</string>
@@ -451,36 +477,6 @@ going to &quot;File-&gt;Stop Player&quot; in the menubar.</string>
               </widget>
              </item>
              <item row="12" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkNavigationWrap">
-               <property name="toolTip">
-                <string>If checked, using the arrow keys or J/L to navigate forwards or backwards in a video
-while paused will wrap around to opposite side if you're at the start/end of the video.
-
-Example: If you're at the end of a video and press ➞, you'll be placed back at the start.</string>
-               </property>
-               <property name="text">
-                <string>Arrow keys wrap around progress bar</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="13" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkNavigationUnpause">
-               <property name="toolTip">
-                <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
-has finished will automatically unpause the media and resume playback.</string>
-               </property>
-               <property name="text">
-                <string>Navigating unpauses media after media has finished</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
                <property name="toolTip">
                 <string>If checked, copying a media's path to your clipboard
@@ -498,7 +494,7 @@ systems do not use backslashes in their paths.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRememberDropFolder">
                <property name="toolTip">
                 <string>If checked, dragging and dropping media will remember
@@ -515,7 +511,7 @@ folders remembered.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -530,7 +526,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="17" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
                <property name="toolTip">
                 <string>If checked, opening recent files through
@@ -542,7 +538,7 @@ the newly played file to the top.</string>
                </property>
               </widget>
              </item>
-             <item row="18" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -568,7 +564,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="19" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <widget class="QCheckBox" name="checkFirstFileTrayReset">
                <property name="toolTip">
                 <string>If checked, minimizing to the system tray,
@@ -588,7 +584,7 @@ file you open.&quot;</string>
                </property>
               </widget>
              </item>
-             <item row="20" column="0" colspan="2">
+             <item row="18" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -625,10 +621,13 @@ recycle bin instead of being immediately/permanently deleted.</string>
                  <number>1</number>
                 </property>
                 <property name="leftMargin">
-                 <number>9</number>
+                 <number>6</number>
                 </property>
                 <property name="topMargin">
                  <number>5</number>
+                </property>
+                <property name="rightMargin">
+                 <number>6</number>
                 </property>
                 <property name="bottomMargin">
                  <number>6</number>
@@ -741,20 +740,6 @@ to the system tray.</string>
                  </layout>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="checkIgnoreFocusWithAutoplay">
-                  <property name="toolTip">
-                   <string>If checked, files that are opened through
-autoplay will never raise or focus the window.</string>
-                  </property>
-                  <property name="text">
-                   <string>Ignore focus settings while Autoplay is on</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <widget class="QCheckBox" name="checkClampOnResize">
                   <property name="toolTip">
                    <string>If checked, the window will be moved
@@ -802,9 +787,20 @@ of the screen it's on when opening media.</string>
                   </item>
                   <item row="0" column="1">
                    <widget class="QComboBox" name="comboScaleImages">
-                    <property name="currentIndex">
-                     <number>1</number>
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
                     </property>
+                    <property name="currentIndex">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>Prefer native size, fit if needed</string>
+                     </property>
+                    </item>
                     <item>
                      <property name="text">
                       <string>No scaling (native size)</string>
@@ -834,9 +830,20 @@ of the screen it's on when opening media.</string>
                   </item>
                   <item row="1" column="1">
                    <widget class="QComboBox" name="comboScaleArt">
-                    <property name="currentIndex">
-                     <number>1</number>
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
                     </property>
+                    <property name="currentIndex">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>Prefer native size, fit if needed</string>
+                     </property>
+                    </item>
                     <item>
                      <property name="text">
                       <string>No scaling (native size)</string>
@@ -860,12 +867,18 @@ of the screen it's on when opening media.</string>
                      <string>Sets how to scale the size of animated GIFs within the window.</string>
                     </property>
                     <property name="text">
-                     <string>GIF scaling:</string>
+                     <string>Animated GIF scaling:</string>
                     </property>
                    </widget>
                   </item>
                   <item row="2" column="1">
                    <widget class="QComboBox" name="comboScaleGifs">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
                     <property name="currentIndex">
                      <number>1</number>
                     </property>
@@ -1289,6 +1302,131 @@ away after removing your mouse from the progress bar.</string>
             </widget>
            </item>
            <item>
+            <widget class="QGroupBox" name="groupBox_9">
+             <property name="title">
+              <string>Autoplay</string>
+             </property>
+             <layout class="QFormLayout" name="formLayout_11">
+              <property name="horizontalSpacing">
+               <number>5</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>3</number>
+              </property>
+              <property name="topMargin">
+               <number>6</number>
+              </property>
+              <property name="rightMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
+               <number>6</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_68">
+                <property name="toolTip">
+                 <string>The number of files that Autoplay will remember in a
+given folder during shuffle mode. This is used to avoid
+early repeats of the same files. Autoplay will remember
+this list until you shuffle from within a different folder.</string>
+                </property>
+                <property name="text">
+                 <string>Max files to remember while shuffling</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QSpinBox" name="spinAutoplayMaxFiles">
+                <property name="toolTip">
+                 <string>The number of files that Autoplay will remember in a
+given folder during shuffle mode. This is used to avoid
+early repeats of the same files. Autoplay will remember
+this list until you shuffle from within a different folder.</string>
+                </property>
+                <property name="suffix">
+                 <string> file(s)</string>
+                </property>
+                <property name="maximum">
+                 <number>999</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkAutoplayHideMarquee">
+                <property name="toolTip">
+                 <string>If checked, Autoplay will not show the media's filename
+over the screen when opening each file, even if you
+have the &quot;media opened&quot; marquee enabled below.</string>
+                </property>
+                <property name="text">
+                 <string>Hide &quot;media opened&quot; marquee while autoplaying</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkAutoplaySameMime">
+                <property name="toolTip">
+                 <string>If checked, Autoplay will only play media with
+the same mime type (video, audio, or image)
+as the file you started with.</string>
+                </property>
+                <property name="text">
+                 <string>Ignore other mime types while Autoplay is on</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkAutoplayIgnoreFocus">
+                <property name="toolTip">
+                 <string>If checked, files that are opened through
+autoplay will never raise or focus the window.</string>
+                </property>
+                <property name="text">
+                 <string>Ignore focus settings while Autoplay is on</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkAutoplayAddToRecents">
+                <property name="toolTip">
+                 <string>If checked, Autoplay (with shuffle mode disabled) will
+add each file played to the recent files list like normal.</string>
+                </property>
+                <property name="text">
+                 <string>Non-shuffle mode adds to recent files list</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkAutoplayShuffleAddToRecents">
+                <property name="toolTip">
+                 <string>If checked, Autoplay (with shuffle mode enabled) will
+add each file played to the recent files list like normal.</string>
+                </property>
+                <property name="text">
+                 <string>Shuffle mode adds to recent files list</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
             <widget class="QGroupBox" name="groupBox_7">
              <property name="title">
               <string>Zooming</string>
@@ -1405,68 +1543,6 @@ zoom, the larger the jump.</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
-               <widget class="QLabel" name="label_61">
-                <property name="toolTip">
-                 <string>The minimum zoom factor allowed for media,
-relative to the current size of your window.</string>
-                </property>
-                <property name="text">
-                 <string>Minimum zoom</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="1">
-               <widget class="QDoubleSpinBox" name="spinZoomMinimumFactor">
-                <property name="suffix">
-                 <string>x the current window size</string>
-                </property>
-                <property name="minimum">
-                 <double>0.050000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>1.000000000000000</double>
-                </property>
-                <property name="singleStep">
-                 <double>0.050000000000000</double>
-                </property>
-                <property name="value">
-                 <double>0.250000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="1">
-               <widget class="QCheckBox" name="checkZoomAutoDisable1x">
-                <property name="toolTip">
-                 <string>If checked and &quot;Minimum zoom&quot; is set to 1.00x,
-decreasing the zoom to 1.00x will disable zoom-
-mode and reset the media's position.</string>
-                </property>
-                <property name="text">
-                 <string>Auto-disable zoom at 1x size</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="1">
-               <widget class="QCheckBox" name="checkZoomForceMinimum">
-                <property name="toolTip">
-                 <string>If checked, and the minimum zoom factor cannot
-actually be reached (i.e. the media is very small
-to begin with), the minimum zoom will be set
-relative to the media's size, not the window's.</string>
-                </property>
-                <property name="text">
-                 <string>Zoom relative to media's size if
-minimum zoom cannot be reached</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="0">
                <widget class="QLabel" name="label_63">
                 <property name="toolTip">
@@ -1537,6 +1613,68 @@ here means smaller jumps between levels.</string>
                 </property>
                 <property name="value">
                  <number>24</number>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
+               <widget class="QLabel" name="label_61">
+                <property name="toolTip">
+                 <string>The minimum zoom factor allowed for media,
+relative to the current size of your window.</string>
+                </property>
+                <property name="text">
+                 <string>Minimum zoom</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QDoubleSpinBox" name="spinZoomMinimumFactor">
+                <property name="suffix">
+                 <string>x the current window size</string>
+                </property>
+                <property name="minimum">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="singleStep">
+                 <double>0.050000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.250000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QCheckBox" name="checkZoomAutoDisable1x">
+                <property name="toolTip">
+                 <string>If checked and &quot;Minimum zoom&quot; is set to 1.00x,
+decreasing the zoom to 1.00x will disable zoom-
+mode and reset the media's position.</string>
+                </property>
+                <property name="text">
+                 <string>Auto-disable zoom at 1x size</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QCheckBox" name="checkZoomForceMinimum">
+                <property name="toolTip">
+                 <string>If checked, and the minimum zoom factor cannot
+actually be reached (i.e. the media is very small
+to begin with), the minimum zoom will be set
+relative to the media's size, not the window's.</string>
+                </property>
+                <property name="text">
+                 <string>Zoom relative to media's size if
+minimum zoom can't be reached</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -1745,7 +1883,7 @@ visible as a visual cue once the current media finishes.</string>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QPushButton" name="default_snapshot_path_browse">
+                   <widget class="QPushButton" name="buttonBrowseDefaultSnapshotPath">
                     <property name="minimumSize">
                      <size>
                       <width>22</width>
@@ -1801,6 +1939,56 @@ visible as a visual cue once the current media finishes.</string>
                   </property>
                   <property name="placeholderText">
                    <string>snap_?date_?count</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="label_54">
+                  <property name="toolTip">
+                   <string>The format to use for naming snapshots of GIFs.
+See &quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>Snapshot GIF Format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="lineSnapshotGifFormat">
+                  <property name="toolTip">
+                   <string>The format to use for naming snapshots of GIFs.
+See &quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>?name_frame?frame</string>
+                  </property>
+                  <property name="placeholderText">
+                   <string>Use default name format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="label_55">
+                  <property name="toolTip">
+                   <string>The format to use for saving cover art. See
+&quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>Cover Art Name Format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="lineSnapshotArtFormat">
+                  <property name="toolTip">
+                   <string>The format to use for saving cover art. See
+&quot;Snapshot Name Format&quot; for more details.</string>
+                  </property>
+                  <property name="text">
+                   <string>?name_art</string>
+                  </property>
+                  <property name="placeholderText">
+                   <string>Use default name format</string>
                   </property>
                  </widget>
                 </item>
@@ -1886,30 +2074,6 @@ button to see most (but not all) of the available format codes.</string>
                   </item>
                  </layout>
                 </item>
-                <item row="5" column="0">
-                 <widget class="QLabel" name="label_48">
-                  <property name="text">
-                   <string>Snapshot Image Format</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="5" column="1">
-                 <widget class="QComboBox" name="comboSnapshotFormat">
-                  <property name="currentIndex">
-                   <number>1</number>
-                  </property>
-                  <item>
-                   <property name="text">
-                    <string>PNG</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>JPEG</string>
-                   </property>
-                  </item>
-                 </widget>
-                </item>
                 <item row="6" column="0">
                  <widget class="QLabel" name="label_46">
                   <property name="toolTip">
@@ -1927,6 +2091,22 @@ button to see most (but not all) of the available format codes.</string>
                   </property>
                   <property name="value">
                    <number>85</number>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0" colspan="2">
+                 <widget class="QCheckBox" name="checkSnapshotGifPNG">
+                  <property name="toolTip">
+                   <string>If checked, snapshots of GIFs and static images (but not
+cover art) will default to PNG format, regardless of your
+preference. JPEG format can still be used if manually
+chosen while doing a regular snapshot.</string>
+                  </property>
+                  <property name="text">
+                   <string>Prefer PNG format for GIF/image snapshots</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
@@ -1952,77 +2132,415 @@ to get the most accurate snapshot to your initial click as possible.
 Snapshots using dialogs will pause the video regardless.</string>
                   </property>
                   <property name="text">
-                   <string>Always pause videos when snapshotting</string>
+                   <string>Always temporarily pause videos when snapshotting</string>
                   </property>
                   <property name="checked">
                    <bool>true</bool>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0">
-                 <widget class="QLabel" name="label_54">
+                <item row="10" column="0" colspan="2">
+                 <widget class="QCheckBox" name="checkCopyPrimaryUsesDialog">
                   <property name="toolTip">
-                   <string>The format to use for naming snapshots of GIFs.
-See &quot;Snapshot Name Format&quot; for more details.</string>
+                   <string>If checked, clicking &quot;copy image&quot; will show a size/quality
+dialog beforehand. Holding shift, ctrl, or alt while clicking
+will skip this dialog. Otherwise, it's vice versa.</string>
                   </property>
                   <property name="text">
-                   <string>Snapshot GIF Format</string>
+                   <string>&quot;Copy image&quot; shows size/quality dialog by default</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
-                 <widget class="QLineEdit" name="lineSnapshotGifFormat">
+                <item row="12" column="0" colspan="2">
+                 <widget class="QGroupBox" name="groupBox_8">
                   <property name="toolTip">
-                   <string>The format to use for naming snapshots of GIFs.
-See &quot;Snapshot Name Format&quot; for more details.</string>
+                   <string>Change the behavior of the snapshot toolbar button based
+on which, if any, modifiers you're holding while clicking.</string>
                   </property>
+                  <property name="title">
+                   <string>Snapshot toolbar button behavior</string>
+                  </property>
+                  <layout class="QFormLayout" name="formLayout_12">
+                   <property name="verticalSpacing">
+                    <number>2</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>5</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>6</number>
+                   </property>
+                   <item row="0" column="0">
+                    <widget class="QLabel" name="label_48">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button without holding
+anything.</string>
+                     </property>
+                     <property name="text">
+                      <string>Default</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="0" column="1">
+                    <widget class="QComboBox" name="comboSnapshotDefault">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button without holding
+anything.</string>
+                     </property>
+                     <property name="currentIndex">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>Quick snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Snapshot with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Undo last snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (PyPlayer)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (default)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Explore last snapshot location</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot path</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Cut last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot image to clipboard</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                   <item row="1" column="0">
+                    <widget class="QLabel" name="label_72">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button while holding Shift.</string>
+                     </property>
+                     <property name="text">
+                      <string>Shift</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <widget class="QComboBox" name="comboSnapshotShift">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button while holding Shift.</string>
+                     </property>
+                     <property name="currentIndex">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>Quick snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Snapshot with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Undo last snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (PyPlayer)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (default)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Explore last snapshot location</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot path</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Cut last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot image to clipboard</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                   <item row="2" column="0">
+                    <widget class="QLabel" name="label_75">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button while holding Ctrl.</string>
+                     </property>
+                     <property name="text">
+                      <string>Ctrl</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="2" column="1">
+                    <widget class="QComboBox" name="comboSnapshotCtrl">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button while holding Ctrl.</string>
+                     </property>
+                     <property name="currentIndex">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>Quick snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Snapshot with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Undo last snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (PyPlayer)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (default)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Explore last snapshot location</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot path</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Cut last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot image to clipboard</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                   <item row="3" column="0">
+                    <widget class="QLabel" name="label_76">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button while holding Alt.</string>
+                     </property>
+                     <property name="text">
+                      <string>Alt</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item row="3" column="1">
+                    <widget class="QComboBox" name="comboSnapshotAlt">
+                     <property name="toolTip">
+                      <string>The action to perform when clicking the
+snapshot toolbar button while holding Alt.</string>
+                     </property>
+                     <property name="currentIndex">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <property name="text">
+                       <string>Quick snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Snapshot with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy image with size/quality dialog</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Undo last snapshot</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (PyPlayer)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Open last snapshot (default)</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Explore last snapshot location</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot path</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Cut last snapshot file</string>
+                      </property>
+                     </item>
+                     <item>
+                      <property name="text">
+                       <string>Copy last snapshot image to clipboard</string>
+                      </property>
+                     </item>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item row="11" column="0" colspan="2">
+                 <spacer name="verticalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeType">
+                   <enum>QSizePolicy::Fixed</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>1</width>
+                    <height>3</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="label_65">
                   <property name="text">
-                   <string>?name_frame?frame</string>
-                  </property>
-                  <property name="placeholderText">
-                   <string>Use default name format</string>
+                   <string>Snapshot Image Format</string>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_55">
-                  <property name="toolTip">
-                   <string>The format to use for saving cover art. See
-&quot;Snapshot Name Format&quot; for more details.</string>
+                <item row="5" column="1">
+                 <widget class="QComboBox" name="comboSnapshotFormat">
+                  <property name="currentIndex">
+                   <number>1</number>
                   </property>
-                  <property name="text">
-                   <string>Cover Art Name Format</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QLineEdit" name="lineSnapshotArtFormat">
-                  <property name="toolTip">
-                   <string>The format to use for saving cover art. See
-&quot;Snapshot Name Format&quot; for more details.</string>
-                  </property>
-                  <property name="text">
-                   <string>?name_art</string>
-                  </property>
-                  <property name="placeholderText">
-                   <string>Use default name format</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="7" column="0" colspan="2">
-                 <widget class="QCheckBox" name="checkSnapshotGifPNG">
-                  <property name="toolTip">
-                   <string>If checked, snapshots of GIFs and static images (but not
-cover art) will default to PNG format, regardless of your
-preference. JPEG format can still be used if manually
-chosen while doing a regular snapshot.</string>
-                  </property>
-                  <property name="text">
-                   <string>Prefer PNG format for GIF/image snapshots</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
+                  <item>
+                   <property name="text">
+                    <string>PNG</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>JPEG</string>
+                   </property>
+                  </item>
                  </widget>
                 </item>
                </layout>
@@ -2270,9 +2788,9 @@ before it begins to fade.</string>
                    </widget>
                   </item>
                   <item row="4" column="1">
-                   <widget class="QCheckBox" name="checkTextOnSubtitleChanged">
+                   <widget class="QCheckBox" name="checkTextOnTrackChanged">
                     <property name="text">
-                     <string>Subtitles changed</string>
+                     <string>Track changed</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
@@ -2557,7 +3075,7 @@ the currently playing media's height.</string>
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
            <property name="verticalSpacing">
-            <number>4</number>
+            <number>10</number>
            </property>
            <property name="leftMargin">
             <number>9</number>
@@ -2699,7 +3217,7 @@ the 5th most recently played file.</string>
                   <number>3</number>
                  </property>
                  <property name="topMargin">
-                  <number>2</number>
+                  <number>5</number>
                  </property>
                  <property name="bottomMargin">
                   <number>7</number>
@@ -2768,33 +3286,117 @@ simply be replayed as it is the most recent file.</string>
              </layout>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_33">
-             <property name="text">
-              <string>Scrollwheel volume</string>
+           <item row="1" column="0" colspan="2">
+            <widget class="QGroupBox" name="groupBox_10">
+             <property name="title">
+              <string>Navigation keys behavior</string>
              </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QSpinBox" name="spinVolumeScroll">
-             <property name="suffix">
-              <string>%</string>
-             </property>
-             <property name="prefix">
-              <string>Increments volume by </string>
-             </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>100</number>
-             </property>
-             <property name="value">
-              <number>5</number>
-             </property>
+             <layout class="QGridLayout" name="gridLayout_3">
+              <property name="topMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
+               <number>7</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>3</number>
+              </property>
+              <item row="1" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkNavigationUnpause">
+                <property name="toolTip">
+                 <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
+has finished will automatically unpause the media and resume playback.</string>
+                </property>
+                <property name="text">
+                 <string>Navigation unpauses media after media has finished</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkNavigationWrap">
+                <property name="toolTip">
+                 <string>If checked, navigating forwards or backwards in
+media while paused will wrap around to opposite
+side if you're at the start/end of the media.
+
+Example: If you're at the end of a video and press ➞
+(default hotkey), you'll be placed back at the start.</string>
+                </property>
+                <property name="text">
+                 <string>Navigation wraps around progress bar</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
            <item row="2" column="0" colspan="2">
+            <widget class="QGroupBox" name="groupBox_11">
+             <property name="title">
+              <string>Miscellaneous behavior</string>
+             </property>
+             <layout class="QFormLayout" name="formLayout_13">
+              <property name="verticalSpacing">
+               <number>3</number>
+              </property>
+              <property name="topMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
+               <number>7</number>
+              </property>
+              <item row="0" column="0">
+               <widget class="QLabel" name="label_33">
+                <property name="text">
+                 <string>Scrollwheel volume</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QSpinBox" name="spinVolumeScroll">
+                <property name="suffix">
+                 <string>%</string>
+                </property>
+                <property name="prefix">
+                 <string>Increments volume by </string>
+                </property>
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="value">
+                 <number>5</number>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkTrackCycleCantDisable">
+                <property name="toolTip">
+                 <string>If checked, using the &quot;cycle audio/video tracks&quot; hotkeys
+will loop back around to the first available track once all
+tracks have been cycled through. Otherwise, it will loop
+around to &quot;disabled&quot; first.</string>
+                </property>
+                <property name="text">
+                 <string>Do not disable audio/video tracks while cycling</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item row="3" column="0" colspan="2">
             <layout class="QFormLayout" name="formKeys">
              <property name="labelAlignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -2806,7 +3408,7 @@ simply be replayed as it is the most recent file.</string>
               <number>4</number>
              </property>
              <property name="topMargin">
-              <number>12</number>
+              <number>9</number>
              </property>
              <item row="0" column="0">
               <widget class="QLabel" name="label_7">
@@ -2836,229 +3438,137 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_8">
-               <property name="text">
-                <string>+5 seconds</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
+             <item row="3" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_10">
                <property name="spacing">
                 <number>4</number>
                </property>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plus5seconds">
+                <widget class="QKeySequenceFlexibleEdit" name="plus2">
                  <property name="keySequence">
                   <string>Right</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plus5seconds_"/>
+                <widget class="QKeySequenceFlexibleEdit" name="plus2_"/>
                </item>
               </layout>
              </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_9">
+             <item row="4" column="0">
+              <widget class="QLabel" name="labelNavigation2">
                <property name="text">
                 <string>-5 seconds</string>
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
+             <item row="4" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_11">
                <property name="spacing">
                 <number>4</number>
                </property>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minus5seconds">
+                <widget class="QKeySequenceFlexibleEdit" name="minus2">
                  <property name="keySequence">
                   <string>Left</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minus5seconds_"/>
+                <widget class="QKeySequenceFlexibleEdit" name="minus2_"/>
                </item>
               </layout>
              </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_10">
-               <property name="text">
-                <string>+10 seconds</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
+             <item row="5" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_12">
                <property name="spacing">
                 <number>4</number>
                </property>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plus10seconds">
+                <widget class="QKeySequenceFlexibleEdit" name="plus3">
                  <property name="keySequence">
                   <string>L</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plus10seconds_"/>
+                <widget class="QKeySequenceFlexibleEdit" name="plus3_"/>
                </item>
               </layout>
              </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_11">
+             <item row="6" column="0">
+              <widget class="QLabel" name="labelNavigation3">
                <property name="text">
                 <string>-10 seconds</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0">
-              <widget class="QLabel" name="label_12">
-               <property name="text">
-                <string>+1 frame</string>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="0">
-              <widget class="QLabel" name="label_13">
-               <property name="text">
-                <string>-1 frame</string>
-               </property>
-              </widget>
-             </item>
-             <item row="7" column="0">
-              <widget class="QLabel" name="label_18">
-               <property name="text">
-                <string>+0.05 speed</string>
-               </property>
-              </widget>
-             </item>
-             <item row="8" column="0">
-              <widget class="QLabel" name="label_19">
-               <property name="text">
-                <string>-0.05 speed</string>
-               </property>
-              </widget>
-             </item>
-             <item row="9" column="0">
-              <widget class="QLabel" name="label_14">
-               <property name="text">
-                <string>+5 volume</string>
-               </property>
-              </widget>
-             </item>
-             <item row="10" column="0">
-              <widget class="QLabel" name="label_15">
-               <property name="text">
-                <string>-5 volume</string>
-               </property>
-              </widget>
-             </item>
-             <item row="11" column="0">
-              <widget class="QLabel" name="label_22">
-               <property name="text">
-                <string>+0.5 volume boost</string>
-               </property>
-              </widget>
-             </item>
-             <item row="12" column="0">
-              <widget class="QLabel" name="label_23">
-               <property name="text">
-                <string>-0.5 volume boost</string>
-               </property>
-              </widget>
-             </item>
-             <item row="13" column="0">
-              <widget class="QLabel" name="label_16">
-               <property name="text">
-                <string>Mute</string>
-               </property>
-              </widget>
-             </item>
-             <item row="14" column="0">
-              <widget class="QLabel" name="label_17">
-               <property name="text">
-                <string>Fullscreen</string>
-               </property>
-              </widget>
-             </item>
-             <item row="15" column="0">
-              <widget class="QLabel" name="label_24">
-               <property name="text">
-                <string>Crop</string>
-               </property>
-              </widget>
-             </item>
-             <item row="16" column="0">
-              <widget class="QLabel" name="label_32">
-               <property name="text">
-                <string>Loop</string>
-               </property>
-              </widget>
-             </item>
-             <item row="17" column="0">
-              <widget class="QLabel" name="label_20">
-               <property name="text">
-                <string>Next media</string>
-               </property>
-              </widget>
-             </item>
-             <item row="18" column="0">
-              <widget class="QLabel" name="label_21">
-               <property name="text">
-                <string>Previous media</string>
-               </property>
-              </widget>
-             </item>
-             <item row="21" column="0">
-              <widget class="QLabel" name="label_25">
-               <property name="text">
-                <string>+50ms subtitle delay</string>
-               </property>
-              </widget>
-             </item>
-             <item row="22" column="0">
-              <widget class="QLabel" name="label_26">
-               <property name="text">
-                <string>-50ms subtitle delay</string>
-               </property>
-              </widget>
-             </item>
-             <item row="23" column="0">
-              <widget class="QLabel" name="label_27">
-               <property name="text">
-                <string>Cycle subtitle tracks</string>
-               </property>
-              </widget>
-             </item>
-             <item row="24" column="0">
-              <widget class="QLabel" name="label_28">
-               <property name="text">
-                <string>Mark for deletion</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
+             <item row="6" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_13">
                <property name="spacing">
                 <number>4</number>
                </property>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minus10seconds">
+                <widget class="QKeySequenceFlexibleEdit" name="minus3">
                  <property name="keySequence">
                   <string>J</string>
                  </property>
                 </widget>
                </item>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minus10seconds_"/>
+                <widget class="QKeySequenceFlexibleEdit" name="minus3_"/>
                </item>
               </layout>
              </item>
-             <item row="5" column="1">
+             <item row="7" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_16">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plus4">
+                 <property name="keySequence">
+                  <string>Shift+L</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plus4_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="8" column="0">
+              <widget class="QLabel" name="labelNavigation4">
+               <property name="text">
+                <string>-30 seconds</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_41">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minus4">
+                 <property name="keySequence">
+                  <string>Shift+J</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minus4_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="9" column="0">
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>+1 frame</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_14">
                <property name="spacing">
                 <number>4</number>
@@ -3075,7 +3585,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="6" column="1">
+             <item row="10" column="0">
+              <widget class="QLabel" name="label_13">
+               <property name="text">
+                <string>-1 frame</string>
+               </property>
+              </widget>
+             </item>
+             <item row="10" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_17">
                <property name="spacing">
                 <number>4</number>
@@ -3092,7 +3609,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="7" column="1">
+             <item row="11" column="0">
+              <widget class="QLabel" name="label_18">
+               <property name="text">
+                <string>+0.05 speed</string>
+               </property>
+              </widget>
+             </item>
+             <item row="11" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_22">
                <property name="spacing">
                 <number>4</number>
@@ -3105,11 +3629,22 @@ simply be replayed as it is the most recent file.</string>
                 </widget>
                </item>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plusspeed_"/>
+                <widget class="QKeySequenceFlexibleEdit" name="plusspeed_">
+                 <property name="keySequence">
+                  <string>&gt;</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
-             <item row="8" column="1">
+             <item row="12" column="0">
+              <widget class="QLabel" name="label_19">
+               <property name="text">
+                <string>-0.05 speed</string>
+               </property>
+              </widget>
+             </item>
+             <item row="12" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_23">
                <property name="spacing">
                 <number>4</number>
@@ -3122,11 +3657,22 @@ simply be replayed as it is the most recent file.</string>
                 </widget>
                </item>
                <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minusspeed_"/>
+                <widget class="QKeySequenceFlexibleEdit" name="minusspeed_">
+                 <property name="keySequence">
+                  <string>&lt;</string>
+                 </property>
+                </widget>
                </item>
               </layout>
              </item>
-             <item row="9" column="1">
+             <item row="13" column="0">
+              <widget class="QLabel" name="label_14">
+               <property name="text">
+                <string>+5 volume</string>
+               </property>
+              </widget>
+             </item>
+             <item row="13" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_18">
                <property name="spacing">
                 <number>4</number>
@@ -3143,7 +3689,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="10" column="1">
+             <item row="14" column="0">
+              <widget class="QLabel" name="label_15">
+               <property name="text">
+                <string>-5 volume</string>
+               </property>
+              </widget>
+             </item>
+             <item row="14" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_19">
                <property name="spacing">
                 <number>4</number>
@@ -3160,7 +3713,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="11" column="1">
+             <item row="15" column="0">
+              <widget class="QLabel" name="label_22">
+               <property name="text">
+                <string>+0.5 volume boost</string>
+               </property>
+              </widget>
+             </item>
+             <item row="15" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_26">
                <property name="spacing">
                 <number>4</number>
@@ -3177,7 +3737,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="12" column="1">
+             <item row="16" column="0">
+              <widget class="QLabel" name="label_23">
+               <property name="text">
+                <string>-0.5 volume boost</string>
+               </property>
+              </widget>
+             </item>
+             <item row="16" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_27">
                <property name="spacing">
                 <number>4</number>
@@ -3194,7 +3761,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="13" column="1">
+             <item row="17" column="0">
+              <widget class="QLabel" name="label_16">
+               <property name="text">
+                <string>Mute</string>
+               </property>
+              </widget>
+             </item>
+             <item row="17" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_20">
                <property name="spacing">
                 <number>4</number>
@@ -3211,7 +3785,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="14" column="1">
+             <item row="18" column="0">
+              <widget class="QLabel" name="label_17">
+               <property name="text">
+                <string>Fullscreen</string>
+               </property>
+              </widget>
+             </item>
+             <item row="18" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_21">
                <property name="spacing">
                 <number>4</number>
@@ -3228,7 +3809,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="15" column="1">
+             <item row="19" column="0">
+              <widget class="QLabel" name="label_24">
+               <property name="text">
+                <string>Crop</string>
+               </property>
+              </widget>
+             </item>
+             <item row="19" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_28">
                <property name="spacing">
                 <number>4</number>
@@ -3245,7 +3833,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="16" column="1">
+             <item row="20" column="0">
+              <widget class="QLabel" name="label_32">
+               <property name="text">
+                <string>Loop</string>
+               </property>
+              </widget>
+             </item>
+             <item row="20" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_37">
                <property name="spacing">
                 <number>4</number>
@@ -3262,7 +3857,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="17" column="1">
+             <item row="21" column="0">
+              <widget class="QLabel" name="label_20">
+               <property name="text">
+                <string>Next media</string>
+               </property>
+              </widget>
+             </item>
+             <item row="21" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_24">
                <property name="spacing">
                 <number>4</number>
@@ -3279,7 +3881,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="18" column="1">
+             <item row="22" column="0">
+              <widget class="QLabel" name="label_21">
+               <property name="text">
+                <string>Previous media</string>
+               </property>
+              </widget>
+             </item>
+             <item row="22" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_25">
                <property name="spacing">
                 <number>4</number>
@@ -3296,161 +3905,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="25" column="0">
-              <widget class="QLabel" name="label_29">
-               <property name="text">
-                <string>Delete immediately</string>
-               </property>
-              </widget>
-             </item>
-             <item row="26" column="0">
-              <widget class="QLabel" name="label_30">
-               <property name="text">
-                <string>Snapshot</string>
-               </property>
-              </widget>
-             </item>
-             <item row="27" column="0">
-              <widget class="QLabel" name="label_31">
-               <property name="text">
-                <string>Quick snapshot</string>
-               </property>
-              </widget>
-             </item>
-             <item row="21" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_29">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plussubtitledelay">
-                 <property name="keySequence">
-                  <string>H</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plussubtitledelay_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="22" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_31">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minussubtitledelay">
-                 <property name="keySequence">
-                  <string>G</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minussubtitledelay_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="23" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_32">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="cyclesubtitles">
-                 <property name="keySequence">
-                  <string>B</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="cyclesubtitles_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="24" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_33">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="markdeleted">
-                 <property name="keySequence">
-                  <string>Ctrl+D</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="markdeleted_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="25" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_34">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="deleteimmediately">
-                 <property name="keySequence">
-                  <string>Ctrl+Del</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="deleteimmediately_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="26" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_35">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="snapshot">
-                 <property name="keySequence">
-                  <string>Shift+F12</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="snapshot_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="27" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_36">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="quicksnapshot">
-                 <property name="keySequence">
-                  <string>F12</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="quicksnapshot_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="19" column="0">
+             <item row="23" column="0">
               <widget class="QLabel" name="label_59">
                <property name="text">
                 <string>Forward (recent files)</string>
                </property>
               </widget>
              </item>
-             <item row="20" column="0">
-              <widget class="QLabel" name="label_60">
-               <property name="text">
-                <string>Back (recent files)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="19" column="1">
+             <item row="23" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_30">
                <property name="spacing">
                 <number>4</number>
@@ -3467,7 +3929,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="20" column="1">
+             <item row="24" column="0">
+              <widget class="QLabel" name="label_60">
+               <property name="text">
+                <string>Back (recent files)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="24" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_38">
                <property name="spacing">
                 <number>4</number>
@@ -3483,6 +3952,392 @@ simply be replayed as it is the most recent file.</string>
                 <widget class="QKeySequenceFlexibleEdit" name="back_"/>
                </item>
               </layout>
+             </item>
+             <item row="25" column="0">
+              <widget class="QLabel" name="label_25">
+               <property name="text">
+                <string>+50ms subtitle delay</string>
+               </property>
+              </widget>
+             </item>
+             <item row="25" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_29">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plussubtitledelay">
+                 <property name="keySequence">
+                  <string>H</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plussubtitledelay_">
+                 <property name="keySequence">
+                  <string>Alt+S</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="26" column="0">
+              <widget class="QLabel" name="label_26">
+               <property name="text">
+                <string>-50ms subtitle delay</string>
+               </property>
+              </widget>
+             </item>
+             <item row="26" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_31">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minussubtitledelay">
+                 <property name="keySequence">
+                  <string>G</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minussubtitledelay_">
+                 <property name="keySequence">
+                  <string>Shift+S</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="27" column="0">
+              <widget class="QLabel" name="label_27">
+               <property name="text">
+                <string>Cycle subtitle tracks</string>
+               </property>
+              </widget>
+             </item>
+             <item row="27" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_32">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="cyclesubtitles">
+                 <property name="keySequence">
+                  <string>B</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="cyclesubtitles_">
+                 <property name="keySequence">
+                  <string>S</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="28" column="0">
+              <widget class="QLabel" name="label_66">
+               <property name="text">
+                <string>Cycle audio tracks</string>
+               </property>
+              </widget>
+             </item>
+             <item row="28" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_39">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="cycleaudio_">
+                 <property name="keySequence">
+                  <string>Shift+B</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="cycleaudio">
+                 <property name="keySequence">
+                  <string>A</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="29" column="0">
+              <widget class="QLabel" name="label_67">
+               <property name="text">
+                <string>Cycle video tracks</string>
+               </property>
+              </widget>
+             </item>
+             <item row="29" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_40">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="cyclevideo">
+                 <property name="keySequence">
+                  <string>Ctrl+B</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="cyclevideo_">
+                 <property name="keySequence">
+                  <string>V</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="30" column="0">
+              <widget class="QLabel" name="label_28">
+               <property name="text">
+                <string>Mark for deletion</string>
+               </property>
+              </widget>
+             </item>
+             <item row="30" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_33">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="markdeleted">
+                 <property name="keySequence">
+                  <string>Ctrl+D</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="markdeleted_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="31" column="0">
+              <widget class="QLabel" name="label_29">
+               <property name="text">
+                <string>Delete immediately</string>
+               </property>
+              </widget>
+             </item>
+             <item row="31" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_34">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="deleteimmediately">
+                 <property name="keySequence">
+                  <string>Ctrl+Del</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="deleteimmediately_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="32" column="0">
+              <widget class="QLabel" name="label_30">
+               <property name="text">
+                <string>Snapshot</string>
+               </property>
+              </widget>
+             </item>
+             <item row="32" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_35">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="snapshot">
+                 <property name="keySequence">
+                  <string>Shift+F12</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="snapshot_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="33" column="0">
+              <widget class="QLabel" name="label_31">
+               <property name="text">
+                <string>Quick snapshot</string>
+               </property>
+              </widget>
+             </item>
+             <item row="33" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_36">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="quicksnapshot">
+                 <property name="keySequence">
+                  <string>F12</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="quicksnapshot_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_42">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minus1">
+                 <property name="keySequence">
+                  <string>Shift+Left</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minus1_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="labelNavigation1">
+               <property name="text">
+                <string>-1 second</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_43">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plus1">
+                 <property name="keySequence">
+                  <string>Shift+Right</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plus1_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="0">
+              <widget class="QSpinBox" name="spinNavigation1">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> second</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QSpinBox" name="spinNavigation2">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> seconds</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+               <property name="value">
+                <number>5</number>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QSpinBox" name="spinNavigation3">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> seconds</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+               <property name="value">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="0">
+              <widget class="QSpinBox" name="spinNavigation4">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> seconds</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+               <property name="value">
+                <number>30</number>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -3601,32 +4456,6 @@ simply be replayed as it is the most recent file.</string>
      </widget>
     </widget>
    </item>
-   <item row="5" column="1" rowspan="2">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="2" rowspan="2">
-    <spacer name="horizontalSpacer_4">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Fixed</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>5</width>
-       <height>0</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -3650,8 +4479,6 @@ simply be replayed as it is the most recent file.</string>
   <tabstop>checkAlwaysSaveAs</tabstop>
   <tabstop>checkSaveAsUseMediaFolder</tabstop>
   <tabstop>checkStopOnFinish</tabstop>
-  <tabstop>checkNavigationWrap</tabstop>
-  <tabstop>checkNavigationUnpause</tabstop>
   <tabstop>checkCopyEscapeBackslashes</tabstop>
   <tabstop>checkRememberDropFolder</tabstop>
   <tabstop>checkAutoEnableSubtitles</tabstop>
@@ -3663,7 +4490,6 @@ simply be replayed as it is the most recent file.</string>
   <tabstop>checkFocusDoubleClick</tabstop>
   <tabstop>checkFocusMinimized</tabstop>
   <tabstop>checkFocusMinimizedToTray</tabstop>
-  <tabstop>checkIgnoreFocusWithAutoplay</tabstop>
   <tabstop>checkClampOnResize</tabstop>
   <tabstop>checkClampOnOpen</tabstop>
   <tabstop>comboScaleArt</tabstop>
@@ -3689,11 +4515,10 @@ simply be replayed as it is the most recent file.</string>
   <tabstop>spinFullScreenMaxOpacity</tabstop>
   <tabstop>checkFullScreenMediaFinishedLock</tabstop>
   <tabstop>lineDefaultSnapshotPath</tabstop>
-  <tabstop>default_snapshot_path_browse</tabstop>
+  <tabstop>buttonBrowseDefaultSnapshotPath</tabstop>
   <tabstop>lineSnapshotNameFormat</tabstop>
   <tabstop>lineSnapshotDateFormat</tabstop>
   <tabstop>buttonSnapshotDateHelp</tabstop>
-  <tabstop>comboSnapshotFormat</tabstop>
   <tabstop>spinSnapshotJpegQuality</tabstop>
   <tabstop>checkSnapshotRemember</tabstop>
   <tabstop>checkSnapshotPause</tabstop>
@@ -3711,7 +4536,7 @@ simply be replayed as it is the most recent file.</string>
   <tabstop>checkTextOnLoop</tabstop>
   <tabstop>checkTextOnSpeed</tabstop>
   <tabstop>checkTextOnSubtitleAdded</tabstop>
-  <tabstop>checkTextOnSubtitleChanged</tabstop>
+  <tabstop>checkTextOnTrackChanged</tabstop>
   <tabstop>checkTextOnSubtitleDelay</tabstop>
   <tabstop>checkTextOnSave</tabstop>
   <tabstop>checkTextOnFullScreenPosition</tabstop>
@@ -3727,14 +4552,14 @@ simply be replayed as it is the most recent file.</string>
   <tabstop>scrollArea</tabstop>
   <tabstop>pause</tabstop>
   <tabstop>pause_</tabstop>
-  <tabstop>plus5seconds</tabstop>
-  <tabstop>plus5seconds_</tabstop>
-  <tabstop>minus5seconds</tabstop>
-  <tabstop>minus5seconds_</tabstop>
-  <tabstop>plus10seconds</tabstop>
-  <tabstop>plus10seconds_</tabstop>
-  <tabstop>minus10seconds</tabstop>
-  <tabstop>minus10seconds_</tabstop>
+  <tabstop>plus2</tabstop>
+  <tabstop>plus2_</tabstop>
+  <tabstop>minus2</tabstop>
+  <tabstop>minus2_</tabstop>
+  <tabstop>plus3</tabstop>
+  <tabstop>plus3_</tabstop>
+  <tabstop>minus3</tabstop>
+  <tabstop>minus3_</tabstop>
   <tabstop>plusframe</tabstop>
   <tabstop>plusframe_</tabstop>
   <tabstop>minusframe</tabstop>

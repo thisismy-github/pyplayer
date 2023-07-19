@@ -5,7 +5,7 @@ from PyQt5 import QtWidgets as QtW
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg, get_unique_path, get_hms
+from util import ffmpeg, get_unique_path, get_hms, get_PIL_Image
 
 import os
 import time
@@ -34,6 +34,10 @@ gui: QtW.QMainWindow = None
 app: QtW.QApplication = None
 cfg = None
 settings = None
+ZOOM_DYNAMIC_FIT = 0
+ZOOM_NO_SCALING = 1
+ZOOM_FIT = 2
+ZOOM_FILL = 3
 
 
 # ------------------------------------------
@@ -54,6 +58,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.setMinimumHeight(10)
 
         # setup VLC instance
+        logger.info(f'VLC arguments: {qtstart.args.vlc}')
         self.instance = vlc.Instance(qtstart.args.vlc)      # VLC arguments can be passed through the --vlc argument
         self.player = self.instance.media_player_new()
         self.media = None
@@ -99,7 +104,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.text_y_offsets: dict = None
 
 
-    def play(self, file,  _error=False):
+    def play(self, file, _error=False):
         try:
             #self.show_text(os.path.basename(file))
             self.media = self.instance.media_new(file)  # combines media_new_path (local files) and media_new_location (urls)
@@ -279,13 +284,13 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         vh = gui.vheight
         ratio = vw / vh
         widget_ratio = w / h
-        if widget_ratio < ratio:                    # video fills viewport width (there are black bars top/bottom)
+        if widget_ratio < ratio:                            # video fills viewport width (there are black bars top/bottom)
             factor = vw / w
-            void = ((h * factor) - vh) / 2          # ((h - (w / video_ratio)) / 2)
+            void = ((h * factor) - vh) / 2                  # ((h - (w / video_ratio)) / 2)
             x = pos.x() / factor
             y = (pos.y() + void) / factor
             y = max(0, min(y, h))
-        else:                                       # video fills viewport height (there are black bars left/right)
+        else:                                               # video fills viewport height (there are black bars left/right)
             factor = vh / h
             void = ((w * factor) - vw) / 2
             x = (pos.x() + void) / factor
@@ -305,39 +310,52 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         # TODO which one is faster, vsize version or commented-out version? is having vsize JUST for this worth it?
         #vw = gui.vwidth
         #vh = gui.vheight
-        #video_ratio = vw / vh                       # vh is never 0 (handled in gui.open())
+        #video_ratio = vw / vh                              # vh is never 0 (handled in gui.open())
         #widget_ratio = w / h
-        #if widget_ratio < video_ratio:              # video fills viewport width (there are black bars top/bottom)
+        #if widget_ratio < video_ratio:                     # video fills viewport width (there are black bars top/bottom)
 
-        expected_size = gui.vsize.scaled(self.size(), Qt.KeepAspectRatio)
-        if expected_size.height() < h:              # video fills viewport width (there are black bars top/bottom)
-            logger.debug('Video fills viewport width (there are black bars top/bottom)')
-            #void = ((h - (w / video_ratio)) / 2)
-            void = (h - expected_size.height()) / 2
-            self.true_left =   0
-            self.true_right =  w
-            self.true_top =    int(void)            # ensure potential error is outside bounds of actual video size
-            self.true_bottom = math.ceil(h - void)  # ensure potential error is outside bounds of actual video size
-        else:                                       # video fills viewport height (there are black bars left/right)
-            logger.debug('Video fills viewport height (there are black bars left/right)')
-            #void = ((w - (h * video_ratio)) / 2)
-            void = (w - expected_size.width()) / 2
-            self.true_left =   int(void)            # ensure potential error is outside bounds of actual video size
-            self.true_right =  math.ceil(w - void)  # ensure potential error is outside bounds of actual video size
-            self.true_top =    0
-            self.true_bottom = h
-        self.true_rect = QtCore.QRect(QtCore.QPoint(self.true_left, self.true_top), QtCore.QPoint(self.true_right, self.true_bottom))
-        logger.debug(f'void={void} w={w} h={h} expected_size={expected_size}')
+        try:
+            #if gui.gifPlayer._baseZoom == 1.0:
+            #    expected_size = gui.vsize
+            #    hvoid = (h - expected_size.height()) / 2
+            #    wvoid = (w - expected_size.width()) / 2
+            #    self.true_left =   int(wvoid)               # ensure potential error is outside bounds of actual video size
+            #    self.true_right =  math.ceil(w - wvoid)     # ensure potential error is outside bounds of actual video size
+            #    self.true_top =    int(hvoid)               # ensure potential error is outside bounds of actual video size
+            #    self.true_bottom = math.ceil(h - hvoid)     # ensure potential error is outside bounds of actual video size
+
+            #else:
+            expected_size = gui.vsize.scaled(self.size(), Qt.KeepAspectRatio)
+            if expected_size.height() < h:              # video fills viewport width (there are black bars top/bottom)
+                logger.debug('Video fills viewport width (there are black bars top/bottom)')
+                #void = ((h - (w / video_ratio)) / 2)
+                void = (h - expected_size.height()) / 2
+                self.true_left =   0
+                self.true_right =  w
+                self.true_top =    int(void)            # ensure potential error is outside bounds of actual video size
+                self.true_bottom = math.ceil(h - void)  # ensure potential error is outside bounds of actual video size
+            else:                                       # video fills viewport height (there are black bars left/right)
+                logger.debug('Video fills viewport height (there are black bars left/right)')
+                #void = ((w - (h * video_ratio)) / 2)
+                void = (w - expected_size.width()) / 2
+                self.true_left =   int(void)            # ensure potential error is outside bounds of actual video size
+                self.true_right =  math.ceil(w - void)  # ensure potential error is outside bounds of actual video size
+                self.true_top =    0
+                self.true_bottom = h
+            logger.debug(f'void={void} w={w} h={h} expected_size={expected_size}')
+
+            self.true_rect = QtCore.QRect(QtCore.QPoint(self.true_left, self.true_top), QtCore.QPoint(self.true_right, self.true_bottom))
+        except: logger.debug(f'(!) find_true_borders failed: {format_exc()}')
 
 
     def update_crop_frames(self):
         ''' Updates the geometry for the four QFrames representing cropped out regions. Updates the tooltip to
             include the factored size of the visible region. Saves current set of factored points for later use. '''
-        s = self.selection
-        crop_top =    s[0].y()                      # TODO make these @property?
-        crop_left =   s[0].x()
-        crop_right =  s[1].x()
-        crop_bottom = s[2].y()
+        selection = self.selection
+        crop_top =    selection[0].y()                              # TODO make these @property?
+        crop_left =   selection[0].x()
+        crop_right =  selection[1].x()
+        crop_bottom = selection[2].y()
         crop_height = crop_bottom - crop_top
         w = self.width()
 
@@ -349,14 +367,26 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         f = self.last_factored_points
         self.setToolTip(f'{f[1].x() - f[0].x():.0f}x{f[2].y() - f[0].y():.0f}')
-        for index, point in enumerate(s): self.last_factored_points[index] = self.factor_point(point)
+
+        lfp = self.last_factored_points
+        #if gui.gifPlayer._baseZoom == 1:
+        #    lfp[0] = selection[0]
+        #    lfp[1] = selection[1]
+        #    lfp[2] = selection[2]
+        #    lfp[3] = selection[3]
+        #else:
+        factor_point = self.factor_point
+        lfp[0] = factor_point(selection[0])
+        lfp[1] = factor_point(selection[1])
+        lfp[2] = factor_point(selection[2])
+        lfp[3] = factor_point(selection[3])
 
 
     # ---------------------
     # Events
     # ---------------------
     def paintEvent(self, event: QtGui.QPaintEvent):
-        super().paintEvent(event)                           # TODO this line isn't actually needed?
+        #super().paintEvent(event)                          # TODO this line isn't actually needed?
         if not gui.actionCrop.isChecked(): return           # nothing else to paint if we're not cropping
 
         s = self.selection
@@ -406,10 +436,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
         elif all((not gui.timer_id_resize_snap,
-                  gui.is_snap_mode_enabled(),
                   time.time() - self.last_invalid_snap_state_time > 0.35,
                   gui.first_video_fully_loaded)):
-            gui.timer_id_resize_snap = gui.startTimer(150, Qt.CoarseTimer)
+            gui.timer_id_resize_snap = gui.startTimer(200, Qt.CoarseTimer)
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
@@ -584,29 +613,43 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
         ''' Indicates what the currently held button-combination will do once the drag-and-drop finishes on the statusbar and
             player (if possible). Keeps track of currently held button-combination to avoid repetitive statusbar/marquee calls. '''
-        if not gui.video:                       # no video is playing, can't show marquee. and don't bother showing special options
+        files = [url.toLocalFile() for url in event.mimeData().urls()]
+
+        if os.path.isdir(files[0]):
+            mod = event.keyboardModifiers()
+            if mod != self.dragdrop_last_modifiers:
+                if mod & Qt.ControlModifier:            # ctrl (play first file in folder without autoplay)
+                    msg = 'Drop to select first media file in folder without autoplay'
+                elif mod & Qt.AltModifier:              # alt (use shuffle mode to play video but disable autoplay)
+                    msg = 'Drop to select random media from folder without autoplay'
+                elif mod & Qt.ShiftModifier:            # shift (play folder with autoplay in shuffle mode)
+                    msg = 'Drop to autoplay folder contents with'
+                    if gui.actionAutoplayShuffle.isChecked(): msg += 'out shuffle mode'
+                    else: msg += ' shuffle mode'
+                else:                                   # no modifiers (play first file in folder with autoplay)
+                    msg = 'Drop to autoplay folder contents, or hold ctrl/alt/shift for more options'
+            gui.statusbar.showMessage(msg, 0)
+            self.show_text(msg, timeout=0, position=0)
+        elif not gui.video:                       # no video is playing, can't show marquee. and don't bother showing special options
             gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
         else:
             mod = event.keyboardModifiers()
             if mod != self.dragdrop_last_modifiers:
                 self.dragdrop_last_modifiers = mod
                 if mod & Qt.ControlModifier:            # ctrl (concat before current)
-                    gui.statusbar.showMessage('Drop to concatenate before current media', 0)
-                    self.show_text('Drop to concatenate before current media', timeout=0, position=0)
+                    if len(files) == 1: msg = 'Drop to concatenate 1 file before current media'
+                    else: msg = f'Drop to concatenate {len(files)} files before current media'
                 elif mod & Qt.AltModifier:              # alt (concat after current)
-                    gui.statusbar.showMessage('Drop to concatenate after current media', 0)
-                    self.show_text('Drop to concatenate after current media', timeout=0, position=0)
+                    if len(files) == 1: msg = 'Drop to concatenate 1 file after current media'
+                    else: msg = f'Drop to concatenate {len(files)} files after current media'
                 elif mod & Qt.ShiftModifier:            # shift (add audio track)
-                    file = [url.toLocalFile() for url in event.mimeData().urls()][0]
-                    if os.path.abspath(file) != gui.video:
-                        gui.statusbar.showMessage('Drop to add as audio track', 0)
-                        self.show_text('Drop to add as audio track', timeout=0, position=0)
-                    else:
-                        gui.statusbar.showMessage('Drop to add as audio track (disabled due to identical file)', 0)
-                        self.show_text('Drop to add as audio track (disabled due to identical file)', timeout=0, position=0)
+                    if len(files) == 1: msg = 'Drop to add as audio track'
+                    else: msg = 'Drop to add first file as audio track'
+                    if os.path.abspath(files[0]) == gui.video: msg += ' (disabled due to identical file)'
                 else:                                   # no modifiers (play file)
-                    gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift for more options', 0)
-                    self.show_text('Drop to play media, or hold ctrl/alt/shift for more options', timeout=0, position=0)
+                    msg = 'Drop to play media, or hold ctrl/alt/shift for more options'
+                gui.statusbar.showMessage(msg, 0)
+                self.show_text(msg, timeout=0, position=0)
         super().dragMoveEvent(event)
 
 
@@ -621,7 +664,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         focus_window = settings.checkFocusDrop.isChecked()
         files = [url.toLocalFile() for url in event.mimeData().urls()]
 
-        if gui.video:
+        if os.path.isdir(files[0]):
+            gui.open_folder(files[0], event.keyboardModifiers())
+        elif gui.video:
             mod = event.keyboardModifiers()
             if mod & Qt.ControlModifier:                # ctrl (concat before current)
                 gui.concatenate(action=gui.actionCatBefore, files=files)
@@ -635,9 +680,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 subtitle_files = [QtCore.QUrl.fromLocalFile(file) for file in files if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS]
                 if subtitle_files: gui.browse_for_subtitle_file(urls=subtitle_files)
                 else: gui.open(files[0], focus_window=focus_window)  # no modifiers, no subtitles -> play dropped file as media
-        else: gui.open(files[0], focus_window=focus_window)          # no video playing -> ignore modifiers and play dropped file
+        else:
+            gui.open(files[0], focus_window=focus_window)            # no video playing -> ignore modifiers and play dropped file
+
         if settings.checkRememberDropFolder.isChecked():             # update lastdir if desired
-            cfg.lastdir = os.path.dirname(files[0])
+            cfg.lastdir = files[0] if os.path.isdir(files[0]) else os.path.dirname(files[0])
         super().dropEvent(event)                        # run QWidget's built-in behavior
 
 
@@ -650,21 +697,22 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.art = QtGui.QPixmap()
         self.gif = QtGui.QMovie()
 
-        self._imageScale = 0                            # 0 -> No scaling (native size)
-        self._artScale = 0                              # 1 -> Fit (keep aspect ratio)
-        self._gifScale = 0                              # 2 -> Fill (ignore aspect ratio)
+        self._imageScale = 0                            # NOTE: scales are first set in qtstart.after_show_setup()
+        self._artScale = 0
+        self._gifScale = 0
         self._dragging = False
         self._draggingOffset = QtCore.QPoint()          # offset between cursor and image's real pos
         self.pixmapPos = QtCore.QPoint()                # local position of currently drawn QPixmap
-        self.gifSize = None                             # gif's native size (not tracked by QMovie)
+        self.gifSize = QtCore.QSize()                   # gif's native size (not tracked by QMovie)
         self.gif.setCacheMode(QtGui.QMovie.CacheAll)    # required for jumpToFrame to work
         self.image = self.art                           # alias for self.art's QPixmap
         self.isCoverArt = False
         self.filename = None
 
         self.zoom = 1.0                                 # the true, current zoom level
-        self._baseZoom = 1.0                            # base zoom level for the current window size
-        self._targetZoom = 1.0                          # the zoom level we're trying to reach
+        self._baseZoom = 1.0                            # base zoom level for the current window size based on zoom settings
+        self._fitZoom = 1.0                             # the zoom required for fit mode, regardless of current zoom settings
+        self._targetZoom = 1.0                          # the zoom level we're trying to reach while smooth-zooming
         self._smoothZoomTimerID = None                  # the ID for the smooth zoom timer, if any
         self._smoothZoomPos = QtCore.QPoint()           # the pos a smooth zoom should zoom in on
         self._smoothZoomFactor = 0.33                   # the "speed" at which a smooth zoom occurs
@@ -686,19 +734,28 @@ class QVideoPlayerLabel(QtW.QLabel):
             return self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
 
         if gif:
-            scale = self._gifScale      # load gif into QPixmap first to get its native size
-            self.art.load(file)
-            self.gifSize = self.art.size()
             self.clear()
-
             self.gif.setFileName(file)
-            if scale == 1: self._resizeMovieFit()
-            self.setMovie(self.gif)
-            if autostart: self.gif.start()
-            self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-            logger.info('Animated image detected.')
+            if self.gif.frameCount() > 1:               # only treat GIF as animated if it has more than 1 frame
+                try:                                    # open gif in PIL to get its native size (fast)
+                    with get_PIL_Image().open(file) as image:
+                        size = image.size
+                        self.gifSize.setWidth(size[0])
+                        self.gifSize.setHeight(size[1])
+                except:
+                    self.gifSize = self.gif.frameRect().size()
 
-        else:                           # static image. if `file` is bytes, it's cover art
+                if self._gifScale == ZOOM_FIT: self._resizeMovieFit()
+                self.setMovie(self.gif)
+                if autostart: self.gif.start()
+                logger.info('Animated GIF detected.')
+            else:
+                self.art.load(file)
+                self.setPixmap(self.art)
+                logger.info('Static GIF detected.')
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+
+        else:                                           # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
             if isBytes: self.art.loadFromData(file)
             else: self.art.load(file)
@@ -708,32 +765,39 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.disableZoom()
 
 
-    def _updateImageScale(self, index: int):
+    def _updateImageScale(self, index: int, force: bool = False):
         ''' Updates the scaling mode for images (excluding cover art). '''
-        self._imageScale = index
-        if self.pixmap():
-            if not self.zoomed:
-                self._calculateBaseZoom()
-            self.update()
+        if not gui.actionCrop.isChecked() or force:
+            logger.debug(f'Updating image scale to mode {index}')
+            self._imageScale = index
+            if self.pixmap():
+                if not self.zoomed:
+                    self._calculateBaseZoom()
+                self.update()
 
 
-    def _updateArtScale(self, index: int):
+    def _updateArtScale(self, index: int, force: bool = False):
         ''' Updates the scaling mode specifically for cover art. '''
-        self._artScale = index
-        if self.pixmap():
-            if not self.zoomed:
-                self._calculateBaseZoom()
-            self.update()
+        if not gui.actionCrop.isChecked() or force:
+            logger.debug(f'Updating cover art scale to mode {index}')
+            self._artScale = index
+            if self.pixmap():
+                if not self.zoomed:
+                    self._calculateBaseZoom()
+                self.update()
 
 
-    def _updateGifScale(self, index: int):
+    def _updateGifScale(self, index: int, force: bool = False):
         ''' Updates the scaling mode for animated GIFs. '''
-        self._gifScale = index
-        if self.movie():
-            if self.zoomed: self.setZoom(self.zoom, force=True)
-            else:
-                self._resetMovieSize()
-                self._calculateBaseZoom()
+        if not gui.actionCrop.isChecked() or force:
+            logger.debug(f'Updating gif scale to mode {index}')
+            self._gifScale = index + 1                  # FIXME: +1 is temporary until gifs properly support dynamic fit
+            if self.movie():                            # FIXME: ^^^ this is set manually in qtstart!!!!!
+                if self.zoomed:                         # FIXME: ^^^ it's also set in main.set_crop_mode!!!!
+                    self.setZoom(self.zoom, force=True)
+                else:
+                    self._resetMovieSize()
+                    self._calculateBaseZoom()
 
 
     def _updateSmoothZoomFactor(self, factor: int):
@@ -764,41 +828,59 @@ class QVideoPlayerLabel(QtW.QLabel):
 
     def _resetMovieSize(self):
         scale = self._gifScale
-        self.setScaledContents(scale == 2)
-        if scale == 0: self.gif.setScaledSize(QtCore.QSize(-1, -1))
-        elif scale == 1: self._resizeMovieFit()
-        elif scale == 2: self.gif.setScaledSize(self.size())
+        self.setScaledContents(scale == ZOOM_FILL)
+        if scale == ZOOM_NO_SCALING: self.gif.setScaledSize(QtCore.QSize(-1, -1))
+        elif scale == ZOOM_FIT or self.width() < gui.vwidth or self.height() < gui.vheight: self._resizeMovieFit()
+        elif scale == ZOOM_FILL: self.gif.setScaledSize(self.size())
+
+        # TODO: the main issue with dynamic fit on gifs is that they start playing BEFORE we can actually see their true dimensions
+        #       the fix appears to be something like loading the gif as a pixmap first, taking the dimensions, then playing as a gif
+        #print('before', self.width(), self.height(), gui.vwidth, gui.vheight, self.gif.scaledSize().width(), self.gif.scaledSize().height())
+        #if scale == ZOOM_FIT or self.width() < gui.vwidth or self.height() < gui.vheight: self._resizeMovieFit()
+        #elif scale == ZOOM_FILL: self.gif.setScaledSize(self.size())
+        #else: self.gif.setScaledSize(QtCore.QSize(-1, -1))
         self._resetMovieCache()
 
 
     def _resizeMovieFit(self):
+        QtCore.QSize()
         self.gif.setScaledSize(self.gifSize.scaled(self.size(), Qt.KeepAspectRatio))
 
 
     def _calculateBaseZoom(self) -> float:
-        ''' Calculates the default zoom level for the current window size. '''
+        ''' Calculates the default zoom level and minimum zoom level
+            required to fit media within the current window size. '''
+        # animated gif
         if self.movie():
+            fitZoom = round(self.gif.scaledSize().width() / self.gifSize.width(), 4)
             scale = self._gifScale
-            if scale == 0: zoom = 1.0
-            elif scale == 2: zoom = self.size().width() / self.gifSize.width()
-            else: zoom = self.gif.scaledSize().width() / self.gifSize.width()
+            if scale == ZOOM_NO_SCALING: zoom = 1.0
+            elif scale == ZOOM_FILL: zoom = round(self.width() / self.gifSize.width(), 4)
+            else: zoom = fitZoom
+
+        # image/cover art
         elif self.pixmap():
+            fitSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
+            fitZoom = round(fitSize.width() / self.art.width(), 4)
+
             scale = self._artScale if self.isCoverArt else self._imageScale
-            if scale == 0: zoom = 1.0
-            elif scale == 2: zoom = self.size().width() / self.art.width()
-            else:
-                newSize = self.art.size().scaled(self.size(), Qt.KeepAspectRatio)
-                zoom = newSize.width() / self.art.width()
+            if scale == ZOOM_FILL: zoom = round(self.width() / self.art.width(), 4)
+            elif scale == ZOOM_FIT or self.width() < self.art.width() or self.height() < self.art.height(): zoom = fitZoom
+            else: zoom = 1.0                # ZOOM_DYNAMIC_FIT (fit if image is smaller than window)
+
+        # invalid mime-type, don't worry about zoom levels
         else: return 1.0
-        zoom = round(zoom, 4)
+
         self.zoom = self._baseZoom = self._targetZoom = zoom
+        self._fitZoom = fitZoom
         return zoom
 
 
     def setZoom(self, zoom: float, pos: QtCore.QPoint = None,
                 globalPos: QtCore.QPoint = None,
                 force: bool = False, _smooth: bool = False) -> float:
-        maxZoom = 100.0 if not self.movie() else 20.0
+        is_gif = bool(self.movie())
+        maxZoom = 100.0 if not is_gif else 20.0
         minZoomFactor = settings.spinZoomMinimumFactor.value()
         minZoom = self._baseZoom * minZoomFactor
         if settings.checkZoomForceMinimum.isChecked():
@@ -817,9 +899,9 @@ class QVideoPlayerLabel(QtW.QLabel):
                 zoom += (zoom - self.zoom) * self._smoothZoomFactor
                 self._smoothZoomTimerID = self.startTimer(17, Qt.PreciseTimer)      # 17ms timer ~= 59fps
 
-        if self.movie():
+        if is_gif:
             if not willSmooth:
-                if self._gifScale == 2:
+                if self._gifScale == ZOOM_FILL:
                     self.setScaledContents(False)
                     newSize = self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * zoom
                 else: newSize = self.gifSize * zoom
@@ -878,8 +960,10 @@ class QVideoPlayerLabel(QtW.QLabel):
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         ''' Drags our QPixmap by adjusting its position based on the cursor's
             position relative to the offset we set in mousePressEvent. '''
-        if not gui.actionCrop.isChecked() and not self.movie():
+        #if not gui.actionCrop.isChecked() and not self.movie():
+        if not gui.actionCrop.isChecked():
             if app.mouseButtons() == Qt.LeftButton:     # TODO normal mousePressEvent implementation, why won't event.button() work?
+                #print('MOVING')
                 self.pixmapPos = event.pos() - self._draggingOffset
                 self._dragging = True
                 self.update()                           # manually update
@@ -920,14 +1004,16 @@ class QVideoPlayerLabel(QtW.QLabel):
     def resizeEvent(self, event: QtGui.QResizeEvent):
         ''' Scales the GIF/image/art while resizing, and calculates
             what zoom factor the new player size should start from. '''
-        if self.hasScaledContents(): return
-        if not self.zoomed:
-            if self.pixmap(): self._calculateBaseZoom()
+        if self.hasScaledContents():
+            return
+        elif not self.zoomed:
+            if self.pixmap():
+                self._calculateBaseZoom()
             elif self.movie():
-                if self._gifScale == 1: self._resizeMovieFit()
+                if self._gifScale == ZOOM_FIT: self._resizeMovieFit()
                 self._resetMovieCache()
                 self._calculateBaseZoom()
-        elif self._gifScale == 2:
+        elif self._gifScale == ZOOM_FILL:
             self.gif.setScaledSize(self.size().scaled(self.gifSize, Qt.KeepAspectRatio) * self.zoom)
             self._resetMovieCache()
 
@@ -947,7 +1033,8 @@ class QVideoPlayerLabel(QtW.QLabel):
         return super().timerEvent(event)
 
 
-    def paintEvent(self, event: QtGui.QPaintEvent):
+    def paintEvent(self, event: QtGui.QPaintEvent):         # TODO very close to figuring out how to handle GIFs in here
+        #if True:
         if self.pixmap():
             painter = QtGui.QPainter(self)
             if settings.checkScaleFiltering.isChecked():
@@ -958,6 +1045,8 @@ class QVideoPlayerLabel(QtW.QLabel):
 
             # draw zoomed pixmap by using scale mode and the current zoom to generate new size
             scale = self._artScale if self.isCoverArt else self._imageScale
+            #pixmap = self.art if self.pixmap() else self.gif.currentPixmap()
+            pixmap = self.art
             if self.zoomed:
                 zoom = self.zoom
 
@@ -965,41 +1054,43 @@ class QVideoPlayerLabel(QtW.QLabel):
                 try:
                     if zoom >= 1:
                         if settings.checkZoomPrecise.isChecked():
-                            if scale == 2: size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
-                            else: size = QtCore.QSizeF(self.art.size()) * zoom
-                            painter.drawPixmap(QtCore.QRectF(self.pixmapPos, size).toRect(), self.art)
+                            if scale != ZOOM_FILL: size = QtCore.QSizeF(pixmap.size())    # TODO V does this deform the image while zooming?
+                            else: size = QtCore.QSizeF(self.size().scaled(pixmap.size(), Qt.KeepAspectRatio))
+                            painter.drawPixmap(QtCore.QRectF(self.pixmapPos, size * zoom).toRect(), pixmap)
                         else:
-                            if scale == 2: size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
-                            else: size = self.art.size() * zoom
-                            painter.drawPixmap(QtCore.QRect(self.pixmapPos, size), self.art)    # TODO can this deform the image while zooming?
-                        #painter.scale(zoom, zoom)                                              # TODO painter.scale() vs. QRect() -> which is faster?
-                        #painter.drawPixmap(self.pixmapPos / zoom, self.art)
+                            if scale != ZOOM_FILL: size = pixmap.size()                   # TODO V ditto?
+                            else: size = self.size().scaled(pixmap.size(), Qt.KeepAspectRatio)
+                            painter.drawPixmap(QtCore.QRect(self.pixmapPos, size * zoom), pixmap)
+                        #painter.scale(zoom, zoom)                                          # TODO painter.scale() vs. QRect() -> which is faster?
+                        #painter.drawPixmap(self.pixmapPos / zoom, pixmap)
 
                     # at <1 zoom, art.scaled() looks MUCH better and the performance drop is negligible
                     else:
-                        if scale == 2:
-                            size = self.size().scaled(self.art.size(), Qt.KeepAspectRatio) * zoom
+                        if scale == ZOOM_FILL:
+                            size = self.size().scaled(pixmap.size(), Qt.KeepAspectRatio) * zoom
                             aspectRatioMode = Qt.IgnoreAspectRatio
                         else:
-                            size = self.art.size() * zoom
+                            size = pixmap.size() * zoom
                             aspectRatioMode = Qt.KeepAspectRatio
-                        painter.drawPixmap(self.pixmapPos, self.art.scaled(size, aspectRatioMode, transformMode))
-                except TypeError: logger.warning('QVideoPlayerLabel paintEvent failed due to mismatched pixmapPos type.')
+                        painter.drawPixmap(self.pixmapPos, pixmap.scaled(size, aspectRatioMode, transformMode))
+                except TypeError:
+                    logger.warning(f'(!) QVideoPlayerLabel paintEvent failed due to mismatched pixmapPos type: {format_exc()}')
 
             # draw normal pixmap. NOTE: for fill-mode, drawing to a QRect NEVER looks identical (it's much worse)
             else:
                 #scale = self._artScale if self.isCoverArt else self._imageScale
-                if scale == 0:                          # 0 -> no scaling
-                    self.pixmapPos = self.rect().center() - self.art.rect().center()
-                    painter.drawPixmap(self.pixmapPos, self.art)
-                elif scale == 1:                        # 1 -> fit
-                    scaledPixmap = self.art.scaled(self.size(), Qt.KeepAspectRatio, transformMode)
+                if scale == ZOOM_NO_SCALING or (scale == ZOOM_DYNAMIC_FIT and self._baseZoom == 1):
+                    self.pixmapPos = self.rect().center() - pixmap.rect().center()
+                    painter.drawPixmap(self.pixmapPos, pixmap)
+                elif scale == ZOOM_FIT or (scale == ZOOM_DYNAMIC_FIT and self._baseZoom != 1):
+                    scaledPixmap = pixmap.scaled(self.size(), Qt.KeepAspectRatio, transformMode)
                     self.pixmapPos = self.rect().center() - scaledPixmap.rect().center()
                     painter.drawPixmap(self.pixmapPos, scaledPixmap)
-                elif scale == 2:                        # 2 -> fill
+                elif scale == ZOOM_FILL:
                     self.pixmapPos = QtCore.QPoint()
-                    painter.drawPixmap(0, 0, self.art.scaled(self.size(), transformMode=transformMode))
-        else: super().paintEvent(event)
+                    painter.drawPixmap(0, 0, pixmap.scaled(self.size(), transformMode=transformMode))
+        else:
+            super().paintEvent(event)
 
 
 
@@ -1015,11 +1106,13 @@ class QVideoSlider(QtW.QSlider):
         self.clamp_maximum = False
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
+        self.scrubbing = False
 
         self.hover_font_color: QtGui.QColor = None
         self.colors: list[Color] = None
         self.color_index = 0
         self.color_order = (Color('red'), Color('blue'), Color('lime'))
+
 
     # pass keystrokes through to parent
     def keyPressEvent(self, event: QtGui.QKeyEvent):   return gui.keyPressEvent(event)
@@ -1167,6 +1260,9 @@ class QVideoSlider(QtW.QSlider):
             pos = event.pos()
             frame = self.pixelPosToRangeValue(pos)
             if gui.minimum < frame < gui.maximum:
+                if gui.mime_type == 'audio' and not gui.is_paused:
+                    gui.skip_next_vlc_progress_desync_check = True
+                    gui.vlc.play(gui.video)                     # HACK: "replay" audio file to correct VLC's pitch-shifting bug
                 self.update_parent_progress(frame)
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
@@ -1197,6 +1293,7 @@ class QVideoSlider(QtW.QSlider):
             self.last_mouseover_time = 0                        # reset last mouseover time to stop drawing timestamp immediately
             if self.grabbing_clamp_minimum: gui.set_trim_start()
             elif self.grabbing_clamp_maximum: gui.set_trim_end()
+            self.scrubbing = True                               # mark that we're scrubbing
         #self.update()      # TODO <- why doesn't this make the animations smooth?
 
 
@@ -1208,9 +1305,19 @@ class QVideoSlider(QtW.QSlider):
         self.grabbing_clamp_maximum = False
         #if 0 <= event.x() <= self.width() and 0 <= event.y() <= self.height():
         if self.underMouse(): self.last_mouseover_time = time.time()    # resume drawing timestamp after release
+
         frame = self.pixelPosToRangeValue(event.pos())                  # get frame
         if frame < gui.minimum: self.update_parent_progress(gui.minimum)
         elif frame > gui.maximum: self.update_parent_progress(gui.maximum)
+
+        # HACK: "replay" audio file to correct VLC's pitch-shifting bug
+        # (only apply if we were scrubbing, or the progress will jump back a few frames)
+        elif self.scrubbing and gui.mime_type == 'audio' and not gui.is_paused:
+            gui.skip_next_vlc_progress_desync_check = True
+            gui.vlc.play(gui.video)
+            self.update_parent_progress(frame)
+
+        self.scrubbing = False
 
 
     def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:          # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
@@ -1355,11 +1462,20 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
         # ensure thumbnail folder exists, then create threads to generate thumbnails
         if not os.path.exists(constants.THUMBNAIL_DIR): os.makedirs(constants.THUMBNAIL_DIR)
-        for thumbnail_needed in thumbnails_needed:              # TODO: there needs to be some way of cancelling these threads
-            Thread(target=self.get_thumbnail, args=thumbnail_needed, daemon=True).start()
+        for thumbnail_args in thumbnails_needed:                # TODO: there needs to be some way of cancelling these threads
+            Thread(target=self.get_thumbnail, args=thumbnail_args, daemon=True).start()
+
+        # refresh titlebar to show number of QVideoListItemWidgets
+        self.refresh_title()
 
 
-    def get_thumbnail(self, thumbnail_path, video, item_widget):
+    def remove(self):
+        ''' Removes all selected QVideoListItemWidgets and updates title. '''
+        qthelpers.listRemoveSelected(self)
+        self.refresh_title()
+
+
+    def get_thumbnail(self, thumbnail_path: str, video: str, item_widget: QtW.QWidget):
         ''' Generates a thumbnail for a given `video`, saves to `thumbnail_path`,
             and updates the QVideoListItemWidget `item_widget` with the thumbnail.
             constants.FFMPEG is verified beforehand and assumed to be valid. '''
@@ -1372,7 +1488,16 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         except Exception as error: logger.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')
 
 
-    def move(self, *args, down=False):
+    def refresh_title(self):
+        count = self.count()
+        if count < 2: self.parent().setWindowTitle('Videos to concatenate')
+        else: self.parent().setWindowTitle(f'{count} videos to concatenate')
+
+
+    def move(self, *args, down: bool = False):
+        ''' Moves all selected items up or `down`, while maintaining selection.
+            Achieved by duplicating selected items and inserting them one index
+            away, before deleting the original items. '''
         indexes = sorted(self.row(item) for item in self.selectedItems())
         if down: indexes = reversed(indexes)
         for old_index in indexes:
@@ -1383,22 +1508,29 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
                 self.item(new_index).setSelected(True)
 
 
+    def reverse(self):
+        ''' Reverses items in list by cloning list backwards, then
+            deleting the original items. Preserves selection. '''
+        count = self.count()
+        selected_indexes = sorted(count - self.row(item) - 1 for item in self.selectedItems())
+        for index in reversed(range(count)):
+            self.add(files=self.item(index).toolTip())
+            self.takeItem(index)
+        for index in selected_indexes:
+            self.item(index).setSelected(True)
+        self.refresh_title()
+
+
     def __iter__(self):
         for i in range(self.count()):
             yield self.item(i)
 
 
-    #def __contains__(self, other):          # TODO unused
-    #    for item in qthelpers.listGetAllItems(self):
-    #        if item == other:
-    #            return True
-    #    return False
-
-
 
 
 class QVideoListItemWidget(QtW.QWidget):  # TODO this likely does not get garbage collected
-    ''' An item representing a media file within a QVideoList, within the concatenation menu. '''
+    ''' An item representing a media file within a
+        QVideoList, within the concatenation menu. '''
     def __init__(self, parent, image, text, is_playing):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)     # required for dragging to work
@@ -1579,7 +1711,7 @@ class QWidgetPassthrough(QtW.QWidget):
                 self.ignoreAlpha and text.isalpha(),
                 self.ignorePunctuation and text in '!"#$%&\'()*+, -./:;<=>?@[\\]^_`{|}~',
                 self.ignoreNumeric and text.isnumeric())):
-            self._proxyWidget.shortcut_bandaid_fix = True   # TODO this is a workaround for QShortcuts refusing to work through this widget. no QShortcut...
+            #self._proxyWidget.shortcut_bandaid_fix = True   # TODO this is a workaround for QShortcuts refusing to work through this widget. no QShortcut...
             return self._proxyWidget.keyPressEvent(event)   # ...contexts work. I might replace the QShortcuts with a simpler system, or I may leave it like this.
         return self.base.keyPressEvent(self, event)
 

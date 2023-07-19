@@ -24,7 +24,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('file', nargs='?', help='Specifies a filepath to open')     # '?' allows for optional positionals
 parser.add_argument('--exit', action='store_true', help='Instantly exits. Used when sending media to other instances')
 parser.add_argument('--play-and-exit', action='store_true', help='Automatically exits at the conclusion of a media file')
+parser.add_argument('--minimized', action='store_true', help='Start minimized (to the tray, if enabled). Useful when used as a startup program')
 parser.add_argument('-v', '--vlc', default='--gain=2.0', help='Specifies arguments to pass to the underlying VLC instance')
+parser.add_argument('-d', '--debug', action='store_true', help='Outputs debug messages to the log file.')
 args = parser.parse_args()
 if args.exit: sys.exit(100)
 
@@ -33,9 +35,10 @@ if args.exit: sys.exit(100)
 # Logging
 # ---------------------
 file_handler = logging.FileHandler(constants.LOG_PATH, 'w', delay=False)
-file_handler.setLevel(logging.INFO)
+if not args.debug: file_handler.setLevel(logging.INFO)
 logging.basicConfig(
     level=logging.DEBUG,
+    force=True,
     format='{asctime} {lineno:<3} {levelname} {funcName}: {message}',
     datefmt='%m/%d/%y | %I:%M:%S%p',
     style='{',
@@ -79,15 +82,16 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
         if reason == QtW.QSystemTrayIcon.Context:
             action_show = QtW.QAction('&PyPlayer')
             action_show.triggered.connect(lambda: qthelpers.showWindow(self))
-            action_settings = QtW.QAction('&Settings')
-            action_settings.triggered.connect(self.dialog_settings.exec)
-            action_exit = QtW.QAction('&Exit')
-            action_exit.triggered.connect(lambda: exit(self))
             menu = QtW.QMenu()
             menu.addAction(action_show)
-            menu.addAction(action_settings)
+            menu.addAction(self.actionSettings)
+            menu.addMenu(self.menuRecent)
             menu.addSeparator()
-            menu.addAction(action_exit)
+            menu.addAction(self.actionViewLog)
+            menu.addAction(self.actionViewInstallFolder)
+            menu.addAction(self.actionViewLastDirectory)
+            menu.addSeparator()
+            menu.addAction(self.actionExit)
             return menu.exec(QtGui.QCursor.pos())
         if reason == QtW.QSystemTrayIcon.Trigger: return qthelpers.showWindow(self)
         if reason == QtW.QSystemTrayIcon.MiddleClick: return exit(self)
@@ -107,21 +111,21 @@ def after_show_setup(self: QtW.QMainWindow):
 
     if args.file:
         if not os.path.exists(args.file):
-            self.update_title_signal.emit()
-            self.log(f'Command-line file {args.file} does not exist.')
+            self.refresh_title_signal.emit()
+            self.log_on_statusbar_signal.emit(f'Command-line file {args.file} does not exist.')
         else:
             try:
                 logging.info(f'Opening pre-selected path: {args.file}')
                 self.open(args.file)
-                self.log(f'Command-line path opened: {args.file}')
+                self.log_on_statusbar_signal.emit(f'Command-line path opened: {args.file}')
             except:
-                self.update_title_signal.emit()
-                self.log(f'Failed to open pre-selected path: {args.file}')
+                self.refresh_title_signal.emit()
+                self.log_on_statusbar_signal.emit(f'Failed to open pre-selected path: {args.file}')
                 logging.error(format_exc())
-    else: self.update_title_signal.emit()
+    else: self.refresh_title_signal.emit()
 
-    if self.last_window_size is None: self.last_window_size = self.size()
-    if self.last_window_pos is None: self.last_window_pos = self.pos()
+    if self.last_window_size is None: self.last_window_size = config.cfg.size
+    if self.last_window_pos is None: self.last_window_pos = config.cfg.pos
 
     recent_files_count = self.dialog_settings.spinRecentFiles.value()
     files = config.cfg.load('recent_files', '', '<|>', section='general')
@@ -138,10 +142,10 @@ def after_show_setup(self: QtW.QMainWindow):
         self.app.setQuitOnLastWindowClosed(False)   # ensure qt does not exit until we tell it to
         self.tray_icon = get_tray_icon(self)
 
-    # TODO: why aren't currentIndexChanged and valueChanged called when the config loads?
-    self.gifPlayer._updateImageScale(self.dialog_settings.comboScaleArt.currentIndex())
-    self.gifPlayer._updateArtScale(self.dialog_settings.comboScaleArt.currentIndex())
-    self.gifPlayer._updateGifScale(self.dialog_settings.comboScaleGifs.currentIndex())
+    self.set_trim_mode(self.trim_mode_action_group.checkedAction())
+    self.gifPlayer._imageScale = self.dialog_settings.comboScaleImages.currentIndex()
+    self.gifPlayer._artScale = self.dialog_settings.comboScaleArt.currentIndex()
+    self.gifPlayer._gifScale = self.dialog_settings.comboScaleGifs.currentIndex() + 1
     self.vlc.set_text_height(self.dialog_settings.spinTextHeight.value())
     self.vlc.set_text_x(self.dialog_settings.spinTextX.value())
     self.vlc.set_text_y(self.dialog_settings.spinTextY.value())
@@ -168,12 +172,17 @@ def connect_shortcuts(self: QtW.QMainWindow):
         self.log_on_player(f'Looping {"disabled" if self.actionLoop.isChecked() else "enabled"}', marq_key='Loop', log=False),
         self.actionLoop.trigger()
 
+    settings = self.dialog_settings
     shortcut_actions = {      # NOTE: having empty rows in tabKeys's formLayout (in QtDesigner) causes actions below empty rows to not work
         'pause':              self.pause,
-        'plus5seconds':       self.navigate,
-        'minus5seconds':      lambda: self.navigate(forward=False, seconds=5),
-        'plus10seconds':      lambda: self.navigate(forward=True, seconds=10),
-        'minus10seconds':     lambda: self.navigate(forward=False, seconds=10),
+        'plus1':              lambda: self.navigate(forward=True,  seconds_spinbox=settings.spinNavigation1),
+        'minus1':             lambda: self.navigate(forward=False, seconds_spinbox=settings.spinNavigation1),
+        'plus2':              lambda: self.navigate(forward=True,  seconds_spinbox=settings.spinNavigation2),
+        'minus2':             lambda: self.navigate(forward=False, seconds_spinbox=settings.spinNavigation2),
+        'plus3':              lambda: self.navigate(forward=True,  seconds_spinbox=settings.spinNavigation3),
+        'minus3':             lambda: self.navigate(forward=False, seconds_spinbox=settings.spinNavigation3),
+        'plus4':              lambda: self.navigate(forward=True,  seconds_spinbox=settings.spinNavigation4),
+        'minus4':             lambda: self.navigate(forward=False, seconds_spinbox=settings.spinNavigation4),
         'plusframe':          self.spinFrame.stepUp,
         'minusframe':         self.spinFrame.stepDown,
         'plusspeed':          lambda: self.set_playback_speed(self.playback_speed + 0.05),
@@ -192,7 +201,9 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'back':               lambda: self.cycle_recent_files(forward=False),
         'plussubtitledelay':  increment_subtitle_delay,
         'minussubtitledelay': lambda: increment_subtitle_delay(-50),
-        'cyclesubtitles':     self.cycle_subtitle_track,
+        'cyclesubtitles':     lambda: self.cycle_track('subtitle'),
+        'cycleaudio':         lambda: self.cycle_track('audio'),
+        'cyclevideo':         lambda: self.cycle_track('video'),
         'markdeleted':        self.actionMarkDeleted.trigger,
         'deleteimmediately':  self.delete,
         'snapshot':           lambda: self.snapshot(mode='full'),
@@ -210,24 +221,26 @@ def connect_shortcuts(self: QtW.QMainWindow):
             self.shortcuts[name][index].activated.connect(shortcut_actions[name])
             keySequenceEdit.editingFinished.connect(get_refresh_shortcuts_lambda(keySequenceEdit))  # lambda-in-iterable workaround
     self.refresh_shortcuts()
+    self.refresh_snapshot_button_controls()
 
 
 def connect_widget_signals(self: QtW.QMainWindow):
-    self._open_signal.connect(self._open)
+    self._open_signal.connect(self._open_slot)
     self._save_open_signal.connect(lambda file, remember_old_file: self.open(file=file, remember_old_file=remember_old_file))
     self.fast_start_open_signal.connect(self.fast_start_open)
     self.restart_signal.connect(self.restart)
     self.force_pause_signal.connect(self.force_pause)
     self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)
     self.show_trim_dialog_signal.connect(self.show_trim_dialog)
-    self.update_progress_signal.connect(self.update_progress_slot)
-    self.update_title_signal.connect(self.update_title)
+    self.update_progress_signal.connect(self._update_progress_slot)
+    self.refresh_title_signal.connect(self._refresh_title_slot)
     self.show_save_progress_signal.connect(self.save_progress_bar.setVisible)
+    self.set_save_progress_max_signal.connect(self.save_progress_bar.setMaximum)
+    self.set_save_progress_current_signal.connect(self.save_progress_bar.setValue)
     self.disable_crop_mode_signal.connect(self.disable_crop_mode)
     self.handle_updates_signal.connect(self.handle_updates)
     self._handle_updates_signal.connect(self._handle_updates)
-    self.log_signal.connect(self.log_slot)
-    self.log = self.log_signal.emit
+    self.log_on_statusbar_signal.connect(self._log_on_statusbar_slot)
 
     self.sliderVolume.valueChanged.connect(self.set_volume)
     self.buttonPause.clicked.connect(self.pause)
@@ -236,6 +249,9 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionClearRecent.triggered.connect(lambda: self.recent_files.clear())    # TODO why won't .clear work on its own?
     self.actionExploreMediaPath.triggered.connect(self.explore)
     self.actionCopyMediaPath.triggered.connect(self.copy)
+    self.actionCopyFile.triggered.connect(self.copy_file)
+    self.actionCutFile.triggered.connect(lambda: self.copy_file(cut=True))
+    self.actionCopyImage.triggered.connect(self.copy_image)
     self.actionSave.triggered.connect(self.save)
     self.actionSaveAs.triggered.connect(self.save_as)
     self.actionStop.triggered.connect(self.stop)
@@ -243,13 +259,18 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionExit.triggered.connect(lambda: exit(self))
     self.actionSettings.triggered.connect(self.dialog_settings.exec)
     self.actionLoop.triggered.connect(self.buttonLoop.setChecked)
-    self.actionAutoplay.triggered.connect(self.buttonAutoplay.setChecked)
+    self.actionAutoplay.triggered.connect(self.refresh_autoplay_button)
+    self.actionAutoplayShuffle.triggered.connect(self.refresh_autoplay_button)
     self.actionSnapshot.triggered.connect(lambda: self.snapshot(mode='full'))
     self.actionQuickSnapshot.triggered.connect(self.snapshot)
     self.actionSnapshotOpenLast.triggered.connect(lambda: self.snapshot(mode='open'))
     self.actionSnapshotOpenLastInDefault.triggered.connect(lambda: self.snapshot(mode='view'))
     self.actionSnapshotExploreLastPath.triggered.connect(lambda: self.explore(config.cfg.last_snapshot_path, 'Last snapshot'))
     self.actionSnapshotCopyLastPath.triggered.connect(lambda: self.copy(config.cfg.last_snapshot_path, 'Last snapshot'))
+    self.actionSnapshotCopyLastFile.triggered.connect(lambda: self.copy_file(config.cfg.last_snapshot_path))
+    self.actionSnapshotCutLastFile.triggered.connect(lambda: self.copy_file(config.cfg.last_snapshot_path, cut=True))
+    self.actionSnapshotCopyLastImage.triggered.connect(lambda: self.copy_image(config.cfg.last_snapshot_path))
+    self.actionSnapshotUndo.triggered.connect(lambda: self.snapshot(mode='undo'))
     self.actionMarkDeleted.triggered.connect(self.buttonMarkDeleted.setChecked)
     self.actionMarkDeleted.triggered.connect(self.mark_for_deletion)
     self.actionClearMarked.triggered.connect(self.clear_marked_for_deletion)
@@ -278,6 +299,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionSnapRatioShrink.triggered.connect(lambda: self.snap_to_player_size(shrink=True))
     self.actionCheckForUpdates.triggered.connect(self.handle_updates)
     self.actionViewLog.triggered.connect(lambda: qthelpers.openPath(constants.LOG_PATH))
+    self.actionViewLastDirectory.triggered.connect(self.open_lastdir)
     self.actionViewInstallFolder.triggered.connect(lambda: qthelpers.openPath(constants.CWD))
     self.actionAboutQt.triggered.connect(lambda: QtW.QMessageBox.aboutQt(None, 'About Qt'))
     self.actionAbout.triggered.connect(self.show_about_dialog)
@@ -296,16 +318,28 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.buttonPrevious.clicked.connect(lambda: self.cycle_media(next=False))
     self.buttonExploreMediaPath.clicked.connect(self.actionExploreMediaPath.trigger)
     self.buttonMarkDeleted.clicked.connect(self.actionMarkDeleted.trigger)
-    self.buttonSnapshot.clicked.connect(self.actionQuickSnapshot.trigger)
+    self.buttonSnapshot.clicked.connect(self.handle_snapshot_button)
     self.buttonLoop.clicked.connect(self.actionLoop.trigger)
     self.buttonAutoplay.clicked.connect(self.actionAutoplay.trigger)
 
+    self.trim_mode_action_group = QtW.QActionGroup(self.menuTrimMode)
+    for fade_action in (self.actionTrimAuto, self.actionTrimPrecise,
+                        self.actionFadeBoth, self.actionFadeVideo, self.actionFadeAudio):
+        self.trim_mode_action_group.addAction(fade_action)
+    self.trim_mode_action_group.triggered.connect(self.set_trim_mode)
+
+    self.autoplay_direction_group = QtW.QActionGroup(self)
+    self.autoplay_direction_group.addAction(self.actionAutoplayDirectionForwards)
+    self.autoplay_direction_group.addAction(self.actionAutoplayDirectionBackwards)
+    self.autoplay_direction_group.addAction(self.actionAutoplayDirectionDynamic)
+    self.autoplay_direction_group.triggered.connect(self.refresh_autoplay_button)
+
     settings = self.dialog_settings
-    settings.accepted.connect(self.update_title)
+    settings.accepted.connect(self._refresh_title_slot)
     settings.comboThemes.currentTextChanged.connect(self.set_theme)
     settings.buttonRefreshThemes.clicked.connect(self.refresh_theme_combo)
-    settings.buttonBrowseDefaultOutputPath.clicked.connect(lambda: self.browse_for_directory_lineedit(settings.lineDefaultOutputPath, 'default output'))
-    settings.default_snapshot_path_browse.clicked.connect(lambda: self.browse_for_directory_lineedit(settings.lineDefaultSnapshotPath, 'default snapshot'))
+    settings.buttonBrowseDefaultOutputPath.clicked.connect(lambda: self.browse_for_directory(settings.lineDefaultOutputPath, 'default output'))
+    settings.buttonBrowseDefaultSnapshotPath.clicked.connect(lambda: self.browse_for_directory(settings.lineDefaultSnapshotPath, 'default snapshot'))
     settings.buttonHoverFontColor.clicked.connect(self.show_color_picker)
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
@@ -313,6 +347,10 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.checkZoomPrecise.toggled.connect(self.gifPlayer._updatePreciseZoom)
     settings.spinZoomMinimumFactor.valueChanged.connect(lambda: settings.checkZoomAutoDisable1x.setEnabled(settings.spinZoomMinimumFactor.value() == 1))
     settings.spinZoomSmoothFactor.valueChanged.connect(self.gifPlayer._updateSmoothZoomFactor)
+    settings.comboSnapshotDefault.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
+    settings.comboSnapshotShift.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
+    settings.comboSnapshotCtrl.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
+    settings.comboSnapshotAlt.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
 
     self.position_button_group = QtW.QButtonGroup(settings)
     for button in (settings.radioTextPosition0, settings.radioTextPosition1, settings.radioTextPosition2,
@@ -320,6 +358,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
                    settings.radioTextPosition8, settings.radioTextPosition9, settings.radioTextPosition10):
         self.position_button_group.addButton(button)
     self.position_button_group.buttonToggled.connect(self.vlc.set_text_position)
+
     settings.spinTextHeight.valueChanged.connect(self.vlc.set_text_height)
     settings.spinTextX.valueChanged.connect(self.vlc.set_text_x)
     settings.spinTextY.valueChanged.connect(self.vlc.set_text_y)
@@ -327,6 +366,23 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.comboScaleImages.currentIndexChanged.connect(self.gifPlayer._updateImageScale)
     settings.comboScaleArt.currentIndexChanged.connect(self.gifPlayer._updateArtScale)
     settings.comboScaleGifs.currentIndexChanged.connect(self.gifPlayer._updateGifScale)
+
+    def refresh_navigation_labels():
+        for label, spinbox in (
+            (settings.labelNavigation1, settings.spinNavigation1),
+            (settings.labelNavigation2, settings.spinNavigation2),
+            (settings.labelNavigation3, settings.spinNavigation3),
+            (settings.labelNavigation4, settings.spinNavigation4),
+        ):
+            seconds = spinbox.value()
+            suffix = ' second' if seconds == 1 else ' seconds'
+            label.setText(f'-{seconds}{suffix}')
+            spinbox.setSuffix(suffix)
+
+    settings.spinNavigation1.valueChanged.connect(refresh_navigation_labels)
+    settings.spinNavigation2.valueChanged.connect(refresh_navigation_labels)
+    settings.spinNavigation3.valueChanged.connect(refresh_navigation_labels)
+    settings.spinNavigation4.valueChanged.connect(refresh_navigation_labels)
 
     # NOTE: this looks weird if the gif has custom frame-by-frame delays, but it's perfectly fine
     self.gifPlayer.gif.frameChanged.connect(self.update_progress)

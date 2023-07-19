@@ -78,7 +78,7 @@
      <x>0</x>
      <y>0</y>
      <width>757</width>
-     <height>26</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -93,8 +93,12 @@
     </widget>
     <addaction name="actionOpen"/>
     <addaction name="menuRecent"/>
+    <addaction name="separator"/>
     <addaction name="actionExploreMediaPath"/>
     <addaction name="actionCopyMediaPath"/>
+    <addaction name="actionCopyFile"/>
+    <addaction name="actionCutFile"/>
+    <addaction name="actionCopyImage"/>
     <addaction name="separator"/>
     <addaction name="actionSave"/>
     <addaction name="actionSaveAs"/>
@@ -109,7 +113,7 @@
     </property>
     <widget class="QMenu" name="menuSnapshots">
      <property name="title">
-      <string>S&amp;napshots</string>
+      <string>S&amp;napshot</string>
      </property>
      <addaction name="actionSnapshot"/>
      <addaction name="actionQuickSnapshot"/>
@@ -117,12 +121,29 @@
      <addaction name="actionSnapshotOpenLast"/>
      <addaction name="actionSnapshotOpenLastInDefault"/>
      <addaction name="actionSnapshotExploreLastPath"/>
+     <addaction name="separator"/>
+     <addaction name="actionSnapshotCopyLastImage"/>
      <addaction name="actionSnapshotCopyLastPath"/>
+     <addaction name="actionSnapshotCopyLastFile"/>
+     <addaction name="actionSnapshotCutLastFile"/>
+     <addaction name="separator"/>
+     <addaction name="actionSnapshotUndo"/>
+    </widget>
+    <widget class="QMenu" name="menuAutoplay">
+     <property name="title">
+      <string>&amp;Autoplay</string>
+     </property>
+     <addaction name="actionAutoplay"/>
+     <addaction name="actionAutoplayShuffle"/>
+     <addaction name="separator"/>
+     <addaction name="actionAutoplayDirectionForwards"/>
+     <addaction name="actionAutoplayDirectionBackwards"/>
+     <addaction name="actionAutoplayDirectionDynamic"/>
     </widget>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
     <addaction name="actionLoop"/>
-    <addaction name="actionAutoplay"/>
+    <addaction name="menuAutoplay"/>
     <addaction name="menuSnapshots"/>
     <addaction name="separator"/>
     <addaction name="actionMarkDeleted"/>
@@ -138,6 +159,7 @@
     <addaction name="separator"/>
     <addaction name="actionViewLog"/>
     <addaction name="actionViewInstallFolder"/>
+    <addaction name="actionViewLastDirectory"/>
     <addaction name="separator"/>
     <addaction name="actionAboutQt"/>
     <addaction name="actionAbout"/>
@@ -202,6 +224,7 @@
      </property>
      <addaction name="actionTrimAuto"/>
      <addaction name="actionTrimPrecise"/>
+     <addaction name="actionTrimPickEveryTime"/>
      <addaction name="separator"/>
      <addaction name="actionFadeBoth"/>
      <addaction name="actionFadeVideo"/>
@@ -213,9 +236,9 @@
     <addaction name="menuConcatenate"/>
     <addaction name="menuRotate"/>
     <addaction name="menuTrimMode"/>
-    <addaction name="actionCrop"/>
     <addaction name="actionRemoveVideo"/>
     <addaction name="actionResize"/>
+    <addaction name="actionCrop"/>
    </widget>
    <widget class="QMenu" name="menuWindow">
     <property name="title">
@@ -412,225 +435,6 @@
         <property name="bottomMargin">
          <number>0</number>
         </property>
-        <item row="0" column="1">
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <property name="spacing">
-           <number>2</number>
-          </property>
-          <item>
-           <widget class="QPushButton" name="buttonTrimStart">
-            <property name="minimumSize">
-             <size>
-              <width>44</width>
-              <height>18</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>95</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>Click to set the starting position of a trim/
-the point where the intro fade will stop.
-
-Right-click for more options.</string>
-            </property>
-            <property name="text">
-             <string notr="true">Start</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="buttonTrimEnd">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>18</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>95</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>Click to set the ending position of a trim/
-the point where the outro fade will stop.
-
-Right-click for more options.</string>
-            </property>
-            <property name="text">
-             <string notr="true">End</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="0" column="0">
-         <layout class="QGridLayout" name="gridLayout_3">
-          <property name="horizontalSpacing">
-           <number>6</number>
-          </property>
-          <item row="0" column="1">
-           <layout class="QGridLayout" name="gridLayout_2">
-            <property name="spacing">
-             <number>2</number>
-            </property>
-            <item row="1" column="0">
-             <layout class="QHBoxLayout" name="horizontalLayout_2">
-              <item>
-               <widget class="QSpinBoxPassthrough" name="spinHour">
-                <property name="minimumSize">
-                 <size>
-                  <width>26</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>33</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBoxPassthrough" name="spinMinute">
-                <property name="minimumSize">
-                 <size>
-                  <width>33</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>33</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-                <property name="maximum">
-                 <number>59</number>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBoxPassthrough" name="spinSecond">
-                <property name="minimumSize">
-                 <size>
-                  <width>33</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>33</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-                <property name="maximum">
-                 <number>59</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item row="2" column="0">
-             <widget class="QSpinBoxPassthrough" name="spinFrame">
-              <property name="minimumSize">
-               <size>
-                <width>98</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::ClickFocus</enum>
-              </property>
-              <property name="wrapping">
-               <bool>true</bool>
-              </property>
-              <property name="prefix">
-               <string notr="true">Frame: </string>
-              </property>
-              <property name="maximum">
-               <number>0</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="0">
-           <widget class="QPushButton" name="buttonPause">
-            <property name="minimumSize">
-             <size>
-              <width>28</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>28</width>
-              <height>28</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="text">
-             <string notr="true">𝗜𝗜</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="0" column="2">
-         <widget class="Line" name="advancedControlsLine">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="4">
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
         <item row="0" column="3">
          <layout class="QGridLayout" name="gridLayout_6">
           <property name="bottomMargin">
@@ -639,62 +443,101 @@ Right-click for more options.</string>
           <property name="verticalSpacing">
            <number>1</number>
           </property>
-          <item row="1" column="0">
-           <widget class="QPushButton" name="buttonPrevious">
-            <property name="minimumSize">
-             <size>
-              <width>20</width>
-              <height>18</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>20</width>
-              <height>18</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <pointsize>12</pointsize>
-             </font>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>Plays the previous valid media file in the current folder.</string>
-            </property>
-            <property name="text">
-             <string notr="true">«</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1" colspan="2">
-           <widget class="QLineEditPassthrough" name="lineOutput">
+          <item row="0" column="5" rowspan="2">
+           <widget class="QFrame" name="frameQuickChecks">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
-            <property name="minimumSize">
+            <property name="maximumSize">
              <size>
-              <width>120</width>
-              <height>0</height>
+              <width>16777215</width>
+              <height>38</height>
              </size>
             </property>
-            <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>No media is currently playing.</string>
-            </property>
-            <property name="maxLength">
-             <number>155</number>
-            </property>
-            <property name="placeholderText">
-             <string notr="true">Output name</string>
-            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <spacer name="verticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkDeleteOriginal">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>13</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string notr="true">Tristate:
+
+Partially checked - videos will be marked
+for deletion after saving an edit.
+
+Fully checked - videos will be immediately
+deleted after successfully saving an edit.
+
+Note: File deletion/recycling
+is dependent on your settings.</string>
+               </property>
+               <property name="text">
+                <string notr="true">Delete originals</string>
+               </property>
+               <property name="tristate">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkSkipMarked">
+               <property name="minimumSize">
+                <size>
+                 <width>103</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>13</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string notr="true">If checked, using the next/previous video buttons will
+skip over files that have been marked for deletion.</string>
+               </property>
+               <property name="text">
+                <string notr="true">Skip marked files</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
           <item row="0" column="0" colspan="4">
@@ -888,32 +731,230 @@ automatically play upon completion of the current media.</string>
              </widget>
             </item>
             <item>
-             <spacer name="horizontalSpacer_2">
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
+             <widget class="QPushButton" name="buttonPrevious">
+              <property name="minimumSize">
                <size>
-                <width>40</width>
-                <height>20</height>
+                <width>20</width>
+                <height>18</height>
                </size>
               </property>
-             </spacer>
+              <property name="maximumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Plays the previous valid media file in the current folder.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="buttonNext">
+              <property name="minimumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Plays the next valid media file in the current folder.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
-          <item row="1" column="3">
-           <widget class="QPushButton" name="buttonNext">
+          <item row="0" column="4">
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="1" column="0" colspan="5">
+           <widget class="QLineEditPassthrough" name="lineOutput">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="minimumSize">
              <size>
-              <width>20</width>
-              <height>18</height>
+              <width>120</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>No media is currently playing.</string>
+            </property>
+            <property name="maxLength">
+             <number>155</number>
+            </property>
+            <property name="placeholderText">
+             <string notr="true">Output name</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="2">
+         <widget class="Line" name="advancedControlsLine">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_3">
+          <property name="horizontalSpacing">
+           <number>6</number>
+          </property>
+          <item row="0" column="1">
+           <layout class="QGridLayout" name="gridLayout_2">
+            <property name="spacing">
+             <number>2</number>
+            </property>
+            <item row="1" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QSpinBoxPassthrough" name="spinHour">
+                <property name="minimumSize">
+                 <size>
+                  <width>26</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>33</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBoxPassthrough" name="spinMinute">
+                <property name="minimumSize">
+                 <size>
+                  <width>33</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>33</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+                <property name="maximum">
+                 <number>59</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBoxPassthrough" name="spinSecond">
+                <property name="minimumSize">
+                 <size>
+                  <width>33</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>33</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="focusPolicy">
+                 <enum>Qt::ClickFocus</enum>
+                </property>
+                <property name="maximum">
+                 <number>59</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="2" column="0">
+             <widget class="QSpinBoxPassthrough" name="spinFrame">
+              <property name="minimumSize">
+               <size>
+                <width>98</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="prefix">
+               <string notr="true">Frame: </string>
+              </property>
+              <property name="maximum">
+               <number>0</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0">
+           <widget class="QPushButton" name="buttonPause">
+            <property name="minimumSize">
+             <size>
+              <width>28</width>
+              <height>0</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
-              <width>20</width>
-              <height>18</height>
+              <width>28</width>
+              <height>28</height>
              </size>
             </property>
             <property name="font">
@@ -924,112 +965,12 @@ automatically play upon completion of the current media.</string>
             <property name="focusPolicy">
              <enum>Qt::NoFocus</enum>
             </property>
-            <property name="toolTip">
-             <string>Plays the next valid media file in the current folder.</string>
-            </property>
             <property name="text">
-             <string notr="true">»</string>
+             <string notr="true">𝗜𝗜</string>
             </property>
            </widget>
           </item>
          </layout>
-        </item>
-        <item row="0" column="5" colspan="2">
-         <widget class="QFrame" name="frameQuickChecks">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>38</height>
-           </size>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_2">
-           <property name="spacing">
-            <number>2</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkDeleteOriginal">
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>13</height>
-              </size>
-             </property>
-             <property name="focusPolicy">
-              <enum>Qt::NoFocus</enum>
-             </property>
-             <property name="toolTip">
-              <string notr="true">Tristate:
-
-Partially checked - videos will be marked
-for deletion after saving an edit.
-
-Fully checked - videos will be immediately
-deleted after successfully saving an edit.
-
-Note: File deletion/recycling
-is dependent on your settings.</string>
-             </property>
-             <property name="text">
-              <string notr="true">Delete originals</string>
-             </property>
-             <property name="tristate">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkSkipMarked">
-             <property name="minimumSize">
-              <size>
-               <width>103</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>13</height>
-              </size>
-             </property>
-             <property name="focusPolicy">
-              <enum>Qt::NoFocus</enum>
-             </property>
-             <property name="toolTip">
-              <string notr="true">If checked, using the next/previous video buttons will
-skip over files that have been marked for deletion.</string>
-             </property>
-             <property name="text">
-              <string notr="true">Skip marked files</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
         </item>
         <item row="0" column="10">
          <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1083,6 +1024,69 @@ skip over files that have been marked for deletion.</string>
             </property>
             <property name="orientation">
              <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="1">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="spacing">
+           <number>1</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="buttonTrimStart">
+            <property name="minimumSize">
+             <size>
+              <width>44</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>95</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Click to set the starting position of a trim/
+the point where the intro fade will stop.
+
+Right-click for more options.</string>
+            </property>
+            <property name="text">
+             <string notr="true">Start</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="buttonTrimEnd">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Click to set the ending position of a trim/
+the point where the outro fade will stop.
+
+Right-click for more options.</string>
+            </property>
+            <property name="text">
+             <string notr="true">End</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -1200,7 +1204,13 @@ skip over files that have been marked for deletion.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Crop video</string>
+    <string>&amp;Crop</string>
+   </property>
+   <property name="iconText">
+    <string>Crop mode</string>
+   </property>
+   <property name="toolTip">
+    <string>Toggle crop mode</string>
    </property>
   </action>
   <action name="actionMarkDeleted">
@@ -1427,14 +1437,6 @@ start of a trim. The end of a trim will always be accurate.</string>
     <string>&amp;Check for updates</string>
    </property>
   </action>
-  <action name="actionAutoplay">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Autoplay</string>
-   </property>
-  </action>
   <action name="actionTrimPrecise">
    <property name="checkable">
     <bool>true</bool>
@@ -1471,7 +1473,7 @@ for deletion, without actually deleting them.</string>
   </action>
   <action name="actionCopyMediaPath">
    <property name="text">
-    <string>&amp;Copy media path</string>
+    <string>Copy media &amp;path</string>
    </property>
   </action>
   <action name="actionSnapRatio">
@@ -1491,7 +1493,7 @@ for deletion, without actually deleting them.</string>
   </action>
   <action name="actionSnapshotOpenLast">
    <property name="text">
-    <string>Open last snapshot (&amp;PyPlayer)</string>
+    <string>&amp;Open last snapshot (PyPlayer)</string>
    </property>
   </action>
   <action name="actionSnapshotOpenLastInDefault">
@@ -1506,7 +1508,122 @@ for deletion, without actually deleting them.</string>
   </action>
   <action name="actionSnapshotCopyLastPath">
    <property name="text">
-    <string>Copy last snapshot path</string>
+    <string>Copy last snapshot &amp;path</string>
+   </property>
+  </action>
+  <action name="actionCopyImage">
+   <property name="text">
+    <string>&amp;Copy image</string>
+   </property>
+  </action>
+  <action name="actionCopyFile">
+   <property name="text">
+    <string>Copy media &amp;file</string>
+   </property>
+  </action>
+  <action name="actionCutFile">
+   <property name="text">
+    <string>C&amp;ut media file</string>
+   </property>
+  </action>
+  <action name="actionTrimPickEveryTime">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Pick &amp;every time</string>
+   </property>
+  </action>
+  <action name="actionViewLastDirectory">
+   <property name="text">
+    <string>View last directory</string>
+   </property>
+  </action>
+  <action name="actionSnapshotCopyLastFile">
+   <property name="text">
+    <string>Copy last snapshot &amp;file</string>
+   </property>
+  </action>
+  <action name="actionSnapshotCutLastFile">
+   <property name="text">
+    <string>C&amp;ut last snapshot file</string>
+   </property>
+  </action>
+  <action name="actionSnapshotCopyLastImage">
+   <property name="text">
+    <string>&amp;Copy last snapshot image</string>
+   </property>
+  </action>
+  <action name="actionSnapshotUndo">
+   <property name="text">
+    <string>Undo last snapshot</string>
+   </property>
+  </action>
+  <action name="actionCopyImage_2">
+   <property name="text">
+    <string>Copy image</string>
+   </property>
+  </action>
+  <action name="actionAutoplayShuffle">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Shuffle</string>
+   </property>
+  </action>
+  <action name="actionAutoplayDirectionForwards">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Forwards</string>
+   </property>
+  </action>
+  <action name="actionAutoplayDirectionBackwards">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Backwards</string>
+   </property>
+  </action>
+  <action name="actionAutoplayDirectionDynamic">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use last &amp;direction</string>
+   </property>
+  </action>
+  <action name="actionAutoplayDirection">
+   <property name="text">
+    <string>Autoplay direction</string>
+   </property>
+  </action>
+  <action name="actionAutoplay">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enabled</string>
+   </property>
+  </action>
+  <action name="actionAutoplayDisabled">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Disabled</string>
    </property>
   </action>
  </widget>
@@ -1554,8 +1671,6 @@ for deletion, without actually deleting them.</string>
   <tabstop>buttonPause</tabstop>
   <tabstop>buttonTrimStart</tabstop>
   <tabstop>buttonTrimEnd</tabstop>
-  <tabstop>buttonPrevious</tabstop>
-  <tabstop>buttonNext</tabstop>
   <tabstop>lineOutput</tabstop>
   <tabstop>spinHour</tabstop>
   <tabstop>spinMinute</tabstop>
