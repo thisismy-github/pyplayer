@@ -3589,8 +3589,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 label.setAlignment(Qt.AlignCenter)
                 layout.addWidget(label)
 
-            # checkboxes for each file TODO add setting for sorting the files
-            for file in sorted(marked_for_deletion, key=splitext):  # key=splitext to ignore extensions when sorting
+            # checkboxes for each file (key=splitext to ignore extensions when sorting)
+            # TODO add setting related to sorting the files
+            for file in sorted(marked_for_deletion, key=os.path.splitext):
                 checkbox = QtW.QCheckBox(file, group)
                 checkbox.setChecked(True)
                 groupLayout.addWidget(checkbox)
