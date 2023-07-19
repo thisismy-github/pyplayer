@@ -11,7 +11,7 @@ import platform
 
 # ---------------------
 
-VERSION = 'pyplayer 0.5.0 beta'
+VERSION = 'pyplayer 0.6.0 beta'
 REPOSITORY_URL = 'https://github.com/thisismy-github/pyplayer'
 
 # ---------------------
