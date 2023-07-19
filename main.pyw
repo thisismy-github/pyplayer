@@ -1191,7 +1191,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         update_recent_list: bool = True,
         autoplay: bool = False,
         index_override: int = 0
-    ):                                          # *args to capture unused signal args
+    ):                                              # *args to capture unused signal args
         ''' Cycles through the current media's folder and looks for the `next`
             or previous openable, non-hidden file that isn't in the `ignore`
             list. If there are no other openable files, nothing happens.
@@ -1247,7 +1247,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         locked_video_path = self.locked_video
         open = self.open
 
-        if autoplay:                            # no autoplay for images or gifs (yet?)
+        if autoplay:                                # no autoplay for images or gifs (yet?)
             if settings.checkAutoplaySameMime.isChecked(): valid_mime_types = (self.mime_type,)
             else: valid_mime_types = ('video', 'audio')
         else: valid_mime_types = ('video', 'image', 'audio')
@@ -1294,7 +1294,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def cycle_recent_files(self, forward: bool = True):
         # NOTE: recent_files is least recent to most recent -> index 0 is the LEAST recent
-        if self.video not in self.recent_files:  # default to latest file if no valid file is loaded
+        if self.video not in self.recent_files:     # default to latest file if no valid file is loaded
             current_index = len(self.recent_files)
         else: current_index = self.recent_files.index(self.video)
         new_index = current_index + (1 if forward else -1)
@@ -1306,7 +1306,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def open_recent_file(self, path: str, update: bool, open: bool = True):
         try:
             recent_files = self.recent_files
-            if path == self.locked_video:       # recent file is locked (it's actively being edited)
+            if path == self.locked_video:           # recent file is locked (it's actively being edited)
                 log_on_statusbar(f'Recent file {path} is currently being worked on.')
             elif os.path.isfile(path):
                 if open:
@@ -1315,27 +1315,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     else:
                         log_on_statusbar(f'Recent file {path} could not be opened.')
                         recent_files.remove(path)
-                else:                           # don't open, just move file to top
+                else:                               # don't open, just move file to top
                     recent_files.append(recent_files.pop(recent_files.index(path)))
             else:
                 log_on_statusbar(f'Recent file {path} no longer exists.')
                 recent_files.remove(path)
-        except ValueError: pass                 # ValueError -> path was not actually in recent_files
+        except ValueError: pass                     # ValueError -> path was not actually in recent_files
         finally: self.refresh_recent_menu()
 
 
     def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True):
         try:
-            if mod & Qt.AltModifier:                    # alt (use shuffle mode to play video but disable autoplay)
+            if mod & Qt.AltModifier:                # alt (use shuffle mode to play video but disable autoplay)
                 self.actionAutoplay.setChecked(False)
                 self.shuffle_media(folder)
-            elif mod & Qt.ShiftModifier:                # shift (play folder with autoplay in shuffle mode)
+            elif mod & Qt.ShiftModifier:            # shift (play folder with autoplay in shuffle mode)
                 self.actionAutoplay.setChecked(True)
                 self.actionAutoplayShuffle.setChecked(not self.actionAutoplayShuffle.isChecked())
                 self.shuffle_media(folder)
             else:
                 #skip_marked = self.checkSkipMarked.isChecked()
-                #marked = self.marked_for_deletion      # TODO should we?
+                #marked = self.marked_for_deletion  # TODO should we?
                 locked_video_path = self.locked_video
                 open = self.open
 
@@ -1413,10 +1413,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if constants.PLATFORM == 'Windows':
                 data = QtCore.QByteArray()
                 stream = QtCore.QDataStream(data, QtCore.QIODevice.WriteOnly)
-                magic = QtCore.QByteArray()     # you HAVE to do these two lines
-                stream << magic                 # we are bitshifting literally nothing into the data stream
+                magic = QtCore.QByteArray()         # you HAVE to do these two lines
+                stream << magic                     # we are bitshifting literally nothing into the data stream
                 mime.setData('Preferred DropEffect', data)
-            else:                               # TODO crossplatform linux/mac support
+            else:                                   # TODO crossplatform linux/mac support
                 return show_on_statusbar('Cutting files is limited to Windows for now.')
             log_on_statusbar(f'File "{os.path.basename(path)}" cut to clipboard.')
         else:
@@ -1462,16 +1462,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # if we're watching a video or audio with cover art, snapshot the frame/cover art first
             if snapshot_needed:
                 path = self.snapshot(mode='full' if extended else 'quick', is_temp=True)
-                if path is None: return                 # dialog canceled (finally-statement ensures we unpause if needed)
+                if path is None: return             # dialog canceled (finally-statement ensures we unpause if needed)
                 temp_string = ' Temporary snapshot file has been deleted.'
             elif extended:
                 if self.is_gif: image_player.gif.setPaused(True)
                 else: player.set_pause(True)
                 width, height, quality = self.show_size_dialog(snapshot=True)
-                if width is None: return                # dialog canceled (finally-statement ensures we unpause if needed)
+                if width is None: return            # dialog canceled (finally-statement ensures we unpause if needed)
 
             log_on_statusbar('Copying image data to clipboard...')
-            if not self.actionCrop.isChecked():         # no crop - copy entire image/frame
+            if not self.actionCrop.isChecked():     # no crop - copy entire image/frame
                 if extended:
                     try:    # if path still equals self.video, that means it wasn't snapshotted -> must be image
                         if path == self.video: image = get_PIL_Image().fromqpixmap(image_player.pixmap())
@@ -1489,7 +1489,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except: return log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
                     finally: image.close()
                 else:
-                    if path == self.video:              # if a snapshot was needed earlier, this will never be True
+                    if path == self.video:          # if a snapshot was needed earlier, this will never be True
                         if self.is_gif: app.clipboard().setImage(image_player.gif.currentImage())         # setImage is faster
                         else: app.clipboard().setPixmap(image_player.pixmap())
                     else: app.clipboard().setImage(QtGui.QImage(path))
@@ -1537,9 +1537,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try: os.remove(path)
                 except: logging.warning('(!) FAILED TO DELETE TEMPORARY SNAPSHOT')
         except: log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
-        finally:                                                    # restore pause-state before leaving
+        finally:                                    # restore pause-state before leaving
             if self.is_gif: image_player.gif.setPaused(self.is_paused)
-            else: player.set_pause(self.is_paused)                  # NOTE: QMovie emits "frameChanged" when paused, even when nothing is set!!!
+            else: player.set_pause(self.is_paused)
 
 
     def parse_media_file(self, file, probe_file=None, mime='video', extension=None, data=None):
@@ -2798,8 +2798,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def update_gif_progress(self, frame: int):
         ''' Updates animated GIF progress by manually looping
             the GIF when outside the designated trim markers. '''
-        if self.minimum <= frame <= self.maximum: update_progress(frame)
-        else: set_and_update_progress(self.minimum)
+        if self.is_gif:
+            if self.minimum <= frame <= self.maximum: update_progress(frame)
+            else: set_and_update_progress(self.minimum)
 
 
     def update_progress(self, frame: int):
