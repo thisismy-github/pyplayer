@@ -28,7 +28,8 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     if load('fullscreen', False):  # load fullscreen and last maximized state
         gui.actionFullscreen.trigger()
         gui.was_maximized = load('maximized', False)
-    elif load('maximized', False): gui.showMaximized()
+    elif load('maximized', False):
+        gui.showMaximized()
     gui.app.setStyle(str(load('windowstyle', 'WindowsVista')))
     load('lastupdatecheck')
     load('theme', 'Midnight')
@@ -46,8 +47,10 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
 
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, settings.tabUpdates, ignore=('comboThemes',))
-    for action in gui.trim_mode_action_group.actions():
-        action.setChecked(load(action.objectName(), action.isChecked()))
+    for group in (gui.trim_mode_action_group, gui.autoplay_direction_group):
+        for action in group.actions():
+            action.setChecked(load(action.objectName(), action.isChecked()))
+    gui.actionAutoplayShuffle.setChecked(load('actionautoplayshuffle', False))
     hoverfontcolor = load('hoverfontcolor', '255,255,255', ',', int, tuple, fill_with_defaults=True, default=255)
     gui.sliderProgress.hover_font_color = QtGui.QColor(*hoverfontcolor)
     settings.buttonHoverFontColor.setToolTip(str(hoverfontcolor))
@@ -101,8 +104,10 @@ def saveConfig(gui, filename: str = None):
     save('recent_files', gui.recent_files, delimiter='<|>')
 
     cfg.setSection('settings')
-    for action in gui.trim_mode_action_group.actions():
-        save(action.objectName(), action.isChecked())
+    for group in (gui.trim_mode_action_group, gui.autoplay_direction_group):
+        for action in group.actions():
+            save(action.objectName(), action.isChecked())
+    save('actionautoplayshuffle', gui.actionAutoplayShuffle.isChecked())
     save('hoverfontcolor', gui.sliderProgress.hover_font_color.getRgb(), delimiter=',')
 
     cfg.setSection('keys')
