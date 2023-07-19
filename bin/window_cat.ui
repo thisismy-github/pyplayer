@@ -7,20 +7,23 @@
     <x>0</x>
     <y>0</y>
     <width>421</width>
-    <height>421</height>
+    <height>461</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string notr="true">Videos to concatenate</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <property name="topMargin">
+    <number>5</number>
+   </property>
    <property name="bottomMargin">
     <number>6</number>
    </property>
    <property name="verticalSpacing">
     <number>4</number>
    </property>
-   <item row="5" column="3">
+   <item row="7" column="3">
     <widget class="QPushButton" name="down">
      <property name="maximumSize">
       <size>
@@ -36,65 +39,7 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
-    <widget class="QPushButton" name="add">
-     <property name="maximumSize">
-      <size>
-       <width>24</width>
-       <height>16777215</height>
-      </size>
-     </property>
-     <property name="text">
-      <string notr="true">+</string>
-     </property>
-     <property name="shortcut">
-      <string>Ins</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="1">
-    <widget class="QPushButton" name="delete">
-     <property name="maximumSize">
-      <size>
-       <width>24</width>
-       <height>16777215</height>
-      </size>
-     </property>
-     <property name="text">
-      <string notr="true">-</string>
-     </property>
-     <property name="shortcut">
-      <string>Del</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="4">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="2">
-    <widget class="QPushButton" name="up">
-     <property name="maximumSize">
-      <size>
-       <width>24</width>
-       <height>16777215</height>
-      </size>
-     </property>
-     <property name="text">
-      <string notr="true">▲</string>
-     </property>
-     <property name="shortcut">
-      <string>Ctrl+Up</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0" colspan="5">
+   <item row="1" column="0" colspan="6">
     <widget class="QVideoList" name="videoList">
      <property name="acceptDrops">
       <bool>true</bool>
@@ -116,7 +61,7 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="0" colspan="5">
+   <item row="6" column="0" colspan="6">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <property name="spacing">
       <number>3</number>
@@ -142,7 +87,65 @@
      </item>
     </layout>
    </item>
-   <item row="3" column="0" colspan="5">
+   <item row="7" column="5">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="delete">
+     <property name="maximumSize">
+      <size>
+       <width>24</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="text">
+      <string notr="true">-</string>
+     </property>
+     <property name="shortcut">
+      <string>Del</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="add">
+     <property name="maximumSize">
+      <size>
+       <width>24</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="text">
+      <string notr="true">+</string>
+     </property>
+     <property name="shortcut">
+      <string>Ins</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="2">
+    <widget class="QPushButton" name="up">
+     <property name="maximumSize">
+      <size>
+       <width>24</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="text">
+      <string notr="true">▲</string>
+     </property>
+     <property name="shortcut">
+      <string>Ctrl+Up</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="6">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <property name="spacing">
       <number>12</number>
@@ -218,6 +221,32 @@ is dependent on your settings.</string>
       </spacer>
      </item>
     </layout>
+   </item>
+   <item row="7" column="4">
+    <widget class="QPushButton" name="reverse">
+     <property name="maximumSize">
+      <size>
+       <width>24</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <property name="text">
+      <string notr="true"/>
+     </property>
+     <property name="shortcut">
+      <string>Ctrl+Down</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="6">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Videos will be concatenated from top to bottom</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
