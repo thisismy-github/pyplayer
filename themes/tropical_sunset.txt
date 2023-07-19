@@ -14,7 +14,7 @@ QScrollArea { background-color: transparent }
 QMenu { menu-scrollable: 1 }
 
 QVideoPlayer {
-	background-image: url("themes/resources/logo_outline.png");	/* Relative paths are relative to main.exe, NOT the themes folder. */
+	background-image: url("themes/resources/logo_outline.png");	/* Relative paths are relative to executable, NOT the themes folder. */
 	background-position: center;
 	background-repeat: no-repeat;
 }
