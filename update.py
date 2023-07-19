@@ -12,7 +12,7 @@ from traceback import format_exc
 
 
 logger = logging.getLogger('update.py')
-HYPERLINK = f'<a href="{constants.REPOSITORY_URL}/releases/latest">latest release on Github here</a>.'
+HYPERLINK = f'<a href="{constants.REPOSITORY_URL}/releases/latest">latest release on GitHub here</a>.'
 
 
 def get_later_version(version_a: str, version_b: str) -> str:
@@ -52,12 +52,12 @@ def check_for_update(self, log: bool = True, _launch: bool = False) -> None:
         logger.info(f'Latest version: {latest_version} | Current version: {current_version}')
 
         if len(latest_version) != len(current_version):
-            self.log('Github release URL could not be parsed correctly.')
+            self.log_on_statusbar_signal.emit('GitHub release URL could not be parsed correctly.')
             return self._handle_updates_signal.emit(
                 dict(failed=True),
                 dict(title='Update URL mismatch',
                      icon=QMessageBox.Warning,
-                     text=f'The URL for the latest release on Github has an unexpected format.\n\nGithub version: "{latest_version}"\nCurrent version: "{current_version}"',
+                     text=f'The URL for the latest release on GitHub has an unexpected format.\n\nGitHub version: "{latest_version}"\nCurrent version: "{current_version}"',
                      textInformative='Newer versions might use a different naming scheme, or perhaps '
                                      'there was an error while checking. You can manually check the ' + HYPERLINK)
             )
@@ -69,25 +69,25 @@ def check_for_update(self, log: bool = True, _launch: bool = False) -> None:
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
                          buttons=(QMessageBox.Yes | QMessageBox.No),        # TODO | QMessageBox.Ignore
-                         text=f'An update is available on Github ({current_version} -> {latest_version}). '
+                         text=f'An update is available on GitHub ({current_version} -> {latest_version}). '
                               'Would you\nlike to download and install this update automatically?',
                          textInformative='You can manually view the ' + HYPERLINK)
                 )
             else:                                                           # non-windows version of popup (no auto-updater yet)
                 if constants.IS_COMPILED: reason = 'Auto-updating is currently only available on Windows.<br><br>'      # \n breaks hyperlinks
-                else: reason = 'Because you\'re running directly from the script, auto-updating is disbaled.<br><br>'   # \n breaks hyperlinks
+                else: reason = 'Because you\'re running directly from the script, auto-updating is disabled.<br><br>'   # \n breaks hyperlinks
                 return self._handle_updates_signal.emit(
                     dict(latest_version_url=latest_version_url),
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
-                         text=f'An update is available on Github ({current_version} -> {latest_version}).',
+                         text=f'An update is available on GitHub ({current_version} -> {latest_version}).',
                          textInformative=f'{reason}You can view the {HYPERLINK}')
                 )
-        elif log: self.log('You\'re up to date!')
+        elif log: self.log_on_statusbar_signal.emit('You\'re up to date!')
     except requests.exceptions.ConnectionError:
-        if _launch: logging.warning('Update check was unable to reach GitHub (no internet connection?).')
-        else: self.log('Update check was unable to reach GitHub (no internet connection?).')
-    except: self.log(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
+        if _launch: logger.warning('Update check was unable to reach GitHub (no internet connection?).')
+        else: self.log_on_statusbar_signal.emit('Update check was unable to reach GitHub (no internet connection?).')
+    except: self.log_on_statusbar_signal.emit(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
     self._handle_updates_signal.emit({}, {})                                # call empty signal to perform cleanup
 
 
@@ -106,7 +106,7 @@ def download_update(self, latest_version: str, download_url: str, download_path:
         mb_per_chunk = 3
 
         with open(download_path, 'wb') as file:
-            logging.info(f'Downloading {total_size / 1048576:.2f}mb')
+            logger.info(f'Downloading {total_size / 1048576:.2f}mb')
             chunk_size = mb_per_chunk * (1024 * 1024)
             start_time = time.time()
             for chunk in download_response.iter_content(chunk_size=chunk_size):
@@ -121,7 +121,7 @@ def download_update(self, latest_version: str, download_url: str, download_path:
                 QApplication.processEvents()                # manually update GUI since this is not taking place in a thread
 
         message = f'Update downloaded after {time.time() - start_time:.1f} seconds, restarting...'
-        self.log(message)
+        self.log_on_statusbar_signal.emit(message)
         self.save_progress_bar.setFormat(message)
 
         # send exit-signals to all PyPlayer instances through their PID files
@@ -154,7 +154,7 @@ def download_update(self, latest_version: str, download_url: str, download_path:
         import shutil
         active_updater_path = get_unique_path(os.path.join(constants.CWD, 'updater_active') + ext)
         logger.info(f'Copying updater-utility to temporary path ({active_updater_path})')
-        shutil.copy2(original_updater_path, active_updater_path)
+        shutil.copyfile(original_updater_path, active_updater_path)
 
         # run updater utility and exit current PyPlayer instance
         args = []
@@ -209,9 +209,9 @@ def validate_update(self, update_report: str) -> None:
         version_change, active_updater_path, download_path, status = lines  # version_change = '<old_version> -> <new_version>'
 
         try: os.remove(active_updater_path)
-        except: self.log(f'Could not clean up temporary updater after update: {download_path}')
+        except: self.log_on_statusbar_signal.emit(f'Could not clean up temporary updater after update: {download_path}')
         try: os.remove(download_path)
-        except: self.log(f'Could not clean up .zip file after update: {download_path}')
+        except: self.log_on_statusbar_signal.emit(f'Could not clean up .zip file after update: {download_path}')
 
         if status != 'SUCCESS':
             logger.warning(f'(!) UPDATE FAILED: {status}')
@@ -226,12 +226,13 @@ def validate_update(self, update_report: str) -> None:
     except: logger.warning('Failed to delete update report after validation.')
     logger.info('Update validated.')
     update_migration(self, version_change.split(' -> ')[0])
-    self.log(f'Update from {version_change} successful.')
+    self.log_on_statusbar_signal.emit(f'Update from {version_change} successful.')
 
 
 def update_migration(self, old_version: str) -> None:
     ''' Handles additional work required to migrate
         `old_version` to the latest version, if any. '''
+    settings = self.dialog_settings
     older_than = lambda v: old_version != v and get_later_version(old_version, v) == v
     if older_than('0.3.0'):     # updated from 0.1.0 - 0.2.0
         qthelpers.getPopup(title='Update successful, but reinstall recommended',
@@ -249,7 +250,16 @@ def update_migration(self, old_version: str) -> None:
             except: logger.info('(!) Failed to remove outdated ffmpeg.exe.')
     if older_than('0.5.0'):     # updated from <=0.4.0
         import config
-        new_format = self.dialog_settings.lineSnapshotNameFormat.text().strip().replace('?video', '?name')
-        self.dialog_settings.lineSnapshotNameFormat.setText(new_format)
+        new_format = settings.lineSnapshotNameFormat.text().strip().replace('?video', '?name')
+        settings.lineSnapshotNameFormat.setText(new_format)
         config.cfg.saveTo('settings', 'linesnapshotnameformat', new_format)
         self.recent_files += config.cfg.load('recent_videos', '', '<|>', section='general')
+    if older_than('0.6.0'):     # updated from <=0.5.0
+        import config
+        new_format = settings.lineWindowTitleFormat.text().strip().replace('?size', '?resolution')
+        settings.lineSnapshotNameFormat.setText(new_format)
+        settings.comboScaleImages.setCurrentIndex(settings.comboScaleImages.currentIndex() + 1)
+        settings.comboScaleArt.setCurrentIndex(settings.comboScaleArt.currentIndex() + 1)
+        config.cfg.saveTo('settings', 'linewindowtitleformat', new_format)
+        config.cfg.saveTo('settings', 'comboscaleimages', settings.comboScaleImages.currentIndex() + 1)
+        config.cfg.saveTo('settings', 'comboscaleart', settings.comboScaleArt.currentIndex() + 1)
