@@ -2,8 +2,7 @@
     This file might be removed in the future, since it slightly overcomplicates things.
     thisismy-github 3/14/22 '''
 
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt
+from PyQt5 import QtGui, QtCore
 from PyQt5 import QtWidgets as QtW
 import config
 import constants
@@ -124,8 +123,8 @@ def after_show_setup(self: QtW.QMainWindow):
                 logging.error(format_exc())
     else: self.refresh_title_signal.emit()
 
-    if self.last_window_size is None: self.last_window_size = config.cfg.size
-    if self.last_window_pos is None: self.last_window_pos = config.cfg.pos
+    if self.last_window_size is None: self.last_window_size = QtCore.QSize(*config.cfg.size)
+    if self.last_window_pos is None: self.last_window_pos = QtCore.QPoint(*config.cfg.pos)
 
     recent_files_count = self.dialog_settings.spinRecentFiles.value()
     files = config.cfg.load('recent_files', '', '<|>', section='general')
