@@ -2796,12 +2796,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else: os.rename(dest, final_dest)
 
                 # only open edited video if user hasn't opened something else TODO make this a setting
-                if self.video == video: self._save_open_signal.emit(final_dest, settings.checkCycleRememberOriginalPath.checkState() == 2)
-                elif settings.checkTextOnSave.isChecked(): show_on_player(f'Changes saved to {final_dest}.')
+                if self.video == video:
+                    self._save_open_signal.emit(final_dest, settings.checkCycleRememberOriginalPath.checkState() == 2)
+                    if is_gif:                                      # gifs will often just... pause themselves after an edit
+                        self.force_pause_signal.emit(False)         # this is the only way i've found to fix it
+                elif settings.checkTextOnSave.isChecked():
+                    show_on_player(f'Changes saved to {final_dest}.')
                 log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
 
-                # gifs will frequently just... pause themselves after an edit. this is the only way i've found to fix it
-                if self.is_gif: self.force_pause_signal.emit(False)
             else: return log_on_statusbar('No changes have been made because the crop was the same size as the source media.')
         except: log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
         finally:                                        # NOTE: this order is intentional
