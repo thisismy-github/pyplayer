@@ -255,11 +255,11 @@ def get_audio_duration(file: str) -> float:
             import music_tag                                    # only import music_tag if we absolutely need to
             return music_tag.load_file(file)['#length'].value
     except:                                                     # this is to handle things that wrongly report as audio, like .ogv files
-        log_on_statusbar(f'(!) Invalid audio file detected {format_exc()}')
+        log_on_statusbar('(?) File could not be read as an audio file (not recognized by TinyTag or music_tag)')
         return 0.0
 
 
-def splitext_media(path, valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS, strict: bool = True) -> tuple:
+def splitext_media(path: str, valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS, strict: bool = True) -> tuple:
     base, ext = os.path.splitext(path)
     ext = ext.lower()
     if not ext: return path, ''
@@ -1495,7 +1495,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         else: app.clipboard().setPixmap(image_player.pixmap())
                     else: app.clipboard().setImage(QtGui.QImage(path))
                 log_on_statusbar(f'Image data for "{os.path.basename(path)}" copied to clipboard.{temp_string}')
-            else:                                       # crop image/frame and copy crop region
+            else:                                   # crop image/frame and copy crop region
                 try:    # no with-statement here just in case Pillow doesn't close `image` when it gets reassigned
                     if path == self.video: image = get_PIL_Image().fromqpixmap(image_player.pixmap())
                     else: image = get_PIL_Image().open(path)
@@ -2601,76 +2601,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # display indeterminant progress bar, set busy cursor, and update UI to frame 0
         #self.frame_override = 0
-        self.set_save_progress_max_signal.emit(frame_count)             # set progress bar max to max possible frames
+        self.set_save_progress_max_signal.emit(frame_count)                         # set progress bar max to max possible frames
         self.setCursor(Qt.BusyCursor)
         emit_update_progress_signal(0)
 
+    # --- Apply operations to media ---
         try:
-            # check for specific operations
-            if op_replace_audio is not None:
-                log_on_statusbar('Audio replacement requested.')
-                audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
-                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0', dest)
-            if op_add_audio is not None:    # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
-                audio = op_add_audio        # TODO :duration=shortest (after amix=inputs=2) has same issue as above
-
-                if mime != 'image':         # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
-                    log_on_statusbar('Additional audio track requested.')
-                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
-                    intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -i "{audio}" {the_important_part}', dest)
-                elif is_gif:                # gifs
-                    log_on_statusbar('Adding audio to GIF (final video duration may not exactly line up with audio).')
-                    self.set_save_progress_max_signal.emit(get_audio_duration(audio) * frame_rate)
-                    intermediate_file = self.ffmpeg(
-                        infile=intermediate_file,
-                        cmd=f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest',
-                        outfile=dest
-                    )
-                else:                       # static images
-                    log_on_statusbar('Adding audio to static image.')
-                    if self.vheight % 2 != 0:               # height must be divisible by 2... for some reason
-                        try:                                # NOTE: i THINK changing `intermediate_file` is okay here since it's an image
-                            if exists(intermediate_file): image = get_PIL_Image().open(video)
-                            else: image = get_PIL_Image().fromqpixmap(image_player.art)
-                            image = image.crop((0, 1, self.vwidth, self.vheight))
-                            intermediate_file = add_path_suffix(intermediate_file, '_tempcrop', unique=True)
-                            logging.info(f'Image height isn\'t divisible by 2, cropping a pixel from the top and saving to {intermediate_file}.')
-                            image.save(intermediate_file)
-                        except: return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
-                        finally: image.close()
-                    elif not exists(intermediate_file):
-                        logging.info(f'Image doesn\'t acutally exist, saving file to "{intermediate_file}" using data from QVideoPlayerLabel.')
-                        image_player.art.save(intermediate_file)
-                    self.set_save_progress_max_signal.emit(get_audio_duration(audio) * 25)
-                    intermediate_file = self.ffmpeg(    # ffmpeg defaults to using ^ 25fps for this
-                        infile=intermediate_file,
-                        cmd=f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest',
-                        outfile=dest
-                    )
-            if op_remove_track is not None:                 # NOTE: This can degrade audio quality slightly.
-                log_on_statusbar(f'{op_remove_track}-track removal requested.')
-                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in {"-q:a 0 -map a" if op_remove_track == "Video" else "-c copy -an"}', dest)
-            if op_amplify_audio is not None:
-                log_on_statusbar('Audio amplification requested.')
-                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a "volume={op_amplify_audio}"', dest)
-            if op_resize is not None:                       # audio -> https://stackoverflow.com/questions/25635941/ffmpeg-modify-audio-length-size-stretch-or-shrink
-                log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (Note: this should be a VERY quick operation)' if mime == 'audio' else ''
-                log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
-                width, height = op_resize                   # for audio, width is the percentage and height is None
-                if mime == 'audio': intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
-                else: intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -vf "scale={width}:{height}" -crf 28 -c:a copy', dest)
-            if op_rotate_video is not None:
-                log_on_statusbar('Video rotation/flip requested (this is a time-consuming task).')
-                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy', dest)
-
             # trimming and fading (controlled using the same start/end points)
+            # TODO: there are scenarios where cropping and/or resizing first is better
+            #       - how should we handle reordering operations?
             if op_trim_start or op_trim_end:
-                if self.is_static_image:                    # NOTE: this shouldn't be possible, but just in case
+                if self.is_static_image:                                            # NOTE: shouldn't be possible, but just in case
                     return log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
 
                 # trim -> https://trac.ffmpeg.org/wiki/Seeking TODO: -vf trim filter should be used in here
                 if self.is_trim_mode():
-                    self.set_save_progress_max_signal.emit(maximum - minimum)   # set progress bar to actual number of frames in final trim
+                    self.set_save_progress_max_signal.emit(maximum - minimum)       # set progress bar to actual number of frames in final trim
 
                     if is_gif:
                         log_on_statusbar('GIF trim requested.')
@@ -2757,6 +2703,77 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         finally: image.close()
                     else: self.ffmpeg(intermediate_file, f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"', dest)
 
+            # resize video/GIF/image, or change audio file's tempo
+            # TODO: this is a relatively fast operation and SHOULD be done much sooner but that requires...
+            # ...dynamic ordering of operations (see above) and adjusting `crop_selection`/`lfp` and I'm lazy
+            if op_resize is not None:       # audio -> https://stackoverflow.com/questions/25635941/ffmpeg-modify-audio-length-size-stretch-or-shrink
+                log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (Note: this should be a VERY quick operation)' if mime == 'audio' else ''
+                log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
+                width, height = op_resize   # for audio, width is the percentage and height is None
+                if mime == 'audio': intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
+                else: intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -vf "scale={width}:{height}" -crf 28 -c:a copy', dest)
+
+            # rotate video/GIF/image
+            if op_rotate_video is not None:
+                log_on_statusbar('Video rotation/flip requested (this is a time-consuming task).')
+                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy', dest)
+
+            # replace audio track
+            if op_replace_audio is not None:
+                log_on_statusbar('Audio replacement requested.')
+                audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
+                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0', dest)
+
+            # add audio track - adding audio to images or GIFs will turn them into videos
+            # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
+            if op_add_audio is not None:    # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
+                audio = op_add_audio        # TODO :duration=shortest (after amix=inputs=2) has same issue as above
+
+                if mime != 'image':         # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
+                    log_on_statusbar('Additional audio track requested.')
+                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
+                    intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -i "{audio}" {the_important_part}', dest)
+                elif is_gif:                # gifs
+                    log_on_statusbar('Adding audio to GIF (final video duration may not exactly line up with audio).')
+                    self.set_save_progress_max_signal.emit(get_audio_duration(audio) * frame_rate)
+                    intermediate_file = self.ffmpeg(
+                        infile=intermediate_file,
+                        cmd=f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest',
+                        outfile=dest
+                    )
+                else:                       # static images
+                    log_on_statusbar('Adding audio to static image.')
+                    if self.vheight % 2 != 0:               # height must be divisible by 2... for some reason
+                        try:                                # NOTE: i THINK changing `intermediate_file` is okay here since it's an image
+                            if exists(intermediate_file): image = get_PIL_Image().open(video)
+                            else: image = get_PIL_Image().fromqpixmap(image_player.art)
+                            image = image.crop((0, 1, self.vwidth, self.vheight))
+                            intermediate_file = add_path_suffix(intermediate_file, '_tempcrop', unique=True)
+                            logging.info(f'Image height isn\'t divisible by 2, cropping a pixel from the top and saving to {intermediate_file}.')
+                            image.save(intermediate_file)
+                        except: return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
+                        finally: image.close()
+                    elif not exists(intermediate_file):
+                        logging.info(f'Image doesn\'t acutally exist, saving file to "{intermediate_file}" using data from QVideoPlayerLabel.')
+                        image_player.art.save(intermediate_file)
+                    self.set_save_progress_max_signal.emit(get_audio_duration(audio) * 25)
+                    intermediate_file = self.ffmpeg(        # ffmpeg defaults to using ^ 25fps for this
+                        infile=intermediate_file,
+                        cmd=f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest',
+                        outfile=dest
+                    )
+
+            # remove all video or audio tracks (does not turn file into an image/GIF)
+            if op_remove_track is not None:                 # NOTE: This can degrade audio quality slightly.
+                log_on_statusbar(f'{op_remove_track}-track removal requested.')
+                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in {"-q:a 0 -map a" if op_remove_track == "Video" else "-c copy -an"}', dest)
+
+            # amplify audio (TODO: do math to chain several of these together at once to circumvent the max volume limitation)
+            if op_amplify_audio is not None:
+                log_on_statusbar('Audio amplification requested.')
+                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a "volume={op_amplify_audio}"', dest)
+
+        # --- Post-edit cleanup & opening our newly edited media ---
             # confirm our operations, clean up temp files/base video, and get final path
             if operations_detected:                                 # double-check that we've actually done anything at all
                 if not exists(dest):
