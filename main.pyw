@@ -3015,6 +3015,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.show_save_progress_signal.emit(True)
         frame_rate = max(1, frame_rate_hint or self.frame_rate)             # used when ffmpeg provides `out_time_ms` instead of `frame`
         use_backup_lines = True
+        lines_read = 0
 
         while True:
             if process.poll() is not None: break
@@ -3022,8 +3023,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # loop over stout until we get to the line(s) we want
             # doing it this way lets us sleep between loops without falling behind, saving a lot of resources
             while True:
-                progress_text = process.stdout.readline()
-                if progress_text is None: break
+                progress_text = process.stdout.readline().strip()
+                lines_read += 1
+                logging.debug(f'FFmpeg output line #{lines_read}: {progress_text}')
+                if not progress_text:
+                    logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
+                    break
 
                 # normal videos will have a "frame" progress string
                 if progress_text[:6] == 'frame=':
@@ -3043,6 +3048,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         break
                     except ValueError: pass
             sleep(0.2)
+
+        # terminate process just in case ffmpeg got locked up
+        try: process.terminate()
+        except: pass
 
         # cleanup temp file, if needed
         if temp_path != infile:
