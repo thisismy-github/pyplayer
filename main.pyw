@@ -3251,6 +3251,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if width == 0: width = -1           # ffmpeg takes -1 as a default value, not 0
         if height == 0: height = -1         # ffmpeg takes -1 as a default value, not 0
 
+        # check for unchanged size/duration
+        if self.mime_type == 'audio':
+            if round(width, 2) == 1:        # might get something like 1.0000331463797563
+                return show_on_statusbar('New length cannot be the same as the old length.', 10000)
+        elif (width <= 0 or width == self.vwidth) and (height <= 0 or height == self.vheight):
+            return show_on_statusbar('New size cannot be the same as the old size.', 10000)
+
         self.operations['resize'] = (width, height)
         self.save(noun='resized media', filter='All files(*)')              # don't really need any hints
 
