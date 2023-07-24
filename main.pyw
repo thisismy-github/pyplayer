@@ -3778,8 +3778,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             Example: marq_key='Save' -> checkTextOnSave.isChecked()? '''
         if log: log_on_statusbar(text)
         else: show_on_statusbar(text, 10000)
-        #check = settings.findChild(QtW.QCheckBox, f'checkTextOn{marq_key}')
-        #if check and check.isChecked(): show_on_player(text, timeout)
         try:
             if settings.__dict__[f'checkTextOn{marq_key}'].isChecked():
                 show_on_player(text, timeout)
