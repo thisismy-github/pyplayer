@@ -189,7 +189,7 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg, ffmpeg_async, add_path_suffix, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, file_is_hidden
+from util import ffmpeg, ffmpeg_async, add_path_suffix, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, scale, file_is_hidden
 from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 
@@ -205,6 +205,7 @@ from time import sleep, localtime, mktime, strftime, strptime
 from time import time as get_time                       # from time import time -> time() errors out
 from threading import Thread
 from traceback import format_exc
+from contextlib import contextmanager
 
 import filetype                                         # 0.4mb ram
 from vlc import State, VideoMarqueeOption
@@ -257,6 +258,39 @@ def get_audio_duration(file: str) -> float:
     except:                                                     # this is to handle things that wrongly report as audio, like .ogv files
         log_on_statusbar('(?) File could not be read as an audio file (not recognized by TinyTag or music_tag)')
         return 0.0
+
+
+@contextmanager
+def get_image_data(path: str, extension: str = None):
+    # TODO I don't need this anymore and should probably avoid using it at all.
+    try:
+        if exists(path): image_data = get_PIL_Image().open(path, formats=(extension,) if extension else None)
+        else: image_data = get_PIL_Image().fromqpixmap(image_player.art)
+        yield image_data
+    finally:
+        try: image_data.close()
+        except: logging.warning('(?) Image pointer could not be closed (it likely was never open in the first place).')
+
+
+@contextmanager
+def get_PIL_safe_path(original_path: str, final_path: str):
+    # TODO Like the above, this is a holdover from when I was reworking
+    #      operation ordering/chaining for 0.6.0 and is not actually needed
+    #      anymore, save for one spot where I was too lazy to implement Pillow.
+    try:
+        temp_path = ''
+        if splitext_media(final_path, constants.IMAGE_EXTENSIONS)[-1] == '':
+            good_ext = splitext_media(original_path, constants.IMAGE_EXTENSIONS)[-1]
+            if good_ext == '': good_ext = '.png'
+            temp_path = final_path + good_ext
+            yield temp_path
+        else:
+            yield final_path
+    finally:
+        if temp_path != '':
+            print('\n\nDO THEY EXIST? (literally impossible for them not to):', exists(temp_path), exists(final_path))
+            try: os.replace(temp_path, final_path)
+            except: logging.warning('(!) FAILED TO RENAME TEMPORARY IMAGE PATH' + format_exc())
 
 
 def splitext_media(path: str, valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS, strict: bool = True) -> tuple:
@@ -2541,13 +2575,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def _save(self, dest=None, operations_detected: bool = False, non_crop_operations_detected: bool = False):
-        ''' Do not call this directly. Use `save()` instead. Iteration: IV '''
+        ''' Do not call this directly. Use `save()` instead. Iteration: V '''
         start_time = get_time()
 
         # save copies of all critical properties that could potentially change while we're saving
         video = self.video.strip()
         mime = self.mime_type
+        extension = self.extension
         is_gif = self.is_gif
+        is_static_image = self.is_static_image
         minimum, maximum, frame_count, frame_rate, duration = self.minimum, self.maximum, self.frame_count, self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
 
@@ -2584,12 +2620,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         intermediate_file = video   # the path to the file that will be receiving all changes between operations
         final_dest = dest           # save the original dest so we can rename our temporary dest back later
         dest = add_path_suffix(dest, '_temp', unique=True)  # add _temp to dest, in case dest is the same as our base video
+        temp_paths = []
         logging.debug(f'temp-dest={dest}, video={video} delete_after_save={delete_after_save} operations_detected={operations_detected}')
 
         # stop player if we've reached this point. it's our last chance to do so safely (without theoretically disrupting the user)
         self.stop()
-        #self.frame_override = 0                            # reset UI to frame 0 to avoid glitched times after stopping the player
-        #self.lineCurrentTime.setText('')
 
         # lock video from being played if we're replacing it OR it's being immediately deleted
         if replacing_original or delete_after_save == FULL_DELETE:
@@ -2600,23 +2635,36 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if replacing_original: delete_after_save = NO_DELETE
 
         # display indeterminant progress bar, set busy cursor, and update UI to frame 0
-        #self.frame_override = 0
         self.set_save_progress_max_signal.emit(frame_count)                         # set progress bar max to max possible frames
         self.setCursor(Qt.BusyCursor)
         emit_update_progress_signal(0)
 
     # --- Apply operations to media ---
+        # NOTE: ABSOLUTELY EXTREMELY IMPORTANT!!! update any relevant properties such as...
+        # ...vheight/vwidth, is_gif/is_static_image, etc. as SOON as an operation is done!!!
+        # TODO: GIFs should probably use Pillow for their operations
         try:
+            # static images are cached and can be deleted independant of pyplayer
+            # if this happens, take the cached QPixmap and save it to a temporary file
+            # we'll assume the user wants the original image to stay gone, so we'll delete the temporary file later
+            if is_static_image and not exists(video):
+                temp_image_path = add_path_suffix(video, '_tempimage', unique=True)
+                temp_paths.append(temp_image_path)
+                intermediate_file = temp_image_path
+                with get_PIL_Image().fromqpixmap(image_player.art) as image:
+                    image.save(temp_image_path)
+
             # trimming and fading (controlled using the same start/end points)
             # TODO: there are scenarios where cropping and/or resizing first is better
             #       - how should we handle reordering operations?
             if op_trim_start or op_trim_end:
-                if self.is_static_image:                                            # NOTE: shouldn't be possible, but just in case
+                if is_static_image:                                                 # NOTE: shouldn't be possible, but just in case
                     return log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
 
                 # trim -> https://trac.ffmpeg.org/wiki/Seeking TODO: -vf trim filter should be used in here
                 if self.is_trim_mode():
                     self.set_save_progress_max_signal.emit(maximum - minimum)       # set progress bar to actual number of frames in final trim
+                    trim_duration = (maximum - minimum) / frame_rate
 
                     if is_gif:
                         log_on_statusbar('GIF trim requested.')
@@ -2624,8 +2672,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     else:
                         # see if we should use auto-precise mode regardless of user's preference
                         # (always use precise trimming for very short media or short clips on semi-short media)
-                        trim_duration = (maximum - minimum) / self.frame_rate
-                        if self.duration <= 10 or (self.duration <= 30 and trim_duration <= 5):
+                        if duration <= 10 or (duration <= 30 and trim_duration <= 5):
                             log_on_statusbar('Precise trim auto-detected (short trims on short media always use precise trimming).')
                             precise = True
 
@@ -2651,6 +2698,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if minimum > 0:           trim_cmd_parts.append(f'-ss {minimum / frame_rate}')
                     if maximum < frame_count: trim_cmd_parts.append(f'-to {maximum / frame_rate}')  # "-c:v libx264" vs "-c:v copy"
                     if trim_cmd_parts: intermediate_file = self.ffmpeg(intermediate_file, f'-i %in {" ".join(trim_cmd_parts)}{cmd_parameters}', dest)
+                    duration = trim_duration                                        # update duration
+                    frame_count = maximum - minimum                                 # update frame count
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 else:
@@ -2693,15 +2742,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if self.video == video: self.disable_crop_mode_signal.emit()    # no new video has started playing during saving process
                     operations_detected = non_crop_operations_detected              # see if any other operations were detected beforehand
                 else:
-                    if mime == 'image' and not is_gif:                              # static images
-                        try:
-                            if exists(video): image = get_PIL_Image().open(video)
-                            else: image = get_PIL_Image().fromqpixmap(image_player.pixmap())
-                            image.crop((round(lfp[0].x()), round(lfp[0].y()),              # left/top/right/bottom (crop takes a tuple)
-                                        round(lfp[3].x()), round(lfp[3].y()))).save(dest)  # round QPointFs
-                        except: log_on_statusbar(f'(!) CROPPING IMAGE FAILED: {format_exc()}')
-                        finally: image.close()
-                    else: self.ffmpeg(intermediate_file, f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"', dest)
+                    cmd = f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"'
+                    if is_static_image:
+                        with get_image_data(intermediate_file, extension) as image:
+                            image = image.crop((round(lfp[0].x()), round(lfp[0].y()),   # left/top/right/bottom (crop takes a tuple)
+                                                round(lfp[3].x()), round(lfp[3].y())))  # round QPointFs
+                            image.save(dest, format=extension)                      # specify `format` in case `dest`'s extension is unexpected
+                        intermediate_file = dest
+                    else:
+                        intermediate_file = self.ffmpeg(
+                            infile=intermediate_file,
+                            cmd=f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"',
+                            outfile=dest
+                        )
+                    vwidth = round(crop_width) - 1                                  # update dimensions
+                    vheight = round(crop_height) - 1
 
             # resize video/GIF/image, or change audio file's tempo
             # TODO: this is a relatively fast operation and SHOULD be done much sooner but that requires...
@@ -2710,13 +2765,40 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (Note: this should be a VERY quick operation)' if mime == 'audio' else ''
                 log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
                 width, height = op_resize   # for audio, width is the percentage and height is None
-                if mime == 'audio': intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
-                else: intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -vf "scale={width}:{height}" -crf 28 -c:a copy', dest)
+                if mime == 'audio':
+                    intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
+                else:   # Pillow can't handle 0/-1 as a dimension -> scale right away
+                    vwidth, vheight = scale(vwidth, vheight, width, height)         # update dimensions
+                    if is_static_image:
+                        with get_image_data(intermediate_file, extension) as image:
+                            image = image.resize((vwidth, vheight))                 # resize image
+                            image.save(dest, format=extension)
+                    else:
+                        # ffmpeg cannot resize to dimensions that aren't divisible by 2 (for some reason)
+                        # using -1 will STILL error out if the dimensions IT CHOOSES aren't divisible by 2
+                        # this can technically be fixed using -2 (https://stackoverflow.com/a/72589591)...
+                        # ...but we need to scale the dimensions ourselves anyways so it doesn't matter
+                        vwidth -= int(vwidth % 2 != 0)
+                        vheight -= int(vheight % 2 != 0)
+                        intermediate_file = self.ffmpeg(
+                            infile=intermediate_file,
+                            cmd=f'-i %in -vf "scale={vwidth}:{vheight}" -crf 28 -c:a copy',
+                            outfile=dest
+                        )
 
             # rotate video/GIF/image
+            # TODO: this should use Pillow for images/GIFs but I'm lazy
+            # NOTE: ^ `get_PIL_safe_path` only still exists because of this
             if op_rotate_video is not None:
                 log_on_statusbar('Video rotation/flip requested (this is a time-consuming task).')
-                intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy', dest)
+                cmd = f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy'
+                if is_static_image:
+                    with get_PIL_safe_path(original_path=video, final_path=dest) as temp_path:
+                        self.ffmpeg(intermediate_file, cmd, temp_path)
+                        intermediate_file = dest
+                else: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest)
+                if op_rotate_video == 'transpose=clock' or op_rotate_video == 'transpose=cclock':
+                    vwidth, vheight = vheight, vwidth                               # update dimensions
 
             # replace audio track
             if op_replace_audio is not None:
@@ -2726,42 +2808,41 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # add audio track - adding audio to images or GIFs will turn them into videos
             # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
-            if op_add_audio is not None:    # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
-                audio = op_add_audio        # TODO :duration=shortest (after amix=inputs=2) has same issue as above
-
-                if mime != 'image':         # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
-                    log_on_statusbar('Additional audio track requested.')
-                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
-                    intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -i "{audio}" {the_important_part}', dest)
-                elif is_gif:                # gifs
-                    log_on_statusbar('Adding audio to GIF (final video duration may not exactly line up with audio).')
-                    self.set_save_progress_max_signal.emit(get_audio_duration(audio) * frame_rate)
-                    intermediate_file = self.ffmpeg(
-                        infile=intermediate_file,
-                        cmd=f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest',
-                        outfile=dest
-                    )
-                else:                       # static images
+            if op_add_audio is not None:    # TODO :duration=shortest (after amix=inputs=2) has same issue as above
+                audio = op_add_audio
+                if is_static_image:         # static images
                     log_on_statusbar('Adding audio to static image.')
-                    if self.vheight % 2 != 0:               # height must be divisible by 2... for some reason
-                        try:                                # NOTE: i THINK changing `intermediate_file` is okay here since it's an image
-                            if exists(intermediate_file): image = get_PIL_Image().open(video)
-                            else: image = get_PIL_Image().fromqpixmap(image_player.art)
-                            image = image.crop((0, 1, self.vwidth, self.vheight))
-                            intermediate_file = add_path_suffix(intermediate_file, '_tempcrop', unique=True)
-                            logging.info(f'Image height isn\'t divisible by 2, cropping a pixel from the top and saving to {intermediate_file}.')
-                            image.save(intermediate_file)
+                    is_static_image = False                  # mark that this is no longer an image
+                    if vwidth % 2 != 0 or vheight % 2 != 0:  # static image dimensions must be divisible by 2... for some reason
+                        try:
+                            with get_image_data(intermediate_file, extension) as image:
+                                logging.info(f'Image dimensions aren\'t divisible by 2, cropping a pixel from the top and/or left and saving to {intermediate_file}.')
+                                left = int(vwidth % 2 != 0)
+                                top = int(vheight % 2 != 0)
+                                image = image.crop((left, top, vwidth, vheight))    # left/top/right/bottom (crop takes a tuple)
+                                image.save(intermediate_file, format=extension)     # specify `format` in case `intermediate_file`'s extension is unexpected
+                                vwidth -= left
+                                vheight -= top
                         except: return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
-                        finally: image.close()
-                    elif not exists(intermediate_file):
-                        logging.info(f'Image doesn\'t acutally exist, saving file to "{intermediate_file}" using data from QVideoPlayerLabel.')
-                        image_player.art.save(intermediate_file)
-                    self.set_save_progress_max_signal.emit(get_audio_duration(audio) * 25)
+                    self.set_save_progress_max_signal.emit(int(get_audio_duration(audio) * 25))
                     intermediate_file = self.ffmpeg(        # ffmpeg defaults to using ^ 25fps for this
                         infile=intermediate_file,
                         cmd=f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest',
                         outfile=dest
                     )
+                elif is_gif:                # gifs
+                    log_on_statusbar('Adding audio to animated GIF (final video duration may not exactly line up with audio).')
+                    is_gif = False                          # mark that this is no longer a gif
+                    self.set_save_progress_max_signal.emit(int(get_audio_duration(audio) * frame_rate))
+                    intermediate_file = self.ffmpeg(
+                        infile=intermediate_file,
+                        cmd=f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest',
+                        outfile=dest
+                    )
+                else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
+                    log_on_statusbar('Additional audio track requested.')
+                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
+                    intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -i "{audio}" {the_important_part}', dest)
 
             # remove all video or audio tracks (does not turn file into an image/GIF)
             if op_remove_track is not None:                 # NOTE: This can degrade audio quality slightly.
@@ -2774,7 +2855,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a "volume={op_amplify_audio}"', dest)
 
         # --- Post-edit cleanup & opening our newly edited media ---
-            # confirm our operations, clean up temp files/base video, and get final path
+            # clean up temp paths if we have any
+            for path in temp_paths:
+                if exists(path):
+                    try:
+                        logging.debug(f'Removing temporary edit-path: {path}')
+                        os.remove(path)
+                    except:
+                        logging.warning('(!) Failed to remove temporary edit-path')
+
+            # confirm our operations, clean up base video, and get final path
             if operations_detected:                                 # double-check that we've actually done anything at all
                 if not exists(dest):
                     return log_on_statusbar('(!) Media saved without error, but never actually appeared. Possibly an FFmpeg error.')

@@ -188,8 +188,8 @@ def get_PIL_Image():
         except:     # PIL is seemingly unrecoverable. hopefully this is extremely unlikely outside of user-tampering
             logger.critical(f'(!!!) COULD NOT RESTORE PIL FOLDER: {format_exc()}')
             logger.critical('\n\n  WARNING -- You may need to reinstall PyPlayer to restore snapshotting capabilities.'
-                             '\n             If you cannot find the PIL folder within your installation, please report '
-                             '\n             this error (along with this log file) on Github.\n')
+                            '\n             If you cannot find the PIL folder within your installation, please report '
+                            '\n             this error (along with this log file) on Github.\n')
 
 
 def sanitize(filename: str, allow_reserved_words: bool = True, default: str = ''):
@@ -212,6 +212,12 @@ def sanitize(filename: str, allow_reserved_words: bool = True, default: str = ''
         if not allow_reserved_words: filename = default
         else: filename = '__' + filename
     return filename
+
+
+def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple:
+    if new_x <= 0:   new_x = round((float(new_y) / y) * x)
+    elif new_y <= 0: new_y = round((float(new_x) / x) * y)
+    return new_x, new_y
 
 
 if constants.PLATFORM != 'Windows': file_is_hidden = lambda path: os.path.basename(path)[0] == '.'
