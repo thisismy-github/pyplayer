@@ -332,14 +332,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 void = (h - expected_size.height()) / 2
                 self.true_left =   0
                 self.true_right =  w
-                self.true_top =    int(void)            # ensure potential error is outside bounds of actual video size
-                self.true_bottom = math.ceil(h - void)  # ensure potential error is outside bounds of actual video size
+                self.true_top =    int(void)                # ensure potential error is outside bounds of actual video size
+                self.true_bottom = math.ceil(h - void)      # ensure potential error is outside bounds of actual video size
             else:                                       # video fills viewport height (there are black bars left/right)
                 logger.debug('Video fills viewport height (there are black bars left/right)')
                 #void = ((w - (h * video_ratio)) / 2)
                 void = (w - expected_size.width()) / 2
-                self.true_left =   int(void)            # ensure potential error is outside bounds of actual video size
-                self.true_right =  math.ceil(w - void)  # ensure potential error is outside bounds of actual video size
+                self.true_left =   int(void)                # ensure potential error is outside bounds of actual video size
+                self.true_right =  math.ceil(w - void)      # ensure potential error is outside bounds of actual video size
                 self.true_top =    0
                 self.true_bottom = h
             logger.debug(f'void={void} w={w} h={h} expected_size={expected_size}')
@@ -352,10 +352,10 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Updates the geometry for the four QFrames representing cropped out regions. Updates the tooltip to
             include the factored size of the visible region. Saves current set of factored points for later use. '''
         selection = self.selection
-        crop_top =    selection[0].y()                              # TODO make these @property?
+        crop_top =    selection[0].y()                      # TODO make these @property?
         crop_left =   selection[0].x()
-        crop_right =  selection[1].x()
-        crop_bottom = selection[2].y()
+        crop_right =  selection[3].x()
+        crop_bottom = selection[3].y()
         crop_height = crop_bottom - crop_top
         w = self.width()
 
@@ -364,9 +364,6 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         crop_frames[1].setGeometry(0, crop_top, crop_left, crop_height)                # 1 left rectangle
         crop_frames[2].setGeometry(crop_right, crop_top, w - crop_right, crop_height)  # 2 right rectangle
         crop_frames[3].setGeometry(0, crop_bottom, w, self.height() - crop_bottom)     # 3 bottom rectangle (full width)
-
-        f = self.last_factored_points
-        self.setToolTip(f'{f[1].x() - f[0].x():.0f}x{f[2].y() - f[0].y():.0f}')
 
         lfp = self.last_factored_points
         #if gui.gifPlayer._baseZoom == 1:
@@ -380,6 +377,15 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         lfp[1] = factor_point(selection[1])
         lfp[2] = factor_point(selection[2])
         lfp[3] = factor_point(selection[3])
+
+        # set crop info panel's strings
+        size_string = f'{lfp[1].x() - lfp[0].x():.0f}x{lfp[2].y() - lfp[0].y():.0f}'
+        self.setToolTip(size_string)
+        gui.labelCropSize.setText(size_string)
+        gui.labelCropTop.setText(f'T: {lfp[0].y():.0f}')
+        gui.labelCropLeft.setText(f'L: {lfp[0].x():.0f}')
+        gui.labelCropRight.setText(f'R: {lfp[3].x():.0f}')
+        gui.labelCropBottom.setText(f'B: {lfp[3].y():.0f}')
 
 
     # ---------------------

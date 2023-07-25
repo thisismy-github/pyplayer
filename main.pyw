@@ -468,6 +468,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar.setSizePolicy(QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Expanding)
         self.save_progress_bar.hide()
 
+        self.frameCropInfo.setVisible(False)                                # ensure crop info panel is hidden on startup
+
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
@@ -660,22 +662,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def dockControlsResizeEvent(self, event: QtGui.QResizeEvent):
         ''' Makes UI controls more compact as the size of the controls shrinks. '''
         width = event.size().width()
-        self.frameQuickChecks.setVisible(width >= 528)                  # hide checkboxes at <= 500 pixels wide TODO this shouldn't be a frame, should it?
+        self.frameQuickChecks.setVisible((not self.actionCrop.isChecked() and width >= 568) or width >= 800)
+        self.frameCropInfo.setVisible(self.actionCrop.isChecked() and width >= 621)
         self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)    # reduce output lineEdit (but retain usability)
         self.advancedControlsLine.setVisible(width >= 357)              # hide aesthetic line-separator
         self.hlayoutQuickButtons.setSpacing(2 if width <= 394 else 6)   # reduce spacing between buttons
         self.buttonTrimStart.setMinimumWidth(32 if width <= 347 else 44)
 
         # hide or restore trim/toolbar buttons
-        visible = width > 335
-        self.buttonTrimStart.setVisible(visible)
-        self.buttonTrimEnd.setVisible(visible)
-        self.buttonMarkDeleted.setVisible(visible)
-        self.buttonSnapshot.setVisible(visible)
-        self.buttonExploreMediaPath.setVisible(visible)
+        primary_visible = width > 335
+        seconary_visible = width > 394
+        self.buttonTrimStart.setVisible(primary_visible)
+        self.buttonTrimEnd.setVisible(primary_visible)
+        self.buttonMarkDeleted.setVisible(seconary_visible)
+        self.buttonSnapshot.setVisible(seconary_visible)
+        self.buttonExploreMediaPath.setVisible(seconary_visible)
+        self.spinHour.setVisible(primary_visible)
 
-        self.spinHour.setVisible(visible)
-        if visible:
+        if primary_visible:
             self.spinFrame.setPrefix(f'{self.frame_rate_rounded} FPS: ')
             self.spinFrame.setMinimumSize(98, 0)
         else:
@@ -1943,12 +1947,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # update UI with new media's duration
             h, m, s, ms = get_hms(self.duration)
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
-            if h:                                                       # spinSecond does not need to be adjusted here
-                self.spinHour.setMaximum(h)
-                self.spinHour.setEnabled(True)
-            else: self.spinHour.setEnabled(False)
+            self.spinHour.setEnabled(h != 0)                            # always leave spinSecond enabled
             self.spinMinute.setEnabled(m != 0)
-            if self.size().width() <= 335: prefix = ''
+            if self.width() <= 335: prefix = ''
             else: prefix = f'{self.frame_rate_rounded} FPS: '
             self.spinFrame.setPrefix(prefix)
             self.spinFrame.setMaximum(self.frame_count)
@@ -4168,7 +4169,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:
                     for view in vlc.crop_frames:
                         view.setVisible(True)
+
+                width = self.width()
                 vlc.update_crop_frames()                                            # update crop frames and factored points
+                self.frameCropInfo.setVisible(width >= 621)                         # show crop info panel if there's space
+                self.frameQuickChecks.setVisible(width >= 800)                      # hide checkmarks if there's no space
                 while app.overrideCursor(): app.restoreOverrideCursor()             # reset cursor
         except: log_on_statusbar(f'(!) Failed to toggle crop mode: {format_exc()}')
 
@@ -4181,6 +4186,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.vlc.setToolTip('')                                                     # clear crop-size tooltip
         self.vlc.dragging = None                                                    # clear crop-drag
         self.vlc.panning = False                                                    # clear crop-pan
+        self.frameCropInfo.setVisible(False)                                        # hide crop info panel
+        self.frameQuickChecks.setVisible(self.width() >= 568)                       # show checkmarks if there's space
         while app.overrideCursor(): app.restoreOverrideCursor()                     # reset cursor
 
         # uncheck action and restore menubar/scale state. NOTE: if you do this part...
