@@ -348,7 +348,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     set_save_progress_max_signal = QtCore.pyqtSignal(int)
     set_save_progress_current_signal = QtCore.pyqtSignal(int)
     set_save_progress_format_signal = QtCore.pyqtSignal(str)
-    disable_crop_mode_signal = QtCore.pyqtSignal()
+    disable_crop_mode_signal = QtCore.pyqtSignal(bool)
     handle_updates_signal = QtCore.pyqtSignal(bool)
     _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
 
@@ -2513,12 +2513,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         video = self.video
         if not video: return show_on_statusbar('No media is playing.', 10000)
 
-        non_crop_operations_detected = any((
-            self.operations,
-            self.buttonTrimStart.isChecked(),
-            self.buttonTrimEnd.isChecked()
-        ))
-        operations_detected = non_crop_operations_detected or self.actionCrop.isChecked()
+        operations = self.operations.copy()
+        if self.actionCrop.isChecked(): operations['crop'] = True
+        if self.buttonTrimStart.isChecked(): operations['trim start'] = True
+        if self.buttonTrimEnd.isChecked(): operations['trim end'] = True
 
         old_base, old_ext = splitext_media(video)
         if not old_ext: old_ext = '.' + self.extension
@@ -2543,7 +2541,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         ext_hint=ext_hint or old_ext,                           # ^ pass preferred extensions if provided
                         unique_default=False
                     )
-                elif operations_detected: dest = add_path_suffix(video, '_edited', unique=True)
+                elif operations:
+                    dest = add_path_suffix(video, '_edited', unique=True)
             else:
                 dest = output_text
                 if not os.path.dirname(dest):                                   # output text is just a name w/ no directory
@@ -2566,17 +2565,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dest = abspath(dest)
 
         # no operations -> check if video was renamed and return without starting a new thread
-        if not operations_detected:
+        if not operations:
             if dest != video:                               # no operations, but name is changed
                 logging.info(f'No operations detected, but a new name was specified. Renaming to {dest}')
                 return self.rename(dest)                    # do a normal rename and return
             return marquee('No changes have been made.', log=False)
 
         # do actual saving in separate thread
-        Thread(target=self._save, args=(dest, operations_detected, non_crop_operations_detected), daemon=True).start()
+        Thread(target=self._save, args=(dest, operations), daemon=True).start()
 
 
-    def _save(self, dest=None, operations_detected: bool = False, non_crop_operations_detected: bool = False):
+    def _save(self, dest: str = None, operations: dict = {}):
         ''' Do not call this directly. Use `save()` instead. Iteration: V '''
         start_time = get_time()
 
@@ -2597,19 +2596,51 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         MARK_DELETE = 1
         FULL_DELETE = 2
 
-        op_replace_audio = self.operations.get('replace audio', None)   # path to audio track
-        op_add_audio =     self.operations.get('add audio', None)       # path to audio track
-        op_remove_track =  self.operations.get('remove track', None)    # track to remove
-        op_amplify_audio = self.operations.get('amplify audio', None)   # new volume, from 0-1(+)
-        op_resize =        self.operations.get('resize', None)
-        op_rotate_video =  self.operations.get('rotate video', None)    # rotate angle -> 90/180/270
-        op_trim_start =    self.buttonTrimStart.isChecked()             # represents both trimming and fading
-        op_trim_end =      self.buttonTrimEnd.isChecked()               # represents both trimming and fading
-        op_crop =          self.actionCrop.isChecked()
-        if op_crop:                                                     # NOTE: this shouldn't be possible, but just in case
-            if mime == 'audio': return log_on_statusbar('Crop mode on audio files is designed for cropping cover art.')
+        op_replace_audio = operations.get('replace audio', None)        # path to audio track
+        op_add_audio =     operations.get('add audio', None)            # path to audio track
+        op_remove_track =  operations.get('remove track', None)         # track to remove
+        op_amplify_audio = operations.get('amplify audio', None)        # new volume, from 0-1(+)
+        op_resize =        operations.get('resize', None)
+        op_rotate_video =  operations.get('rotate video', None)         # rotate angle -> 90/180/270
+        op_trim_start =    operations.get('trim start', None)           # represents both trimming and fading
+        op_trim_end =      operations.get('trim end', None)             # represents both trimming and fading
+        op_crop =          operations.get('crop', None)
+
+        # quick pre-operation checks
+        if op_crop:
+            if mime == 'audio':                                         # NOTE: this shouldn't be possible, but just in case
+                log_on_statusbar('Crop mode on audio files is designed for cropping cover art.')
+                del operations['crop']                                  # remove operation key
+                op_crop = False
             crop_selection = tuple(self.vlc.factor_point(point) for point in self.vlc.selection)
             lfp = tuple(self.vlc.last_factored_points)
+            crop_top =    min(crop_selection[0].y(), vheight - 1)
+            crop_left =   min(crop_selection[0].x(), vwidth - 1)
+            crop_right =  min(crop_selection[1].x(), vwidth)
+            crop_bottom = min(crop_selection[2].y(), vheight)
+            crop_width =  round(crop_right - crop_left)
+            crop_height = round(crop_bottom - crop_top)
+            if crop_width == vwidth and crop_height == vheight:         # not actually cropped -> disable crop mode and update our operations
+                log_on_statusbar('Crop is the same size as the source media.')
+                self.disable_crop_mode_signal.emit(False)               # False to make sure we don't log crop mode being disabled
+                del operations['crop']                                  # remove operation key
+                op_crop = False
+        if op_trim_start or op_trim_end:
+            if minimum == 0 and maximum == frame_count:
+                log_on_statusbar('It\'s not really a "trim" if your trim is the entire duration of the file, is it?')
+                del operations['trim start']                            # remove operation keys
+                del operations['trim end']
+                op_trim_start = False
+                op_trim_end = False
+            if is_static_image:                                         # NOTE: shouldn't be possible, but just in case
+                log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
+                del operations['trim start']                            # remove operation keys
+                del operations['trim end']
+                op_trim_start = False
+                op_trim_end = False
+
+        # check if we still have work to do after the above checks
+        if not operations: return logging.info('(?) Pre-operation checks failed, nothing left to do.')
 
         # ffmpeg is required after this point, so check that it's actually present, and because...
         # ...we're in a thread, we skip the warning and display it separately through a signal
@@ -2660,17 +2691,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # TODO: there are scenarios where cropping and/or resizing first is better
             #       - how should we handle reordering operations?
             if op_trim_start or op_trim_end:
-                if is_static_image:                                                 # NOTE: shouldn't be possible, but just in case
-                    return log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
 
                 # trim -> https://trac.ffmpeg.org/wiki/Seeking TODO: -vf trim filter should be used in here
                 if self.is_trim_mode():
                     self.set_save_progress_max_signal.emit(maximum - minimum)       # set progress bar to actual number of frames in final trim
                     trim_duration = (maximum - minimum) / frame_rate
 
+                    cmd = '-i %in '
+                    if minimum > 0:           cmd += f'-ss {minimum / frame_rate} '
+                    if maximum < frame_count: cmd += f'-to {maximum / frame_rate} '
+
                     if is_gif:
                         log_on_statusbar('GIF trim requested.')
-                        cmd_parameters = ''
                         precise = False
                     else:
                         # see if we should use auto-precise mode regardless of user's preference
@@ -2693,17 +2725,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.extension in constants.SPECIAL_TRIM_EXTENSIONS
                             log_on_statusbar(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
 
-                        cmd_parameters = ' -c:v ' + ('libx264 -c:a aac' if precise else 'copy -c:a copy -avoid_negative_ts make_zero -async 1')
+                        cmd += ' -c:v ' + ('libx264 -c:a aac' if precise else 'copy -c:a copy -avoid_negative_ts make_zero -async 1')
                         #else: cmd_parameters = ' -c:v copy -c:a copy -avoid_negative_ts make_zero -af \'aresample=async=1\''
                         #cmd_parameters = f' -c:v {"libx264" if precise else "copy"} -c:a {"aac" if precise else "copy -avoid_negative_ts make_zero"} '
 
-                    trim_cmd_parts = []
-                    if minimum > 0:           trim_cmd_parts.append(f'-ss {minimum / frame_rate}')
-                    if maximum < frame_count: trim_cmd_parts.append(f'-to {maximum / frame_rate}')  # "-c:v libx264" vs "-c:v copy"
-                    if trim_cmd_parts:
-                        cmd = f'-i %in {" ".join(trim_cmd_parts)}{cmd_parameters}'
-                        if not precise: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest)
-                        else: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, start_text='Seeking to start of trim...')
+                    if not precise: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest)
+                    else: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, start_text='Seeking to start of trim...')
                     duration = trim_duration                                        # update duration
                     frame_count = maximum - minimum                                 # update frame count
 
@@ -2737,32 +2764,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
             if op_crop:     # ffmpeg cropping is not 100% accurate, final dimensions may be off by ~1 pixel
                 log_on_statusbar('Cropping...')                                     # -filter:v "crop=out_w:out_h:x:y"
-                crop_top =    min(crop_selection[0].y(), vheight - 1)
-                crop_left =   min(crop_selection[0].x(), vwidth - 1)
-                crop_right =  min(crop_selection[1].x(), vwidth)
-                crop_bottom = min(crop_selection[2].y(), vheight)
-                crop_width =  crop_right - crop_left
-                crop_height = crop_bottom - crop_top
-                if crop_width == vwidth and crop_height == vheight:                 # not actually cropped -> disable crop mode and update our operations
-                    logging.info('Crop is the same size as the source media.')
-                    if self.video == video: self.disable_crop_mode_signal.emit()    # no new video has started playing during saving process
-                    operations_detected = non_crop_operations_detected              # see if any other operations were detected beforehand
+                cmd = f'-i %in -filter:v "crop={crop_width}:{crop_height}:{round(crop_left)}:{round(crop_top)}"'
+                if is_static_image:
+                    with get_image_data(intermediate_file, extension) as image:
+                        image = image.crop((round(lfp[0].x()), round(lfp[0].y()),   # left/top/right/bottom (crop takes a tuple)
+                                            round(lfp[3].x()), round(lfp[3].y())))  # round QPointFs
+                        image.save(dest, format=extension)                          # specify `format` in case `dest`'s extension is unexpected
+                    intermediate_file = dest
                 else:
-                    cmd = f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"'
-                    if is_static_image:
-                        with get_image_data(intermediate_file, extension) as image:
-                            image = image.crop((round(lfp[0].x()), round(lfp[0].y()),   # left/top/right/bottom (crop takes a tuple)
-                                                round(lfp[3].x()), round(lfp[3].y())))  # round QPointFs
-                            image.save(dest, format=extension)                      # specify `format` in case `dest`'s extension is unexpected
-                        intermediate_file = dest
-                    else:
-                        intermediate_file = self.ffmpeg(
-                            infile=intermediate_file,
-                            cmd=f'-i %in -filter:v "crop={round(crop_width)}:{round(crop_height)}:{round(crop_left)}:{round(crop_top)}"',
-                            outfile=dest
-                        )
-                    vwidth = round(crop_width) - 1                                  # update dimensions
-                    vheight = round(crop_height) - 1
+                    intermediate_file = self.ffmpeg(
+                        infile=intermediate_file,
+                        cmd=f'-i %in -filter:v "crop={crop_width}:{crop_height}:{round(crop_left)}:{round(crop_top)}"',
+                        outfile=dest
+                    )
+                vwidth = round(crop_width) - 1                                      # update dimensions
+                vheight = round(crop_height) - 1
 
             # resize video/GIF/image, or change audio file's tempo
             # TODO: this is a relatively fast operation and SHOULD be done much sooner but that requires...
@@ -2873,7 +2889,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         logging.warning('(!) Failed to remove temporary edit-path')
 
             # confirm our operations, clean up base video, and get final path
-            if operations_detected:                             # double-check that we've actually done anything at all
+            if operations:                                      # double-check that we've actually done anything at all
                 if not exists(dest):
                     return log_on_statusbar('(!) Media saved without error, but never actually appeared. Possibly an FFmpeg error.')
                 if os.stat(dest).st_size == 0:
@@ -4157,7 +4173,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: log_on_statusbar(f'(!) Failed to toggle crop mode: {format_exc()}')
 
 
-    def disable_crop_mode(self):
+    def disable_crop_mode(self, log: bool = True):
         for view in self.vlc.crop_frames:
             view.setVisible(False)
             view.setMouseTracking(False)
@@ -4176,7 +4192,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             current_value = restore_state['scale_setting'].currentIndex()
             restore_state['scale_updater'](current_value, force=True)
         restore_state.clear()
-        log_on_statusbar('Crop mode disabled.')
+        if log: log_on_statusbar('Crop mode disabled.')
 
 
     def is_snap_mode_enabled(self):
