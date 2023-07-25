@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 2377))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 2402))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -1023,6 +1023,10 @@ class Ui_settingsDialog(object):
         self.checkTrackCycleCantDisable.setChecked(True)
         self.checkTrackCycleCantDisable.setObjectName("checkTrackCycleCantDisable")
         self.formLayout_13.setWidget(1, QtWidgets.QFormLayout.SpanningRole, self.checkTrackCycleCantDisable)
+        self.checkTrackCycleShowTitle = QtWidgets.QCheckBox(self.groupBox_11)
+        self.checkTrackCycleShowTitle.setChecked(True)
+        self.checkTrackCycleShowTitle.setObjectName("checkTrackCycleShowTitle")
+        self.formLayout_13.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.checkTrackCycleShowTitle)
         self.formLayout_3.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.groupBox_11)
         self.formKeys = QtWidgets.QFormLayout()
         self.formKeys.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
@@ -2397,6 +2401,12 @@ class Ui_settingsDialog(object):
 "tracks have been cycled through. Otherwise, it will loop\n"
 "around to \"disabled\" first."))
         self.checkTrackCycleCantDisable.setText(_translate("settingsDialog", "Do not disable audio/video tracks while cycling"))
+        self.checkTrackCycleShowTitle.setToolTip(_translate("settingsDialog", "If checked, using the \"cycle audio/video tracks\"\n"
+"hotkeys will display the new track\'s title.\n"
+"\n"
+"Checked: \"Audio track 2 \'Microphone\' enabled\"\n"
+"Unchecked: \"Audio track 2 enabled\""))
+        self.checkTrackCycleShowTitle.setText(_translate("settingsDialog", "Display track title while cycling"))
         self.label_7.setText(_translate("settingsDialog", "Play/Pause"))
         self.pause.setKeySequence(_translate("settingsDialog", "Space"))
         self.pause_.setKeySequence(_translate("settingsDialog", "K"))

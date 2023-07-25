@@ -74,8 +74,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>339</width>
-        <height>2377</height>
+        <width>344</width>
+        <height>2402</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -3387,6 +3387,23 @@ around to &quot;disabled&quot; first.</string>
                 </property>
                 <property name="text">
                  <string>Do not disable audio/video tracks while cycling</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkTrackCycleShowTitle">
+                <property name="toolTip">
+                 <string>If checked, using the &quot;cycle audio/video tracks&quot;
+hotkeys will display the new track's title.
+
+Checked: &quot;Audio track 2 'Microphone' enabled&quot;
+Unchecked: &quot;Audio track 2 enabled&quot;</string>
+                </property>
+                <property name="text">
+                 <string>Display track title while cycling</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>

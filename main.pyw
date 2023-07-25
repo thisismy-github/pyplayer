@@ -4218,25 +4218,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         track_count = get_count() - 1
         if track_count > 0:
             current_track = get_track()
-            first_track = -1
-            for true_index, (track_index, _) in enumerate(get_description()):
-                if first_track == -1 and track_index > -1:      # mark the first valid track
-                    first_track = track_index
-                if track_index > current_track:
-                    self.set_track(track_type, track_index, true_index)
+            first_track_parameters = (-1, None, None)
+            show_title = settings.checkTrackCycleShowTitle.isChecked()
+            for true_index, (track_index, track_title) in enumerate(get_description()):
+                track_title = str(track_title)[2:-1] if show_title else None
+                if first_track_parameters[0] == -1 and track_index > -1:
+                    first_track_parameters = (track_index, true_index, track_title)
+                if track_index > current_track:                 # ^ mark the first valid track
+                    self.set_track(track_type, track_index, true_index, track_title)
                     break
 
             # `else` is reached if we didn't break the for-loop (we ran out of tracks to cycle through)
             # loop back to either the first valid track or to "disabled", depending on user settings
             else:
                 if settings.checkTrackCycleCantDisable.isChecked():
-                    self.set_track(track_type, first_track, 1)
+                    if first_track_parameters[0] != current_track:
+                        self.set_track(track_type, *first_track_parameters)
+                    else:                                       # display special message if there's nothing else to cycle to
+                        marquee(f'No other {track_type} tracks available', marq_key='TrackChanged', log=False)
                 else:
                     self.set_track(track_type, -1)
-        else: marquee(f'No {track_type} tracks available', marq_key='TrackChanged', log=False)
+        else:
+            marquee(f'No {track_type} tracks available', marq_key='TrackChanged', log=False)
 
 
-    def set_track(self, track_type: str, track: int = -1, true_index: int = None):
+    def set_track(self, track_type: str, track: int = -1, true_index: int = None, title: str = None):
         types = {'video':    (-1, player.video_set_track),      # -1 = disabled, 0 = track 1
                  'audio':    (0,  player.audio_set_track),      # -1 = disabled, 1 = track 1
                  'subtitle': (1,  player.video_set_spu)}        # -1 = disabled, 2 = track 1
@@ -4245,10 +4251,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if isinstance(track, QtW.QAction):                      # `track` is actually a QAction
             true_index = int(track.toolTip())                   # true index is stored in the action's tooltip
             track = track.data()                                # track index is stored in the action's `data` property
-        _set_track(track)
 
+        # actually set the track, then choose what number we're going to show in the marquee
+        _set_track(track)
         track_index = true_index if true_index is not None else (track - offset_from_1)
-        if track != -1: marquee(f'{track_type.capitalize().rstrip("s")} track {track_index} enabled', marq_key='TrackChanged', log=False)
+
+        # check if `title` is actually unique and not something like "Track 1"
+        if title is not None:
+            parts = title.split()
+            if len(parts) > 1 and parts[0].lower() == 'track':  # V detect things like 'Track "2"' or 'Track 2)'
+                if parts[1].strip('"\'()[]{}<>;:-').isnumeric():
+                    if len(parts) > 2:                          # V skip third "word" if it's just a hyphen or something
+                        start = 2 if parts[2].strip('"\'()[]{}<>;:-') else 3
+                        title = ' '.join(parts[start:])
+                    else: title = None
+                else: title = None
+
+        # if `title` is (or has become) None, use generic marquee, i.e. "Audio track 2 enabled"
+        # otherwise, use something like "Audio track 2 'Microphone' enabled"
+        prefix = f'{track_type.capitalize().rstrip("s")} track {track_index}'
+        if not title: title = f'{prefix} enabled'
+        else: title = f'{prefix}  \'{title}\' enabled'
+
+        if track != -1: marquee(title, marq_key='TrackChanged', log=False)
         else: marquee(f'{track_type.capitalize()} disabled', marq_key='TrackChanged', log=False)
         gc.collect(generation=2)
 
