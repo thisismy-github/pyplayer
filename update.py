@@ -253,13 +253,11 @@ def update_migration(self, old_version: str) -> None:
         new_format = settings.lineSnapshotNameFormat.text().strip().replace('?video', '?name')
         settings.lineSnapshotNameFormat.setText(new_format)
         config.cfg.saveTo('settings', 'linesnapshotnameformat', new_format)
-        self.recent_files += config.cfg.load('recent_videos', '', '<|>', section='general')
+        self.recent_files += config.cfg.loadFrom('general', 'recent_videos', '', '<|>')
     if older_than('0.6.0'):     # updated from <=0.5.0
         import config
         new_format = settings.lineWindowTitleFormat.text().strip().replace('?size', '?resolution')
         settings.lineSnapshotNameFormat.setText(new_format)
         settings.comboScaleImages.setCurrentIndex(settings.comboScaleImages.currentIndex() + 1)
         settings.comboScaleArt.setCurrentIndex(settings.comboScaleArt.currentIndex() + 1)
-        config.cfg.saveTo('settings', 'linewindowtitleformat', new_format)
-        config.cfg.saveTo('settings', 'comboscaleimages', settings.comboScaleImages.currentIndex() + 1)
-        config.cfg.saveTo('settings', 'comboscaleart', settings.comboScaleArt.currentIndex() + 1)
+        settings.checkAutoplayIgnoreFocus.setChecked(config.cfg.loadFrom('settings', 'checkignorefocuswithautoplay', True))
