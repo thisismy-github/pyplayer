@@ -837,7 +837,7 @@ of the screen it's on when opening media.</string>
                      </sizepolicy>
                     </property>
                     <property name="currentIndex">
-                     <number>0</number>
+                     <number>2</number>
                     </property>
                     <item>
                      <property name="text">
@@ -3455,7 +3455,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="3" column="1">
+             <item row="4" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_10">
                <property name="spacing">
                 <number>4</number>
@@ -3472,14 +3472,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="4" column="0">
+             <item row="5" column="0">
               <widget class="QLabel" name="labelNavigation2">
                <property name="text">
                 <string>-5 seconds</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="5" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_11">
                <property name="spacing">
                 <number>4</number>
@@ -3496,7 +3496,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="5" column="1">
+             <item row="6" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_12">
                <property name="spacing">
                 <number>4</number>
@@ -3513,14 +3513,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="6" column="0">
+             <item row="7" column="0">
               <widget class="QLabel" name="labelNavigation3">
                <property name="text">
                 <string>-10 seconds</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="1">
+             <item row="7" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_13">
                <property name="spacing">
                 <number>4</number>
@@ -3537,7 +3537,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="7" column="1">
+             <item row="8" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_16">
                <property name="spacing">
                 <number>4</number>
@@ -3554,14 +3554,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="8" column="0">
+             <item row="9" column="0">
               <widget class="QLabel" name="labelNavigation4">
                <property name="text">
                 <string>-30 seconds</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="1">
+             <item row="9" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_41">
                <property name="spacing">
                 <number>4</number>
@@ -3578,14 +3578,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="9" column="0">
+             <item row="10" column="0">
               <widget class="QLabel" name="label_12">
                <property name="text">
                 <string>+1 frame</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="1">
+             <item row="10" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_14">
                <property name="spacing">
                 <number>4</number>
@@ -3602,14 +3602,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="10" column="0">
+             <item row="11" column="0">
               <widget class="QLabel" name="label_13">
                <property name="text">
                 <string>-1 frame</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="1">
+             <item row="11" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_17">
                <property name="spacing">
                 <number>4</number>
@@ -3626,14 +3626,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="11" column="0">
+             <item row="12" column="0">
               <widget class="QLabel" name="label_18">
                <property name="text">
                 <string>+0.05 speed</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="1">
+             <item row="12" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_22">
                <property name="spacing">
                 <number>4</number>
@@ -3654,14 +3654,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="12" column="0">
+             <item row="13" column="0">
               <widget class="QLabel" name="label_19">
                <property name="text">
                 <string>-0.05 speed</string>
                </property>
               </widget>
              </item>
-             <item row="12" column="1">
+             <item row="13" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_23">
                <property name="spacing">
                 <number>4</number>
@@ -3682,14 +3682,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="13" column="0">
+             <item row="14" column="0">
               <widget class="QLabel" name="label_14">
                <property name="text">
                 <string>+5 volume</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="1">
+             <item row="14" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_18">
                <property name="spacing">
                 <number>4</number>
@@ -3706,14 +3706,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="14" column="0">
+             <item row="15" column="0">
               <widget class="QLabel" name="label_15">
                <property name="text">
                 <string>-5 volume</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="1">
+             <item row="15" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_19">
                <property name="spacing">
                 <number>4</number>
@@ -3730,14 +3730,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="15" column="0">
+             <item row="16" column="0">
               <widget class="QLabel" name="label_22">
                <property name="text">
                 <string>+0.5 volume boost</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="1">
+             <item row="16" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_26">
                <property name="spacing">
                 <number>4</number>
@@ -3754,14 +3754,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="16" column="0">
+             <item row="17" column="0">
               <widget class="QLabel" name="label_23">
                <property name="text">
                 <string>-0.5 volume boost</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="1">
+             <item row="17" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_27">
                <property name="spacing">
                 <number>4</number>
@@ -3778,14 +3778,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="17" column="0">
+             <item row="18" column="0">
               <widget class="QLabel" name="label_16">
                <property name="text">
                 <string>Mute</string>
                </property>
               </widget>
              </item>
-             <item row="17" column="1">
+             <item row="18" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_20">
                <property name="spacing">
                 <number>4</number>
@@ -3802,14 +3802,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="18" column="0">
+             <item row="19" column="0">
               <widget class="QLabel" name="label_17">
                <property name="text">
                 <string>Fullscreen</string>
                </property>
               </widget>
              </item>
-             <item row="18" column="1">
+             <item row="19" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_21">
                <property name="spacing">
                 <number>4</number>
@@ -3826,14 +3826,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="19" column="0">
+             <item row="20" column="0">
               <widget class="QLabel" name="label_24">
                <property name="text">
                 <string>Crop</string>
                </property>
               </widget>
              </item>
-             <item row="19" column="1">
+             <item row="20" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_28">
                <property name="spacing">
                 <number>4</number>
@@ -3850,14 +3850,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="20" column="0">
+             <item row="21" column="0">
               <widget class="QLabel" name="label_32">
                <property name="text">
                 <string>Loop</string>
                </property>
               </widget>
              </item>
-             <item row="20" column="1">
+             <item row="21" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_37">
                <property name="spacing">
                 <number>4</number>
@@ -3874,14 +3874,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="21" column="0">
+             <item row="22" column="0">
               <widget class="QLabel" name="label_20">
                <property name="text">
                 <string>Next media</string>
                </property>
               </widget>
              </item>
-             <item row="21" column="1">
+             <item row="22" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_24">
                <property name="spacing">
                 <number>4</number>
@@ -3898,14 +3898,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="22" column="0">
+             <item row="23" column="0">
               <widget class="QLabel" name="label_21">
                <property name="text">
                 <string>Previous media</string>
                </property>
               </widget>
              </item>
-             <item row="22" column="1">
+             <item row="23" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_25">
                <property name="spacing">
                 <number>4</number>
@@ -3922,14 +3922,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="23" column="0">
+             <item row="24" column="0">
               <widget class="QLabel" name="label_59">
                <property name="text">
                 <string>Forward (recent files)</string>
                </property>
               </widget>
              </item>
-             <item row="23" column="1">
+             <item row="24" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_30">
                <property name="spacing">
                 <number>4</number>
@@ -3946,14 +3946,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="24" column="0">
+             <item row="25" column="0">
               <widget class="QLabel" name="label_60">
                <property name="text">
                 <string>Back (recent files)</string>
                </property>
               </widget>
              </item>
-             <item row="24" column="1">
+             <item row="25" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_38">
                <property name="spacing">
                 <number>4</number>
@@ -3970,14 +3970,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="25" column="0">
+             <item row="26" column="0">
               <widget class="QLabel" name="label_25">
                <property name="text">
                 <string>+50ms subtitle delay</string>
                </property>
               </widget>
              </item>
-             <item row="25" column="1">
+             <item row="26" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_29">
                <property name="spacing">
                 <number>4</number>
@@ -3998,14 +3998,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="26" column="0">
+             <item row="27" column="0">
               <widget class="QLabel" name="label_26">
                <property name="text">
                 <string>-50ms subtitle delay</string>
                </property>
               </widget>
              </item>
-             <item row="26" column="1">
+             <item row="27" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_31">
                <property name="spacing">
                 <number>4</number>
@@ -4026,14 +4026,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="27" column="0">
+             <item row="28" column="0">
               <widget class="QLabel" name="label_27">
                <property name="text">
                 <string>Cycle subtitle tracks</string>
                </property>
               </widget>
              </item>
-             <item row="27" column="1">
+             <item row="28" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_32">
                <property name="spacing">
                 <number>4</number>
@@ -4054,14 +4054,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="28" column="0">
+             <item row="29" column="0">
               <widget class="QLabel" name="label_66">
                <property name="text">
                 <string>Cycle audio tracks</string>
                </property>
               </widget>
              </item>
-             <item row="28" column="1">
+             <item row="29" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_39">
                <property name="spacing">
                 <number>4</number>
@@ -4082,14 +4082,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="29" column="0">
+             <item row="30" column="0">
               <widget class="QLabel" name="label_67">
                <property name="text">
                 <string>Cycle video tracks</string>
                </property>
               </widget>
              </item>
-             <item row="29" column="1">
+             <item row="30" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_40">
                <property name="spacing">
                 <number>4</number>
@@ -4110,14 +4110,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="30" column="0">
+             <item row="31" column="0">
               <widget class="QLabel" name="label_28">
                <property name="text">
                 <string>Mark for deletion</string>
                </property>
               </widget>
              </item>
-             <item row="30" column="1">
+             <item row="31" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_33">
                <property name="spacing">
                 <number>4</number>
@@ -4134,14 +4134,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="31" column="0">
+             <item row="32" column="0">
               <widget class="QLabel" name="label_29">
                <property name="text">
                 <string>Delete immediately</string>
                </property>
               </widget>
              </item>
-             <item row="31" column="1">
+             <item row="32" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_34">
                <property name="spacing">
                 <number>4</number>
@@ -4158,14 +4158,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="32" column="0">
+             <item row="33" column="0">
               <widget class="QLabel" name="label_30">
                <property name="text">
                 <string>Snapshot</string>
                </property>
               </widget>
              </item>
-             <item row="32" column="1">
+             <item row="33" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_35">
                <property name="spacing">
                 <number>4</number>
@@ -4182,14 +4182,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="33" column="0">
+             <item row="34" column="0">
               <widget class="QLabel" name="label_31">
                <property name="text">
                 <string>Quick snapshot</string>
                </property>
               </widget>
              </item>
-             <item row="33" column="1">
+             <item row="34" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_36">
                <property name="spacing">
                 <number>4</number>
@@ -4206,7 +4206,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="2" column="1">
+             <item row="3" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_42">
                <property name="spacing">
                 <number>4</number>
@@ -4223,14 +4223,14 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="2" column="0">
+             <item row="3" column="0">
               <widget class="QLabel" name="labelNavigation1">
                <property name="text">
                 <string>-1 second</string>
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
+             <item row="2" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_43">
                <property name="spacing">
                 <number>4</number>
@@ -4247,7 +4247,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </item>
               </layout>
              </item>
-             <item row="1" column="0">
+             <item row="2" column="0">
               <widget class="QSpinBox" name="spinNavigation1">
                <property name="minimumSize">
                 <size>
@@ -4272,7 +4272,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="0">
+             <item row="4" column="0">
               <widget class="QSpinBox" name="spinNavigation2">
                <property name="minimumSize">
                 <size>
@@ -4300,7 +4300,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0">
+             <item row="6" column="0">
               <widget class="QSpinBox" name="spinNavigation3">
                <property name="minimumSize">
                 <size>
@@ -4328,7 +4328,7 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0">
+             <item row="8" column="0">
               <widget class="QSpinBox" name="spinNavigation4">
                <property name="minimumSize">
                 <size>
@@ -4355,6 +4355,34 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
                 <number>30</number>
                </property>
               </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>Stop player</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_44">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="stop">
+                 <property name="keySequence">
+                  <string>Shift+Space</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="stop_">
+                 <property name="keySequence">
+                  <string>Shift+S</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
             </layout>
            </item>

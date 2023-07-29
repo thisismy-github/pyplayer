@@ -551,12 +551,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.skip_next_vlc_progress_desync_check:                  # NOTE: this is used for the audio-pitch-fix-hack while navigating
                     self.skip_next_vlc_progress_desync_check = False
                     continue
-                vlc_frame = player.get_position() * self.frame_count          # get the frame VLC thinks it is
+
+                # get the frame VLC thinks it is -> if VLC's frame isn't <= 0 and our frame is WAY off...
+                # ...(2+ seconds) -> reset to VLC's frame + 0.3 secs (VLC is usually 0.3-0.6 behind)
+                vlc_frame = player.get_position() * self.frame_count
                 next_frame = get_progess_slider() + 1 * self.playback_speed
-                if abs(next_frame - vlc_frame) > self.frame_rate * 2:         # if our frame is way, WAY off (2+ seconds)...
-                    true_frame = vlc_frame + (self.frame_rate * 0.3)          # ...reset to VLC's frame, +0.3 secs (VLC is usually 0.3-0.6 behind)
+                if abs(next_frame - vlc_frame) > self.frame_rate * 2 and vlc_frame > 0:
+                    true_frame = vlc_frame + (self.frame_rate * 0.3)
                     self.frame_override = true_frame
                     log_on_statusbar('Warning: high-precision slider was desynced by >2 seconds. Corrected.')
+                    logging.info(f'(?) VLC\'s reported frame: {vlc_frame} | Current frame: {next_frame} | "Corrected" frame: {true_frame}')
 
 
     # ---------------------
