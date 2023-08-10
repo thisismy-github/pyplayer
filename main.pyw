@@ -2954,7 +2954,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if not self.actionLoop.isChecked(): self.force_pause(True)
                     else: return set_and_update_progress(self.minimum)
 
-        current_time = round(self.duration * (frame / self.frame_count), 3)
+        current_time = round(self.duration * (frame / self.frame_count), 2)
         self.current_time = current_time
         h, m, s, ms = get_hms(current_time)
 
@@ -3076,11 +3076,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             old_frame = self.spinFrame.value()
             excess_frames = old_frame % self.frame_rate
-            new_frame = math.ceil((seconds * self.frame_rate) + excess_frames)  # ceil() to ensure we don't overshoot frame_count on the next frame
-            if new_frame > self.frame_count: update_progress(old_frame)
-            else: set_and_update_progress(new_frame)
+            new_frame = round((seconds * self.frame_rate) + excess_frames)
 
+            # if the new frame is out of bounds, just reset the UI to match the old frame
+            if self.minimum < new_frame > self.maximum:
+                update_progress(old_frame)
+            else:
+                if self.mime_type == 'audio' and not self.is_paused:
+                    self.skip_next_vlc_progress_desync_check = True
+                    play(self.video)                            # HACK: "replay" audio file to correct VLC's pitch-shifting bug
+                set_and_update_progress(new_frame)
             logging.debug(f'Manually updating time-spins: seconds={seconds} frame {old_frame} -> {new_frame} ({excess_frames} excess frame(s))')
+
         except: logging.error(f'(!) UPDATE_TIME_SPINS FAILED: {format_exc()}')
         finally: self.lock_progress_updates = False             # always release lock on progress updates
 
