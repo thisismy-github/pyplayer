@@ -3043,6 +3043,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # high-precision option disabled -> use libvlc's native progress at 8fps and manually paint QVideoSlider at 40fps
             else:
+                vlc_offset = self.frame_rate * 0.15     # VLC's progress is usually a bit behind, so use this to make sure we stay somewhat lined up with reality
+
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:   # not playing, not locked, and not about to swap styles
                     # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override != -1:
@@ -3054,12 +3056,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.frame_override = -1        # reset frame_override
                         self.open_queued = False        # reset open_queued
                     else:
-                        for _ in range(5):              # force QVideoSlider to paint at 40fps (this refreshes the hover-timestamp)
-                            self.sliderProgress.update()
-                            _sleep(0.025)               # only update slider position at 8fps (every 0.125 seconds -> VLC updates every 0.2-0.35)
-                        new_frame = player.get_position() * self.frame_count                        # convert VLC position to frame
-                        if new_frame >= current_frame(): _emit_update_progress_signal(new_frame)    # make sure VLC didn't literally go backwards (pretty common)
-                        #else: _emit_update_progress_signal(int(new_frame + (self.frame_rate / 5))) # simulate a non-backwards update TODO this actually makes it look worse
+                        new_frame = (player.get_position() * self.frame_count) + vlc_offset         # convert VLC position to frame
+                        if new_frame >= current_frame():
+                            _emit_update_progress_signal(new_frame)
+                        #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
+                        #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
+                        #    _emit_update_progress_signal(interpolated_frame)                       # TODO can this snowball and keep jumping forward forever?
+
+                        # update actual slider position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
+                        # repaint slider (to refresh the hover-timestamp) three times per update (30FPS)
+                        self.sliderProgress.update()
+                        if not is_playing(): break
+                        _sleep(0.033)
+                        self.sliderProgress.update()
+                        if not is_playing(): break
+                        _sleep(0.033)
         return logging.info('Program closed. Ending update_slider thread.')
 
 
