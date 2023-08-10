@@ -38,7 +38,8 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('lastdir', '.')
     load('last_snapshot_path')
     load('last_snapshot_folder', '%USERPROFILE%\\Pictures')
-    cfg.loadQt(gui.sliderVolume, children=False)
+    gui.sliderVolume.setValue(load('volume', gui.sliderVolume.value()))
+    gui.set_mute(load('muted', False))
     gui.checkDeleteOriginal.setCheckState(load('checkDeleteOriginal', 1))
     cfg.loadQt(gui.frameQuickChecks)
     load('trimmodeselected', False)
@@ -102,6 +103,8 @@ def saveConfig(gui, filename: str = None):
 
     cfg.setSection('general')
     save('recent_files', gui.recent_files, delimiter='<|>')
+    save('volume', gui.sliderVolume.value())
+    save('muted', not gui.sliderVolume.isEnabled())
 
     cfg.setSection('settings')
     for group in (gui.trim_mode_action_group, gui.autoplay_direction_group):

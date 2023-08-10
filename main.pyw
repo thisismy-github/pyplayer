@@ -4030,14 +4030,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 logging.error(format_exc())
 
 
-    def toggle_mute(self):
+    def set_mute(self, muted: bool):
         try:
-            muted = not bool(player.audio_get_mute())   # returns 1 or 0
             player.audio_set_mute(muted)
             self.sliderVolume.setEnabled(not muted)     # disabled if muted, enabled if not muted
             self.sliderVolume.setToolTip('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%)')
-            if settings.checkTextOnMute.isChecked(): show_on_player('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%%)')
+            if settings.checkTextOnMute.isChecked():
+                show_on_player('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%%)')
         except: logging.error(format_exc())
+
+
+    def toggle_mute(self):
+        self.set_mute(not bool(player.audio_get_mute()))
 
 
     def set_advancedcontrols_visible(self, visible: bool):
