@@ -104,20 +104,26 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.text_y_offsets: dict = None
 
 
-    def play(self, file, _error=False):
+    def play(self, file: str, _error: bool = False) -> bool:
+        ''' Open, parse, and play a `file` in libVLC, returning True if
+            successful. If `file` cannot be played, the currently opened file
+            is reopened if possible. NOTE: Parsing is started asynchronously
+            and this function returns immediately upon playing the file. '''
         try:
-            #self.show_text(os.path.basename(file))
-            self.media = self.instance.media_new(file)  # combines media_new_path (local files) and media_new_location (urls)
-            self.player.set_media(self.media)           # TODO: this single line has a HUGE delay when opening first video after opening extremely large video
-            #self.player.set_mrl(self.media.get_mrl())  # not needed? https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.MediaPlayer-class.html#set_mrl
+            self.media = self.instance.media_new(file)      # combines media_new_path (local files) and media_new_location (urls)
+            self.player.set_media(self.media)               # TODO: this line has a HUGE delay when opening first file after opening extremely large video
+            #self.player.set_mrl(self.media.get_mrl())      # not needed? https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.MediaPlayer-class.html#set_mrl
             self.player.play()
-            self.media.parse_with_options(0x0, 0)       # https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.Media-class.html#parse_with_options
+
+            # NOTE: parsing normally is still relatively fast, but libVLC is not as effective/compatible as FFprobe
+            #       additionally, reading an already-created probe file is MUCH faster (relatively) than parsing with libVLC
+            self.media.parse_with_options(0x0, 0)           # https://www.olivieraubert.net/vlc/python-ctypes/doc/vlc.Media-class.html#parse_with_options
             return True
         except:
             logger.warning(f'VLC failed to play file {file}: {format_exc()}')
-            if not _error:  # _error ensures we only attempt to play previous video once
-                if not gui.video: self.player.stop()     # no previous video to play, so just stop playing
-                else: self.play(gui.video, _error=True)  # attempt to play previous working video
+            if not _error and file != gui.video:            # `_error` ensures we only attempt to play previous video once
+                if not gui.video: self.player.stop()        # no previous video to play, so just stop playing
+                else: self.play(gui.video, _error=True)     # attempt to play previous working video
             return False
 
 
@@ -960,7 +966,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         ''' Sets the offset between the cursor and our QPixmap's local position. '''
         if event.button() == Qt.LeftButton and not gui.actionCrop.isChecked():
             self._draggingOffset = event.pos() - self.pixmapPos
-        return super().mousePressEvent(event)           # QLabel will pass event to underlying widgets (needed for cropping)
+        return super().mousePressEvent(event)               # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
@@ -968,22 +974,22 @@ class QVideoPlayerLabel(QtW.QLabel):
             position relative to the offset we set in mousePressEvent. '''
         #if not gui.actionCrop.isChecked() and not self.movie():
         if not gui.actionCrop.isChecked():
-            if app.mouseButtons() == Qt.LeftButton:     # TODO normal mousePressEvent implementation, why won't event.button() work?
+            if app.mouseButtons() == Qt.LeftButton:         # TODO normal mousePressEvent implementation, why won't event.button() work?
                 #print('MOVING')
                 self.pixmapPos = event.pos() - self._draggingOffset
                 self._dragging = True
-                self.update()                           # manually update
-        return super().mouseMoveEvent(event)            # QLabel will pass event to underlying widgets (needed for cropping)
+                self.update()                               # manually update
+        return super().mouseMoveEvent(event)                # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         ''' Disables drag-mode on releasing a mouse button. If left-clicking
             and drag-mode was never enabled, then zoom-mode is disabled. '''
         if event.button() == Qt.LeftButton:
-            if not (self.movie() or self._dragging):    # reset QVideoPlayerLabel's zoom if we click without dragging
+            if not (self.movie() or self._dragging):        # reset QVideoPlayerLabel's zoom if we click without dragging
                 self.disableZoom()
         self._dragging = False
-        return super().mouseReleaseEvent(event)         # QLabel will pass event to underlying widgets (needed for cropping)
+        return super().mouseReleaseEvent(event)             # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
@@ -994,7 +1000,7 @@ class QVideoPlayerLabel(QtW.QLabel):
     def wheelEvent(self, event: QtGui.QWheelEvent):
         ''' Increments the zoom factor by 1/6th of its current value if we're
             not cropping. Ctrl zooms twice as much. Shift, half as much. '''
-        event.accept()                                  # accept the wheelEvent or QLabel will pass it through no matter what
+        event.accept()                                      # accept the wheelEvent or QLabel will pass it through no matter what
         if gui.actionCrop.isChecked() or not gui.video: return
         add = event.angleDelta().y() > 0
         mod = event.modifiers()
@@ -1104,7 +1110,7 @@ class QVideoPlayerLabel(QtW.QLabel):
 class QVideoSlider(QtW.QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setAcceptDrops(True)   # TODO is having stuff like this here better than in the .ui file?
+        self.setAcceptDrops(True)           # TODO is having stuff like this here better than in the .ui file?
 
         self.last_mouseover_time = 0
         self.last_mouseover_pos = None
@@ -1126,9 +1132,10 @@ class QVideoSlider(QtW.QSlider):
 
 
     def paintEvent(self, event: QtGui.QPaintEvent):
-        ''' Paints timestamps under the mouse cursor corresponding with its position while hovering over the slider.
-            Due to the need for the cursor's up-to-date position regardless '''
-        super().paintEvent(event)   # perform built-in paint immediately so we can paint on top
+        ''' Paints timestamps under the mouse cursor corresponding with its
+            position while hovering over the slider. Due to the need for the
+            cursor's up-to-date position regardless '''
+        super().paintEvent(event)           # perform built-in paint immediately so we can paint on top
         now = time.time()
 
         # handle QVideoPlayer's idle cursor/fullscreen controls timeout
@@ -1241,8 +1248,9 @@ class QVideoSlider(QtW.QSlider):
 
 
     def wheelEvent(self, event: QtGui.QWheelEvent):             # https://doc.qt.io/qt-5/qabstractslider.html#SliderAction-enum
-        ''' Page-steps along the slider while scrolling. Horizontal sliders are increased by
-            scrolling down or right, vertical sliders are increased by scrolling up or left. '''
+        ''' Page-steps along the slider while scrolling. Horizontal sliders
+            are increased by scrolling down or right, vertical sliders are
+            increased by scrolling up or left. '''
         add = event.angleDelta().y() > 0 or event.angleDelta().x() > 0
         if self.orientation() == Qt.Vertical: add = not add
         self.triggerAction(4 if add else 3)
@@ -1250,8 +1258,9 @@ class QVideoSlider(QtW.QSlider):
 
 
     def enterEvent(self, event: QtGui.QEnterEvent):
-        ''' Marks the current time when mousing-over and forces a paintEvent to begin drawing hover-timestamps.
-            Does not require setMouseTracking(True), as enterEvent fires regardless. '''
+        ''' Marks the current time when mousing-over and forces a paintEvent
+            to begin drawing hover-timestamps. Does not require
+            setMouseTracking(True), as enterEvent fires regardless. '''
         if gui.video:
             self.last_mouseover_time = time.time()              # save last mouseover time to use as a fade timer
             self.update()                                       # force-update to draw timestamp in self.paintEvent()
@@ -1259,9 +1268,11 @@ class QVideoSlider(QtW.QSlider):
 
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
-        ''' Snaps the slider handle to the mouse cursor if left-clicked. Does not use the normal implementation
-            to grab the handle, instead allowing it to move freely until the mouse is moved, ensuring a snappier
-            experience when clicking the progress bar. Does not emit the sliderPressed signal. '''
+        ''' Snaps the slider handle to the mouse cursor if left-clicked.
+            Does not use the normal implementation to grab the handle,
+            instead allowing it to move freely until the mouse is moved,
+            ensuring a snappier experience when clicking the progress bar.
+            Does not emit the sliderPressed signal. '''
         if event.button() == Qt.LeftButton:
             pos = event.pos()
             frame = self.pixelPosToRangeValue(pos)
@@ -1269,7 +1280,7 @@ class QVideoSlider(QtW.QSlider):
                 if gui.mime_type == 'audio' and not gui.is_paused:
                     gui.skip_next_vlc_progress_desync_check = True
                     gui.vlc.play(gui.video)                     # HACK: "replay" audio file to correct VLC's pitch-shifting bug
-                self.update_parent_progress(frame)
+                gui.set_and_update_progress(frame)
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
             if self.clamp_minimum or self.clamp_maximum:        # ^ alternate solution by finding points inside QPolygons
@@ -1289,46 +1300,49 @@ class QVideoSlider(QtW.QSlider):
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
-        ''' If dragging, this re-implements scrubbing by grabbing the handle, pausing the player, and updating
-            the player position. Does not emit the sliderMoved signal. Does not require setMouseTracking(True),
-            as mouse-tracking only applies to firing mouseMoveEvent without holding a button. '''
+        ''' If dragging, this re-implements scrubbing by grabbing the
+            handle, pausing the player, and updating the player position.
+            Does not emit the sliderMoved signal. Does not require
+            setMouseTracking(True), as mouse-tracking only applies
+            to firing mouseMoveEvent without holding a button. '''
         frame = self.pixelPosToRangeValue(event.pos())          # get frame
         if app.mouseButtons() == Qt.LeftButton:                 # abnormal mousePressEvent implementation, so event.button() is incorrect
-            self.update_parent_progress(frame)                  # "grab" handle
+            gui.set_and_update_progress(frame)                  # "grab" handle
             gui.player.set_pause(True)                          # pause player while scrubbing
             self.last_mouseover_time = 0                        # reset last mouseover time to stop drawing timestamp immediately
             if self.grabbing_clamp_minimum: gui.set_trim_start()
             elif self.grabbing_clamp_maximum: gui.set_trim_end()
             self.scrubbing = True                               # mark that we're scrubbing
-        #self.update()      # TODO <- why doesn't this make the animations smooth?
+        #self.update()                                          # TODO <- why doesn't this make the animations smooth?
 
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
-        ''' Unpauses the player after scrubbing, unless it was paused originally. Does not emit the sliderReleased signal. '''
+        ''' Unpauses the player after scrubbing, unless it was paused
+            originally. Does not emit the sliderReleased signal. '''
         if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
         else: gui.player.set_pause(False or gui.is_paused)                              # stay paused if we were paused
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
-        #if 0 <= event.x() <= self.width() and 0 <= event.y() <= self.height():
         if self.underMouse(): self.last_mouseover_time = time.time()    # resume drawing timestamp after release
 
         frame = self.pixelPosToRangeValue(event.pos())                  # get frame
-        if frame < gui.minimum: self.update_parent_progress(gui.minimum)
-        elif frame > gui.maximum: self.update_parent_progress(gui.maximum)
+        if frame < gui.minimum: gui.set_and_update_progress(gui.minimum)
+        elif frame > gui.maximum: gui.set_and_update_progress(gui.maximum)
 
         # HACK: "replay" audio file to correct VLC's pitch-shifting bug
         # (only apply if we were scrubbing, or the progress will jump back a few frames)
         elif self.scrubbing and gui.mime_type == 'audio' and not gui.is_paused:
             gui.skip_next_vlc_progress_desync_check = True
             gui.vlc.play(gui.video)
-            self.update_parent_progress(frame)
+            gui.set_and_update_progress(frame)
 
         self.scrubbing = False
 
 
     def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:          # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
-        ''' Auto-magically detects the correct value to set the handle to based on a given `pos`.
-            Works with horizontal and vertical sliders, with or without stylesheets. '''
+        ''' Auto-magically detects the correct value to set the handle
+            to based on a given `pos`. Works with horizontal and vertical
+            sliders, with or without stylesheets. '''
         try:
             opt = QtW.QStyleOptionSlider()
             self.initStyleOption(opt)
@@ -1360,8 +1374,9 @@ class QVideoSlider(QtW.QSlider):
 
 
     def rangeValueToPixelPos(self, value: int) -> int:
-        ''' Auto-magically detects the correct X/Y position to set the handle to based on a given `value`.
-            Works with horizontal and vertical (...? see TODO below) sliders, with or without stylesheets. '''
+        ''' Auto-magically detects the correct X/Y position to set the handle
+            to based on a given `value`. Works with horizontal and vertical
+            (...? see TODO below) sliders, with or without stylesheets. '''
         opt = QtW.QStyleOptionSlider()
         self.initStyleOption(opt)
 
@@ -1393,7 +1408,8 @@ class QVideoSlider(QtW.QSlider):
 # Concatenation Widgets
 # ------------------------------------------
 class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any garbage collection
-    ''' A list of interactable media files represented by QVideoListItemWidgets within the concatenation menu. '''
+    ''' A list of interactable media files represented by
+        QVideoListItemWidgets within the concatenation menu. '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAcceptDrops(True)
@@ -1406,8 +1422,10 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
 
     def dropEvent(self, event: QtGui.QDropEvent):
-        ''' Handles adding externally dropped items to the list, and includes an ugly workaround for a Qt bug that creates
-            duplicated and/or invisible items when dragging an item below itself without actually changing its final position. '''
+        ''' Handles adding externally dropped items to the list, and includes
+            an ugly workaround for a Qt bug that creates duplicated and/or
+            invisible items when dragging an item below itself without
+            actually changing its final position. '''
         old_items = tuple(qthelpers.listGetAllItems(self))
         files = tuple(url.toLocalFile() for url in event.mimeData().urls())
         if files: self.add(files=files)
@@ -1421,8 +1439,9 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Creates a context menu for the QListWidgetItem underneath the mouse, if any.
-            This could alternatively be accomplished through the itemClicked signal. '''
+        ''' Creates a context menu for the QListWidgetItem underneath
+            the mouse, if any. This could alternatively be accomplished
+            through the itemClicked signal. '''
         item = self.itemAt(event.pos())     # get item under mouse to work with
         if not item: return                 # no item under mouse, return
 
@@ -1454,7 +1473,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             item_widget = QVideoListItemWidget(self, thumbnail_path, html, video == gui.video)
 
             # create and setup QListWidgetItem as the base for our QVideoListItemWidget with our file and QLabel
-            if index is not None:   # {index} is used exclusively for moving items (which requires the workaround too)
+            if index is not None:           # {index} is used exclusively for moving items (which requires the workaround too)
                 item_base = QtW.QListWidgetItem()
                 self.insertItem(index, item_base)
             else: item_base = QtW.QListWidgetItem(self)
@@ -1534,7 +1553,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
 
 
-class QVideoListItemWidget(QtW.QWidget):  # TODO this likely does not get garbage collected
+class QVideoListItemWidget(QtW.QWidget):    # TODO this likely does not get garbage collected
     ''' An item representing a media file within a
         QVideoList, within the concatenation menu. '''
     def __init__(self, parent, image, text, is_playing):
@@ -1577,7 +1596,7 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
         self.escClearsFocus = escClearsFocus
         self.escClearsSequence = escClearsSequence
         self.editDelay = delay
-        self.ignoredSequences = (               # like the other utility widgets, we manually set this here for simplicity
+        self.ignoredSequences = (           # like the other utility widgets, we manually set this here for simplicity
             QtGui.QKeySequence('Ctrl+O'),
             QtGui.QKeySequence('Ctrl+S'),
             QtGui.QKeySequence('Ctrl+Shift+S'),
@@ -1601,7 +1620,7 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
         ''' Overrides the clear() method to manually emit keySequenceChanged and editingFinished signals, assuming
             clear() was not called as part of an editing timer. This allows clearing to actually trigger updates. '''
         super().clear()
-        if self._timerID is None:               # timerID means a custom timer active
+        if self._timerID is None:           # timerID means a custom timer active
             self.keySequenceChanged.emit(self.keySequence())
             self.editingFinished.emit()
 
@@ -1613,20 +1632,20 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
             if self.escClearsSequence: self.clear()
             if self.escClearsFocus: return self.clearFocus()            # do NOT use event.ignore() here
 
-        if self.singleSequence:                 # single sequence only
-            super().keyPressEvent(event)        # run built-in keyPressEvent first (this emits keySequenceChanged)
+        if self.singleSequence:             # single sequence only
+            super().keyPressEvent(event)    # run built-in keyPressEvent first (this emits keySequenceChanged)
             if self.keySequence().count() > 1:
                 self.setKeySequence(QtGui.QKeySequence(self.keySequence()[-1]))  # truncate sequence to last sequence
             return self.lineEdit.setText(self.keySequence().toString())          # strip ", ..." from underlying QLineEdit and return
 
-        elif self.editDelay != 1000:            # not a single sequence, but a custom editing delay (reimplement timer behavior)
-            if self._timerID is None:           # no timer running + not actively editing -> clear existing sequence for incoming sequence
+        elif self.editDelay != 1000:        # not a single sequence, but a custom editing delay (reimplement timer behavior)
+            if self._timerID is None:       # no timer running + not actively editing -> clear existing sequence for incoming sequence
                 if not self._editing:
                     self.clear()
-            else:                               # timer running + actively editing the sequence -> kill/reset timer (we're still editing)
+            else:                           # timer running + actively editing the sequence -> kill/reset timer (we're still editing)
                 self._timerID = self.killTimer(self._timerID)
-            self._editing = True                # mark that we're actively editing
-        super().keyPressEvent(event)            # run built-in keyPressEvent last (this emits the first keySequenceChanged signal)
+            self._editing = True            # mark that we're actively editing
+        super().keyPressEvent(event)        # run built-in keyPressEvent last (this emits the first keySequenceChanged signal)
 
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent):
@@ -1665,7 +1684,7 @@ class QWidgetPassthrough(QtW.QWidget):
     # TODO make the getting/setting syntax fully Qt-like or make it fully normal
     def __init__(self, *args, proxy=None, escClearsFocus=True, passFocus=True,
                  alpha=True, punctuation=True, numeric=False, ignored=tuple(), **kwargs):
-        super().__init__(*args, **kwargs)       # normally these kwargs are True, False, False, False
+        super().__init__(*args, **kwargs)   # normally these kwargs are True, False, False, False
         self.escClearsFocus = escClearsFocus
         self.passFocus = passFocus
         self.ignoreAlpha = alpha
@@ -1709,16 +1728,15 @@ class QWidgetPassthrough(QtW.QWidget):
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
-        if self.escClearsFocus and key == 16777216:         # esc (clear/pass focus)
+        if self.escClearsFocus and key == 16777216:
             if self.passFocus: return self._proxyWidget.setFocus()
-            else: return self.clearFocus()
+            else: return self.clearFocus()      # esc (clear/pass focus)
         text = event.text()
         if any((key in self.ignoredKeys,
                 self.ignoreAlpha and text.isalpha(),
                 self.ignorePunctuation and text in '!"#$%&\'()*+, -./:;<=>?@[\\]^_`{|}~',
                 self.ignoreNumeric and text.isnumeric())):
-            #self._proxyWidget.shortcut_bandaid_fix = True   # TODO this is a workaround for QShortcuts refusing to work through this widget. no QShortcut...
-            return self._proxyWidget.keyPressEvent(event)   # ...contexts work. I might replace the QShortcuts with a simpler system, or I may leave it like this.
+            return self._proxyWidget.keyPressEvent(event)
         return self.base.keyPressEvent(self, event)
 
 
@@ -1727,6 +1745,7 @@ class QWidgetPassthrough(QtW.QWidget):
 class QSpinBoxPassthrough(QtW.QSpinBox, QWidgetPassthrough): base = QtW.QSpinBox
 class QDockWidgetPassthrough(QtW.QDockWidget, QWidgetPassthrough): base = QtW.QDockWidget
 class QLineEditPassthrough(QtW.QLineEdit, QWidgetPassthrough): base = QtW.QLineEdit
+
 
 
 
@@ -1783,6 +1802,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         self._validDrag = False
+
 
 
 # ------------------------------------------

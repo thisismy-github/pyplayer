@@ -1,3 +1,8 @@
+''' An ever-growing list of helpful utility functions for Qt
+    I've made over time to fulfill general or niche purposes.
+
+    thisismy-github '''
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
@@ -95,12 +100,12 @@ def clampToScreen(window, screen: QtGui.QScreen = None,
 def getScreenForRect(rect: QtCore.QRect, defaultPos: QtCore.QPoint = None,
                      mouseFallback: bool = False, strict: bool = False) -> QtGui.QScreen:
     ''' WARNING: If you're checking a window, pass in geometry(), NOT rect().
-        Returns the QScreen that `rect` is touching, if any. If `rect` is not
-        touching any screen and `strict` is True, a ValueError is raised.
-        Otherwise, if `mouseFallback` is True, the screen the mouse is on is
-        returned. If the mouse isn't touching a screen either or neither are
-        True, the primary screen is returned. `defaultPos` specifies the
-        first QPoint to test before thoroughly testing `rect`. '''
+        Returns the QScreen that `rect` is touching, if any. Tests the center
+        of `rect` first unless `defaultPos` is given, then tests its corners.
+        If `rect` is not touching any screen and `strict` is True, ValueError
+        is raised. Otherwise if `mouseFallback` is True, the screen the mouse
+        is on (if any) is returned. Otherwise, or if neither are True, the
+        primary screen is returned. '''
     if defaultPos is None: pos = rect.center()
     else: pos = defaultPos
     qscreen = QtWidgets.QApplication.screenAt(pos)

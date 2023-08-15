@@ -10,12 +10,11 @@ r'''  >>> thisismygithub - 10/31/21 <<<
 
 icon sources/inspirations https://www.pinclipart.com/maxpin/hxThoo/ + https://www.hiclipart.com/free-transparent-background-png-clipart-vuclz
 https://youtu.be/P1qMAupb2_Y?t=2461 VLC devs talk about Qt problems -> making two windows actually behave as one?
-TODO: update boilerplate code with last_window_size/pos changes
 TODO: need a way to deal with VLC registry edits
 TODO: move show_color_picker and other browse dialogs + indeterminate_progress decorator + setCursor(app) and resetCursor(app) to qthelpers/util?
 TODO: better/more fleshed-out themes
 TODO: can't change themes while minimized to system tray (warn with tray icon?)
-TODO: live-themes advanced option? (button that auto-refreshes themes every half-second for theme developers)
+TODO: live-themes option? (button that auto-refreshes themes every half-second for theme-editing)
 TODO: make more "modern" looking icon like VLC's ios app icon?
 TODO: event_manager -> "no signature found for builtin <built-in method emit of PyQt5.QtCore.pyqtBoundSignal object"
 TODO: getting the padding of the QSlider groove
@@ -45,7 +44,6 @@ TODO: vlc Media Information window with editable metadata + codec information?  
 TODO: vlc.py stuff to check out
         - get_delay/set_delay (audio delays)
         - audio_get_channel/audio_set_channel
-        - !!! get_stats (decoded frame count? video -> displayed frames -> ???)
         - VideoAdjustOption enum (hue/brightness/whatnot)
         - AudioEqualizer class
         - all_slave, but for un-saved audio tracks
@@ -59,7 +57,7 @@ TODO: make use of .nfo files to expand auto-opening abilities for subtitles -> l
 TODO: tab-order no longer exists due to setting everything to ClickFocus (worthwhile sacrifice?)
         - previousInFocusChain and NextInFocusChain might be usable for best of both worlds
 TODO: upload-to-imgur button? NOTE: requires client-id and requests Session. perhaps a secret advanced option
-        - "plugin" support could be just loading python files before showing GUI -> add imgurbot + IRS support
+        - "plugin" support could be just loading python files before showing GUI
 TODO: use "rotate" metadata to have a live preview of rotations (might cause too many issues)? (or use QMediaPlayer and rotate manually)
         - VLC has a way to rotate videos natively (this may be involving either callbacks (hard) or filters (easy?))
 TODO: custom rotate angle option (possibly difficult, ffmpeg has bizarre syntax for it)
@@ -74,7 +72,6 @@ TODO: playlists + shuffle (including a smart shuffle that plays playlist to comp
 TODO: playing online media like VLC
 TODO: implement VLC's taskbar button preview where it lets you play/pause from it https://docs.microsoft.com/en-us/dotnet/api/system.windows.shell.thumbbuttoninfo?view=windowsdesktop-6.0
 TODO: video_set_aspect_ratio and video_set_scale (this is for "zooming")
-TODO: improve recent videos list to be more like IR-suite's?
 TODO: add setting to make total duration label show the remaining time instead
 TODO: add settings for trim graphics?
 TODO: more fullscreen settings? (alternate animation -> raise/lower instead of fade, separate idle timer, etc.)
@@ -86,14 +83,14 @@ TODO: vlc settings to add
         - "enable time-stretching audio" -> fixes audio pitch changing with playback speed
         - --start-paused, --no-start-paused
 TODO: gstreamer | ffpyplayer https://matham.github.io/ffpyplayer/player.html
-TODO: alternate progress method where we measure how many seconds are left -> how many frames are left -> we know where to set progress bar...?
-      Example: 2 minute video at 10fps = 1200 frames. 30 seconds left = 300 frames left = set progress bar 300 frames from end
 TODO: https://wiki.videolan.org/Documentation:Modules/alphamask/
 TODO: WA_PaintUnclipped https://doc.qt.io/qt-5/qt.html#WidgetAttribute-enum
 TODO: app.primaryScreenChanged.connect()
 TODO: is there a way to add/modify libvlc options like "--gain" post-launch? media.add_option() is very limited
-TODO: make logo in about window link somewhere
+TODO: make logo in about window link to somewhere
 TODO: "add subtitle file" but for video/audio tracks? (audio tracks supported, but VLC chooses not to use this)
+TODO: formats that still don't trim correctly after save() rewrite: 3gp, ogv, mpg (used to trim inaccurately, now doesn't trim at all)
+        - trimming likely needs to not use libx264 and aac for every format
 TODO: ram usage
         - !!! if it fails, update checking adds 15mb of ram that never goes away (~42mb before -> 57mb after)
         - if it doesn't fail, update checking still adds around 6mb on average
@@ -102,20 +99,16 @@ TODO: ram usage
         - themes take up nearly 2mb of ram (is loading the logo the biggest issue? only 14kb size)
         - removing 90% of qthelpers reduced ram by ~0.5mb (not worth it or even realistic)
 TODO: editing feature changes:
-        - "replace/add audio" -> add prompt to change volume of incoming file (make these into menus with 2 actions? one that shows a prompt and one that doesn't)
+        - text overlay (this would be awesome)
+        - "replace/add audio" -> add prompt to change volume of incoming file (always? as separate action? while holding modifier?)
         - "add audio" -> option to literally add it as an audio track (with ffmpeg, not libvlc/add_slave)
-        - adding audio to gifs
         - converting mp4 to gif
-        - improve filter/name hints, especially for things like remove_track
         - add "compress" option
         - add "speed" option (this is already implemented for audio files through the resize function)
+        - do math to chain audio-resizes to get around ffmpeg atempo 0.5-2.0 limitation (can be chained in single command)
         - implement more image edits?
-TODO: formats that still don't trim correctly after save() rewrite: 3gp, ogv, mpg (used to trim inaccurately, now doesn't trim at all)
-        - trimming likely needs to not use libx264 and aac for every format
+        - ability to "hold" fades
 
-
-TODO: HIGH PRIORITY:
-lazy concatenate dialog seems to have a memory leak (it does not free up QVideoList's memory after deletion)
 
 TODO: MEDIUM PRIORITY:
 DPI/scaling support
@@ -123,50 +116,42 @@ ffmpeg audio replacement/addition sometimes cuts out the audio 1 second short. k
 further polish cropping
 increase stability/add re-encoding ability to concatenation (currently fails/corrupts if you combine different formats/corrupted streams)
 confirm/increase stability for videos > 60fps (not yet tested)
-implement "compress" and "speed" edits for videos
 trimming-support for more obscure formats
 implement filetype associations
-high-precision progress bar has been neglected and is now consistently a little too fast
 far greater UI customization
 
 TODO: LOW PRIORITY:
 replace VLC with QMediaPlayer (maybe)
-support chaining more edits together at once
-massively improve robust-ness of editing features -> filters/hints/prompts/errors/formats need to be MUCH more consistent
 implement the "concatenate" edit for audio-only files
 further reduce RAM usage
 "Restore Defaults" button in settings window
 see update change logs before installing
 add way to distinguish base and forked repos
 ability to skip updates
-figure out the smallest feasible ffmpeg executable we can without sacrificing major edit features (ffmpeg.dll?)
+figure out the smallest feasible ffmpeg executable we can use without sacrificing major edit features (ffmpeg.dll?)
 create "lite" version on github that doesn't include ffmpeg or vlc files?
 ability to continue playing media while minimized to system tray
-enhance fading by adding ability to hold fade
 forwards/backwards buttons currently only work when pressed over the player
 ability to limit combination-edits (adding/replacing audio) to the shortest input (this exists in ffmpeg but breaks often)
-do the math to chain audio-resizes together to get around ffmpeg atempo 0.5-2.0 limitation (can be chained in single command)
+lazy concatenate dialog seems to have a memory leak (it does not free up QVideoList's memory after deletion)
+dropping files over taskbar button doesn't work
 
 
 KNOWN ISSUES:
     Non-serious:
-        dragging video onto taskbar button does nothing
         cursor idle timeout applies to music and images (good thing?)
     Likely unfixable:
-        holding X on window/dialogs pauses progress bar but does not restore progress afterwards (likely requires custom titlebar)
+        frame-seeking near the very end of a video rarely works (set_time()/set_position()/next_frame() make no difference)
     Low priority:
-        using scrollwheel on the minute-spinBox increases/decreases by slightly more than a minute when not paused (around 63 seconds)
         manually entering single %'s in config file for path names somehow ignores all nested folders
-        progress bar slows down when window isn't focused
-        frame-seeking near the very end of a video rarely works (set_time() vs set_position() makes no difference)          <- use player.next_frame()?
         partially corrupt videos have unusual behavior when frame-seeking corrupted parts <- use player.next_frame()?
         frame-seeking only a handful of frames after a video finishes and trying to play again sometimes causes brief freeze
         player becomes slightly less responsive after repeatedly minimizing to system tray (noticable fraction-of-a-second delay when navigating)
         resizing videos doesn't actually stretch them? or... it does? very strange behavior with phantom black bars that differ from player to player
-        rarely, concatenated videos will have a completely blank frame between clips, causing the theme background to appear for 1 frame
+        rarely, concatenated videos will have a literal missing frame between clips, causing PyPlayer's background to appear for 1 frame
         abnormally long delay opening first video after opening extremely large video (longer delay than in VLC) -> delay occurs at player.set_media
-    Medium priority:
         output-name lineEdit's placeholder text becomes invisible after setting a theme and then changing focus
+    Medium priority:
         resizing an audio file rarely stalls forever with no error (works upon retry)
         rotating/flipping video rarely fails for no reason (works upon retry)
         videos with replace/added audio tracks longer than the video themselves do NOT concatenate correctly (audio track freaks ffmpeg out)
@@ -182,6 +167,8 @@ KNOWN ISSUES:
         clicking on the progress bar will update the video without moving the progress bar (very rare, may be bottlenecking issue)
         fullscreen mode becomes partially unresponsive -> no idle timer, no passthrough on dockControls (very rare, may be bottlenecking issue)
         system tray icon suddenly crashes -> "OSError: exception: access violation writing 0x0000000000000007" (extremely rare, unknown cause)
+        random freeze and crash to desktop after otherwise successful ffmpeg operation (rare, never leaves any error)
+        libvlc randomly jumps to a very, very low progress after otherwise successful navigation (very rare, unknown cause)
 '''
 
 import config
@@ -417,7 +404,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         #self.PIL_image = None       # TODO: store images in memory for quick copying?
 
         self.fractional_frame = 0.0
-        self.delay = self.duration = 0
+        self.delay = 0.0
+        self.duration = 0.0
         self.frame_count = self.frame_rate = self.frame_rate_rounded = self.current_time = self.minimum = self.maximum = 1
         self.vwidth = self.vheight = 1000
         self.vsize = QtCore.QSize(1000, 1000)
@@ -432,7 +420,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.shuffle_ignore_unique = set()
         self.marked_for_deletion = set()
         self.shortcuts: dict = None
-        #self.shortcut_bandaid_fix = False
         self.operations = {}
         self.volume_boost = 1
         self.playback_speed = 1.0
@@ -445,7 +432,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuTrimMode)
         self.menuAudio.addAction(self.actionResize)
         self.player = self.vlc.player                                        # NOTE: this is a secondary alias for other files to use
-        self.sliderProgress.update_parent_progress = self.set_and_update_progress
         self.sliderVolume.keyPressEvent = self.keyPressEvent                 # pass sliderVolume key presses directly to GUI_Instance
         self.sliderVolume.keyReleaseEvent = self.keyReleaseEvent
         self.sliderProgress.dragEnterEvent = self.vlc.dragEnterEvent         # reuse player's drag-and-drop code for slider
@@ -468,7 +454,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar.setSizePolicy(QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Expanding)
         self.save_progress_bar.hide()
 
-        self.frameCropInfo.setVisible(False)                                # ensure crop info panel is hidden on startup
+        self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
 
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
@@ -504,7 +490,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def fast_start_open(self, cmdpath):
-        ''' Slot for handling cmd-files from the fast-start interface in a thread-safe manner. '''
+        ''' Slot for handling cmd-files from the fast-start
+            interface in a thread-safe manner. '''
         try:
             with open(cmdpath, 'rb') as txt:            # paths are encoded, to support special characters
                 command = txt.readline().decode().strip()
@@ -520,11 +507,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def fast_start_interface_thread(self):
-        ''' Simple interface for detecting and reading cmd.txt files. Used for instantly playing new media upon double-click
-            if we're already open (cmd.txt contains the path to the media) or closing in preparation for an update (cmd.txt
-            contains the word "EXIT"). NOTE: Also used to auto-correct high-precision progress sliders, once every 5 seconds. '''
-        cmdpath = f'{constants.TEMP_DIR}{sep}cmd.{os.getpid()}.txt'           # the cmd.txt file with our PID to look for
-        checks_per_second = 10                                                # how many times per second we'll check for our cmd file
+        ''' Simple interface for detecting and reading cmd.txt files. Used for
+            instantly playing new media upon double-click if we're already open
+            (cmd.txt contains the path to the media) or closing in preparation
+            for an update (cmd.txt contains the word "EXIT"). '''
+        cmdpath = f'{constants.TEMP_DIR}{sep}cmd.{os.getpid()}.txt'          # the cmd.txt file with our PID to look for
+        checks_per_second = 10                                               # how many times per second we'll check for our cmd file
         check_delay = round(1 / checks_per_second, 2)
         total_checks = 5 * checks_per_second
         try: os.makedirs(os.path.dirname(cmdpath))
@@ -534,7 +522,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info(f'Fast-start connection established. Will listen for commands at {cmdpath}.')
 
         while not self.closed:
-            for _ in range(total_checks):                                     # run fast-start interface for 5 seconds at a time
+            for _ in range(total_checks):                                    # run fast-start interface for 5 seconds at a time
                 if self.closed: break
                 try:
                     if exists(cmdpath):
@@ -542,13 +530,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.fast_start_open_signal.emit(cmdpath)
                         logging.info(f'(FS) CMD-file detected: {cmdpath}')
                         while self.fast_start_in_progress and not self.closed: sleep(0.05)
-                        os.remove(cmdpath)                                    # delete cmd.txt if possible
+                        os.remove(cmdpath)                                   # delete cmd.txt if possible
                 except: log_on_statusbar(f'(!) FAST-START INTERFACE FAILED: {format_exc()}')
                 finally: sleep(check_delay)
 
             # once every 5 seconds, check to make sure high-precision progress slider is maintaining accuracy
             if player.is_playing() and not self.lock_progress_updates and settings.checkHighPrecisionProgress.isChecked():
-                if self.skip_next_vlc_progress_desync_check:                  # NOTE: this is used for the audio-pitch-fix-hack while navigating
+                if self.skip_next_vlc_progress_desync_check:                 # NOTE: this is used for the audio-pitch-fix-hack while navigating
                     self.skip_next_vlc_progress_desync_check = False
                     continue
 
@@ -563,20 +551,115 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     logging.info(f'(?) VLC\'s reported frame: {vlc_frame} | Current frame: {next_frame} | "Corrected" frame: {true_frame}')
 
 
+    def update_slider_thread(self):
+        ''' Handles updating the progress bar. This includes both slider-types
+            and swapping between them. `self.frame_override` can be set to
+            override the next pending frame (circumventing timing-related
+            bugs), and if used with open_queued, the file-opening process
+            is completed and cleaned up. While not playing and/or not
+            visible, resource-usage is kept to a minimum. '''
+        logging.info('Slider-updating thread started.')
+
+        # re-define global aliases -> having them as locals is even faster
+        get_current_frame = self.sliderProgress.value
+        player = self.vlc.player
+        is_playing = player.is_playing
+        is_high_precision = self.dialog_settings.checkHighPrecisionProgress.isChecked
+        get_rate = player.get_rate                      # TODO: get_rate() vs. self.playback_speed <- which is faster?
+        set_progress_slider = self.sliderProgress.setValue
+        emit_open_signal = self._open_signal.emit
+        _emit_update_progress_signal = self.update_progress_signal.emit
+        _sleep = sleep
+        _get_time = get_time
+
+        while not self.closed:
+            # window is NOT visible, stay relatively idle and do not update
+            while not self.isVisible() and not self.closed:
+                _sleep(0.25)
+
+            # window is visible, but nothing is actively playing
+            while self.isVisible() and not is_playing() and not self.closed:
+                self.sliderProgress.update()            # force QVideoSlider to keep painting (this refreshes the hover-timestamp)
+                _sleep(0.025)                           # update at 40fps
+
+            # reset queued slider-swap (or the slider won't update anymore after a swap)
+            self.swap_slider_styles_queued = False
+
+            # high-precision option enabled -> fake a smooth slider based on media's frame rate (simulates what libvlc SHOULD have)
+            if is_high_precision():
+                start = _get_time()
+
+                # playing, not locked, and not about to swap styles
+                while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
+                    # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
+                    if self.frame_override != -1:
+                        if self.open_queued:
+                            emit_open_signal()          # _open_signal uses self._open_slot()
+                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
+                        else:
+                            _emit_update_progress_signal(self.frame_override)
+                        self.frame_override = -1        # reset frame_override
+                        self.open_queued = False        # reset open_queued
+
+                    # no frame override -> increment `get_rate()` frames forward (i.e. at 1x speed -> 1 frame)
+                    elif (next_frame := get_current_frame() + get_rate()) <= self.frame_count:      # do NOT update progress if we're at the end
+                        _emit_update_progress_signal(next_frame)                                    # update_progress_signal -> _update_progress_slot
+
+                    _sleep(0.0001)                      # sleep to force-update get_time()
+                    try: _sleep(self.ui_delay - (_get_time() - start))
+                    except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
+                    finally: start = _get_time()
+
+            # high-precision option disabled -> use libvlc's native progress and manually paint QVideoSlider
+            else:
+                vlc_offset = self.frame_rate * 0.15     # VLC's progress is usually a bit behind, so use this to make sure we stay somewhat lined up with reality
+
+                # not playing, not locked, and not about to swap styles
+                while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
+                    # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
+                    if self.frame_override != -1:
+                        if self.open_queued:
+                            emit_open_signal()          # _open_signal uses self._open_slot()
+                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
+                        else:
+                            _emit_update_progress_signal(self.frame_override)
+                        self.frame_override = -1        # reset frame_override
+                        self.open_queued = False        # reset open_queued
+
+                    # no frame override -> set slider to VLC's progress if VLC has actually updated
+                    else:
+                        new_frame = (player.get_position() * self.frame_count) + vlc_offset         # convert VLC position to frame
+                        if new_frame >= get_current_frame():
+                            _emit_update_progress_signal(new_frame)
+                        #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
+                        #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
+                        #    _emit_update_progress_signal(interpolated_frame)                       # TODO can this snowball and keep jumping forward forever?
+
+                        # update actual slider position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
+                        # repaint slider (to refresh the hover-timestamp) three times per update (30FPS)
+                        self.sliderProgress.update()
+                        if not is_playing(): break
+                        _sleep(0.033)
+                        self.sliderProgress.update()
+                        if not is_playing(): break
+                        _sleep(0.033)
+        return logging.info('Program closed. Ending update_slider thread.')
+
+
     # ---------------------
     # >>> EVENTS <<<
     # ---------------------
     def event(self, event: QtCore.QEvent) -> bool:
         ''' A global event callback. Used to detect windowStateChange events,
             so we can save/remember the maximized state when necessary. '''
-        if event.type() == WindowStateChange:        # alias used for speed
+        if event.type() == WindowStateChange:           # alias used for speed
             if not (self.windowState() & Qt.WindowMinimized or self.windowState() & Qt.WindowFullScreen):
                 self.was_maximized = bool(self.windowState() & Qt.WindowMaximized)
         return super().event(event)
 
 
-    def closeEvent(self, event: QtGui.QCloseEvent):  # 'spontaneous' -> X-button pressed, likely not exiting for real
-        self.close_cancel_selected = False           # referenced in qtstart.exit()
+    def closeEvent(self, event: QtGui.QCloseEvent):     # 'spontaneous' -> X-button pressed, likely not exiting for real
+        self.close_cancel_selected = False              # referenced in qtstart.exit()
         self.close_was_spontaneous = event.spontaneous()
         logging.info(f'Closing (spontaneous={event.spontaneous()}).')
 
@@ -587,23 +670,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.marked_for_deletion:
             logging.info(f'The following files are still marked for deletion, opening prompt: {self.marked_for_deletion}')
             choice = self.show_delete_prompt(exiting=force_close or not event.spontaneous())
-            if choice == QtW.QMessageBox.Cancel:     # cancel selected, don't close
-                self.close_cancel_selected = True    # required in case .close() was called from qtstart.exit()
+            if choice == QtW.QMessageBox.Cancel:        # cancel selected, don't close
+                self.close_cancel_selected = True       # required in case .close() was called from qtstart.exit()
                 logging.info('Close canceled.')
                 return event.ignore()
 
-        #set_and_update_progress(0)
-        self.stop()                                  # stop player
-        settings.close()                             # close settings dialog
-        self.dockControls.setFloating(False)         # hide fullscreen UI if needed
+        self.stop()                                     # stop player
+        settings.close()                                # close settings dialog
+        self.dockControls.setFloating(False)            # hide fullscreen UI if needed
         logging.info('Player has been stopped.')
 
         if force_close:
             qtstart.exit(self)
         else:
             if not cfg.minimizedtotraywarningignored:
-                if event.spontaneous():              # only show message if closeEvent was called by OS (i.e. X button pressed)
-                    self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')  # this emits messageClicked signal
+                if event.spontaneous():                 # only show message if closeEvent was called by OS (i.e. X button pressed)
+                    self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')      # this emits messageClicked signal
                 cfg.minimizedtotraywarningignored = True
             if settings.checkFirstFileTrayReset.isChecked():
                 self.first_video_fully_loaded = False
@@ -611,23 +693,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return event.accept()
 
 
-    def hideEvent(self, event: QtGui.QHideEvent):    # 'spontaneous' -> native minimize button pressed
+    def hideEvent(self, event: QtGui.QHideEvent):       # 'spontaneous' -> native minimize button pressed
         if event.spontaneous():
             if settings.checkMinimizePause.isChecked():
                 self.was_paused = self.is_paused
                 self.force_pause(True)
             elif settings.groupTray.isChecked() and settings.checkTrayMinimize.isChecked():
-                self.close()                         # TODO these do not work with each other yet
+                self.close()                            # TODO these do not work with each other yet
         return super().hideEvent(event)
 
 
-    def showEvent(self, event: QtGui.QShowEvent):    # 'spontaneous' -> restored by OS (e.g. clicked on taskbar icon)
+    def showEvent(self, event: QtGui.QShowEvent):       # 'spontaneous' -> restored by OS (e.g. clicked on taskbar icon)
         super().showEvent(event)
 
         # refresh VLC instance's winId
-        if constants.PLATFORM == 'Windows': player.set_hwnd(self.vlc.winId())              # Windows
-        elif constants.PLATFORM == 'Darwin': player.set_nsobject(int(self.vlc.winId()))    # MacOS
-        else: player.set_xwindow(self.vlc.winId())                                         # Linux (sometimes)
+        if constants.PLATFORM == 'Windows': player.set_hwnd(self.vlc.winId())               # Windows
+        elif constants.PLATFORM == 'Darwin': player.set_nsobject(int(self.vlc.winId()))     # MacOS
+        else: player.set_xwindow(self.vlc.winId())                                          # Linux (sometimes)
 
         # strangely, closing/reopening the window applies an alignment to our QVideoPlayer/QWidget (very bad)
         self.gridLayout.setAlignment(self.vlc, Qt.Alignment())          # reset alignment to nothing
@@ -732,7 +814,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):    # NOTE: the arrow keys seemingly do not get caught here
-        #print(self.shortcut_bandaid_fix)
         key = event.key()
         mod = event.modifiers()
 
@@ -744,15 +825,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     widget.clearFocus()
             return
 
-        # this is a fix for QShortcuts not working in QSpinBoxPassthrough. it may or may not be changed in the future
         # https://stackoverflow.com/questions/10383418/qkeysequence-to-qkeyevent
-        #if True:                   # TODO like in widgets.py, this had "and text" on it. why?
         sequence = QtGui.QKeySequence(event.modifiers() | event.key())
         for primary, secondary in self.shortcuts.values():
             if primary.key() == sequence or secondary.key() == sequence:
                 primary.activated.emit()
                 break
-        #self.shortcut_bandaid_fix = False
 
         # if AltModifier is True but we aren't pressing alt, ignore next alt release
         if key != 16777251 and mod & Qt.AltModifier: self.ignore_next_alt = True
@@ -765,8 +843,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not self.first_video_fully_loaded and settings.checkNumKeysRecentFilesOnLaunch.isChecked():
                 play_recent = True
             else:
-                #modifiers = {0: Qt.ControlModifier, 1: Qt.AltModifier}
-                #modifier = modifiers[s.comboNumKeysSecondaryModifier.currentIndex()]
                 if mod & Qt.ControlModifier:
                     secondary = settings.comboNumKeysSecondary.currentIndex()
                     jump_progress = secondary == 1
@@ -874,6 +950,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles the context (right-click) menu for the progress slider. '''
         precision_action = QtW.QAction(settings.checkHighPrecisionProgress.text())
         precision_action.setCheckable(True)
         precision_action.setChecked(settings.checkHighPrecisionProgress.isChecked())
@@ -1379,7 +1456,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.shuffle_media(folder)
             else:
                 #skip_marked = self.checkSkipMarked.isChecked()
-                #marked = self.marked_for_deletion  # TODO should we?
+                #marked = self.marked_for_deletion  # TODO see below
                 locked_video_path = self.locked_video
                 open = self.open
 
@@ -1393,7 +1470,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                     if file_is_hidden(file): continue
                     if file == locked_video_path: continue
-                    #if skip_marked and file in marked: continue
+                    #if skip_marked and file in marked: continue    # TODO should we do this here?
 
                     if open(file, _from_cycle=True, mime=mime, extension=extension) != -1:
                         logging.info(f'Found playable file in folder after {get_time() - start:.3f} seconds.')
@@ -1612,7 +1689,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             while not exists(probe_file): pass
                             with open(probe_file) as probe:
                                 while data is None:
-                                    try: data = json.load(probe)
+                                    try:
+                                        data = json.loads(probe.read())
                                     except:
                                         if self.vlc.media.get_parsed_status() == 4 and player.get_fps() != 0 and player.get_length() != 0 and player.video_get_size() != (0, 0):
                                             logging.info(f'VLC finished parsing while waiting for FFprobe ({get_time() - start:.4f} seconds).')
@@ -1624,7 +1702,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                         if data:                    # double check if data was actually acquired
                             logging.info(f'FFprobe needed an additional {get_time() - start:.4f} seconds to parse.')
-                            #logging.debug(f'FFprobe for {file}:\n{data}')
                             for stream in data['streams']:
                                 if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
                                     fps_parts = stream['avg_frame_rate'].split('/')
@@ -1654,7 +1731,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 return -1
                         logging.info(f'VLC needed an additional {get_time() - start:.4f} seconds to parse.')
                     elif probe_file: logging.info('VLC did not need additional time to parse.')
-                    fps = round(player.get_fps(), 1)        # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
+                    fps = round(player.get_fps(), 1)                # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
                     duration = round(player.get_length() / 1000, 4)
                     self.duration = duration
                     self.frame_count = int(duration * fps)
@@ -1675,7 +1752,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         duration = float(data['format']['duration'])
                     self.vwidth, self.vheight = 16, 9
 
-                if data is None:                    # no data provided OR art detected, use TinyTag (fallback to music_tag if necessary)
+                # no data provided OR art detected (see above), use TinyTag (fallback to music_tag if necessary)
+                if data is None:
                     try:                            # we need to avoid parsing probe file anyway, since we need to check for cover art
                         try:
                             tag = TinyTag.get(file, image=True)     # https://pypi.org/project/tinytag/0.18.0/
@@ -1701,6 +1779,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 self.vwidth = 16
                                 self.vheight = 9
                             duration = tag['#length'].value
+                        # TODO worth saving the cover art to a temp file for future use?
                         #image_player.art.save(os.path.join(constants.TEMP_DIR, f'{os.path.basename(file)}_{getctime(file)}.png'))
                     except:                                         # this is to handle things that wrongly report as audio, like .ogv files
                         logging.info(f'Invalid audio file detected, parsing as a video file... {format_exc()}')
@@ -1709,7 +1788,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             while not exists(probe_file): pass
                             with open(probe_file) as probe:
                                 while data is None:
-                                    try: data = json.load(probe)
+                                    try: data = json.loads(probe.read())
                                     except: probe.seek(0)
                                     if get_time() - start > 5:
                                         logging.error('Media probe did not finish after 5 seconds.')
@@ -1803,11 +1882,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if not file: return -1
 
                 file = abspath(file)
-                if os.path.isdir(file): return self.open_folder(file, focus_window=focus_window)
+                if os.path.isdir(file):
+                    return self.open_folder(file, focus_window=focus_window)
                 if file == self.locked_video:               # if file is locked and we didn't cycle here, show a warning message
                     show_on_statusbar(f'File {file} is currently being worked on.')
                     return -1
-            elif file == self.locked_video: return -1       # if file is locked and we're cycling, just return immediately
+            elif file == self.locked_video:                 # if file is locked and we're cycling, just return immediately
+                return -1
 
             # get stats and size of media
             start = get_time()
@@ -1822,16 +1903,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if FFPROBE:                                     # generate probe file's path and check if it already exists
                 probe_file = f'{constants.PROBE_DIR}{sep}{basename}_{stat.st_ctime}_{filesize}.txt'
                 if exists(probe_file):                      # probe file already exists
-                    try:
-                        f = open(probe_file, 'r')
-                        probe_data = json.load(f)
-                        f.close()
-                    except:
-                        f.close()
-                        try: os.remove(probe_file)
-                        except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + probe_file)
-                        Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
-                        logging.info('(?) Deleted potentially invalid probe file: ' + format_exc())
+                    with open(probe_file, 'r') as f:
+                        try: probe_data = json.loads(f.read())
+                        except:
+                            f.close()
+                            logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
+                            try: os.remove(probe_file)
+                            except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
+                            Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
                 else: Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
             else: probe_file = None                         # no FFprobe -> no probe file (even if one exists already)
 
@@ -1881,11 +1960,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # misc cleanup/setup for new media
             self.operations = {}
             self.sliderProgress.setEnabled(mime != 'image' or (extension == 'gif' and image_player.gif.frameCount() > 1))
-            self.buttonTrimStart.setChecked(False)                                              # ^ static images/GIFs have odd but harmless behavior
+            self.buttonTrimStart.setChecked(False)                      # ^ static images/GIFs have odd but harmless behavior
             self.buttonTrimEnd.setChecked(False)
 
-            # set basename (w/o extension) as default output text,
-            # full basename as placeholder text, and update tooltip
+            # set basename (w/o extension) as default output text,...
+            # ...full basename as placeholder text, and update tooltip
             self.lineOutput.setText(splitext_media(basename)[0])
             self.lineOutput.setPlaceholderText(basename)
             self.lineOutput.setToolTip(f'{file}\n---\nEnter a new name and press enter to rename this file.')
@@ -1896,7 +1975,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.buttonMarkDeleted.setChecked(is_marked)
 
             # reset cropped mode if needed
-            if self.actionCrop.isChecked(): self.disable_crop_mode()                            # set_crop_mode auto-returns if mime_type is 'audio'
+            if self.actionCrop.isChecked(): self.disable_crop_mode()    # set_crop_mode auto-returns if mime_type is 'audio'
 
             # set size label for context menus and titlebar
             if filesize < 1048576:
@@ -1960,7 +2039,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.spinFrame.setToolTip(str(self.frame_rate))
 
             # refresh title and log opening time
-            refresh_title()
+            refresh_title()                         # NOTE: I don't like doing this here instead of `_open_slot` but we have to (I don't remember why lol)
             logging.info(f'Initial media opening completed after {get_time() - start:.4f} seconds.')
 
         except: log_on_statusbar(f'(!) OPEN FAILED: {format_exc()}')
@@ -1996,9 +2075,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif settings.checkClampOnOpen.isChecked():
                 qthelpers.clampToScreen(self)           # clamping enabled but snap/resize is disabled for this media
 
-            # refresh title, reset cursor, show media title on screen, and set default subtitles
-            #refresh_title()
-            self.unsetCursor()                          # in some situations, a busy cursor might appear and get "stuck" TODO does this actually fix it?
+            # reset cursor, show media title on screen, and set default subtitles
+            self.unsetCursor()                          # in some situations, a busy cursor might appear and get "stuck" TODO DOESN'T WORK!!
             if settings.checkTextOnOpen.isChecked():    # certain combinations of autoplay + settings can override this marquee
                 if not (settings.checkAutoplayHideMarquee.isChecked() and self.current_file_is_autoplay):
                     show_on_player(os.path.basename(self.video), 1000)
@@ -2008,7 +2086,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.first_video_fully_loaded = True
             image_player.gif.setPaused(False)
 
-            logging.info(f'Metadata: duration={self.duration}, fps={self.frame_rate} ({self.frame_rate_rounded}), frames={self.frame_count}, size={self.vwidth}x{self.vheight}, ratio={self.ratio}, delay={self.delay:.6f}')
+            logging.info(f'Media info:\nmime={self.mime_type}, extension={self.extension}\n'
+                         f'duration={self.duration}, frames={self.frame_count}, fps={self.frame_rate}, delay={self.delay:.4f}\n'
+                         f'size={self.vwidth}x{self.vheight}, ratio={self.ratio}')
             logging.info('--- OPENING COMPLETE ---\n')
             gc.collect(generation=2)                    # do manual garbage collection after opening (NOTE: this MIGHT be risky)
         except: logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
@@ -2027,9 +2107,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 play(self.video)
                 # TODO just in case doing `set_and_update_progress` causes hitches or delays, we're...
                 # ...doing an if-statement instead to ensure normal loops are slightly more seamless
-                #return set_and_update_progress(self.minimum)           # <- simpler, possibly hitch-causing version
                 if self.buttonTrimStart.isChecked(): return update_progress(0)
                 else: return set_and_update_progress(self.minimum)
+                #return set_and_update_progress(self.minimum)           # <- DOES this cause hitches?
 
             # if we want autoplay/shuffle, don't reload -> switch immediately
             if self.actionAutoplay.isChecked():
@@ -2138,13 +2218,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # cycle images with basic navigation keys
         if self.is_static_image: return self.cycle_media(next=forward)
 
-        # HACK: "replay" audio file to correct VLC's pitch-shifting bug
-        # https://reddit.com/r/VLC/comments/i4m0by/pitch_changing_on_seek_only_some_audio_file_types/
-        # https://reddit.com/r/VLC/comments/b0i9ff/music_seems_to_pitch_shift_all_over_the_place/
-        if self.mime_type == 'audio' and not self.is_paused:
-            self.skip_next_vlc_progress_desync_check = True
-            play(self.video)
-
         old_frame = get_progess_slider()
         seconds = seconds_spinbox.value()
 
@@ -2160,16 +2233,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
 
         # set progress to new frame
-        #self.frame_override = new_frame            # ensure VLC progress doesn't override our navigation TODO is this needed?
         set_and_update_progress(new_frame)
 
-        # auto-unpause after restart and show current position as a marquee, if desired
-        if self.restarted and settings.checkNavigationUnpause.isChecked(): self.force_pause(False)
+        # auto-unpause after restart
+        if self.restarted and settings.checkNavigationUnpause.isChecked():
+            self.force_pause(False)
+
+        # show new position as a marquee if desired
         if self.isFullScreen() and settings.checkTextOnFullScreenPosition.isChecked():
             h, m, s, _ = get_hms(self.current_time)
             current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
             max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
             show_on_player(f'{current_text}/{max_text}')
+
         logging.debug(f'Navigated {"forwards" if forward else "backwards"} {seconds} second(s), going from frame {old_frame} to {new_frame}')
 
 
@@ -2722,7 +2798,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 self.trim_mode_selection_canceled = False
                                 cfg.trimmodeselected = False
                                 self.show_trim_dialog_signal.emit()
-                                while not cfg.trimmodeselected: sleep(0.2)
+                                while not cfg.trimmodeselected:
+                                    sleep(0.1)
                                 if self.trim_mode_selection_canceled:               # user hit X on the trim dialog
                                     return log_on_statusbar('Trim canceled.')
 
@@ -2982,102 +3059,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_and_update_progress(self, frame: int = 0):
-        ''' Simultaneously sets VLC/gif player position and updates progress on GUI. '''
+        ''' Simultaneously sets VLC/gif player position
+            to `frame` and updates progress on GUI. '''
         #self.set_player_time(round(frame * (1000 / self.frame_rate)))
         set_player_position(frame / self.frame_count)
         update_progress(frame)
         set_gif_position(frame)
 
 
-    def update_slider_thread(self):
-        ''' Handles updating the progress bar. This includes both slider-types and swapping between them.
-            frame_override can be set to override the next pending frame (circumventing timing-related
-            bugs), and if used with open_queued, the file-opening process is completed and cleaned up.
-            While not playing and/or not visible, resource-usage is kept to a minimum. '''
-        logging.info('Slider-updating thread started.')
-
-        # re-define global aliases -> having them as locals is even faster
-        current_frame = self.sliderProgress.value
-        player = self.vlc.player
-        is_playing = player.is_playing
-        get_rate = player.get_rate                      # TODO: get_rate() vs. self.playback_speed <- which is faster?
-        set_progress_slider = self.sliderProgress.setValue
-        emit_open_signal = self._open_signal.emit
-        _emit_update_progress_signal = self.update_progress_signal.emit
-        _sleep = sleep
-        _get_time = get_time
-
-        while not self.closed:
-            # window is NOT visible, stay relatively idle and do not update
-            while not self.isVisible() and not self.closed: _sleep(0.25)
-
-            # window is visible, but nothing is actively playing
-            while self.isVisible() and not is_playing() and not self.closed:
-                self.sliderProgress.update()            # force QVideoSlider to keep painting (this refreshes the hover-timestamp)
-                _sleep(0.025)                           # update at 40fps
-
-            # TODO this is where we'll handle the first part of high-precision v2
-            self.swap_slider_styles_queued = False      # reset queued slider-swap (or the slider won't update anymore after a swap)
-
-            # high-precision option enabled -> fake a smooth slider based on media's frame rate (simulates what libvlc SHOULD have)
-            if settings.checkHighPrecisionProgress.isChecked():     # NOTE: (fast_start_interface_thread checks for accuracy every 5 seconds)
-                start = _get_time()
-                while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:   # playing, not locked, and not about to swap styles
-                    # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
-                    if self.frame_override != -1:
-                        if self.open_queued:
-                            emit_open_signal()          # _open_signal uses self._open_slot()
-                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
-                        else:
-                            _emit_update_progress_signal(self.frame_override)
-                        self.frame_override = -1        # reset frame_override
-                        self.open_queued = False        # reset open_queued
-                    elif (next_frame := current_frame() + 1 * get_rate()) <= self.frame_count:      # do NOT update progress if we're at the end
-                        _emit_update_progress_signal(next_frame)                                    # update_progress_signal -> _update_progress_slot
-
-                    _sleep(0.0001)                      # sleep to force-update get_time()
-                    #try: _sleep(self.delay - (_get_time() - start))
-                    try: _sleep(self.delay - (_get_time() - start) - 0.0007)
-                    except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.delay} execution-time={_get_time() - start}')
-                    finally: start = _get_time()
-
-            # high-precision option disabled -> use libvlc's native progress at 8fps and manually paint QVideoSlider at 40fps
-            else:
-                vlc_offset = self.frame_rate * 0.15     # VLC's progress is usually a bit behind, so use this to make sure we stay somewhat lined up with reality
-
-                while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:   # not playing, not locked, and not about to swap styles
-                    # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
-                    if self.frame_override != -1:
-                        if self.open_queued:
-                            emit_open_signal()          # _open_signal uses self._open_slot()
-                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
-                        else:
-                            _emit_update_progress_signal(self.frame_override)
-                        self.frame_override = -1        # reset frame_override
-                        self.open_queued = False        # reset open_queued
-                    else:
-                        new_frame = (player.get_position() * self.frame_count) + vlc_offset         # convert VLC position to frame
-                        if new_frame >= current_frame():
-                            _emit_update_progress_signal(new_frame)
-                        #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
-                        #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
-                        #    _emit_update_progress_signal(interpolated_frame)                       # TODO can this snowball and keep jumping forward forever?
-
-                        # update actual slider position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
-                        # repaint slider (to refresh the hover-timestamp) three times per update (30FPS)
-                        self.sliderProgress.update()
-                        if not is_playing(): break
-                        _sleep(0.033)
-                        self.sliderProgress.update()
-                        if not is_playing(): break
-                        _sleep(0.033)
-        return logging.info('Program closed. Ending update_slider thread.')
-
-
     def update_time_spins(self):
-        ''' Handles the hour, minute, and second spinboxes. Calculates the next frame based on the new
-            values, and updates the progress UI accordingly. If the new frame is after the end of the media,
-            it's replaced with the current frame and the progress UI is reset to its previous state. '''
+        ''' Handles the hour, minute, and second spinboxes. Calculates
+            the next frame based on the new values, and updates the progress
+            UI accordingly. If the new frame is outside the bounds of the
+            media, it's replaced with the current frame and the progress
+            UI is reset to its previous state. '''
         if self.lock_spin_updates or self.lock_progress_updates: return                             # return if user is not manually setting the time spins
         self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
         try:
@@ -3181,18 +3176,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try: process = ffmpeg_async(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
         except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
-        # update progress bar using the 'frame=???' progress line from ffmpeg's stout
+        # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
         # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
         # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
         frame_rate = max(1, frame_rate_hint or self.frame_rate)             # used when ffmpeg provides `out_time_ms` instead of `frame`
         use_backup_lines = True
         lines_read = 0
-
         while True:
-            if process.poll() is not None: break
+            if process.poll() is not None:
+                break
 
-            # loop over stout until we get to the line(s) we want
-            # doing it this way lets us sleep between loops without falling behind, saving a lot of resources
+            # loop over stdout until we get to the line(s) we want
+            # this us sleep between loops without falling behind, saving a lot of resources
+            sleep(0.2)
             while True:
                 progress_text = process.stdout.readline().strip()
                 lines_read += 1
@@ -3220,7 +3216,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         emit_progress_text(active_text)                     # reset format in case we changed it temporarily
                         break
                     except ValueError: pass
-            sleep(0.2)
 
         # terminate process just in case ffmpeg got locked up
         try: process.terminate()
@@ -3926,7 +3921,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             path, along with its extensionless basename and its extension (as
             determined by `valid_extensions`). If `new_name` ends up the same
             as `self.video`, `new_name` and `self.lineOutput` are both blank,
-            or no media is playing, then three `None`'s are returned. '''
+            or no media is playing, then three None's are returned. '''
         output_text = self.lineOutput.text().strip()
         video = self.video
         if not video or (not new_name and not output_text):
@@ -3990,8 +3985,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_fullscreen(self, fullscreen: bool):
-        ''' Toggles fullscreen-mode on and off. Saves window-state to self.was_maximized to
-            remember if the window is maximized or not and restore the window accordingly. '''
+        ''' Toggles fullscreen-mode on and off. Saves window-state to
+            self.was_maximized to remember if the window is maximized
+            or not and restore the window accordingly. '''
         self.dockControls.setFloating(fullscreen)       # FramelessWindowHint and WindowStaysOnTopHint not needed
         if fullscreen:  # TODO: figure out why dockControls won't resize in fullscreen mode -> strange behavior when showing/hiding control-frames
             current_screen = app.screenAt(self.mapToGlobal(self.rect().center()))       # fullscreen destination is based on center of window
@@ -4026,7 +4022,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_playback_speed(self, rate: float):
-        ''' Sets, saves, and displays the playback speed/rate for the video. '''
+        ''' Sets, saves, and displays the playback speed/rate for the media. '''
         player.set_rate(rate)
         image_player.gif.setSpeed(rate * 100)
         self.playback_speed = rate
@@ -4363,14 +4359,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             menu.addAction(self.actionAddSubtitleFile)
             menu.addSeparator()
 
-        # TODO
-        #print(f'get_full_title_descriptions={list(player.get_full_title_descriptions())}')
-        #print(f'get_full_chapter_descriptions={player.get_full_chapter_descriptions(-1)}')
-        #import vlc as vlc2
-        #track = list(self.vlc.media.tracks_get())[0]
-        #print(f'track.audio={track.audio}')    # 'audio', 'codec', 'id', 'level', 'original_fourcc', 'profile', 'subtitle', 'type', 'video'
-        #print(f'codec_description={vlc2.libvlc_media_get_codec_description(track.type, track.codec)}')
-
         track_count = get_count() - count_offset
         if track_count > minimum_tracks:
             current_track = get_track()
@@ -4562,9 +4550,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def mark_for_deletion(self, checked: bool = False, file=None, mode=None):
-        ''' Marks a `file` for deletion if `checked` is `True`. Alternate
+        ''' Marks a `file` for deletion if `checked` is True. Alternate
             behavior can be triggered if `mode` is set to "delete" or "prompt".
-            If `mode` is `None`, it will automatically be set to "delete" if
+            If `mode` is None, it will automatically be set to "delete" if
             Ctrl is being held down, or "prompt" if shift is held down.
 
             `checked` and `file` are backwards to accomodate Qt passing the
@@ -4608,9 +4596,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
     def convert_snapshot_to_jpeg(self, path: str = None, image_data=None, quality: int = None):
-        # TODO update docstring
-        ''' Saves image at `path` as a JPEG file with the desired quality in the settings
-            dialog, using PIL. Assumes that `path` already ends in a valid file-extension. '''
+        ''' Saves `path` or `image_data` as a JPEG file with the desired
+            `quality` using PIL. If `quality` is None, the preset quality
+            in the user's settings is used. If provided, assumes that `path`
+            already ends in a valid file-extension. '''
         if quality is None:
             quality = settings.spinSnapshotJpegQuality.value()
 
@@ -4678,7 +4667,9 @@ if __name__ == "__main__":
         cfg = widgets.cfg = config.loadConfig(gui)      # create and load config (uses constants.CONFIG_PATH)
         gui.refresh_theme_combo(set_theme=cfg.theme)    # load and set themes
         gui.refresh_autoplay_button()                   # set appropriate autoplay button icon
-        if not qtstart.args.minimized: gui.show()       # show UI
+
+        if not qtstart.args.minimized:                  # show UI
+            gui.show()
         else:
             check_tray = settings.groupTray
             if not check_tray.isChecked():              # if tray icon is enabled, don't show UI at all
