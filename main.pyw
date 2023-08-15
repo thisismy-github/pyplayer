@@ -119,6 +119,7 @@ confirm/increase stability for videos > 60fps (not yet tested)
 trimming-support for more obscure formats
 implement filetype associations
 far greater UI customization
+high-precision progress bar on non-1x speeds
 
 TODO: LOW PRIORITY:
 replace VLC with QMediaPlayer (maybe)
@@ -586,7 +587,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.swap_slider_styles_queued = False
 
             # high-precision option enabled -> fake a smooth slider based on media's frame rate (simulates what libvlc SHOULD have)
-            if is_high_precision():
+            # TODO: for now, lets just force the VLC-progress for non-standard speeds
+            if is_high_precision() and get_rate() == 1.0:
                 start = _get_time()
 
                 # playing, not locked, and not about to swap styles
@@ -4023,9 +4025,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def set_playback_speed(self, rate: float):
         ''' Sets, saves, and displays the playback speed/rate for the media. '''
+        old_rate = player.get_rate()
         player.set_rate(rate)
         image_player.gif.setSpeed(rate * 100)
         self.playback_speed = rate
+        if rate == 1.0 or old_rate == 1.0:              # TODO: for now, lets just force the VLC-progress for non-standard speeds
+            self.reset_progress_offset = True
+            self.swap_slider_styles_queued = True
         if settings.checkTextOnSpeed.isChecked(): show_on_player(f'{rate:.2f}x', 1000)
         log_on_statusbar(f'Playback speed set to {rate:.2f}x')
 
