@@ -401,6 +401,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.extension = '?'
         self.is_gif = False
         self.is_static_image = True
+        self.is_pitch_sensitive_audio = False
+        self.is_bad_with_vlc = False
         self.clipboard_image_buffer = None
         #self.PIL_image = None       # TODO: store images in memory for quick copying?
 
@@ -1863,11 +1865,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             is_gif = extension == 'gif' and self.frame_count > 1
             self.is_gif = is_gif                    # do not treat single-frame GIFs as actual GIFs (static images have more features)
             self.is_static_image = not is_gif
+            self.is_pitch_sensitive_audio = False
+            self.is_bad_with_vlc = False
         else:
             self.open_queued = True
             self.frame_override = 0                 # set frame_override to trigger open_queue in update_slider_thread
             self.is_gif = False
             self.is_static_image = False
+
+            # TODO: we should really be tracking the codec instead of the container here
+            # TODO: can this be fixed with a different demuxer or something? (what we COULD have done to fix pitch-shifting)
+            if extension == 'ogg':                  # TODO: flesh out a list of unresponsive media types
+                self.is_bad_with_vlc = True
+                self.is_pitch_sensitive_audio = False
+            else:
+                self.is_bad_with_vlc = False
+                self.is_pitch_sensitive_audio = mime == 'audio'
         self.extension = extension
         #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
         if mime != 'audio': self.vlc.find_true_borders()
@@ -2087,6 +2100,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             self.first_video_fully_loaded = True
             image_player.gif.setPaused(False)
+
+            # warn users that the current media will not scrub/navigate very well
+            # TODO: what else needs to be here (and set as not `self.is_pitch_sensitive_audio`)?
+            if self.is_bad_with_vlc:
+                log_on_statusbar(f'Note: Files of this mime type/encoding ({self.mime_type}/{self.extension}) may be laggy or unresponsive while scrubbing/navigating on some systems (libVLC issue).')
 
             logging.info(f'Media info:\nmime={self.mime_type}, extension={self.extension}\n'
                          f'duration={self.duration}, frames={self.frame_count}, fps={self.frame_rate}, delay={self.delay:.4f}\n'
