@@ -366,17 +366,15 @@ of time. While fullscreen, the UI will also disappear.</string>
              <item row="6" column="0" colspan="2">
               <widget class="QCheckBox" name="checkHighPrecisionProgress">
                <property name="toolTip">
-                <string>If checked, the progress slider for your media will be simulated in
-order to create the effect of a smooth slider. It will be incremented
-once per frame, at a rate equal to your media's native FPS.
+                <string>If checked, the progress bar for the current media will be faked in
+order to create the effect of a smooth slider. It will increment once
+per frame according to the media's frame rate, and a separate
+thread will monitor the progress bar to keep it from desyncing.
 
-If not checked, VLC's native updates will be used.
-
-NOTE: This setting requires a mid/high-end device to run properly,
-otherwise, the progress bar will fall behind and start to desync.</string>
+If not checked, VLC's native updates will be used.</string>
                </property>
                <property name="text">
-                <string>High-precision progress slider (resource-intensive)</string>
+                <string>High-precision progress slider (CPU-intensive)</string>
                </property>
                <property name="checked">
                 <bool>true</bool>

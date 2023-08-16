@@ -1277,10 +1277,7 @@ class QVideoSlider(QtW.QSlider):
             pos = event.pos()
             frame = self.pixelPosToRangeValue(pos)
             if gui.minimum < frame < gui.maximum:
-                if gui.mime_type == 'audio' and not gui.is_paused:
-                    gui.skip_next_vlc_progress_desync_check = True
-                    gui.vlc.play(gui.video)                     # HACK: "replay" audio file to correct VLC's pitch-shifting bug
-                gui.set_and_update_progress(frame)
+                gui.set_and_adjust_and_update_progress(frame, 0.075)
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
             if self.clamp_minimum or self.clamp_maximum:        # ^ alternate solution by finding points inside QPolygons
@@ -1319,22 +1316,26 @@ class QVideoSlider(QtW.QSlider):
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         ''' Unpauses the player after scrubbing, unless it was paused
             originally. Does not emit the sliderReleased signal. '''
+
+        frame = self.pixelPosToRangeValue(event.pos())                  # get frame
+        if frame < gui.minimum: gui.set_and_adjust_and_update_progress(gui.minimum, 0.1)
+        elif frame > gui.maximum: gui.set_and_adjust_and_update_progress(gui.maximum, 0.1)
+
+        # HACK: "replay" audio file to correct VLC's pitch-shifting bug
+        # (only apply if we were scrubbing, or the progress will jump back a few frames)
+        elif self.scrubbing:
+            if gui.is_pitch_sensitive_audio and not gui.is_paused:
+                gui.vlc.player.set_media(gui.vlc.media)
+                gui.vlc.player.play()
+                gui.set_and_adjust_and_update_progress(frame)
+            else:
+                gui.frame_override = frame
+
         if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
         else: gui.player.set_pause(False or gui.is_paused)                              # stay paused if we were paused
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
         if self.underMouse(): self.last_mouseover_time = time.time()    # resume drawing timestamp after release
-
-        frame = self.pixelPosToRangeValue(event.pos())                  # get frame
-        if frame < gui.minimum: gui.set_and_update_progress(gui.minimum)
-        elif frame > gui.maximum: gui.set_and_update_progress(gui.maximum)
-
-        # HACK: "replay" audio file to correct VLC's pitch-shifting bug
-        # (only apply if we were scrubbing, or the progress will jump back a few frames)
-        elif self.scrubbing and gui.mime_type == 'audio' and not gui.is_paused:
-            gui.skip_next_vlc_progress_desync_check = True
-            gui.vlc.play(gui.video)
-            gui.set_and_update_progress(frame)
 
         self.scrubbing = False
 

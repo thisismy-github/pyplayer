@@ -1787,15 +1787,13 @@ class Ui_settingsDialog(object):
         self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor\\UI"))
         self.spinHideIdleCursorDuration.setPrefix(_translate("settingsDialog", "After: "))
         self.spinHideIdleCursorDuration.setSuffix(_translate("settingsDialog", " seconds"))
-        self.checkHighPrecisionProgress.setToolTip(_translate("settingsDialog", "If checked, the progress slider for your media will be simulated in\n"
-"order to create the effect of a smooth slider. It will be incremented\n"
-"once per frame, at a rate equal to your media\'s native FPS.\n"
+        self.checkHighPrecisionProgress.setToolTip(_translate("settingsDialog", "If checked, the progress bar for the current media will be faked in\n"
+"order to create the effect of a smooth slider. It will increment once\n"
+"per frame according to the media\'s frame rate, and a separate\n"
+"thread will monitor the progress bar to keep it from desyncing.\n"
 "\n"
-"If not checked, VLC\'s native updates will be used.\n"
-"\n"
-"NOTE: This setting requires a mid/high-end device to run properly,\n"
-"otherwise, the progress bar will fall behind and start to desync."))
-        self.checkHighPrecisionProgress.setText(_translate("settingsDialog", "High-precision progress slider (resource-intensive)"))
+"If not checked, VLC\'s native updates will be used."))
+        self.checkHighPrecisionProgress.setText(_translate("settingsDialog", "High-precision progress slider (CPU-intensive)"))
         self.checkFFprobe.setToolTip(_translate("settingsDialog", "If checked, FFprobe will be used (if it exists) to parse media files\n"
 "for data such as its FPS, duration, etc. to display on the UI. This\n"
 "is more reliable, more stable, and sometimes faster than VLC\'s\n"

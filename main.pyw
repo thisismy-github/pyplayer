@@ -384,7 +384,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.lock_fullscreen_ui = False
         self.crop_restore_state = {}
         self.ignore_next_alt = False
-        self.skip_next_vlc_progress_desync_check = False
+        self.reset_progress_offset = False
+        self.add_to_progress_offset = 0.0
 
         self.last_window_size: QtCore.QSize = None
         self.last_window_pos: QtCore.QPoint = None
@@ -408,6 +409,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.fractional_frame = 0.0
         self.delay = 0.0
+        self.ui_delay = 0.0
         self.duration = 0.0
         self.frame_count = self.frame_rate = self.frame_rate_rounded = self.current_time = self.minimum = self.maximum = 1
         self.vwidth = self.vheight = 1000
@@ -490,6 +492,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         )
 
         Thread(target=self.update_slider_thread, daemon=True).start()
+        Thread(target=self.high_precision_slider_accuracy_thread, daemon=True).start()
 
 
     def fast_start_open(self, cmdpath):
@@ -515,9 +518,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             (cmd.txt contains the path to the media) or closing in preparation
             for an update (cmd.txt contains the word "EXIT"). '''
         cmdpath = f'{constants.TEMP_DIR}{sep}cmd.{os.getpid()}.txt'          # the cmd.txt file with our PID to look for
-        checks_per_second = 10                                               # how many times per second we'll check for our cmd file
-        check_delay = round(1 / checks_per_second, 2)
-        total_checks = 5 * checks_per_second
         try: os.makedirs(os.path.dirname(cmdpath))
         except: pass
         try: os.remove(cmdpath)
@@ -525,33 +525,110 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info(f'Fast-start connection established. Will listen for commands at {cmdpath}.')
 
         while not self.closed:
-            for _ in range(total_checks):                                    # run fast-start interface for 5 seconds at a time
-                if self.closed: break
-                try:
-                    if exists(cmdpath):
-                        self.fast_start_in_progress = True
-                        self.fast_start_open_signal.emit(cmdpath)
-                        logging.info(f'(FS) CMD-file detected: {cmdpath}')
-                        while self.fast_start_in_progress and not self.closed: sleep(0.05)
-                        os.remove(cmdpath)                                   # delete cmd.txt if possible
-                except: log_on_statusbar(f'(!) FAST-START INTERFACE FAILED: {format_exc()}')
-                finally: sleep(check_delay)
+            try:
+                if exists(cmdpath):
+                    self.fast_start_in_progress = True
+                    self.fast_start_open_signal.emit(cmdpath)
+                    logging.info(f'(FS) CMD-file detected: {cmdpath}')
+                    while self.fast_start_in_progress and not self.closed: sleep(0.05)
+                    os.remove(cmdpath)                                       # delete cmd.txt if possible
+            except: log_on_statusbar(f'(!) FAST-START INTERFACE FAILED: {format_exc()}')
+            finally: sleep(0.15)
 
-            # once every 5 seconds, check to make sure high-precision progress slider is maintaining accuracy
-            if player.is_playing() and not self.lock_progress_updates and settings.checkHighPrecisionProgress.isChecked():
-                if self.skip_next_vlc_progress_desync_check:                 # NOTE: this is used for the audio-pitch-fix-hack while navigating
-                    self.skip_next_vlc_progress_desync_check = False
-                    continue
 
-                # get the frame VLC thinks it is -> if VLC's frame isn't <= 0 and our frame is WAY off...
-                # ...(2+ seconds) -> reset to VLC's frame + 0.3 secs (VLC is usually 0.3-0.6 behind)
+    def high_precision_slider_accuracy_thread(self):
+        ''' A thread for monitoring the accuracy of `self.update_slider_thread`
+            compared to the real-world time it's been active. Once per second,
+            the current UI frame is compared to how many actual seconds it's
+            been since play was last started/resumed as well as the frame it
+            started from to see how far we've deviated from reality. The inter-
+            frame delay (`self.delay`) is then adjusted using `self.ui_delay`
+            speed up or slow down the UI so that it lines up exactly right, one
+            second from now.
+
+            If the UI desyncs by more than one second from actual time or more
+            than two seconds from libVLC's native progress, the UI is reset.
+
+            Accuracy loop loops indefinitely until `self.reset_progress_offset`
+            is set to True, then it breaks from the loop and resets its values.
+
+            HACK: `self.add_to_progress_offset` is a float added to the initial
+            starting time in order to account for microbuffering within libVLC
+            (which is NOT reported or detectable anywhere, seemingly). A better
+            solution is needed, but I'm not sure one exists. Even libVLC's media
+            stats (read_bytes, displayed_pictures, etc.) are updated at the same
+            awful, inconsistent rate that its native progress is updated, making
+            them essentially useless. At the very least, most mid-high range
+            systems "buffer" at the same speed (~0.05-0.1 seconds, is that also
+            partially tied to libVLC's update system?). Only low-end systems
+            will fall slightly behind (but (probably) never desync). '''
+        play_started = 0.0
+        frame_started = 0
+        current_frame = 0
+        vlc_frame = 0.0
+        seconds_elapsed = 0.0
+        frames_elapsed = 0.0
+        frame_desync = 0.0
+        time_desync = 0.0
+        vlc_desync = 0.0
+
+        # re-define global aliases -> having them as locals is even faster
+        get_current_frame = self.sliderProgress.value
+        player = self.vlc.player
+        is_playing = player.is_playing
+        get_rate = player.get_rate
+        _sleep = sleep
+        _get_time = get_time
+
+        check_interval = 1
+        intercheck_count = 20
+        delay_per_intercheck = check_interval / intercheck_count
+
+        while not self.closed:
+            # stay relatively idle while window is minimized OR nothing is actively playing
+            while not self.isVisible() and not self.closed: _sleep(0.25)
+            while self.isVisible() and not is_playing() and not self.closed: _sleep(0.025)
+
+            start = _get_time()
+            play_started = start + self.add_to_progress_offset
+            frame_started = get_current_frame()
+            self.reset_progress_offset = False
+            self.add_to_progress_offset = 0.0
+            vlc_desync_limit = self.frame_rate * 2
+
+            while is_playing() and not self.reset_progress_offset:
+                seconds_elapsed = (_get_time() - play_started) * get_rate()
+                frames_elapsed = seconds_elapsed * self.frame_rate
+                current_frame = get_current_frame()
                 vlc_frame = player.get_position() * self.frame_count
-                next_frame = get_progess_slider() + 1 * self.playback_speed
-                if abs(next_frame - vlc_frame) > self.frame_rate * 2 and vlc_frame > 0:
-                    true_frame = vlc_frame + (self.frame_rate * 0.3)
-                    self.frame_override = true_frame
-                    log_on_statusbar('Warning: high-precision slider was desynced by >2 seconds. Corrected.')
-                    logging.info(f'(?) VLC\'s reported frame: {vlc_frame} | Current frame: {next_frame} | "Corrected" frame: {true_frame}')
+                frame_desync = current_frame - frames_elapsed - frame_started
+                time_desync = frame_desync / self.frame_rate
+                vlc_desync = current_frame - vlc_frame
+
+                # if we're greater than 1 second off our expected time or 2 seconds off VLC's time...
+                # ...something is wrong -> reset to just past VLC's frame (VLC is usually a bit behind)
+                if abs(time_desync) >= 1 or (abs(vlc_desync) > vlc_desync_limit and vlc_frame > 0):
+                    if not self.reset_progress_offset:
+                        self.ui_delay = self.delay
+                        true_frame = (player.get_position() * self.frame_count) + (self.frame_rate * 0.2)
+                        self.frame_override = true_frame
+                        logging.info(f'(?) High-precision progress desync: {time_desync:.2f} real seconds, {vlc_desync:.2f} VLC frames. Changing frame from {current_frame} to {true_frame}.')
+
+                # otherwise, adjust delay accordingly to stay on track
+                else: self.ui_delay = self.delay * (1 + time_desync)
+
+                # TODO: have setting or debug command line argument that actually logs these every second?
+                #logging.debug(f'VLC\'s frame: {vlc_frame:.1f}, Our frame: {current_frame} (difference of {vlc_desync:.1f} frames, or {vlc_desync / self.frame_rate:.2f} seconds)')
+                #logging.debug(f'New delay: {self.ui_delay} (delta_frames={delta_frames:.1f}, delta_seconds={delta_seconds:2f})')
+
+                # wait for next check, but account for the time it took to actually run through the loop
+                time_elapsed = 0.0
+                while time_elapsed < check_interval:
+                    if not is_playing() or self.reset_progress_offset:
+                        break
+                    _sleep(delay_per_intercheck)
+                    time_elapsed = _get_time() - start
+                start = _get_time()
 
 
     def update_slider_thread(self):
@@ -604,6 +681,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             _emit_update_progress_signal(self.frame_override)
                         self.frame_override = -1        # reset frame_override
                         self.open_queued = False        # reset open_queued
+                        self.add_to_progress_offset = 0.1
+                        self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
 
                     # no frame override -> increment `get_rate()` frames forward (i.e. at 1x speed -> 1 frame)
                     elif (next_frame := get_current_frame() + get_rate()) <= self.frame_count:      # do NOT update progress if we're at the end
@@ -629,6 +708,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             _emit_update_progress_signal(self.frame_override)
                         self.frame_override = -1        # reset frame_override
                         self.open_queued = False        # reset open_queued
+                        self.add_to_progress_offset = 0.1       # TODO: need a better solution than this for getting around VLC buffering
+                        self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
 
                     # no frame override -> set slider to VLC's progress if VLC has actually updated
                     else:
@@ -857,10 +938,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     play_recent = primary == 2
 
             if jump_progress:
-                if self.mime_type == 'audio' and not self.is_paused:        # HACK: "replay" audio file to correct VLC's pitch-shifting bug
-                    self.skip_next_vlc_progress_desync_check = True
-                    play(self.video)
-                set_and_update_progress(int(self.frame_count / 10 * (key - 48)))
+                new_frame = int(self.frame_count / 10 * (key - 48))
+                set_and_adjust_and_update_progress(new_frame, 0.075)
             elif play_recent:
                 if not self.recent_files: return show_on_statusbar('No recent files available.')
                 if key == 48:
@@ -2121,6 +2200,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             If --play-and-exit is specified, program exits. '''
         try:
             logging.info('Restarting VLC media (Restart V)')
+            self.frame_override = -1                # reset frame_override in case it's set
 
             # if we want to loop, reload video, reset UI, and return immediately
             if self.actionLoop.isChecked():
@@ -2252,8 +2332,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             #else: new_frame = max(0, old_frame - self.frame_rate_rounded * seconds)
             else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
 
-        # set progress to new frame
-        set_and_update_progress(new_frame)
+        # set progress to new frame while doing necessary adjustments/corrections/overrides
+        set_and_adjust_and_update_progress(new_frame, 0.1)
 
         # auto-unpause after restart
         if self.restarted and settings.checkNavigationUnpause.isChecked():
@@ -3087,6 +3167,36 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         set_gif_position(frame)
 
 
+    def set_and_adjust_and_update_progress(self, frame: int = 0, offset: float = 0.0):
+        ''' Simultaneously sets VLC/gif player position to `frame`, avoids the
+            pitch-shift-bug for unpaused audio, and adjusts the high-precision
+            progress offset by `offset` seconds (if provided) to account for
+            VLC buffering. `offset` is ignored if `self.is_paused` is True. '''
+        is_paused = self.is_paused
+        is_pitch_sensitive_audio = self.is_pitch_sensitive_audio
+
+        # HACK: "replay" audio file to correct VLC's pitch-shifting bug
+        # https://reddit.com/r/VLC/comments/i4m0by/pitch_changing_on_seek_only_some_audio_file_types/
+        # https://reddit.com/r/VLC/comments/b0i9ff/music_seems_to_pitch_shift_all_over_the_place/
+        if is_pitch_sensitive_audio and not is_paused:
+            player.set_media(self.vlc.media)
+            player.play()
+
+        #self.set_player_time(round(frame * (1000 / self.frame_rate)))
+        set_player_position(frame / self.frame_count)
+        update_progress(frame)
+        set_gif_position(frame)
+
+        # use `frame_override` to correct issues with replaying audio and using VLC-progress mode
+        # NOTE: while it's safe to set `frame_override` here on videos (and somewhat useful), it...
+        #       ...causes the high-precision progress bar to desync by a few frames. not worth it
+        if is_pitch_sensitive_audio or not is_high_precision_slider():
+            self.frame_override = frame
+        elif offset != 0:
+            self.add_to_progress_offset = 0 if is_paused else offset
+        self.reset_progress_offset = True
+
+
     def update_time_spins(self):
         ''' Handles the hour, minute, and second spinboxes. Calculates
             the next frame based on the new values, and updates the progress
@@ -3108,10 +3218,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if self.minimum < new_frame > self.maximum:
                 update_progress(old_frame)
             else:
-                if self.mime_type == 'audio' and not self.is_paused:
-                    self.skip_next_vlc_progress_desync_check = True
-                    play(self.video)                            # HACK: "replay" audio file to correct VLC's pitch-shifting bug
-                set_and_update_progress(new_frame)
+                set_and_adjust_and_update_progress(new_frame, 0.075)
             logging.debug(f'Manually updating time-spins: seconds={seconds} frame {old_frame} -> {new_frame} ({excess_frames} excess frame(s))')
 
         except: logging.error(f'(!) UPDATE_TIME_SPINS FAILED: {format_exc()}')
@@ -3151,7 +3258,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if self.minimum <= frame <= self.maximum:
                 try:
                     self.lock_progress_updates = True
-                    set_and_update_progress(frame)
+                    set_and_adjust_and_update_progress(frame, 0.1)
                 except: logging.warning(f'Abnormal error while locking/setting/updating progress: {format_exc()}')
                 finally: self.lock_progress_updates = False
         except: pass                                            # ignore invalid inputs
@@ -4565,10 +4672,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         slider = self.sliderProgress
         if action == 3:     # page step add
             new_frame = min(slider.maximum(), max(slider.minimum(), slider.value() + slider.pageStep()))
-            set_and_update_progress(new_frame)
+            set_and_adjust_and_update_progress(new_frame, 0.1)
         elif action == 4:   # page step sub
             new_frame = min(slider.maximum(), max(slider.minimum(), slider.value() - slider.pageStep()))
-            set_and_update_progress(new_frame)
+            set_and_adjust_and_update_progress(new_frame, 0.1)
         if self.restarted and settings.checkNavigationUnpause.isChecked():
             self.pause()    # auto-unpause after restart
 
@@ -4668,6 +4775,7 @@ if __name__ == "__main__":
         show_on_statusbar = gui.statusbar.showMessage
         update_progress = gui.update_progress
         set_and_update_progress = gui.set_and_update_progress
+        set_and_adjust_and_update_progress = gui.set_and_adjust_and_update_progress
         emit_update_progress_signal = gui.update_progress_signal.emit
         set_volume_slider = gui.sliderVolume.setValue
         get_volume_slider = gui.sliderVolume.value
@@ -4683,6 +4791,7 @@ if __name__ == "__main__":
         set_gif_position = image_player.gif.jumpToFrame
         set_current_time_text = gui.lineCurrentTime.setText
         current_time_lineedit_has_focus = gui.lineCurrentTime.hasFocus
+        is_high_precision_slider = settings.checkHighPrecisionProgress.isChecked
         sep = os.sep
         exists = os.path.exists
         abspath = os.path.abspath
