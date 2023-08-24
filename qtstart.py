@@ -149,7 +149,7 @@ def after_show_setup(self: QtW.QMainWindow):
     self.vlc.set_text_x(self.dialog_settings.spinTextX.value())
     self.vlc.set_text_y(self.dialog_settings.spinTextY.value())
 
-    Thread(target=self.fast_start_interface_thread, daemon=True).start()
+    Thread(target=self.external_command_interface_thread, daemon=True).start()
     connect_shortcuts(self)                         # setup and connect hotkeys
 
 
@@ -225,9 +225,9 @@ def connect_shortcuts(self: QtW.QMainWindow):
 
 
 def connect_widget_signals(self: QtW.QMainWindow):
-    self._open_signal.connect(self._open_slot)
-    self._save_open_signal.connect(lambda file, remember_old_file: self.open(file=file, remember_old_file=remember_old_file))
-    self.fast_start_open_signal.connect(self.fast_start_open)
+    self._open_cleanup_signal.connect(self._open_cleanup_slot)
+    self._open_signal.connect(lambda kwargs: self.open(**kwargs))
+    self._open_external_command_signal.connect(self._open_external_command_slot)
     self.restart_signal.connect(self.restart)
     self.force_pause_signal.connect(self.force_pause)
     self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)

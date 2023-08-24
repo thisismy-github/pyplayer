@@ -322,9 +322,12 @@ def splitext_media(path: str, valid_extensions: tuple = constants.ALL_MEDIA_EXTE
 # Main GUI
 # ---------------------
 class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
-    _open_signal = QtCore.pyqtSignal()                  # NOTE: Custom signals MUST be class variables
-    _save_open_signal = QtCore.pyqtSignal(str, bool)    # str -> file, bool -> remembering previous file
-    fast_start_open_signal = QtCore.pyqtSignal(str)
+
+    # Custom signals MUST be class variables
+    # NOTE: avoid directly emitting signals prefixed with _ if possible
+    _open_cleanup_signal = QtCore.pyqtSignal()
+    _open_signal = QtCore.pyqtSignal(dict)
+    _open_external_command_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
     force_pause_signal = QtCore.pyqtSignal(bool)
     show_ffmpeg_warning_signal = QtCore.pyqtSignal(QtW.QWidget)
@@ -495,45 +498,53 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         Thread(target=self.high_precision_slider_accuracy_thread, daemon=True).start()
 
 
-    def fast_start_open(self, cmdpath):
-        ''' Slot for handling cmd-files from the fast-start
-            interface in a thread-safe manner. '''
-        try:
-            with open(cmdpath, 'rb') as txt:            # paths are encoded, to support special characters
-                command = txt.readline().decode().strip()
-                if command == 'EXIT':
-                    logging.info('(FS) External request to close recieved (likely an update pending). Exiting.')
-                    try: os.remove(cmdpath)             # pre-emptively remove cmdpath before closing, if possible
-                    except: pass
-                    qtstart.exit(self)
-                else:
-                    self.open(command, focus_window=settings.checkFocusDoubleClick.isChecked())
-                    logging.info(f'(FS) Fast-start for {command} recieved and handled.')
-        finally: self.fast_start_in_progress = False    # resume fast-start interface
-
-
-    def fast_start_interface_thread(self):
+    def external_command_interface_thread(
+        self,
+        cmdpath: str = None,
+        once: bool = False,
+        delete: bool = True,
+        timeout: float = 0
+    ):
         ''' Simple interface for detecting and reading cmd.txt files. Used for
             instantly playing new media upon double-click if we're already open
             (cmd.txt contains the path to the media) or closing in preparation
-            for an update (cmd.txt contains the word "EXIT"). '''
-        cmdpath = f'{constants.TEMP_DIR}{sep}cmd.{os.getpid()}.txt'          # the cmd.txt file with our PID to look for
+            for an update (cmd.txt contains the word "EXIT").
+
+            NOTE: This can be started multiple times if, for whatever reason,
+            you have alternative command files you want to watch for. Just pass
+            a `cmdpath` parameter. If `once` is True, this thread will auto-exit
+            after its first successful command. If `delete` is True, `cmdpath`
+            will be deleted after reading. If `timeout` is greater than 0,
+            this thread will auto-exit after `timeout` seconds. '''
+
+        if cmdpath is None: cmdpath = f'{constants.TEMP_DIR}{sep}cmd.{os.getpid()}.txt'
         try: os.makedirs(os.path.dirname(cmdpath))
         except: pass
         try: os.remove(cmdpath)
         except: pass
         logging.info(f'Fast-start connection established. Will listen for commands at {cmdpath}.')
+        use_timeout = timeout > 0
 
         while not self.closed:
             try:
                 if exists(cmdpath):
-                    self.fast_start_in_progress = True
-                    self.fast_start_open_signal.emit(cmdpath)
-                    logging.info(f'(FS) CMD-file detected: {cmdpath}')
-                    while self.fast_start_in_progress and not self.closed: sleep(0.05)
-                    os.remove(cmdpath)                                       # delete cmd.txt if possible
-            except: log_on_statusbar(f'(!) FAST-START INTERFACE FAILED: {format_exc()}')
-            finally: sleep(0.15)
+                    self.external_command_in_progress = True
+                    self._open_external_command_signal.emit(cmdpath)
+                    logging.info(f'(CMD) Command file detected: {cmdpath}')
+                    while self.external_command_in_progress and not self.closed:
+                        sleep(0.05)
+                    if delete:
+                        os.remove(cmdpath)
+                    if once:
+                        break
+            except:
+                log_on_statusbar(f'(!) EXTERNAL COMMAND INTERFACE FAILED: {format_exc()}')
+            finally:
+                if use_timeout:
+                    timeout -= 0.1
+                    if timeout < 0:
+                        break
+                sleep(0.1)
 
 
     def high_precision_slider_accuracy_thread(self):
@@ -647,7 +658,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         is_high_precision = self.dialog_settings.checkHighPrecisionProgress.isChecked
         get_rate = player.get_rate                      # TODO: get_rate() vs. self.playback_speed <- which is faster?
         set_progress_slider = self.sliderProgress.setValue
-        emit_open_signal = self._open_signal.emit
+        emit_open_cleanup_signal = self._open_cleanup_signal.emit
         _emit_update_progress_signal = self.update_progress_signal.emit
         _sleep = sleep
         _get_time = get_time
@@ -675,7 +686,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override != -1:
                         if self.open_queued:
-                            emit_open_signal()          # _open_signal uses self._open_slot()
+                            emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
                             set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
                         else:
                             _emit_update_progress_signal(self.frame_override)
@@ -702,7 +713,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override != -1:
                         if self.open_queued:
-                            emit_open_signal()          # _open_signal uses self._open_slot()
+                            emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
                             set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
                         else:
                             _emit_update_progress_signal(self.frame_override)
@@ -802,7 +813,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if event.spontaneous():
             if not self.was_paused and settings.checkMinimizePause.isChecked() and settings.checkMinimizeRestore.isChecked():
                 self.force_pause(False)
-        if self.isFullScreen(): self.set_fullscreen(True)               # restore fullscreen UI
+        if self.isFullScreen():
+            self.set_fullscreen(True)               # restore fullscreen UI
         gc.collect(generation=2)
 
 
@@ -1014,9 +1026,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # main shortcut actions (only show copy image action if there's something to copy)
         context.addAction(self.actionStop)
-        context.addAction(self.actionSettings)
         if self.mime_type != 'audio' or image_player.pixmap():
             context.addAction(self.refresh_copy_image_action())
+        context.addAction(self.actionSettings)
 
         # add all menubar menus
         context.addSeparator()
@@ -1747,21 +1759,30 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: player.set_pause(self.is_paused)
 
 
-    def parse_media_file(self, file, probe_file=None, mime='video', extension=None, data=None):
-        ''' Parses a media file for relevant metadata and emits _open_signal.
-            This *could* be simpler, but it still needs to be fast.
+    def parse_media_file(
+        self,
+        file: str,
+        probe_file: str = None,
+        mime: str = 'video',
+        extension: str = None,
+        data: dict = None
+    ):
+        ''' Parses a media `file` for relevant metadata and updates properties
+            accordingly. Emits `self._open_cleanup_signal`. Returns -1 if
+            unsuccessful. This could be simpler, but it still needs to be fast.
+
             The following properties should be set by this function:
-                - self.mime_type
-                - self.extension
-                - self.video
-                    - self.duration             (media duration in seconds)
-                    - self.frame_count          (number of frames)
-                    - self.frame_rate           (frames per second)
-                    - self.frame_rate_rounded   (rounded frame rate, for UI purposes)
-                    - self.delay                (delay between frames in seconds)
-                    - self.vwidth               (media width)
-                    - self.vheight              (media height)
-                    - self.ratio                (aspect ratio, as a string) '''
+                - `self.mime_type`
+                - `self.extension`
+                - `self.video`                (the current media's path)
+                - `self.duration`             (media duration in seconds)
+                - `self.frame_count`          (number of frames)
+                - `self.frame_rate`           (frames per second)
+                - `self.frame_rate_rounded`   (rounded frame rate, for the UI)
+                - `self.delay`                (delay between frames in seconds)
+                - `self.vwidth`               (media width)
+                - `self.vheight`              (media height)
+                - `self.ratio`                (aspect ratio, as a string) '''
         try:
             base_mime = mime
             if mime == 'video':
@@ -1937,10 +1958,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return -1
 
         # extra setup. frame_rate_rounded, ratio, and delay could all be set here, but it would be slower overall
-        self.video = file                           # set media AFTER opening but BEFORE _open_signal
+        self.video = file                           # set media AFTER opening but BEFORE _open_cleanup_signal
         self.mime_type = mime
         if base_mime == 'image':
-            self._open_signal.emit()                # manually emit _open_signal for images/gifs (slider thread will be idle)
+            self._open_cleanup_signal.emit()        # manually emit _open_cleanup_signal for images/gifs (slider thread will be idle)
             is_gif = extension == 'gif' and self.frame_count > 1
             self.is_gif = is_gif                    # do not treat single-frame GIFs as actual GIFs (static images have more features)
             self.is_static_image = not is_gif
@@ -1962,12 +1983,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.is_pitch_sensitive_audio = mime == 'audio'
         self.extension = extension
         #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
-        if mime != 'audio': self.vlc.find_true_borders()
 
 
-    def open(self, file=None, focus_window=True, update_recent_list=True, remember_old_file=False,
-             mime=None, extension=None, _from_cycle=False, _from_autoplay=False):
-        ''' Current iteration: IV '''
+    def open(
+        self,
+        file: str = None,
+        focus_window: bool = None,
+        update_recent_list: bool = True,
+        remember_old_file: bool = False,
+        mime: str = None,
+        extension: str = None,
+        _from_cycle: bool = False,
+        _from_autoplay: bool = False
+    ):
+        ''' Opens, parses, and plays a media `file`. Returns -1 if unsuccessful.
+
+            If `file` is None, a file-browsing dialog will be opened.
+            If no `mime` or `extension` are provided, they will be detected
+            automatically. If `focus_window` is None, the window will focus
+            depending on its current state, the media type, and user settings.
+            If `update_recent_list` is False, `self.recent_files` will not be
+            changed. If `remember_old_file` is True, `self.original_video_path`
+            will not be updated. If `_from_cycle` is True, validity checks are
+            skipped. `self.current_file_is_autoplay` is set to `_from_autoplay`.
+
+            Current iteration: IV '''
+
         try:
             # validate `file`. open file-dialog if needed, check if it's a folder, check if it's locked, etc.
             # (if called from sort of auto-cycling function, we can assume this stuff is already sorted out)
@@ -2094,7 +2135,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if was_minimzed_to_tray:    # check appropriate setting based on our original minimize state
                             if settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
                         elif settings.checkFocusMinimized.isChecked(): focus_window = True
-                if focus_window: qthelpers.showWindow(self)
+                if focus_window:
+                    qthelpers.showWindow(self)
 
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
@@ -2104,12 +2146,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # update marquee size and offset relative to video's dimensions
                 vlc = self.vlc
+                height = self.vheight
                 set_marquee_int = player.video_set_marquee_int
-                set_marquee_int(VideoMarqueeOption.Size, int(self.vheight * vlc.text_height_percent))
-                set_marquee_int(VideoMarqueeOption.X, int(self.vheight * vlc.text_x_percent))
-                set_marquee_int(VideoMarqueeOption.Y, int(self.vheight * vlc.text_y_percent))
+                set_marquee_int(VideoMarqueeOption.Size, int(height * vlc.text_height_percent))
+                set_marquee_int(VideoMarqueeOption.X,    int(height * vlc.text_x_percent))
+                set_marquee_int(VideoMarqueeOption.Y,    int(height * vlc.text_y_percent))
 
-            if not remember_old_file or not self.video_original_path: self.video_original_path = file
+            if not remember_old_file or not self.video_original_path:
+                self.video_original_path = file
 
             # update recent media list
             if update_recent_list:
@@ -2132,19 +2176,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.spinFrame.setMaximum(self.frame_count)
             self.spinFrame.setToolTip(str(self.frame_rate))
 
-            # refresh title and log opening time
-            refresh_title()                         # NOTE: I don't like doing this here instead of `_open_slot` but we have to (I don't remember why lol)
+            # refresh title (we have to refresh here instead of `_open_cleanup_slot`, I don't remember why lol)
+            refresh_title()
+
+            # log opening time. all done! (except for cleanup)
             logging.info(f'Initial media opening completed after {get_time() - start:.4f} seconds.')
 
         except: log_on_statusbar(f'(!) OPEN FAILED: {format_exc()}')
 
 
-    def _open_slot(self):
-        ''' NOTE: Not intended to be called manually. A slot for _open_signal which handles updating the progress slider's attributes.
-            This is done here so that the progress bar updates in a uniform and quick manner as update_slider_thread must be used to
-            reset the progress regardless, or we'll experience timing issues that cause newly opened media to play from the frame
-            the previous media left off at. Putting ALL of open() in this slot, however, results in a noticable delay when opening
-            media. Non-essential actions such as displaying a marquee are handled here as well. '''
+    def _open_cleanup_slot(self):
+        ''' A slot for `_open_cleanup_signal` that handles updating the progress
+            slider's properties, as well as various non-essential actions. This
+            is done through a signal so that `update_slider_thread` itself could
+            initiate the cleanup, avoiding numerous timing issues (playback
+            starting at the frame the last media was playing on, etc.).
+
+            NOTE: Putting all of `open()` in this slot results in a noticable
+            delay while opening media. '''
         try:
             sliderProgress = self.sliderProgress
 
@@ -2191,6 +2240,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.info('--- OPENING COMPLETE ---\n')
             gc.collect(generation=2)                    # do manual garbage collection after opening (NOTE: this MIGHT be risky)
         except: logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
+
+
+    def open_from_thread(self, **kwargs):
+        ''' Safely calls `self.open()` from a thread by
+            emitting `self._open_signal` with any provided
+            keyword arguments passed as a dictionary. '''
+        self._open_signal.emit(kwargs)
+
+
+    def _open_external_command_slot(self, cmdpath: str):
+        ''' Handles a command within a file at
+            `cmdpath` in a thread-safe manner. '''
+        try:
+            with open(cmdpath, 'rb') as txt:            # paths are encoded, to support special characters
+                command = txt.readline().decode().strip()
+                if command == 'EXIT':
+                    logging.info('(CMD) External request to close received (likely an update pending). Exiting.')
+                    try: os.remove(cmdpath)             # pre-emptively remove cmdpath before closing, if possible
+                    except: pass
+                    qtstart.exit(self)
+                else:
+                    self.open(command)
+                    logging.info(f'(CMD) Fast-start for {command} received and handled.')
+        finally:
+            self.external_command_in_progress = False    # resume fast-start interface
 
 
     def restart(self):
@@ -3093,7 +3167,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video:
-                    self._save_open_signal.emit(final_dest, settings.checkCycleRememberOriginalPath.checkState() == 2)
+                    self.open_from_thread(
+                        file=final_dest,
+                        remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
+                    )
                     if is_gif:                                  # gifs will often just... pause themselves after an edit
                         self.force_pause_signal.emit(False)     # this is the only way i've found to fix it
                 elif settings.checkTextOnSave.isChecked():

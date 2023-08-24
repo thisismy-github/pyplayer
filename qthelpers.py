@@ -31,7 +31,7 @@ def openPath(path: str, explore: bool = False, fallback: bool = None):
             system = platform.system()       # couldn't find a way to pre-select files in Linux
             if system == 'Windows': return subprocess.Popen(f'explorer /select, "{path}"')
             elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')
-    except: pass    # if any error occurs or system wasn't detected (Linux), use Qt to open the path normally
+    except: pass    # error orsystem wasn't detected (Linux) -> use Qt to open the path normally
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
 
 def showWindow(window: QtWidgets.QWidget) -> None:
