@@ -1,5 +1,5 @@
 api-ms-win*.dll
-pyexpat.pyd
+Pythonwin
 pyqt5/qt5/bin/d3dcompiler_47.dll
 pyqt5/qt5/bin/libEGL.dll
 pyqt5/qt5/bin/libGLESv2.dll
@@ -20,3 +20,7 @@ _lzma.pyd
 _multiprocessing.pyd
 _overlapped.pyd
 _queue.pyd
+win32/_win32sysloader.pyd
+win32/win32trace.pyd
+win32/win32wnet.pyd
+win32com

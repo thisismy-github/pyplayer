@@ -24,6 +24,14 @@ _SANITIZE_RESERVED = (
 logger = logging.getLogger('util.py')
 
 
+def add_path_suffix(path: str, suffix: str, unique: bool = False) -> str:
+    ''' Returns a path with `suffix` added between the basename and extension.
+        If `unique` is True, the new path will be run through getUniquePath()
+        with default arguments before returning. '''
+    base, ext = os.path.splitext(path)
+    return f'{base}{suffix}{ext}' if not unique else get_unique_path(f'{base}{suffix}{ext}')
+
+
 def ffmpeg(cmd: str) -> None:   # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -40,12 +48,25 @@ def ffmpeg_async(cmd: str) -> subprocess.Popen:
     return subprocess.Popen(cmd, startupinfo=startupinfo, shell=True, stdout=subprocess.PIPE, text=True)
 
 
-def add_path_suffix(path: str, suffix: str, unique: bool = False) -> str:
-    ''' Returns a path with `suffix` added between the basename and extension.
-        If `unique` is True, the new path will be run through getUniquePath()
-        with default arguments before returning. '''
-    base, ext = os.path.splitext(path)
-    return f'{base}{suffix}{ext}' if not unique else get_unique_path(f'{base}{suffix}{ext}')
+def foreground_is_fullscreen() -> bool:
+    ''' Returns True if the foreground window is fullscreen. Windows
+        only (for now). Does not account for multi-monitor setups where
+        the fullscreen window is not on the main monitor (for now). '''
+    if constants.PLATFORM != 'Windows': return False
+
+    # NOTE: ctypes can do this quite easily, but `ctypes.wintypes` is unreliable
+    import win32gui
+
+    def rects_are_equal(a: tuple, b: tuple) -> bool:
+        return a[0] == b[0] and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
+
+    hwnd = win32gui.GetForegroundWindow()
+    screen_hwnd = win32gui.GetDesktopWindow()
+    if hwnd == screen_hwnd or hwnd == 0: return False
+
+    screen_rect = win32gui.GetWindowRect(screen_hwnd)
+    window_rect = win32gui.GetWindowRect(hwnd)
+    return rects_are_equal(screen_rect, window_rect)
 
 
 def get_unique_path(path: str, start: int = 2, key: str = None, zeros: int = 0, strict: bool = False) -> str:

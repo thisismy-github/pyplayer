@@ -34,14 +34,13 @@ def openPath(path: str, explore: bool = False, fallback: bool = None):
     except: pass    # error orsystem wasn't detected (Linux) -> use Qt to open the path normally
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
 
-def showWindow(window: QtWidgets.QWidget) -> None:
-    ''' Shows, raises, and activates a `window`. NOTE: `window`'s old geometry
-        (`resizeEvent.oldSize/moveEvent.oldPos`), state (`WindowStateChange`),
-        and the last `closeEvent.spontaneous` value must all be tracked, as
-        Qt's tracking leads to many inconsistencies. `window` is expected to
-        have `was_maximized`, `last_window_size`, `last_window_position`, and
-        `close_was_spontaneous` attributes. Use `qthelpers.focusWindow` for a
-        looser, more general implementation. '''
+def showWindow(window: QtWidgets.QWidget, aggressive: bool = False) -> None:
+    ''' Shows, raises, and activates a `window`. If `aggressive` is True, a
+        different technique for focusing is used that prevents Windows from
+        blocking focus (no effect on other platforms). NOTE: `window` is
+        expected to have properties named `last_window_size`, `last_window_pos`,
+        and `close_was_spontaneous` as Qt's geometry tracking is inconsistent.
+        Use `qthelpers.focusWindow` for a more general implementation. '''
     if not window.isVisible():
         if window.was_maximized:
             if window.close_was_spontaneous:
@@ -52,16 +51,31 @@ def showWindow(window: QtWidgets.QWidget) -> None:
     elif window.isMinimized() and window.was_maximized: window.showMaximized()
     window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
     window.raise_()
-    window.activateWindow()
+    # use COM to send input to window -> this tricks Windows into thinking "the calling...
+    # ...process received the last input event", and thus allows PyPlayer to take focus
+    # https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.sendkeys
+    if aggressive and platform.system() == 'Windows':
+        try:                                # https://stackoverflow.com/a/61180328
+            import win32com.client          # '+' actually represents a SHIFT press
+            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
+        except: pass
+    window.activateWindow()                 # focus with Qt
 
-def focusWindow(window: QtWidgets.QWidget) -> None:
-    ''' Shows, raises, and activates a `window`. This implementation works,
-        but tends to restore windows and save geometry inconsistently. Use
-        `qthelpers.showWindow` for a more complete implementation. '''
+def focusWindow(window: QtWidgets.QWidget, aggressive: bool = False) -> None:
+    ''' Shows, raises, and activates a `window`. If `aggressive` is True, a
+        different technique for focusing is used that prevents Windows from
+        blocking focus (no effect on other platforms). This implementation
+        works, but tends to restore windows and save geometry inconsistently.
+        Use `qthelpers.showWindow` for a more complete implementation. '''
     if not window.isVisible(): window.show()
     window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
     window.raise_()
-    window.activateWindow()
+    if aggressive and platform.system() == 'Windows':
+        try:                                # https://stackoverflow.com/a/61180328
+            import win32com.client          # '+' actually represents a SHIFT press
+            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
+        except: pass
+    window.activateWindow()                 # focus with Qt
 
 def clampToScreen(window, screen: QtGui.QScreen = None,
                   resize: bool = True, move: bool = True,

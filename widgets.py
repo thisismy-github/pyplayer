@@ -673,8 +673,10 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             Shift        -> Concatenates media file(s) to the end of the current media.
             Alt          -> Concatenates media file(s) to the start of the current media. '''
         self.reset_dragdrop_status()
-        focus_window = settings.checkFocusDrop.isChecked()
         files = [url.toLocalFile() for url in event.mimeData().urls()]
+        if gui.isFullScreen():  focus_window = settings.checkFocusOnDropFullscreen.isChecked()
+        elif gui.isMaximized(): focus_window = settings.checkFocusOnDropMaximized.isChecked()
+        else:                   focus_window = settings.checkFocusOnDropNormal.isChecked()
 
         if os.path.isdir(files[0]):
             gui.open_folder(files[0], event.keyboardModifiers())
@@ -1447,7 +1449,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         if not item: return                 # no item under mouse, return
 
         action1 = QtW.QAction('&Play')
-        action1.triggered.connect(lambda: gui.open(item.toolTip()))
+        action1.triggered.connect(lambda: gui.open(item.toolTip(), focus_window=False))
         action2 = QtW.QAction('&Explore')
         action2.triggered.connect(lambda: qthelpers.openPath(item.toolTip(), explore=True))
         action3 = QtW.QAction('&Remove')
@@ -1973,7 +1975,7 @@ class QDraggableWindowFrame(QtW.QFrame):
 #            Shift        -> Concatenates media to the end of the current media.
 #            Alt          -> Concatenates media to the start of the current media. '''
 #        #self.show_text('')
-#        focus_window = settings.checkFocusDrop.isChecked()
+#        focus_window = settings.checkFocusOnDrop.isChecked()
 #        file = [url.toLocalFile() for url in event.mimeData().urls()][0]
 #        if gui.video:
 #            mod = event.keyboardModifiers()

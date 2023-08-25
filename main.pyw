@@ -177,7 +177,7 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg, ffmpeg_async, add_path_suffix, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, scale, file_is_hidden
+from util import add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, scale, file_is_hidden
 from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 
@@ -231,9 +231,9 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # NOTE: Interesting but useless in Python: QSaveFile, QRandomGenerator, QTemporaryDir/File, QJsonObject
 
 
-# -----------------------------
-# Additional utility functions
-# -----------------------------
+# -------------------------------------------
+# Additional media-related utility functions
+# -------------------------------------------
 def get_audio_duration(file: str) -> float:
     ''' Lightweight way of getting the duration of an audio `file`.
         Used for instances where we need ONLY the duration. '''
@@ -2128,15 +2128,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
             self.current_file_is_autoplay = _from_autoplay
 
-            # focus window. if disabled but window is minimized, check for special focus settings. ignore Autoplay focus if desired.
-            if not self.isActiveWindow() and not (_from_cycle and settings.checkAutoplayIgnoreFocus.isChecked()):
-                if not focus_window:
+            # focus window if desired, depending on window state and autoplay/audio settings
+            # NOTE: it is very rare but possible for "video" mime types to be mutated into "audio"...
+            #       ...during parsing which happens immediately AFTER we focus the window. i'd...
+            #       ...still rather focus first. it's rare enough that i think it's probably fine
+            if (
+                not self.isActiveWindow()
+                and not (_from_cycle and settings.checkFocusIgnoreAutoplay.isChecked())
+                and not (mime == 'audio' and settings.checkFocusIgnoreAudio.isChecked())
+            ):
+                if focus_window is None:
                     if self.isMinimized():
-                        if was_minimzed_to_tray:    # check appropriate setting based on our original minimize state
-                            if settings.checkFocusMinimizedToTray.isChecked(): focus_window = True
-                        elif settings.checkFocusMinimized.isChecked(): focus_window = True
+                        if was_minimzed_to_tray: focus_window = settings.checkFocusOnMinimizedTray.isChecked()
+                        else:                    focus_window = settings.checkFocusOnMinimizedTaskbar.isChecked()
+                    elif self.isFullScreen():    focus_window = settings.checkFocusOnFullscreen.isChecked()
+                    elif self.isMaximized():     focus_window = settings.checkFocusOnMaximized.isChecked()
+                    else:                        focus_window = settings.checkFocusOnNormal.isChecked()
+                if focus_window and settings.checkFocusIgnoreFullscreen.isChecked():
+                    focus_window = not foreground_is_fullscreen()
                 if focus_window:
-                    qthelpers.showWindow(self)
+                    qthelpers.showWindow(
+                        window=self,
+                        aggressive=settings.checkFocusAggressive.isChecked()
+                    )
 
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
@@ -3169,6 +3183,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.video == video:
                     self.open_from_thread(
                         file=final_dest,
+                        focus_window=settings.checkFocusOnEdit.isChecked(),
                         remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
                     )
                     if is_gif:                                  # gifs will often just... pause themselves after an edit
@@ -3582,7 +3597,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             log_on_statusbar(f'Concatenation saved to {output}.')
 
             if dialog.checkExplore.isChecked(): qthelpers.openPath(output, explore=True)
-            if dialog.checkOpen.isChecked(): self.open(output)
+            if dialog.checkOpen.isChecked(): self.open(output, focus_window=settings.checkFocusOnEdit.isChecked())
             if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
             elif dialog.checkDelete.checkState() == 2: self.delete(files)
         except: logging.error(f'(!) CONCATENATION FAILED: {format_exc()}')

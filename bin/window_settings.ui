@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>344</width>
-        <height>2402</height>
+        <y>-350</y>
+        <width>345</width>
+        <height>2616</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -90,7 +90,7 @@
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <property name="spacing">
-            <number>16</number>
+            <number>15</number>
            </property>
            <item>
             <layout class="QFormLayout" name="formLayout">
@@ -604,7 +604,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
               <number>3</number>
              </property>
              <property name="topMargin">
-              <number>5</number>
+              <number>3</number>
              </property>
              <property name="bottomMargin">
               <number>5</number>
@@ -630,6 +630,626 @@ recycle bin instead of being immediately/permanently deleted.</string>
                 <property name="bottomMargin">
                  <number>6</number>
                 </property>
+                <item>
+                 <widget class="QCheckBox" name="checkFocusAggressive">
+                  <property name="toolTip">
+                   <string>If checked, PyPlayer will use COM and native Windows' APIs
+to aggressively steal focus on Windows. Otherwise, Windows
+will block PyPlayer from taking focus in many situations.
+
+Note: This setting can be enabled during a session, but
+disabling it will have no effect until PyPlayer restarts.</string>
+                  </property>
+                  <property name="text">
+                   <string>Aggressive focus (Windows only, requires restart)</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_8">
+                  <property name="spacing">
+                   <number>7</number>
+                  </property>
+                  <property name="leftMargin">
+                   <number>8</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>3</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>8</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>4</number>
+                  </property>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_12">
+                    <property name="title">
+                     <string>Focus window on open</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_11">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>12</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>2</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>3</number>
+                     </property>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnNormal">
+                       <property name="toolTip">
+                        <string>If checked, opening media while the window is open in a normal,
+non-maximized/fullscreen state will raise the window and give it
+focus. This brings the window to the foreground and allows you
+to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When normal</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnMaximized">
+                       <property name="toolTip">
+                        <string>If checked, opening media while the window is
+maximized will raise the window and give it focus.
+This brings the window to the foreground and
+allows you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When maximized</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnFullscreen">
+                       <property name="toolTip">
+                        <string>If checked, opening media while the window is
+fullscreen will raise the window and give it focus.
+This brings the window to the foreground and
+allows you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When fullscreen</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnMinimizedTaskbar">
+                       <property name="toolTip">
+                        <string>If checked, opening media while the window is minimized
+to the taskbar will restore the window and give it focus.
+This brings the window to the foreground and allows
+you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When minimized to taskbar</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnMinimizedTray">
+                       <property name="toolTip">
+                        <string>If checked, opening media while the window is minimized
+to the system tray will restore the window and give it focus.
+This brings the window to the foreground and allows
+you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When minimized to system tray</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnDropNormal">
+                       <property name="toolTip">
+                        <string>If checked, dragging-and-dropping media over an unmaximized,
+non-fullscreen window will raise the window and give it focus.
+This brings the window to the foreground and allows you to
+use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When drag-and-dropping (normal)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnDropMaximized">
+                       <property name="toolTip">
+                        <string>If checked, dragging-and-dropping media over a
+maximized window will raise the window and give
+it focus. This brings the window to the foreground
+and allows you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When drag-and-dropping (maximized)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnDropFullscreen">
+                       <property name="toolTip">
+                        <string>If checked, dragging-and-dropping media over a
+fullscreen window will raise the window and give
+it focus. This brings the window to the foreground
+and allows you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>When drag-and-dropping (fullscreen)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusOnEdit">
+                       <property name="toolTip">
+                        <string>If checked, edited media that is auto-opened will raise the window
+and give it focus. This brings the window to the foreground and
+allows you to use keyboard shortcuts right away.</string>
+                       </property>
+                       <property name="text">
+                        <string>After saving an edit</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_13">
+                    <property name="title">
+                     <string>Ignore focus settings</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_12">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>12</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>2</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>3</number>
+                     </property>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusIgnoreFullscreen">
+                       <property name="toolTip">
+                        <string>If checked, the window will never be raised or focused if
+the current foreground window is fullscreen (i.e. a game).</string>
+                       </property>
+                       <property name="text">
+                        <string>When foreground is fullscreen (Windows only)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusIgnoreAutoplay">
+                       <property name="toolTip">
+                        <string>If checked, files that are opened through autoplay will never raise or focus the window.</string>
+                       </property>
+                       <property name="text">
+                        <string>When Autoplay is on</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkFocusIgnoreAudio">
+                       <property name="toolTip">
+                        <string>If checked, audio files will never raise or focus the window.</string>
+                       </property>
+                       <property name="text">
+                        <string>When playing audio files</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_2">
+                    <property name="title">
+                     <string>Auto-resizing</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_9">
+                     <property name="spacing">
+                      <number>1</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>5</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>6</number>
+                     </property>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,1">
+                       <property name="spacing">
+                        <number>8</number>
+                       </property>
+                       <item>
+                        <widget class="QCheckBox" name="checkSnapVideos">
+                         <property name="minimumSize">
+                          <size>
+                           <width>55</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Videos</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="checkSnapGifs">
+                         <property name="minimumSize">
+                          <size>
+                           <width>55</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>GIFs</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="checkSnapImages">
+                         <property name="minimumSize">
+                          <size>
+                           <width>55</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Images</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="checkSnapArt">
+                         <property name="minimumSize">
+                          <size>
+                           <width>55</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>Cover Art</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkResizeOnOpen">
+                       <property name="toolTip">
+                        <string>Tristate:
+
+Fully checked - the window will be immediately resized
+to match the media's native resolution upon opening it,
+as long as it's not larger than your screen.
+
+Partially checked - the window will only be
+resized for the first media file you open.</string>
+                       </property>
+                       <property name="text">
+                        <string>Resize to native resolution on open (tristate)</string>
+                       </property>
+                       <property name="tristate">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkSnapOnOpen">
+                       <property name="toolTip">
+                        <string>Tristate:
+
+Fully checked - the window will be immediately resized
+to match the media's native aspect ratio upon opening it,
+without shrinking/enlarging to match the media's resolution.
+
+Partially checked - the window will only be resized for the
+first media file you open.</string>
+                       </property>
+                       <property name="text">
+                        <string>Snap to native aspect ratio on open (tristate)</string>
+                       </property>
+                       <property name="tristate">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="checkSnapOnResize">
+                       <property name="toolTip">
+                        <string>NOTE: Hold Shift while resizing to always shrink the window.
+Hold Ctrl while resizing to trigger the opposite behavior (snap
+while snap is disabled, or don't snap while snap is enabled).
+
+Tristate:
+
+Fully checked: window will snap to the media's native aspect
+ratio after resizing, so that no black bars appear.
+
+Partially checked (experimental): window will have a choppy
+animated transition while snapping. This was discovered by
+accident, but I couldn't let it go to waste.</string>
+                       </property>
+                       <property name="text">
+                        <string>Snap to native aspect ratio on resize (tristate)</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                       <property name="tristate">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBox_14">
+                    <property name="title">
+                     <string>Image scaling</string>
+                    </property>
+                    <layout class="QFormLayout" name="formLayout_14">
+                     <property name="verticalSpacing">
+                      <number>3</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>7</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>3</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>7</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>3</number>
+                     </property>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label_53">
+                       <property name="toolTip">
+                        <string>Sets how to scale the size of static images within the window.</string>
+                       </property>
+                       <property name="text">
+                        <string>Static Images:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QComboBox" name="comboScaleImages">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="currentIndex">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>Prefer native size, fit if needed</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>No scaling (native size)</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Fit (keep aspect ratio)</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Fill (ignore aspect ratio)</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_51">
+                       <property name="toolTip">
+                        <string>Sets how to scale the size of cover/album art within the window.</string>
+                       </property>
+                       <property name="text">
+                        <string>Cover art:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QComboBox" name="comboScaleArt">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="currentIndex">
+                        <number>2</number>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>Prefer native size, fit if needed</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>No scaling (native size)</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Fit (keep aspect ratio)</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Fill (ignore aspect ratio)</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="label_52">
+                       <property name="toolTip">
+                        <string>Sets how to scale the size of animated GIFs within the window.</string>
+                       </property>
+                       <property name="text">
+                        <string>Animated GIFs:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QComboBox" name="comboScaleGifs">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="currentIndex">
+                        <number>1</number>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>No scaling (native size)</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Fit (keep aspect ratio)</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Fill (ignore aspect ratio)</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="QCheckBox" name="checkShowCoverArt">
+                       <property name="toolTip">
+                        <string>If checked, audio files with embedded cover art
+will have their cover art displayed on the player.</string>
+                       </property>
+                       <property name="text">
+                        <string>Show cover art</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="4" column="1">
+                      <widget class="QCheckBox" name="checkScaleFiltering">
+                       <property name="toolTip">
+                        <string>If checked, scaled media will be &quot;smoothed&quot; using
+bilinear filtering as opposed the more pixelated
+nearest-neighbor scaling (when possible).</string>
+                       </property>
+                       <property name="text">
+                        <string>Use bilinear filtering</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkClampOnOpen">
+                  <property name="toolTip">
+                   <string>If checked, the window will be moved
+and resized to fit within the boundaries
+of the screen it's on when opening media.</string>
+                  </property>
+                  <property name="text">
+                   <string>Clamp window to monitor on open</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkClampOnResize">
+                  <property name="toolTip">
+                   <string>If checked, the window will be moved
+and resized to fit within the boundaries
+of the screen it's on when using the
+&quot;Snap to native aspect ratio&quot; settings.</string>
+                  </property>
+                  <property name="text">
+                   <string>Clamp window to monitor on snap-resize</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_8">
                   <item>
@@ -657,405 +1277,6 @@ but only if the media had not been paused prior to minimizing.</string>
                    </widget>
                   </item>
                  </layout>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkFocusDrop">
-                  <property name="toolTip">
-                   <string>If checked, dragging-and-dropping media will raise the window
-and give it focus. This brings the window to the foreground and
-allows you to use keyboard shortcuts right away.</string>
-                  </property>
-                  <property name="text">
-                   <string>Focus window on drag-and-drop</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkFocusDoubleClick">
-                  <property name="toolTip">
-                   <string>If checked, double-clicking media will raise the window and
-give it focus. This brings the window to the foreground and
-allows you to use keyboard shortcuts right away.
-
-NOTE: This only applies when this is the default program for
-the media you're opening, or you use the &quot;Open with&quot; dialog.</string>
-                  </property>
-                  <property name="text">
-                   <string>Focus window on double-click</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_8">
-                  <property name="spacing">
-                   <number>0</number>
-                  </property>
-                  <property name="leftMargin">
-                   <number>14</number>
-                  </property>
-                  <item>
-                   <widget class="QCheckBox" name="checkFocusMinimized">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="toolTip">
-                     <string>If checked, the window will always raise and be given
-focus when opening media if the window is minimized
-to the taskbar.</string>
-                    </property>
-                    <property name="text">
-                     <string>...if minimized to taskbar</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="checkFocusMinimizedToTray">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="toolTip">
-                     <string>If checked, the window will always raise and be given
-focus when opening media if the window is minimized
-to the system tray.</string>
-                    </property>
-                    <property name="text">
-                     <string>...if minimized to system tray</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkClampOnResize">
-                  <property name="toolTip">
-                   <string>If checked, the window will be moved
-and resized to fit within the boundaries
-of the screen it's on when using the
-&quot;Snap to native aspect ratio&quot; settings.</string>
-                  </property>
-                  <property name="text">
-                   <string>Clamp window to monitor on snap-resize</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkClampOnOpen">
-                  <property name="toolTip">
-                   <string>If checked, the window will be moved
-and resized to fit within the boundaries
-of the screen it's on when opening media.</string>
-                  </property>
-                  <property name="text">
-                   <string>Clamp window to monitor on open</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QFormLayout" name="formLayout_8">
-                  <property name="horizontalSpacing">
-                   <number>6</number>
-                  </property>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_53">
-                    <property name="toolTip">
-                     <string>Sets how to scale the size of static images within the window.</string>
-                    </property>
-                    <property name="text">
-                     <string>Image scaling:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="comboScaleImages">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="currentIndex">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <property name="text">
-                      <string>Prefer native size, fit if needed</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>No scaling (native size)</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Fit (keep aspect ratio)</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Fill (ignore aspect ratio)</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QLabel" name="label_51">
-                    <property name="toolTip">
-                     <string>Sets how to scale the size of cover/album art within the window.</string>
-                    </property>
-                    <property name="text">
-                     <string>Cover art scaling:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QComboBox" name="comboScaleArt">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="currentIndex">
-                     <number>2</number>
-                    </property>
-                    <item>
-                     <property name="text">
-                      <string>Prefer native size, fit if needed</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>No scaling (native size)</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Fit (keep aspect ratio)</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Fill (ignore aspect ratio)</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="label_52">
-                    <property name="toolTip">
-                     <string>Sets how to scale the size of animated GIFs within the window.</string>
-                    </property>
-                    <property name="text">
-                     <string>Animated GIF scaling:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
-                   <widget class="QComboBox" name="comboScaleGifs">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Ignored" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="currentIndex">
-                     <number>1</number>
-                    </property>
-                    <item>
-                     <property name="text">
-                      <string>No scaling (native size)</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Fit (keep aspect ratio)</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Fill (ignore aspect ratio)</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                  <item row="3" column="1">
-                   <widget class="QCheckBox" name="checkShowCoverArt">
-                    <property name="toolTip">
-                     <string>If checked, audio files with embedded cover art
-will have their cover art displayed on the player.</string>
-                    </property>
-                    <property name="text">
-                     <string>Show cover art</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="1">
-                   <widget class="QCheckBox" name="checkScaleFiltering">
-                    <property name="toolTip">
-                     <string>If checked, scaled media will be &quot;smoothed&quot; using
-bilinear filtering as opposed the more pixelated
-nearest-neighbor scaling (when possible).</string>
-                    </property>
-                    <property name="text">
-                     <string>Use bilinear filtering</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <widget class="QGroupBox" name="groupBox_2">
-                  <property name="title">
-                   <string>Auto-resizing</string>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_9">
-                   <property name="spacing">
-                    <number>1</number>
-                   </property>
-                   <property name="topMargin">
-                    <number>5</number>
-                   </property>
-                   <property name="rightMargin">
-                    <number>0</number>
-                   </property>
-                   <property name="bottomMargin">
-                    <number>6</number>
-                   </property>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,1">
-                     <property name="spacing">
-                      <number>8</number>
-                     </property>
-                     <item>
-                      <widget class="QCheckBox" name="checkSnapVideos">
-                       <property name="text">
-                        <string>Videos</string>
-                       </property>
-                       <property name="checked">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QCheckBox" name="checkSnapGifs">
-                       <property name="text">
-                        <string>GIFs</string>
-                       </property>
-                       <property name="checked">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QCheckBox" name="checkSnapImages">
-                       <property name="text">
-                        <string>Images</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QCheckBox" name="checkSnapArt">
-                       <property name="text">
-                        <string>Cover Art</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="checkResizeOnOpen">
-                     <property name="toolTip">
-                      <string>Tristate:
-
-Fully checked - the window will be immediately resized
-to match the media's native resolution upon opening it,
-as long as it's not larger than your screen.
-
-Partially checked - the window will only be
-resized for the first media file you open.</string>
-                     </property>
-                     <property name="text">
-                      <string>Resize to native resolution on open (tristate)</string>
-                     </property>
-                     <property name="tristate">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="checkSnapOnOpen">
-                     <property name="toolTip">
-                      <string>Tristate:
-
-Fully checked - the window will be immediately resized
-to match the media's native aspect ratio upon opening it,
-without shrinking/enlarging to match the media's resolution.
-
-Partially checked - the window will only be resized for the
-first media file you open.</string>
-                     </property>
-                     <property name="text">
-                      <string>Snap to native aspect ratio on open (tristate)</string>
-                     </property>
-                     <property name="tristate">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="checkSnapOnResize">
-                     <property name="toolTip">
-                      <string>NOTE: Hold Shift while resizing to always shrink the window.
-Hold Ctrl while resizing to trigger the opposite behavior (snap
-while snap is disabled, or don't snap while snap is enabled).
-
-Tristate:
-
-Fully checked: window will snap to the media's native aspect
-ratio after resizing, so that no black bars appear.
-
-Partially checked (experimental): window will have a choppy
-animated transition while snapping. This was discovered by
-accident, but I couldn't let it go to waste.</string>
-                     </property>
-                     <property name="text">
-                      <string>Snap to native aspect ratio on resize (tristate)</string>
-                     </property>
-                     <property name="checked">
-                      <bool>true</bool>
-                     </property>
-                     <property name="tristate">
-                      <bool>true</bool>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </widget>
                 </item>
                </layout>
               </widget>
@@ -1376,20 +1597,6 @@ as the file you started with.</string>
                 </property>
                 <property name="text">
                  <string>Ignore other mime types while Autoplay is on</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkAutoplayIgnoreFocus">
-                <property name="toolTip">
-                 <string>If checked, files that are opened through
-autoplay will never raise or focus the window.</string>
-                </property>
-                <property name="text">
-                 <string>Ignore focus settings while Autoplay is on</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -4529,13 +4736,6 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
   <tabstop>checkRecycleBin</tabstop>
   <tabstop>checkMinimizePause</tabstop>
   <tabstop>checkMinimizeRestore</tabstop>
-  <tabstop>checkFocusDrop</tabstop>
-  <tabstop>checkFocusDoubleClick</tabstop>
-  <tabstop>checkFocusMinimized</tabstop>
-  <tabstop>checkFocusMinimizedToTray</tabstop>
-  <tabstop>checkClampOnResize</tabstop>
-  <tabstop>checkClampOnOpen</tabstop>
-  <tabstop>comboScaleArt</tabstop>
   <tabstop>checkSnapVideos</tabstop>
   <tabstop>checkSnapGifs</tabstop>
   <tabstop>checkSnapImages</tabstop>
@@ -4711,38 +4911,6 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
     <hint type="destinationlabel">
      <x>347</x>
      <y>-142</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkFocusDoubleClick</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>checkFocusMinimized</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>122</x>
-     <y>-103</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>80</x>
-     <y>-83</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkFocusDoubleClick</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>checkFocusMinimizedToTray</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>88</x>
-     <y>-103</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>149</x>
-     <y>-65</y>
     </hint>
    </hints>
   </connection>
