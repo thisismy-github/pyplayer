@@ -1,3 +1,16 @@
+// Any paths within this file are removed from the final build.
+// This file is evaluated before any other moves or renames occur.
+// Paths may be files, folders, or use wildcards (*).
+// Paths should be relative to PyPlayer.exe.
+
+_asyncio.pyd
+_bz2.pyd
+_decimal.pyd
+_hashlib.pyd
+_lzma.pyd
+_multiprocessing.pyd
+_overlapped.pyd
+_queue.pyd
 api-ms-win*.dll
 Pythonwin
 pyqt5/qt5/bin/d3dcompiler_47.dll
@@ -12,15 +25,10 @@ pyqt5/qt5/bin/Qt5Quick.dll
 pyqt5/qt5/bin/Qt5Svg.dll
 pyqt5/qt5/bin/Qt5WebSockets.dll
 ucrtbase.dll
-_asyncio.pyd
-_bz2.pyd
-_decimal.pyd
-_hashlib.pyd
-_lzma.pyd
-_multiprocessing.pyd
-_overlapped.pyd
-_queue.pyd
 win32/_win32sysloader.pyd
 win32/win32trace.pyd
 win32/win32wnet.pyd
 win32com
+pyqt5/Qt5/plugins/platforms/qminimal.dll
+pyqt5/Qt5/plugins/platforms/qoffscreen.dll
+pyqt5/Qt5/plugins/platforms/qwebgl.dll
