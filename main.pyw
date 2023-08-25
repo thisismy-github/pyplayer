@@ -413,9 +413,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.fractional_frame = 0.0
         self.delay = 0.0
         self.ui_delay = 0.0
+        self.frame_count = 1
+        self.frame_rate = 1
+        self.frame_rate_rounded = 1
         self.duration = 0.0
-        self.frame_count = self.frame_rate = self.frame_rate_rounded = self.current_time = self.minimum = self.maximum = 1
-        self.vwidth = self.vheight = 1000
+        self.duration_rounded = 0.0
+        self.current_time = 1
+        self.minimum = 1
+        self.maximum = 1
+        self.vwidth = 1000
+        self.vheight = 1000
         self.vsize = QtCore.QSize(1000, 1000)
         #self.resolution_label = '0x0'
         self.ratio = '0:0'
@@ -1078,18 +1085,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         verb = 'Start' if is_trim_mode else 'Fade to'
         if self.minimum:
             h, m, s, ms = get_hms(self.minimum / self.frame_rate)
-            if self.duration < 3600: start_label_action = QtW.QAction(f'{verb} {m}:{s:02}.{ms:02} (frame {self.minimum})')
-            else: start_label_action = QtW.QAction(f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})')
-        else: start_label_action = QtW.QAction(f'{verb}: Disabled')
+            if self.duration_rounded < 3600: start_label = f'{verb} {m}:{s:02}.{ms:02} (frame {self.minimum})'
+            else: start_label = f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})'
+        else: start_label = f'{verb}: Disabled'
+        start_label_action = QtW.QAction(start_label)
         start_label_action.setEnabled(False)
 
         # create disabled action for displaying end time
         verb = 'End' if is_trim_mode else 'Fade from'
         if self.maximum != self.frame_count:
             h, m, s, ms = get_hms(self.maximum / self.frame_rate)
-            if self.duration < 3600: end_label_action = QtW.QAction(f'{verb}: {m}:{s:02}.{ms:02} (frame {self.maximum})')
-            else: end_label_action = QtW.QAction(f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})')
-        else: end_label_action = QtW.QAction(f'{verb}: Disabled')
+            if self.duration_rounded < 3600: end_label = f'{verb}: {m}:{s:02}.{ms:02} (frame {self.maximum})'
+            else: end_label = f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})'
+        else: end_label = f'{verb}: Disabled'
+        end_label_action = QtW.QAction(end_label)
         end_label_action.setEnabled(False)
 
         # create disabled action for displaying trim length, if applicable
@@ -1097,8 +1106,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             frames = self.maximum - self.minimum
             seconds = frames / self.frame_rate
             h, m, s, ms = get_hms(seconds)
-            if seconds < 3600: length_label_action = QtW.QAction(f'Length: {m}:{s:02}.{ms:02} ({frames} frames)')
-            else: length_label_action = QtW.QAction(f'Length: {h}:{m:02}:{s:02} ({frames} frames)')
+            if seconds < 3600: length_label = f'Length: {m}:{s:02}.{ms:02} ({frames} frames)'
+            else: length_label = f'Length: {h}:{m:02}:{s:02} ({frames} frames)'
+            length_label_action = QtW.QAction(length_label)
             length_label_action.setEnabled(False)
 
         # actions for force-setting start/end times (disabled when no/useless media is playing)
@@ -1776,9 +1786,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 - `self.extension`
                 - `self.video`                (the current media's path)
                 - `self.duration`             (media duration in seconds)
+                - `self.duration_rounded`     (duration rounded to 2 places)
                 - `self.frame_count`          (number of frames)
                 - `self.frame_rate`           (frames per second)
-                - `self.frame_rate_rounded`   (rounded frame rate, for the UI)
+                - `self.frame_rate_rounded`   (fps rounded to nearest int)
                 - `self.delay`                (delay between frames in seconds)
                 - `self.vwidth`               (media width)
                 - `self.vheight`              (media height)
@@ -1813,6 +1824,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     duration = float(data['format']['duration'])
 
                                     self.duration = duration
+                                    self.duration_rounded = round(duration, 2)
                                     self.frame_count = math.ceil(duration * fps)    # NOTE: nb_frames is unreliable for partially corrupt videos
                                     self.frame_rate = fps
                                     self.frame_rate_rounded = round(fps)
@@ -1838,6 +1850,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     fps = round(player.get_fps(), 1)                # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
                     duration = round(player.get_length() / 1000, 4)
                     self.duration = duration
+                    self.duration_rounded = round(duration, 2)
                     self.frame_count = int(duration * fps)
                     self.frame_rate = fps
                     self.frame_rate_rounded = round(fps)
@@ -1899,6 +1912,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                         return -1
                         return self.parse_media_file(file, probe_file, mime='video', extension=extension, data=data)
                 self.duration = duration
+                self.duration_rounded = round(duration, 2)
                 self.frame_count = round(duration * 20)
                 self.frame_rate = 20                # TODO we only set to 20 to not deal with laggy hover-fades
                 self.frame_rate_rounded = 20
@@ -1915,14 +1929,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 fps = int(fps_parts[0]) / int(fps_parts[1])
                                 duration = float(data['format']['duration'])
                         self.duration = duration
+                        self.duration_rounded = round(duration, 2)
                         self.frame_rate = fps
                         self.frame_rate_rounded = round(fps)
                         self.delay = 1 / fps
                         self.vwidth = int(stream['width'])
                         self.vheight = int(stream['height'])
                     else:
-                        self.delay = image_player.gif.nextFrameDelay() / 1000
-                        self.duration = self.frame_count * self.delay
+                        delay = image_player.gif.nextFrameDelay() / 1000
+                        duration = self.frame_count * delay
+                        self.delay = delay
+                        self.duration = duration
+                        self.duration_rounded = round(duration, 2)
                         self.frame_rate = 1 / self.delay
                         self.frame_rate_rounded = round(self.frame_rate)
                         self.vwidth = image_player.gifSize.width()
@@ -1946,6 +1964,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.vwidth = image_player.art.width()
                         self.vheight = image_player.art.height()
                     self.duration = 0.0000001       # low duration to avoid errors but still show up as 0 on the UI
+                    self.duration_rounded = 0.0
                     self.frame_count = 1
                     self.frame_rate = 1
                     self.frame_rate_rounded = 1
@@ -2180,8 +2199,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.recent_files = recent_files[-max_len:]         # do NOT assign to the alias here
 
             # update UI with new media's duration
-            h, m, s, ms = get_hms(self.duration)
-            self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
+            h, m, s, ms = get_hms(self.duration_rounded)
+            self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if h == 0 else f'{h}:{m:02}:{s:02}')
             self.spinHour.setEnabled(h != 0)                            # always leave spinSecond enabled
             self.spinMinute.setEnabled(m != 0)
             if self.width() <= 335: prefix = ''
@@ -2215,7 +2234,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             update_progress(0)
             self.minimum = sliderProgress.minimum()
             self.maximum = sliderProgress.maximum()
-            sliderProgress.setTickInterval(self.frame_rate_rounded * (1 if self.duration < 3600 else 60))       # place one tick per second/minute (default theme)
+            sliderProgress.setTickInterval(self.frame_rate_rounded * (1 if self.duration_rounded < 3600 else 60))       # place one tick per second/minute (cosmetic, default theme only)
             sliderProgress.setPageStep(int(self.frame_count / 10))
 
             self.vsize.setWidth(self.vwidth)
@@ -2430,8 +2449,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # show new position as a marquee if desired
         if self.isFullScreen() and settings.checkTextOnFullScreenPosition.isChecked():
             h, m, s, _ = get_hms(self.current_time)
-            current_text = f'{m:02}:{s:02}' if self.current_time < 3600 else f'{h}:{m:02}:{s:02}'
-            max_text = self.labelMaxTime.text()[:-3] if self.duration < 3600 else self.labelMaxTime.text()
+            current_text = f'{m:02}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
+            max_text = self.labelMaxTime.text()[:-3] if self.duration_rounded < 3600 else self.labelMaxTime.text()
             show_on_player(f'{current_text}/{max_text}')
 
         logging.debug(f'Navigated {"forwards" if forward else "backwards"} {seconds} second(s), going from frame {old_frame} to {new_frame}')
@@ -3223,13 +3242,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if not self.actionLoop.isChecked(): self.force_pause(True)
                     else: return set_and_update_progress(self.minimum)
 
-        current_time = round(self.duration * (frame / self.frame_count), 2)
+        current_time = round(self.duration_rounded * (frame / self.frame_count), 2)
         self.current_time = current_time
         h, m, s, ms = get_hms(current_time)
 
         set_progress_slider(frame)
         if not current_time_lineedit_has_focus():       # use cleaner format for time-strings on videos > 1 hour
-            set_current_time_text(f'{m:02}:{s:02}.{ms:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}')
+            set_current_time_text(f'{m:02}:{s:02}.{ms:02}' if h == 0 else f'{h}:{m:02}:{s:02}')
 
         self.lock_spin_updates = True                   # lock spins from actually updating player so we don't get recursion
         set_hour_spin(h)
@@ -3466,7 +3485,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.minimum = desired_minimum
 
             h, m, s, ms = get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
-            if self.duration < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
+            if self.duration_rounded < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_minimum = True
         else:
@@ -3488,7 +3507,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.maximum = desired_maximum
 
             h, m, s, ms = get_hms(self.current_time)            # use cleaner format for time-strings on videos > 1 hour
-            if self.duration < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
+            if self.duration_rounded < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_maximum = True
         else:
@@ -4645,8 +4664,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             mime = self.mime_type.capitalize()                  # capitalize first letter of mime type
             paused = '■' if get_progess_slider() == self.frame_count else '▷' if not self.is_paused else '𝗜𝗜'   # ▶
-            h, m, s, _ = get_hms(self.duration)
-            duration = f'{m}:{s:02}' if self.duration < 3600 else f'{h}:{m:02}:{s:02}'  # no milliseconds in window title
+            h, m, s, _ = get_hms(self.duration_rounded)         # no milliseconds in window title
+            duration = f'{m}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
             if mime != 'Audio':                                 # remember, we just capitalized this
                 fps = str(self.frame_rate_rounded)
                 resolution = f'{self.vwidth:.0f}x{self.vheight:.0f}'

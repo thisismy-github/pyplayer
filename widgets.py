@@ -1221,8 +1221,8 @@ class QVideoSlider(QtW.QSlider):
                 else: pos = self.last_mouseover_pos                                 # use last position if mouse is outside the slider
 
                 frame = self.pixelPosToRangeValue(pos)
-                h, m, s, _ = get_hms(round(gui.duration * (frame / gui.frame_count), 2))
-                text = f'{m}:{s:02}' if gui.duration < 3600 else f'{h}:{m:02}:{s:02}'
+                h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
+                text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
 
                 size = settings.spinHoverFontSize.value()
                 font = settings.comboHoverFont.currentFont()    # TODO use currentFontChanged signals + more for performance? not needed?
@@ -1243,8 +1243,8 @@ class QVideoSlider(QtW.QSlider):
                 p.drawText(pos, text)                           # draw actual text over shadow
 
                 # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
-                #h, m, s, _ = get_hms(round(gui.duration * (frame / gui.frame_count), 2))
-                #if gui.duration < 3600: self.setToolTip(f'{m}:{s:02}')
+                #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
+                #if gui.duration_rounded < 3600: self.setToolTip(f'{m}:{s:02}')
                 #else: self.setToolTip(f'{h}:{m:02}:{s:02}')    # use cleaner format for time-strings on videos > 1 hour
         finally: p.end()
 
