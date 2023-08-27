@@ -70,7 +70,6 @@ TODO: use qtawesome icons/fonts? https://pypi.org/project/QtAwesome/ <- qta-brow
 TODO: enhanced playback speed option (context menu/menubar)?
 TODO: playlists + shuffle (including a smart shuffle that plays playlist to completion without repeats)
 TODO: playing online media like VLC
-TODO: implement VLC's taskbar button preview where it lets you play/pause from it https://docs.microsoft.com/en-us/dotnet/api/system.windows.shell.thumbbuttoninfo?view=windowsdesktop-6.0
 TODO: video_set_aspect_ratio and video_set_scale (this is for "zooming")
 TODO: add setting to make total duration label show the remaining time instead
 TODO: add settings for trim graphics?
@@ -222,7 +221,6 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # self.childAt(x, y) | self.underMouse() -> bool
 # NOTE: QtWidgets.QToolTip.hideText/showText/setPalette/setFont (showText is laggy)
 # NOTE: app.setQuitOnLastWindowClosed(False) -> app.quit() (app.aboutToQuit.connect)
-# NOTE: QWinTaskbarButton/QWinTaskbarProgress (obsolete) -> https://doc.qt.io/qt-5/qwintaskbarbutton.html
 # NOTE: Plugins (QPluginLoader/QLibrary): Felgo (really good), QSkinny (lightweight), Advanced Docking System (laggy but pure Qt)
 #                                         Qt Pdf Viewer Library, CircularSlider (QML), GitQlient, All KDE Community plugins
 # NOTE: Useful: QReadWriteLock/QLockFile, QStorageInfo, QStandardPaths, QFileSystemWatcher, QMimeData (for dragging)
@@ -356,8 +354,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                         self.dialog_settings.height())
         self.icons = {
             'window':            QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}logo.ico'),
+            'settings':          QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}settings.png'),
             'play':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}play.png'),
             'pause':             QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}pause.png'),
+            'stop':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}stop.png'),
             'restart':           QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}restart.png'),
             'loop':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}loop.png'),
             'autoplay':          QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay.png'),
@@ -504,6 +504,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             (lambda: self.copy_file(config.cfg.last_snapshot_path, cut=True),        'Cut the last snapshot\'s file to your clipboard.'),
             (lambda: self.copy_image(config.cfg.last_snapshot_path, extended=False), 'Copy the last snapshot\'s image data to your clipboard.'),
         )
+
+        # create all taskbar-extensions-related widgets for windows 7-11
+        self.create_taskbar_controls()
 
         Thread(target=self.update_slider_thread, daemon=True).start()
         Thread(target=self.high_precision_slider_accuracy_thread, daemon=True).start()
@@ -801,6 +804,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def hideEvent(self, event: QtGui.QHideEvent):       # 'spontaneous' -> native minimize button pressed
+        if constants.PLATFORM == 'Windows' and settings.checkTaskbarIconPauseMinimized.isChecked():
+            at_end = get_progess_slider() == self.frame_count
+            self.taskbar.setOverlayIcon(self.icons['restart' if at_end else 'pause' if self.is_paused else 'play'])
+
         if event.spontaneous():
             if settings.checkMinimizePause.isChecked():
                 self.was_paused = self.is_paused
@@ -814,7 +821,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         super().showEvent(event)
 
         # refresh VLC instance's winId
-        if constants.PLATFORM == 'Windows': player.set_hwnd(self.vlc.winId())               # Windows
+        if constants.PLATFORM == 'Windows':                                                 # Windows
+            player.set_hwnd(self.vlc.winId())
+            if settings.checkTaskbarIconPauseMinimized.isChecked():
+                self.taskbar.clearOverlayIcon()         # clear overlay icon on taskbar in Windows
         elif constants.PLATFORM == 'Darwin': player.set_nsobject(int(self.vlc.winId()))     # MacOS
         else: player.set_xwindow(self.vlc.winId())                                          # Linux (sometimes)
 
@@ -2354,6 +2364,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_paused = True
             self.buttonPause.setIcon(self.icons['restart'])
             refresh_title()
+            self.refresh_taskbar()
 
             # misc cleanup
             if self.isFullScreen() and settings.checkFullScreenMediaFinishedLock.isChecked():
@@ -2408,7 +2419,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             pause_text = '𝗜𝗜' if will_pause else '▶'                    # ▷ ▶ ⏵︎
             show_on_player(pause_text)
 
+        # update titlebar and taskbar icon
         refresh_title()
+        self.refresh_taskbar()
         self.restarted = False
         logging.debug(f'Pausing: is_paused={will_pause} old_state={old_state} frame={frame} maxframe={self.maximum}')
         return will_pause
@@ -2423,6 +2436,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonPause.setIcon(icon)
 
         refresh_title()
+        self.refresh_taskbar()
         logging.debug(f'Force-pause: paused={paused}')
         return paused
 
@@ -2433,6 +2447,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         player.stop()
         image_player.gif.setFileName('')
         self.force_pause(True)
+        if constants.PLATFORM == 'Windows' and settings.checkTaskbarIconPauseMinimized.isChecked():
+            self.taskbar.clearOverlayIcon()
 
 
     def navigate(self, forward: bool, seconds_spinbox: QtW.QSpinBox):   # slightly longer than it could be, but cleaner/more readable
@@ -3417,6 +3433,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         emit_progress_value(0)                                              # we must call this to actually show the progress bar
         self.set_save_progress_visible_signal.emit(True)
 
+        use_taskbar_progress = constants.PLATFORM == 'Windows' and settings.checkTaskbarProgressEdit.isChecked()
+        if use_taskbar_progress:
+            self.taskbar_progress.setVisible(True)
+            self.taskbar_progress.setValue(0)
+
         # ensure an %out variable is in `cmd` so we have a spot to insert `outfile`
         if not outfile: outfile = infile
         if '%out' not in cmd: cmd += ' %out'                                # ensure %out is present
@@ -3458,26 +3479,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # normal videos will have a "frame" progress string
                 if progress_text[:6] == 'frame=':
                     use_backup_lines = False                                # if we're using frames, DON'T use "out_time_ms" (less accurate)
-                    frame = int(progress_text[6:].strip())
                     max_frames = self.save_progress_bar.maximum()           # this might change late, so always check it
-                    emit_progress_value(min(frame, max_frames))
+                    frame = min(int(progress_text[6:].strip()), max_frames)
+                    emit_progress_value(frame)
                     emit_progress_text(active_text)                         # reset format in case we changed it temporarily
+                    if use_taskbar_progress:
+                        self.taskbar_progress.setValue(int((frame / max_frames) * 100))
                     break
 
                 # ffmpeg usually uses "out_time_ms" for audio files
                 elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
                     try:
                         seconds = int(progress_text.strip()[12:-6])
-                        frame = seconds * frame_rate
                         max_frames = self.save_progress_bar.maximum()       # this might change late, so always check it
-                        emit_progress_value(min(frame, max_frames))
+                        frame = min(int(seconds * frame_rate), max_frames)
+                        emit_progress_value(frame)
                         emit_progress_text(active_text)                     # reset format in case we changed it temporarily
+                        if use_taskbar_progress:
+                            self.taskbar_progress.setValue(int((frame / max_frames) * 100))
                         break
                     except ValueError: pass
 
         # terminate process just in case ffmpeg got locked up
         try: process.terminate()
         except: pass
+
+        if use_taskbar_progress:
+            self.taskbar_progress.setVisible(False)
+            self.taskbar_progress.setValue(0)
 
         # cleanup temp file, if needed
         if temp_path != infile:
@@ -4786,6 +4815,114 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                            .replace('?ctrlclick',  ctrl[1])
                                            .replace('?altclick',   alt[1])
         )
+
+
+    def refresh_taskbar(self):
+        ''' Updates the current pause-state icon in the taskbar toolbar,
+            as well as the current overlay icon. NOTE: Windows-only. '''
+        if constants.PLATFORM != 'Windows': return
+
+        overlay_taskbar_icon = self.isMinimized() and settings.checkTaskbarIconPauseMinimized.isChecked()
+        if get_progess_slider() == self.frame_count:
+            self.taskbar_toolbar_restart.setVisible(True)
+            self.taskbar_toolbar_play.setVisible(False)
+            self.taskbar_toolbar_pause.setVisible(False)
+            if overlay_taskbar_icon:
+                self.taskbar.setOverlayIcon(self.icons['restart'])
+        else:
+            paused = self.is_paused
+            self.taskbar_toolbar_restart.setVisible(False)
+            self.taskbar_toolbar_play.setVisible(paused)
+            self.taskbar_toolbar_pause.setVisible(not paused)
+            if overlay_taskbar_icon:
+                self.taskbar.setOverlayIcon(self.icons['pause' if paused else 'play'])
+
+
+    def create_taskbar_controls(self):
+        ''' Creates controls for a special progress bar and toolbar embedded
+            within the taskbar icon and its flyout-thumbnail. To actually
+            enable/display the toolbar, call `self.enable_taskbar_controls`
+            after the window has been shown. NOTE: Windows-only.
+
+            NOTE: Qt does not expose `ITaskbarList3.ThumbBarUpdateButtons`.
+            As a result, we MUST use three separate buttons for pausing and
+            toggle visibility between them to force Qt to update, simulating
+            the appearance of the icons changing in real-time. You cannot
+            achieve the effect any other way as far as I know, not even by
+            changing the icon and then flickering visiblity (for some reason).
+
+            NOTE: I wanted to implement this myself as `QtWinExtras` is no
+            longer supported in Qt 6.0, but I cannot find a single working,
+            up-to-date implementation of toolbar buttons in Python. In fact,
+            I can only find two attempts at this AT ALL, with only one appearing
+            to be "finished". It uses Cython and seems to no longer work (?) -
+            https://github.com/sjohannes/winmmtaskbar - Taskbar extensions have
+            a VERY unusual method of implementation (involving compiling your
+            own file and using COM) which is particularly difficult to convert
+            into native Python. Combine that with a lack of interest (how many
+            programs can you name that even use taskbar extensions, let alone
+            an embedded thumbnail toolbar?), and you end up with ONE PERSON
+            finishing a library for the embedded toolbar in 14 years (unlike
+            the progress bar, which has many working implementations). '''
+        if constants.PLATFORM != 'Windows': return
+
+        from PyQt5 import QtWinExtras
+        self.taskbar = QtWinExtras.QWinTaskbarButton()
+        self.taskbar_progress = self.taskbar.progress()
+        self.taskbar_progress.setVisible(True)
+        self.taskbar_toolbar = QtWinExtras.QWinThumbnailToolBar()
+
+        self.taskbar_toolbar_pause = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        self.taskbar_toolbar_pause.setIcon(self.icons['pause'])
+        self.taskbar_toolbar_pause.clicked.connect(self.pause)
+
+        self.taskbar_toolbar_play = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        self.taskbar_toolbar_play.setIcon(self.icons['play'])
+        self.taskbar_toolbar_play.clicked.connect(self.pause)
+
+        self.taskbar_toolbar_restart = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        self.taskbar_toolbar_restart.setIcon(self.icons['restart'])
+        self.taskbar_toolbar_restart.clicked.connect(self.pause)
+
+        stop_button = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        stop_button.setToolTip('Stop')
+        stop_button.setIcon(self.icons['stop'])
+        stop_button.clicked.connect(self.stop)
+
+        cycle_forward_button = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        cycle_forward_button.setToolTip(self.buttonNext.toolTip())
+        cycle_forward_button.setIcon(self.icons['cycle_forward'])
+        cycle_forward_button.clicked.connect(self.cycle_media)
+
+        cycle_backward_button = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        cycle_backward_button.setToolTip(self.buttonPrevious.toolTip())
+        cycle_backward_button.setIcon(self.icons['cycle_backward'])
+        cycle_backward_button.clicked.connect(lambda: self.cycle_media(next=False))
+
+        settings_button = QtWinExtras.QWinThumbnailToolButton(self.taskbar_toolbar)
+        settings_button.setToolTip('Settings')
+        settings_button.setIcon(self.icons['settings'])
+        settings_button.setDismissOnClick(True)
+        settings_button.clicked.connect(self.dialog_settings.exec)
+
+        self.taskbar_toolbar_play.setVisible(False)
+        self.taskbar_toolbar_restart.setVisible(False)
+        self.taskbar_toolbar.setButtons((
+            stop_button,
+            cycle_backward_button,
+            self.taskbar_toolbar_pause,
+            self.taskbar_toolbar_play,
+            self.taskbar_toolbar_restart,
+            cycle_forward_button,
+            settings_button
+        ))
+
+
+    def enable_taskbar_controls(self, checked: bool = True):
+        ''' Sets the window handle for the taskbar toolbar if `checked`
+            is True. This cannot be undone. NOTE: Windows-only. '''
+        if checked and constants.PLATFORM == 'Windows':
+            self.taskbar_toolbar.setWindow(self.windowHandle())
 
 
     def handle_snapshot_button(self):

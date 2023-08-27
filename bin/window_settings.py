@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -350, 345, 2616))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -800, 345, 2753))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -41,7 +41,7 @@ class Ui_settingsDialog(object):
         self.tabGeneral = QtWidgets.QWidget()
         self.tabGeneral.setObjectName("tabGeneral")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.tabGeneral)
-        self.verticalLayout_3.setSpacing(15)
+        self.verticalLayout_3.setSpacing(20)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.formLayout = QtWidgets.QFormLayout()
         self.formLayout.setVerticalSpacing(3)
@@ -185,7 +185,7 @@ class Ui_settingsDialog(object):
         self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
-        self.verticalLayout.setContentsMargins(-1, 3, -1, 5)
+        self.verticalLayout.setContentsMargins(-1, 0, -1, 0)
         self.verticalLayout.setSpacing(3)
         self.verticalLayout.setObjectName("verticalLayout")
         self.groupBox = QtWidgets.QGroupBox(self.tabGeneral)
@@ -288,7 +288,6 @@ class Ui_settingsDialog(object):
         self.checkSnapArt.setMinimumSize(QtCore.QSize(55, 0))
         self.checkSnapArt.setObjectName("checkSnapArt")
         self.horizontalLayout_3.addWidget(self.checkSnapArt)
-        self.horizontalLayout_3.setStretch(3, 1)
         self.verticalLayout_9.addLayout(self.horizontalLayout_3)
         self.checkResizeOnOpen = QtWidgets.QCheckBox(self.groupBox_2)
         self.checkResizeOnOpen.setTristate(True)
@@ -384,11 +383,30 @@ class Ui_settingsDialog(object):
         self.verticalLayout_7.addLayout(self.horizontalLayout_8)
         self.verticalLayout.addWidget(self.groupBox)
         self.verticalLayout_3.addLayout(self.verticalLayout)
+        self.groupBox_15 = QtWidgets.QGroupBox(self.tabGeneral)
+        self.groupBox_15.setObjectName("groupBox_15")
+        self.formLayout_8 = QtWidgets.QFormLayout(self.groupBox_15)
+        self.formLayout_8.setContentsMargins(-1, 4, 6, 7)
+        self.formLayout_8.setVerticalSpacing(1)
+        self.formLayout_8.setObjectName("formLayout_8")
+        self.checkTaskbarProgressEdit = QtWidgets.QCheckBox(self.groupBox_15)
+        self.checkTaskbarProgressEdit.setChecked(True)
+        self.checkTaskbarProgressEdit.setObjectName("checkTaskbarProgressEdit")
+        self.formLayout_8.setWidget(1, QtWidgets.QFormLayout.SpanningRole, self.checkTaskbarProgressEdit)
+        self.checkTaskbarIconPauseMinimized = QtWidgets.QCheckBox(self.groupBox_15)
+        self.checkTaskbarIconPauseMinimized.setChecked(True)
+        self.checkTaskbarIconPauseMinimized.setObjectName("checkTaskbarIconPauseMinimized")
+        self.formLayout_8.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.checkTaskbarIconPauseMinimized)
+        self.checkTaskbarControls = QtWidgets.QCheckBox(self.groupBox_15)
+        self.checkTaskbarControls.setChecked(True)
+        self.checkTaskbarControls.setObjectName("checkTaskbarControls")
+        self.formLayout_8.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkTaskbarControls)
+        self.verticalLayout_3.addWidget(self.groupBox_15)
         self.groupTray = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupTray.setCheckable(True)
         self.groupTray.setObjectName("groupTray")
         self.verticalLayout_5 = QtWidgets.QVBoxLayout(self.groupTray)
-        self.verticalLayout_5.setContentsMargins(14, 5, -1, 7)
+        self.verticalLayout_5.setContentsMargins(14, 5, -1, 6)
         self.verticalLayout_5.setSpacing(1)
         self.verticalLayout_5.setObjectName("verticalLayout_5")
         self.checkTrayClose = QtWidgets.QCheckBox(self.groupTray)
@@ -1624,10 +1642,9 @@ class Ui_settingsDialog(object):
         self.buttonBox.accepted.connect(settingsDialog.accept) # type: ignore
         self.buttonBox.rejected.connect(settingsDialog.reject) # type: ignore
         self.checkHideIdleCursor.toggled['bool'].connect(self.spinHideIdleCursorDuration.setEnabled) # type: ignore
-        self.checkMinimizePause.toggled['bool'].connect(self.checkMinimizeRestore.setEnabled) # type: ignore
         self.checkZoomSmooth.toggled['bool'].connect(self.spinZoomSmoothFactor.setEnabled) # type: ignore
+        self.checkMinimizePause.toggled['bool'].connect(self.checkMinimizeRestore.setEnabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(settingsDialog)
-        settingsDialog.setTabOrder(self.tabWidget, self.comboThemes)
         settingsDialog.setTabOrder(self.comboThemes, self.buttonRefreshThemes)
         settingsDialog.setTabOrder(self.buttonRefreshThemes, self.lineWindowTitleFormat)
         settingsDialog.setTabOrder(self.lineWindowTitleFormat, self.lineDefaultOutputPath)
@@ -1823,7 +1840,7 @@ class Ui_settingsDialog(object):
         self.checkHideIdleCursor.setToolTip(_translate("settingsDialog", "If checked, your cursor will disappear until moved\n"
 "if left idle over the player for the specified amount\n"
 "of time. While fullscreen, the UI will also disappear."))
-        self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor\\UI"))
+        self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor/UI"))
         self.spinHideIdleCursorDuration.setPrefix(_translate("settingsDialog", "After: "))
         self.spinHideIdleCursorDuration.setSuffix(_translate("settingsDialog", " seconds"))
         self.checkHighPrecisionProgress.setToolTip(_translate("settingsDialog", "If checked, the progress bar for the current media will be faked in\n"
@@ -1923,7 +1940,7 @@ class Ui_settingsDialog(object):
 "\n"
 "Note: This setting can be enabled during a session, but\n"
 "disabling it will have no effect until PyPlayer restarts."))
-        self.checkFocusAggressive.setText(_translate("settingsDialog", "Aggressive focus (Windows only, requires restart)"))
+        self.checkFocusAggressive.setText(_translate("settingsDialog", "Aggressive focus (Windows-only, requires restart)"))
         self.groupBox_12.setTitle(_translate("settingsDialog", "Focus window on open"))
         self.checkFocusOnNormal.setToolTip(_translate("settingsDialog", "If checked, opening media while the window is open in a normal,\n"
 "non-maximized/fullscreen state will raise the window and give it\n"
@@ -2052,6 +2069,20 @@ class Ui_settingsDialog(object):
         self.checkMinimizeRestore.setToolTip(_translate("settingsDialog", "If checked, media will automatically unpause when restoring the window,\n"
 "but only if the media had not been paused prior to minimizing."))
         self.checkMinimizeRestore.setText(_translate("settingsDialog", "Unpause on restore"))
+        self.groupBox_15.setTitle(_translate("settingsDialog", "Taskbar behavior (Windows-only)"))
+        self.checkTaskbarProgressEdit.setToolTip(_translate("settingsDialog", "If checked, a progress bar will be displayed on\n"
+"the taskbar icon itself while saving an edit."))
+        self.checkTaskbarProgressEdit.setText(_translate("settingsDialog", "Show edit progress on taskbar icon"))
+        self.checkTaskbarIconPauseMinimized.setToolTip(_translate("settingsDialog", "If checked, an icon representing the pause-state (𝗜𝗜/▶)\n"
+"will be overlayed over the taskbar icon while minimized.\n"
+"If the player is stopped, no icon will be shown."))
+        self.checkTaskbarIconPauseMinimized.setText(_translate("settingsDialog", "Show pause-state on taskbar icon while minimized"))
+        self.checkTaskbarControls.setToolTip(_translate("settingsDialog", "If checked, a toolbar will appear within the thumbnail preview\n"
+"that appears when hovering over the window in the taskbar.\n"
+"\n"
+"Note: This setting can be enabled during a session, but\n"
+"disabling it will have no effect until PyPlayer restarts."))
+        self.checkTaskbarControls.setText(_translate("settingsDialog", "Show controls on thumbnail preview (requires restart)"))
         self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"

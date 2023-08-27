@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-350</y>
+        <y>-800</y>
         <width>345</width>
-        <height>2616</height>
+        <height>2753</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -90,7 +90,7 @@
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <property name="spacing">
-            <number>15</number>
+            <number>20</number>
            </property>
            <item>
             <layout class="QFormLayout" name="formLayout">
@@ -331,7 +331,7 @@ if left idle over the player for the specified amount
 of time. While fullscreen, the UI will also disappear.</string>
                </property>
                <property name="text">
-                <string>Hide cursor\UI</string>
+                <string>Hide cursor/UI</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -604,10 +604,10 @@ recycle bin instead of being immediately/permanently deleted.</string>
               <number>3</number>
              </property>
              <property name="topMargin">
-              <number>3</number>
+              <number>0</number>
              </property>
              <property name="bottomMargin">
-              <number>5</number>
+              <number>0</number>
              </property>
              <item>
               <widget class="QGroupBox" name="groupBox">
@@ -641,7 +641,7 @@ Note: This setting can be enabled during a session, but
 disabling it will have no effect until PyPlayer restarts.</string>
                   </property>
                   <property name="text">
-                   <string>Aggressive focus (Windows only, requires restart)</string>
+                   <string>Aggressive focus (Windows-only, requires restart)</string>
                   </property>
                   <property name="checked">
                    <bool>true</bool>
@@ -906,7 +906,7 @@ the current foreground window is fullscreen (i.e. a game).</string>
                       <number>6</number>
                      </property>
                      <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,1">
+                      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0">
                        <property name="spacing">
                         <number>8</number>
                        </property>
@@ -1284,6 +1284,73 @@ but only if the media had not been paused prior to minimizing.</string>
             </layout>
            </item>
            <item>
+            <widget class="QGroupBox" name="groupBox_15">
+             <property name="title">
+              <string>Taskbar behavior (Windows-only)</string>
+             </property>
+             <layout class="QFormLayout" name="formLayout_8">
+              <property name="verticalSpacing">
+               <number>1</number>
+              </property>
+              <property name="topMargin">
+               <number>4</number>
+              </property>
+              <property name="rightMargin">
+               <number>6</number>
+              </property>
+              <property name="bottomMargin">
+               <number>7</number>
+              </property>
+              <item row="1" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkTaskbarProgressEdit">
+                <property name="toolTip">
+                 <string>If checked, a progress bar will be displayed on
+the taskbar icon itself while saving an edit.</string>
+                </property>
+                <property name="text">
+                 <string>Show edit progress on taskbar icon</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkTaskbarIconPauseMinimized">
+                <property name="toolTip">
+                 <string>If checked, an icon representing the pause-state (𝗜𝗜/▶)
+will be overlayed over the taskbar icon while minimized.
+If the player is stopped, no icon will be shown.</string>
+                </property>
+                <property name="text">
+                 <string>Show pause-state on taskbar icon while minimized</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkTaskbarControls">
+                <property name="toolTip">
+                 <string>If checked, a toolbar will appear within the thumbnail preview
+that appears when hovering over the window in the taskbar.
+
+Note: This setting can be enabled during a session, but
+disabling it will have no effect until PyPlayer restarts.</string>
+                </property>
+                <property name="text">
+                 <string>Show controls on thumbnail preview (requires restart)</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
             <widget class="QGroupBox" name="groupTray">
              <property name="title">
               <string>Enable system tray icon (requires PyPlayer restart)</string>
@@ -1302,7 +1369,7 @@ but only if the media had not been paused prior to minimizing.</string>
                <number>5</number>
               </property>
               <property name="bottomMargin">
-               <number>7</number>
+               <number>6</number>
               </property>
               <item>
                <widget class="QCheckBox" name="checkTrayClose">
@@ -4716,7 +4783,6 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>tabWidget</tabstop>
   <tabstop>comboThemes</tabstop>
   <tabstop>buttonRefreshThemes</tabstop>
   <tabstop>lineWindowTitleFormat</tabstop>
@@ -4899,22 +4965,6 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
    </hints>
   </connection>
   <connection>
-   <sender>checkMinimizePause</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>checkMinimizeRestore</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>157</x>
-     <y>-142</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>347</x>
-     <y>-142</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>checkZoomSmooth</sender>
    <signal>toggled(bool)</signal>
    <receiver>spinZoomSmoothFactor</receiver>
@@ -4927,6 +4977,22 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
     <hint type="destinationlabel">
      <x>216</x>
      <y>485</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkMinimizePause</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkMinimizeRestore</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>157</x>
+     <y>-142</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>347</x>
+     <y>-142</y>
     </hint>
    </hints>
   </connection>

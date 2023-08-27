@@ -141,6 +141,10 @@ def after_show_setup(self: QtW.QMainWindow):
         self.app.setQuitOnLastWindowClosed(False)   # ensure qt does not exit until we tell it to
         self.tray_icon = get_tray_icon(self)
 
+    if constants.PLATFORM == 'Windows':             # enable taskbar extensions if desired
+        self.taskbar.setWindow(self.windowHandle())
+        self.enable_taskbar_controls(checked=config.cfg.checktaskbarcontrols)
+
     self.set_trim_mode(self.trim_mode_action_group.checkedAction())
     self.gifPlayer._imageScale = self.dialog_settings.comboScaleImages.currentIndex()
     self.gifPlayer._artScale = self.dialog_settings.comboScaleArt.currentIndex()
@@ -352,6 +356,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.comboSnapshotShift.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.comboSnapshotCtrl.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.comboSnapshotAlt.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
+    settings.checkTaskbarControls.toggled.connect(self.enable_taskbar_controls)
 
     self.position_button_group = QtW.QButtonGroup(settings)
     for button in (settings.radioTextPosition0, settings.radioTextPosition1, settings.radioTextPosition2,
