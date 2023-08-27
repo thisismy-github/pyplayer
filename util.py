@@ -52,7 +52,7 @@ def foreground_is_fullscreen() -> bool:
     ''' Returns True if the foreground window is fullscreen. Windows
         only (for now). Does not account for multi-monitor setups where
         the fullscreen window is not on the main monitor (for now). '''
-    if constants.PLATFORM != 'Windows': return False
+    if not constants.IS_WINDOWS: return False
 
     # NOTE: ctypes can do this quite easily, but `ctypes.wintypes` is unreliable
     import win32gui
@@ -104,8 +104,8 @@ def get_unique_path(path: str, start: int = 2, key: str = None, zeros: int = 0, 
 def get_from_PATH(filename: str) -> str:
     ''' Returns the full path to a `filename` if it exists in
         the user's PATH, otherwise returns an empty string. '''
-    is_windows = constants.PLATFORM == 'Windows'
-    for path in os.environ.get('PATH', '').split(';' if is_windows else ':'):
+    sep = ';' if constants.IS_WINDOWS else ':'
+    for path in os.environ.get('PATH', '').split(sep):
         try:
             if filename in os.listdir(path):
                 return os.path.join(path, filename)
@@ -241,5 +241,5 @@ def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple:
     return new_x, new_y
 
 
-if constants.PLATFORM != 'Windows': file_is_hidden = lambda path: os.path.basename(path)[0] == '.'
-else: file_is_hidden = lambda path: os.stat(path).st_file_attributes & 2
+if constants.IS_WINDOWS: file_is_hidden = lambda path: os.stat(path).st_file_attributes & 2
+else: file_is_hidden = lambda path: os.path.basename(path)[0] == '.'

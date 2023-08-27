@@ -141,7 +141,7 @@ def after_show_setup(self: QtW.QMainWindow):
         self.app.setQuitOnLastWindowClosed(False)   # ensure qt does not exit until we tell it to
         self.tray_icon = get_tray_icon(self)
 
-    if constants.PLATFORM == 'Windows':             # enable taskbar extensions if desired
+    if constants.IS_WINDOWS:                        # enable taskbar extensions if desired
         self.taskbar.setWindow(self.windowHandle())
         self.enable_taskbar_controls(checked=config.cfg.checktaskbarcontrols)
 

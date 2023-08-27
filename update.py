@@ -63,17 +63,17 @@ def check_for_update(self, log: bool = True, _launch: bool = False) -> None:
             )
 
         if get_later_version(latest_version, current_version) != current_version:    # current version is older than latest version
-            if constants.IS_COMPILED and constants.PLATFORM == 'Windows':   # TODO Windows only for now (and no auto-updating directly from the script)
+            if constants.IS_COMPILED and constants.IS_WINDOWS:          # TODO Windows only for now (and no auto-updating directly from the script)
                 return self._handle_updates_signal.emit(
                     dict(latest_version_url=latest_version_url),
                     dict(title=f'Update {latest_version} available',
                          icon=QMessageBox.Information,
-                         buttons=(QMessageBox.Yes | QMessageBox.No),        # TODO | QMessageBox.Ignore
+                         buttons=(QMessageBox.Yes | QMessageBox.No),    # TODO | QMessageBox.Ignore
                          text=f'An update is available on GitHub ({current_version} -> {latest_version}). '
                               'Would you\nlike to download and install this update automatically?',
                          textInformative='You can manually view the ' + HYPERLINK)
                 )
-            else:                                                           # non-windows version of popup (no auto-updater yet)
+            else:                                                       # non-windows version of popup (no auto-updater yet)
                 if constants.IS_COMPILED: reason = 'Auto-updating is currently only available on Windows.<br><br>'      # \n breaks hyperlinks
                 else: reason = 'Because you\'re running directly from the script, auto-updating is disabled.<br><br>'   # \n breaks hyperlinks
                 return self._handle_updates_signal.emit(
@@ -88,7 +88,7 @@ def check_for_update(self, log: bool = True, _launch: bool = False) -> None:
         if _launch: logger.warning('Update check was unable to reach GitHub (no internet connection?).')
         else: self.log_on_statusbar_signal.emit('Update check was unable to reach GitHub (no internet connection?).')
     except: self.log_on_statusbar_signal.emit(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
-    self._handle_updates_signal.emit({}, {})                                # call empty signal to perform cleanup
+    self._handle_updates_signal.emit({}, {})                            # call empty signal to perform cleanup
 
 
 def download_update(self, latest_version: str, download_url: str, download_path: str) -> None:
@@ -143,8 +143,8 @@ def download_update(self, latest_version: str, download_url: str, download_path:
                     logger.info(f'EXIT-signal CMD file successfully written for PID #{pid}')
 
         # locate updater executable -> check both root folder and bin/pyqt5 folder
-        ext = '.exe' if constants.PLATFORM == 'Windows' else ''
-        original_updater_path = os.path.join(constants.CWD, 'updater') + ext    # IS_COMPILED is assumed here
+        ext = '.exe' if constants.IS_WINDOWS else ''
+        original_updater_path = os.path.join(constants.CWD, 'updater') + ext    # `IS_COMPILED` is assumed here
         if not os.path.exists(original_updater_path):
             original_updater_path = os.path.join(constants.BIN_DIR, 'updater') + ext
             if not os.path.exists(original_updater_path):

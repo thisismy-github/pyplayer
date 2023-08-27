@@ -20,6 +20,9 @@ SCRIPT_START_TIME = time.time()
 IS_COMPILED = getattr(sys, 'frozen', False)
 APP_RUNNING = False
 PLATFORM = platform.system()
+IS_WINDOWS = PLATFORM == 'Windows'
+IS_MAC = PLATFORM == 'Darwin'
+IS_LINUX = not IS_WINDOWS and not IS_MAC
 SCRIPT_PATH = sys.executable if IS_COMPILED else os.path.realpath(__file__)
 CWD = os.path.dirname(SCRIPT_PATH)
 

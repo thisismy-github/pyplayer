@@ -349,7 +349,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar = QtW.QProgressBar(self.statusbar)
         self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog)
         self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
-        if constants.PLATFORM != 'Windows':              # settings dialog was designed around Windows UI
+        if not constants.IS_WINDOWS:                     # settings dialog was designed around Windows UI
             self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width(),
                                         self.dialog_settings.height())
         self.icons = {
@@ -804,7 +804,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def hideEvent(self, event: QtGui.QHideEvent):       # 'spontaneous' -> native minimize button pressed
-        if constants.PLATFORM == 'Windows' and settings.checkTaskbarIconPauseMinimized.isChecked():
+        if constants.IS_WINDOWS and settings.checkTaskbarIconPauseMinimized.isChecked():
             at_end = get_progess_slider() == self.frame_count
             self.taskbar.setOverlayIcon(self.icons['restart' if at_end else 'pause' if self.is_paused else 'play'])
 
@@ -821,12 +821,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         super().showEvent(event)
 
         # refresh VLC instance's winId
-        if constants.PLATFORM == 'Windows':                                                 # Windows
+        if constants.IS_WINDOWS:                                                # Windows
             player.set_hwnd(self.vlc.winId())
             if settings.checkTaskbarIconPauseMinimized.isChecked():
                 self.taskbar.clearOverlayIcon()         # clear overlay icon on taskbar in Windows
-        elif constants.PLATFORM == 'Darwin': player.set_nsobject(int(self.vlc.winId()))     # MacOS
-        else: player.set_xwindow(self.vlc.winId())                                          # Linux (sometimes)
+        elif constants.IS_MAC: player.set_nsobject(int(self.vlc.winId()))       # MacOS
+        else: player.set_xwindow(self.vlc.winId())                              # Linux (sometimes)
 
         # strangely, closing/reopening the window applies an alignment to our QVideoPlayer/QWidget (very bad)
         self.gridLayout.setAlignment(self.vlc, Qt.Alignment())          # reset alignment to nothing
@@ -1650,7 +1650,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # https://stackoverflow.com/questions/47443545/cut-and-paste-clipboard-exchange-between-qt-application-and-windows-explorer
         # this is total nonsense and I have no idea why this works
         if cut:
-            if constants.PLATFORM == 'Windows':
+            if constants.IS_WINDOWS:
                 data = QtCore.QByteArray()
                 stream = QtCore.QDataStream(data, QtCore.QIODevice.WriteOnly)
                 magic = QtCore.QByteArray()         # you HAVE to do these two lines
@@ -2447,7 +2447,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         player.stop()
         image_player.gif.setFileName('')
         self.force_pause(True)
-        if constants.PLATFORM == 'Windows' and settings.checkTaskbarIconPauseMinimized.isChecked():
+        if constants.IS_WINDOWS and settings.checkTaskbarIconPauseMinimized.isChecked():
             self.taskbar.clearOverlayIcon()
 
 
@@ -3433,7 +3433,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         emit_progress_value(0)                                              # we must call this to actually show the progress bar
         self.set_save_progress_visible_signal.emit(True)
 
-        use_taskbar_progress = constants.PLATFORM == 'Windows' and settings.checkTaskbarProgressEdit.isChecked()
+        use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
         if use_taskbar_progress:
             self.taskbar_progress.setVisible(True)
             self.taskbar_progress.setValue(0)
@@ -4020,7 +4020,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             def accept():
                 self.actionTrimPickEveryTime.setChecked(check_always_pick.isChecked())
 
-            if constants.PLATFORM != 'Windows': dialog.adjustSize()
+            if not constants.IS_WINDOWS: dialog.adjustSize()
             dialog.accepted.connect(accept)
             if dialog.exec() == QtW.QDialog.Accepted:
                 if dialog.choice == button_auto: self.actionTrimAuto.setChecked(True)
@@ -4184,7 +4184,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if 'failed' in results: return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
-                if constants.IS_COMPILED and constants.PLATFORM == 'Windows':
+                if constants.IS_COMPILED and constants.IS_WINDOWS:
                     choice = qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
                     if choice == QtW.QMessageBox.Yes:
                         import update
@@ -4820,7 +4820,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def refresh_taskbar(self):
         ''' Updates the current pause-state icon in the taskbar toolbar,
             as well as the current overlay icon. NOTE: Windows-only. '''
-        if constants.PLATFORM != 'Windows': return
+        if not constants.IS_WINDOWS: return
 
         overlay_taskbar_icon = self.isMinimized() and settings.checkTaskbarIconPauseMinimized.isChecked()
         if get_progess_slider() == self.frame_count:
@@ -4864,7 +4864,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             an embedded thumbnail toolbar?), and you end up with ONE PERSON
             finishing a library for the embedded toolbar in 14 years (unlike
             the progress bar, which has many working implementations). '''
-        if constants.PLATFORM != 'Windows': return
+        if not constants.IS_WINDOWS: return
 
         from PyQt5 import QtWinExtras
         self.taskbar = QtWinExtras.QWinTaskbarButton()
@@ -4921,7 +4921,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def enable_taskbar_controls(self, checked: bool = True):
         ''' Sets the window handle for the taskbar toolbar if `checked`
             is True. This cannot be undone. NOTE: Windows-only. '''
-        if checked and constants.PLATFORM == 'Windows':
+        if checked and constants.IS_WINDOWS:
             self.taskbar_toolbar.setWindow(self.windowHandle())
 
 
