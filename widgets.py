@@ -460,6 +460,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             if not gui.actionCrop.isChecked():                          # no crop -> check for back/forward buttons
                 if event.button() == Qt.BackButton: gui.cycle_recent_files(forward=False)
                 elif event.button() == Qt.ForwardButton: gui.cycle_recent_files(forward=True)
+                elif event.button() == Qt.MiddleButton: gui.middle_click_player_actions[settings.comboPlayerMiddleClick.currentIndex()]()
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
@@ -595,9 +596,12 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.dragging = None                                        # release drag
 
 
-    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):      # fullscreen video by double-clicking on it (left-click only)
-        ''' Triggers GUI's fullscreen action after double-clicking the player. '''
-        if event.button() == Qt.LeftButton: gui.actionFullscreen.trigger()
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
+        ''' Triggers user's desired double-click action
+            after double-clicking the player. '''
+        if event.button() == Qt.LeftButton:
+            index = settings.comboPlayerDoubleClick.currentIndex()
+            gui.double_click_player_actions[index]()
 
 
     def leaveEvent(self, event: QtCore.QEvent):

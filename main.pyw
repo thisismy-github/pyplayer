@@ -489,7 +489,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonNext.setIcon(self.icons['cycle_forward'])
         self.buttonPrevious.setIcon(self.icons['cycle_backward'])
 
-        # all possible snapshot button actions and tooltips
+        # all possible snapshot button actions and tooltips, ordered by their appearance in the settings
         self.snapshot_actions = (
             (self.snapshot,                                                          'Takes and saves a snapshot immediately using your presets.'),
             (lambda: self.snapshot(mode='full'),                                     'Opens size/quality, and save dialogs for your snapshot.'),
@@ -503,6 +503,33 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             (lambda: self.copy_file(config.cfg.last_snapshot_path),                  'Copy the last snapshot\'s file to your clipboard.'),
             (lambda: self.copy_file(config.cfg.last_snapshot_path, cut=True),        'Cut the last snapshot\'s file to your clipboard.'),
             (lambda: self.copy_image(config.cfg.last_snapshot_path, extended=False), 'Copy the last snapshot\'s image data to your clipboard.'),
+        )
+
+        # all possible double-click actions, ordered by their appearance in the settings
+        self.double_click_player_actions = (
+            self.dialog_settings.exec,
+            self.toggle_mute,
+            self.actionFullscreen.trigger,
+            lambda: self.showMaximized() if not self.isMaximized() else self.showNormal(),
+            lambda: self.set_playback_speed(1.0)
+        )
+
+        # all possible middle-click actions, ordered by their appearance in the settings
+        self.middle_click_player_actions = (
+            self.dialog_settings.exec,
+            self.stop,
+            self.toggle_mute,
+            self.actionFullscreen.trigger,
+            lambda: self.showMaximized() if not self.isMaximized() else self.showNormal(),
+            lambda: self.set_playback_speed(1.0)
+        )
+
+        # all possible tray middle-click actions, ordered by their appearance in the settings
+        self.middle_click_tray_actions = (
+            qtstart.exit,
+            self.dialog_settings.exec,
+            self.stop,
+            self.toggle_mute,
         )
 
         # create all taskbar-extensions-related widgets for windows 7-11

@@ -77,6 +77,7 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
         QSystemTrayIcon has some issues, one being the fact that if placed in the "hidden icons" area on Windows, that area will
         close while the tray icon's context menu is open. That's not much of an issue with this very barebones tray icon, but it
         may become an issue if the tray icon is expanded upon. Pystray is still a decent (albeit heavy) fallback if necessary. '''
+
     def handle_click(reason: QtW.QSystemTrayIcon.ActivationReason):
         if reason == QtW.QSystemTrayIcon.Context:
             action_show = QtW.QAction('&PyPlayer')
@@ -90,10 +91,14 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
             menu.addAction(self.actionViewInstallFolder)
             menu.addAction(self.actionViewLastDirectory)
             menu.addSeparator()
+            menu.addAction(self.actionStop)
             menu.addAction(self.actionExit)
             return menu.exec(QtGui.QCursor.pos())
-        if reason == QtW.QSystemTrayIcon.Trigger: return qthelpers.showWindow(self)
-        if reason == QtW.QSystemTrayIcon.MiddleClick: return exit(self)
+        if reason == QtW.QSystemTrayIcon.Trigger:
+            return qthelpers.showWindow(self)
+        if reason == QtW.QSystemTrayIcon.MiddleClick:
+            index = self.dialog_settings.comboTrayMiddleClick.currentIndex()
+            return self.middle_click_tray_actions[index]()
 
     tray = QtW.QSystemTrayIcon(self.icons['window'])
     tray.setToolTip('PyPlayer')
