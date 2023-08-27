@@ -356,6 +356,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                         self.dialog_settings.height())
         self.icons = {
             'window':            QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}logo.ico'),
+            'play':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}play.png'),
+            'pause':             QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}pause.png'),
+            'restart':           QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}restart.png'),
             'loop':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}loop.png'),
             'autoplay':          QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay.png'),
             'autoplay_backward': QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay_backward.png'),
@@ -481,6 +484,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonAutoplay.contextMenuEvent = self.buttonAutoplayContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
 
+        self.buttonPause.setIcon(self.icons['pause'])
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonNext.setIcon(self.icons['cycle_forward'])
         self.buttonPrevious.setIcon(self.icons['cycle_backward'])
@@ -2140,11 +2144,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.size_label = f'{filesize / 1073741824:.2f}gb'
 
             # extra setup before we absolutely must wait for the media to finish parsing
-            self.is_paused = False                  # force_pause could be used here, but it is slightly more efficient this way
-            set_pause_button_text('𝗜𝗜')
+            self.is_paused = False                          # slightly more efficient than using `force_pause`
+            self.buttonPause.setIcon(self.icons['pause'])
             self.restarted = False
             #if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())         # force volume to quickly correct gain issue
-            self.lineOutput.clearFocus()            # clear focus from output line so it doesn't interfere with keyboard shortcuts
+            self.lineOutput.clearFocus()                    # clear focus from output line so it doesn't interfere with keyboard shortcuts
             self.current_file_is_autoplay = _from_autoplay
 
             # focus window if desired, depending on window state and autoplay/audio settings
@@ -2330,18 +2334,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if settings.checkStopOnFinish.isChecked() and player.get_state() != State.Stopped:
                 return self.stop()
 
-            play(self.video)                                            # reload video in VLC
+            # reload video in VLC and restore position
+            play(self.video)
             frame = self.frame_count
             set_player_position((frame - 2) / frame)                    # reset VLC player position (-2 frames to ensure visual update)
             emit_update_progress_signal(frame)                          # ensure UI snaps to final frame
             self.restarted = True
 
-            if qtstart.args.play_and_exit:          # force-close if requested. this is done here so as to slightly optimize normal restarts
+            # force-close if requested. done here so as to slightly optimize normal restarts
+            if qtstart.args.play_and_exit:
                 logging.info('Play-and-exit requested. Closing.')
                 return qtstart.exit(self)
 
-            while player.get_state() == State.Ended: sleep(0.005)       # wait for VLC to update the player state
-            self.force_pause(True, '⟳')                                 # forcibly re-pause VLC
+            # # wait for VLC to update the player's state
+            while player.get_state() == State.Ended: sleep(0.005)
+
+            # forcibly re-pause VLC (slightly more efficient than using `force_pause`)
+            player.set_pause(True)
+            self.is_paused = True
+            self.buttonPause.setIcon(self.icons['restart'])
+            refresh_title()
+
+            # misc cleanup
             if self.isFullScreen() and settings.checkFullScreenMediaFinishedLock.isChecked():
                 self.lock_fullscreen_ui = True      # show UI to indicate we've restarted in fullscreen (marquee doesn't work -> player is stopped)
                 self.timer_fullscreen_media_ended = QtCore.QTimer(self, interval=500, timeout=self.timerFullScreenMediaEndedEvent)
@@ -2378,33 +2392,39 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.restart()
                 set_and_update_progress(frame)
 
-            if frame >= self.maximum or frame <= self.minimum:          # play media from beginning if media is over
+            if frame >= self.maximum or frame < self.minimum:          # play media from beginning if media is over
                 self.lock_progress_updates = True
-                set_and_update_progress(self.minimum)
+                set_and_adjust_and_update_progress(self.minimum)
                 self.lock_progress_updates = False
             player.pause()                                              # actually pause VLC player
             will_pause = True if old_state == State.Playing else False  # prevents most types of pause-bugs...?
 
-        # update pause button and titlebar
-        pause_text = '▶' if will_pause else '𝗜𝗜'                        # ▷ ▶ ⏵︎
-        set_pause_button_text(pause_text)
-        if settings.checkTextOnPause.isChecked(): show_on_player(pause_text)
-        refresh_title()
-
+        # update internal property as soon as we safely can
         self.is_paused = will_pause
+
+        # update pause button
+        self.buttonPause.setIcon(self.icons['play' if will_pause else 'pause'])
+        if settings.checkTextOnPause.isChecked():
+            pause_text = '𝗜𝗜' if will_pause else '▶'                    # ▷ ▶ ⏵︎
+            show_on_player(pause_text)
+
+        refresh_title()
         self.restarted = False
         logging.debug(f'Pausing: is_paused={will_pause} old_state={old_state} frame={frame} maxframe={self.maximum}')
         return will_pause
 
 
-    def force_pause(self, paused: bool, text=None):
+    def force_pause(self, paused: bool):
         if self.is_gif: image_player.gif.setPaused(paused)
         else: player.set_pause(paused)
         self.is_paused = paused
-        set_pause_button_text(text if text is not None else '▶' if paused else '𝗜𝗜')
+
+        icon = self.icons['play' if paused else 'pause']
+        self.buttonPause.setIcon(icon)
+
         refresh_title()
-        logging.debug(f'Force-pause: paused={paused} text={text}')
-        return self.is_paused
+        logging.debug(f'Force-pause: paused={paused}')
+        return paused
 
 
     def stop(self):
@@ -4893,7 +4913,6 @@ if __name__ == "__main__":
         get_volume_scroll_increment = settings.spinVolumeScroll.value
         get_progess_slider = gui.sliderProgress.value
         set_progress_slider = gui.sliderProgress.setValue
-        set_pause_button_text = gui.buttonPause.setText
         set_hour_spin = gui.spinHour.setValue
         set_minute_spin = gui.spinMinute.setValue
         set_second_spin = gui.spinSecond.setValue

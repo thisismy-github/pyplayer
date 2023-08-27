@@ -384,7 +384,7 @@ class Ui_MainWindow(object):
         font.setPointSize(12)
         self.buttonPause.setFont(font)
         self.buttonPause.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.buttonPause.setText("𝗜𝗜")
+        self.buttonPause.setIconSize(QtCore.QSize(14, 14))
         self.buttonPause.setObjectName("buttonPause")
         self.gridLayout_3.addWidget(self.buttonPause, 0, 0, 1, 1)
         self.advanced_layout.addLayout(self.gridLayout_3, 0, 0, 1, 1)
