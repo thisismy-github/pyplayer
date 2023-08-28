@@ -2049,6 +2049,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self,
         file: str = None,
         focus_window: bool = None,
+        flash_window: bool = True,
         update_recent_list: bool = True,
         remember_old_file: bool = False,
         mime: str = None,
@@ -2211,6 +2212,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         window=self,
                         aggressive=settings.checkFocusAggressive.isChecked()
                     )
+                elif flash_window and constants.IS_WINDOWS:
+                    flash_count = (0, 1, 2, -1)[settings.comboTaskbarFlash.currentIndex()]
+                    if flash_count == 1: qthelpers.flashWindow(self, duration=1100, hold=True)
+                    elif flash_count == -1: qthelpers.flashWindow(self, flash_count)
+                    else: qthelpers.flashWindow(self, flash_count, interval=500, duration=1250 * flash_count)
 
             # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
@@ -3635,7 +3641,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
             dialog.reverse.clicked.connect(dialog.videoList.reverse)
             dialog.browse.clicked.connect(lambda: self.browse_for_save_file(dialog.output, 'concatenated video'))
-            dialog.videoList.itemDoubleClicked.connect(lambda item: self.open(item.toolTip(), focus_window=False))
+            dialog.videoList.itemDoubleClicked.connect(lambda item: self.open(item.toolTip(), focus_window=False, flash_window=False))
 
             # getting videos
             if files is None:

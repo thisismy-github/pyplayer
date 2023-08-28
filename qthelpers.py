@@ -77,6 +77,46 @@ def focusWindow(window: QtWidgets.QWidget, aggressive: bool = False) -> None:
         except: pass
     window.activateWindow()                 # focus with Qt
 
+def flashWindow(window: QtWidgets.QWidget,
+                count: int = -1,
+                interval: int = 0,
+                duration: int = 0,
+                hold: bool = False) -> None:
+    ''' Flashes a `window`'s taskbar icon every `interval` milliseconds `count`
+        times, or for `duration` milliseconds. If `hold` is True, `window` will
+        not actually flash, but instead stay a solid orange, regardless of
+        `count`. If `count` is -1, `window` flashes indefinitely until it's
+        in focus (`duration` cannot be used in this case). If `count` is 0
+        and `hold` is False, `qthelpers.stopFlashingWindow` is called. If
+        `interval` is 0, the default cursor blink rate is used.
+        NOTE: `duration` is clamped to a minimum of 1100.
+        https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-flashwinfo '''
+    if platform.system() != 'Windows': return
+    import win32gui
+    import win32con
+    hwnd = window.winId()
+    win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
+    if count == 0 and not hold: return      # ^ stop flashing to avoid potential conflicts
+    elif hold: win32gui.FlashWindow(hwnd, True)
+    else:
+        flags = win32con.FLASHW_TRAY
+        if count == -1:
+            if duration: flags |= win32con.FLASHW_TIMER
+            else: flags |= win32con.FLASHW_TIMERNOFG
+        win32gui.FlashWindowEx(hwnd, flags, count, interval)
+    if duration and (hold or count != -1):
+        QtCore.QTimer.singleShot(
+            max(1100, duration),
+            lambda: win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
+        )
+
+def stopFlashingWindow(window: QtWidgets.QWidget):
+    ''' Stops flashing `window` if it hasn't already. '''
+    if platform.system() != 'Windows': return
+    import win32gui
+    import win32con
+    win32gui.FlashWindowEx(window.winId(), win32con.FLASHW_STOP, 0, 0)
+
 def clampToScreen(window, screen: QtGui.QScreen = None,
                   resize: bool = True, move: bool = True,
                   mouseFallback: bool = True, returnScreen: bool = False,
@@ -139,7 +179,7 @@ def center(widget: QtWidgets.QWidget, target=None, screen: bool = False,
            mouse: bool = False, strict: bool = False) -> None:
     ''' Centers `widget` over `target`, which may be a widget, QRect, QPoint,
         or an (x, y) tuple. If only `screen` is True, `widget` is centered
-        over `target`'s screen, or `widget`'s own screen is `target` is None.
+        over `target`'s screen, or `widget`'s own screen if `target` is None.
         If only `mouse` is True, `widget` is centered over the mouse. If both
         are True, `widget` is centered over the mouse's screen. `widget` is
         clamped to its new screen if possible. `strict` controls whether or

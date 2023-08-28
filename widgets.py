@@ -1453,7 +1453,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         if not item: return                 # no item under mouse, return
 
         action1 = QtW.QAction('&Play')
-        action1.triggered.connect(lambda: gui.open(item.toolTip(), focus_window=False))
+        action1.triggered.connect(lambda: gui.open(item.toolTip(), focus_window=False, flash_window=False))
         action2 = QtW.QAction('&Explore')
         action2.triggered.connect(lambda: qthelpers.openPath(item.toolTip(), explore=True))
         action3 = QtW.QAction('&Remove')

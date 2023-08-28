@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-848</y>
-        <width>344</width>
-        <height>2774</height>
+        <y>-702</y>
+        <width>345</width>
+        <height>2809</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1348,6 +1348,65 @@ disabling it will have no effect until PyPlayer restarts.</string>
                 <property name="checked">
                  <bool>true</bool>
                 </property>
+               </widget>
+              </item>
+              <item row="4" column="0" colspan="2">
+               <spacer name="verticalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item row="6" column="0">
+               <widget class="QLabel" name="label_9">
+                <property name="toolTip">
+                 <string>The number of times to flash the taskbar icon when
+media is opened, but the window does not get focused.</string>
+                </property>
+                <property name="text">
+                 <string>After opening media without
+focusing, flash taskbar icon:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QComboBox" name="comboTaskbarFlash">
+                <property name="toolTip">
+                 <string>The number of times to flash the taskbar icon when
+media is opened, but the window does not get focused.</string>
+                </property>
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>Do not flash</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Flash once</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Flash 3 times</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Flash indefinitely</string>
+                 </property>
+                </item>
                </widget>
               </item>
              </layout>
