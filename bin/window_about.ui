@@ -68,7 +68,7 @@ background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgb
    <item row="3" column="0" colspan="3">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;a mediaplayer based on the &lt;a href=&quot;https://wiki.videolan.org/Python_bindings&quot; style=&quot;text-decoration: underline; color:#00aaff;&quot;&gt;python-bindings&lt;/a&gt; for &lt;a href=&quot;https://wiki.videolan.org/LibVLC&quot; style=&quot;text-decoration: underline; color:#00aaff;&quot;&gt;libVLC&lt;/a&gt; and written with &lt;/span&gt;&lt;a href=&quot;https://pythonpyqt.com&quot; style=&quot;text-decoration: underline; color:#00aaff;&quot;&gt;PyQt5&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;a mediaplayer based on the &lt;a href=&quot;https://wiki.videolan.org/Python_bindings&quot; style=&quot;text-decoration: underline; color:#00aaff;&quot;&gt;python-bindings&lt;/a&gt; for &lt;a href=&quot;https://wiki.videolan.org/LibVLC&quot; style=&quot;text-decoration: underline; color:#00aaff;&quot;&gt;libVLC&lt;/a&gt; and written with &lt;/span&gt;&lt;a href=&quot;https://pythonpyqt.com&quot; style=&quot;text-decoration: underline; color:#00aaff;&quot;&gt;PyQt5&lt;/a&gt;&lt;br&gt;if you like pyplayer, star it on github. if you hate pyplayer, star it anyways&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignHCenter|Qt::AlignTop</set>
