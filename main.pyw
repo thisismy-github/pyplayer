@@ -2345,26 +2345,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.open(command)
                     logging.info(f'(CMD) Fast-start for {command} received and handled.')
         finally:
-            self.external_command_in_progress = False    # resume fast-start interface
+            self.external_command_in_progress = False   # resume fast-start interface
 
 
-    def restart(self):
-        ''' Restarts media after it is finished playing to circumvent a strange design choice in libvlc which renders
-            finished media unusable. While simple now, it took a LOT of experimentation, refactoring, and 5 iterations
-            to reach this point. Called automatically as a callback through the MediaPlayerEndReached event <widgets.py>.
-            If --play-and-exit is specified, program exits. '''
+    def restart(self) -> int:
+        ''' "Restarts" media to circumvent strange libVLC behavior which renders
+            finished media unusable. Returns -1 if unsuccessful. This took a lot
+            more effort and experimentation to figure out than you'd think. If
+            `--play-and-exit` was specified in the command line arguments, this
+            function closes PyPlayer. This is connected to libVLC's event
+            manager in a similar manner to signals/slots in `widgets.py`. '''
         try:
             logging.info('Restarting VLC media (Restart V)')
             self.frame_override = -1                # reset frame_override in case it's set
+            video = self.video
+
+            if not exists(video):
+                log_on_statusbar('Current media no longer exists. You likely renamed, moved, or deleted it from outside PyPlayer.')
+                self.stop(icon='stop')
+                return -1
 
             # if we want to loop, reload video, reset UI, and return immediately
             if self.actionLoop.isChecked():
-                play(self.video)
+                play(video)
                 # TODO just in case doing `set_and_update_progress` causes hitches or delays, we're...
                 # ...doing an if-statement instead to ensure normal loops are slightly more seamless
+                #return set_and_update_progress(self.minimum)           # <- DOES this cause hitches?
                 if self.buttonTrimStart.isChecked(): return update_progress(0)
                 else: return set_and_update_progress(self.minimum)
-                #return set_and_update_progress(self.minimum)           # <- DOES this cause hitches?
 
             # if we want autoplay/shuffle, don't reload -> switch immediately
             if self.actionAutoplay.isChecked():
@@ -2375,11 +2383,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.cycle_media(next=next, update_recent_list=settings.checkAutoplayAddToRecents.isChecked(), autoplay=True)
 
             # if we want to stop, don't reload -> stop the player and return immediately
-            if settings.checkStopOnFinish.isChecked() and player.get_state() != State.Stopped:
-                return self.stop()
+            want_to_stop = self.mime_type == 'audio' or settings.checkStopOnFinish.isChecked()
+            if want_to_stop and player.get_state() != State.Stopped:
+                update_progress(self.frame_count)   # ensure UI is visually at the end
+                return self.stop(icon='restart')
 
             # reload video in VLC and restore position
-            play(self.video)
+            play(video)
             frame = self.frame_count
             set_player_position((frame - 2) / frame)                    # reset VLC player position (-2 frames to ensure visual update)
             emit_update_progress_signal(frame)                          # ensure UI snaps to final frame
@@ -2390,7 +2400,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 logging.info('Play-and-exit requested. Closing.')
                 return qtstart.exit(self)
 
-            # # wait for VLC to update the player's state
+            # wait for VLC to update the player's state
             while player.get_state() == State.Ended: sleep(0.005)
 
             # forcibly re-pause VLC (slightly more efficient than using `force_pause`)
@@ -2434,10 +2444,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             frame = get_progess_slider()
             old_state = player.get_state()
             if old_state == State.Stopped:
-                self.restart()
+                if self.restart() == -1:                                # restart media if currently stopped
+                    return True                                         # -1 means media doesn't exist anymore
                 set_and_update_progress(frame)
 
-            if frame >= self.maximum or frame < self.minimum:          # play media from beginning if media is over
+            if frame >= self.maximum or frame < self.minimum:           # play media from beginning if media is over
                 self.lock_progress_updates = True
                 set_and_adjust_and_update_progress(self.minimum)
                 self.lock_progress_updates = False
@@ -2475,14 +2486,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return paused
 
 
-    def stop(self):
-        ''' A more robust way of stopping - stop
-            the player while also force-pausing. '''
+    def stop(self, *args, icon: str = 'play'):      # *args to capture unused signal args
+        ''' A more robust way of stopping - stop the player while also force-
+            pausing. `icon` specifies what icon to use on the pause button. '''
         player.stop()
         image_player.gif.setFileName('')
-        self.force_pause(True)
+
+        if self.is_gif: image_player.gif.setPaused(True)
+        else: player.set_pause(True)
+        self.is_paused = True
+        self.buttonPause.setIcon(self.icons[icon])
+
+        refresh_title()
+        self.refresh_taskbar()
         if constants.IS_WINDOWS and settings.checkTaskbarIconPauseMinimized.isChecked():
             self.taskbar.clearOverlayIcon()
+
+        logging.debug('Player stopped.')
 
 
     def navigate(self, forward: bool, seconds_spinbox: QtW.QSpinBox):   # slightly longer than it could be, but cleaner/more readable
