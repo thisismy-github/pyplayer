@@ -73,7 +73,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-702</y>
+        <y>-1203</y>
         <width>345</width>
         <height>2809</height>
        </rect>
@@ -81,9 +81,6 @@
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>
         <widget class="QTabWidget" name="tabWidget">
-         <property name="toolTip">
-          <string>The action to perform when double-clicking the player.</string>
-         </property>
          <property name="currentIndex">
           <number>0</number>
          </property>
@@ -2038,14 +2035,15 @@ mode and reset the media's position.</string>
               <item row="7" column="1">
                <widget class="QCheckBox" name="checkZoomForceMinimum">
                 <property name="toolTip">
-                 <string>If checked, and the minimum zoom factor cannot
-actually be reached (i.e. the media is very small
-to begin with), the minimum zoom will be set
-relative to the media's size, not the window's.</string>
+                 <string>If checked, and the minimum zoom factor cannot actually be reached
+(i.e. the media was very small to begin with), the minimum zoom will
+be relative to the media's size instead of the window's size.
+
+(i.e. 0.25x the current media size instead of 0.25x the current window size)</string>
                 </property>
                 <property name="text">
                  <string>Zoom relative to media's size if
-minimum zoom can't be reached</string>
+min. zoom cannot be reached</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>

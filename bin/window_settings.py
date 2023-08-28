@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 345, 2809))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -1203, 345, 2809))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -403,6 +403,9 @@ class Ui_settingsDialog(object):
         self.formLayout_8.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkTaskbarControls)
         spacerItem1 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         self.formLayout_8.setItem(4, QtWidgets.QFormLayout.SpanningRole, spacerItem1)
+        self.label_9 = QtWidgets.QLabel(self.groupBox_15)
+        self.label_9.setObjectName("label_9")
+        self.formLayout_8.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.label_9)
         self.comboTaskbarFlash = QtWidgets.QComboBox(self.groupBox_15)
         self.comboTaskbarFlash.setObjectName("comboTaskbarFlash")
         self.comboTaskbarFlash.addItem("")
@@ -410,9 +413,6 @@ class Ui_settingsDialog(object):
         self.comboTaskbarFlash.addItem("")
         self.comboTaskbarFlash.addItem("")
         self.formLayout_8.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.comboTaskbarFlash)
-        self.label_9 = QtWidgets.QLabel(self.groupBox_15)
-        self.label_9.setObjectName("label_9")
-        self.formLayout_8.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.label_9)
         self.verticalLayout_3.addWidget(self.groupBox_15)
         self.groupTray = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupTray.setCheckable(True)
@@ -1684,7 +1684,7 @@ class Ui_settingsDialog(object):
         self.comboScaleImages.setCurrentIndex(0)
         self.comboScaleArt.setCurrentIndex(2)
         self.comboScaleGifs.setCurrentIndex(1)
-        self.comboTaskbarFlash.setCurrentIndex(1)
+        self.comboTaskbarFlash.setCurrentIndex(0)
         self.comboTrayMiddleClick.setCurrentIndex(2)
         self.comboSnapshotDefault.setCurrentIndex(0)
         self.comboSnapshotShift.setCurrentIndex(0)
@@ -1834,7 +1834,6 @@ class Ui_settingsDialog(object):
     def retranslateUi(self, settingsDialog):
         _translate = QtCore.QCoreApplication.translate
         settingsDialog.setWindowTitle(_translate("settingsDialog", "Settings"))
-        self.tabWidget.setToolTip(_translate("settingsDialog", "The action to perform when double-clicking the player."))
         self.comboThemes.setCurrentText(_translate("settingsDialog", "None"))
         self.comboThemes.setItemText(0, _translate("settingsDialog", "None"))
         self.label_49.setToolTip(_translate("settingsDialog", "The format to use for setting the title of the window. The\n"
@@ -2140,12 +2139,16 @@ class Ui_settingsDialog(object):
 "Note: This setting can be enabled during a session, but\n"
 "disabling it will have no effect until PyPlayer restarts."))
         self.checkTaskbarControls.setText(_translate("settingsDialog", "Show controls on thumbnail preview (requires restart)"))
+        self.label_9.setToolTip(_translate("settingsDialog", "The number of times to flash the taskbar icon when\n"
+"media is opened, but the window does not get focused."))
+        self.label_9.setText(_translate("settingsDialog", "After opening media without\n"
+"focusing, flash taskbar icon:"))
+        self.comboTaskbarFlash.setToolTip(_translate("settingsDialog", "The number of times to flash the taskbar icon when\n"
+"media is opened, but the window does not get focused."))
         self.comboTaskbarFlash.setItemText(0, _translate("settingsDialog", "Do not flash"))
         self.comboTaskbarFlash.setItemText(1, _translate("settingsDialog", "Flash once"))
         self.comboTaskbarFlash.setItemText(2, _translate("settingsDialog", "Flash 3 times"))
         self.comboTaskbarFlash.setItemText(3, _translate("settingsDialog", "Flash indefinitely"))
-        self.label_9.setText(_translate("settingsDialog", "After opening media without\n"
-"focusing, flash taskbar icon:"))
         self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"
@@ -2274,12 +2277,13 @@ class Ui_settingsDialog(object):
 "decreasing the zoom to 1.00x will disable zoom-\n"
 "mode and reset the media\'s position."))
         self.checkZoomAutoDisable1x.setText(_translate("settingsDialog", "Auto-disable zoom at 1x size"))
-        self.checkZoomForceMinimum.setToolTip(_translate("settingsDialog", "If checked, and the minimum zoom factor cannot\n"
-"actually be reached (i.e. the media is very small\n"
-"to begin with), the minimum zoom will be set\n"
-"relative to the media\'s size, not the window\'s."))
+        self.checkZoomForceMinimum.setToolTip(_translate("settingsDialog", "If checked, and the minimum zoom factor cannot actually be reached\n"
+"(i.e. the media was very small to begin with), the minimum zoom will\n"
+"be relative to the media\'s size instead of the window\'s size.\n"
+"\n"
+"(i.e. 0.25x the current media size instead of 0.25x the current window size)"))
         self.checkZoomForceMinimum.setText(_translate("settingsDialog", "Zoom relative to media\'s size if\n"
-"minimum zoom can\'t be reached"))
+"min. zoom cannot be reached"))
         self.groupBox_4.setTitle(_translate("settingsDialog", "Fullscreen controls"))
         self.label_43.setText(_translate("settingsDialog", "Fade duration"))
         self.spinFullScreenFadeDuration.setToolTip(_translate("settingsDialog", "The duration, in seconds, that the fullscreen\n"

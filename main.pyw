@@ -535,6 +535,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # create all taskbar-extensions-related widgets for windows 7-11
         self.create_taskbar_controls()
 
+        # start slider-related threads (these are safe to do before showing window)
         Thread(target=self.update_slider_thread, daemon=True).start()
         Thread(target=self.high_precision_slider_accuracy_thread, daemon=True).start()
 
@@ -3487,8 +3488,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
         if use_taskbar_progress:
-            self.taskbar_progress.setVisible(True)
-            self.taskbar_progress.setValue(0)
+            self.taskbar_progress.reset()
 
         # ensure an %out variable is in `cmd` so we have a spot to insert `outfile`
         if not outfile: outfile = infile
@@ -3556,9 +3556,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try: process.terminate()
         except: pass
 
+        # reset taskbar progress (no need to use `setVisible(False)`)
         if use_taskbar_progress:
-            self.taskbar_progress.setVisible(False)
-            self.taskbar_progress.setValue(0)
+            self.taskbar_progress.reset()
 
         # cleanup temp file, if needed
         if temp_path != infile:
@@ -4364,7 +4364,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Sets, saves, and displays the playback speed/rate for the media. '''
         old_rate = player.get_rate()
         player.set_rate(rate)
-        image_player.gif.setSpeed(rate * 100)
+        image_player.gif.setSpeed(int(rate * 100))
         self.playback_speed = rate
         if rate == 1.0 or old_rate == 1.0:              # TODO: for now, lets just force the VLC-progress for non-standard speeds
             self.reset_progress_offset = True
@@ -4394,7 +4394,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.sliderVolume.setToolTip('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%)')
             if settings.checkTextOnMute.isChecked():
                 show_on_player('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%%)')
-        except: logging.error(format_exc())
+        except:
+            logging.error(format_exc())
 
 
     def toggle_mute(self):
@@ -4856,6 +4857,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonAutoplay.setChecked(self.actionAutoplay.isChecked())
 
 
+    def refresh_confusing_zoom_setting_tooltip(self, value: float):
+        ''' Updates the values in the tooltip for a particularly confusing
+            setting to make it more obvious what the setting actually does. '''
+        settings.checkZoomForceMinimum.setToolTip(
+            constants.ZOOM_FORCE_MINIMUM_TOOLTIP_BASE.replace('?value', str(value))
+        )
+
+
     def refresh_snapshot_button_controls(self):
         default = self.snapshot_actions[settings.comboSnapshotDefault.currentIndex()]
         shift   = self.snapshot_actions[settings.comboSnapshotShift.currentIndex()]
@@ -5117,8 +5126,6 @@ if __name__ == "__main__":
 
         qtstart.connect_widget_signals(gui)             # connect signals and slots
         cfg = widgets.cfg = config.loadConfig(gui)      # create and load config (uses constants.CONFIG_PATH)
-        gui.refresh_theme_combo(set_theme=cfg.theme)    # load and set themes
-        gui.refresh_autoplay_button()                   # set appropriate autoplay button icon
 
         if not qtstart.args.minimized:                  # show UI
             gui.show()

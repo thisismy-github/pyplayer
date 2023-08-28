@@ -115,6 +115,12 @@ native aspect-ratio is used.
 
 Supports percentages, such as 50%.'''
 
+ZOOM_FORCE_MINIMUM_TOOLTIP_BASE = '''If checked, and the minimum zoom factor cannot actually be reached
+(i.e. the media was very small to begin with), the minimum zoom will
+be relative to the media's size instead of the window's size.
+
+(i.e. ?valuex the current media size instead of ?valuex the current window size)'''
+
 # ---------------------
 
 if IS_COMPILED:

@@ -111,8 +111,10 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
 # GUI Setup
 # ---------------------
 def after_show_setup(self: QtW.QMainWindow):
-    self.handle_updates_signal.emit(True)           # check for/download/validate pending updates
+    # check for/download/validate pending updates
+    self.handle_updates_signal.emit(True)
 
+    # open file if desired (we only get this far if no other sessions were open)
     if args.file:
         if not os.path.exists(args.file):
             self.refresh_title_signal.emit()
@@ -126,11 +128,14 @@ def after_show_setup(self: QtW.QMainWindow):
                 self.refresh_title_signal.emit()
                 self.log_on_statusbar_signal.emit(f'Failed to open pre-selected path: {args.file}')
                 logging.error(format_exc())
-    else: self.refresh_title_signal.emit()
+    else:
+        self.refresh_title_signal.emit()
 
+    # set last window size/pos if window still has default geometry after loading config
     if self.last_window_size is None: self.last_window_size = QtCore.QSize(*config.cfg.size)
     if self.last_window_pos is None: self.last_window_pos = QtCore.QPoint(*config.cfg.pos)
 
+    # populate recent files list
     recent_files_count = self.dialog_settings.spinRecentFiles.value()
     files = config.cfg.load('recent_files', '', '<|>', section='general')
     if recent_files_count <= 25:
@@ -141,25 +146,36 @@ def after_show_setup(self: QtW.QMainWindow):
             if len(recent_files) == recent_files_count: break
     else: self.recent_files += files[-recent_files_count:]
 
-    if config.cfg.grouptray:                        # start system tray icon
+    # start system tray icon
+    if config.cfg.grouptray:
         logging.info('Creating system tray icon...')
         self.app.setQuitOnLastWindowClosed(False)   # ensure qt does not exit until we tell it to
         self.tray_icon = get_tray_icon(self)
 
-    if constants.IS_WINDOWS:                        # enable taskbar extensions if desired
+    # enable taskbar extensions if desired
+    if constants.IS_WINDOWS:
         self.taskbar.setWindow(self.windowHandle())
         self.enable_taskbar_controls(checked=config.cfg.checktaskbarcontrols)
 
+    # manually refresh various settings
+    settings = self.dialog_settings
     self.set_trim_mode(self.trim_mode_action_group.checkedAction())
-    self.gifPlayer._imageScale = self.dialog_settings.comboScaleImages.currentIndex()
-    self.gifPlayer._artScale = self.dialog_settings.comboScaleArt.currentIndex()
-    self.gifPlayer._gifScale = self.dialog_settings.comboScaleGifs.currentIndex() + 1
-    self.vlc.set_text_height(self.dialog_settings.spinTextHeight.value())
-    self.vlc.set_text_x(self.dialog_settings.spinTextX.value())
-    self.vlc.set_text_y(self.dialog_settings.spinTextY.value())
+    self.gifPlayer._imageScale = settings.comboScaleImages.currentIndex()
+    self.gifPlayer._artScale = settings.comboScaleArt.currentIndex()
+    self.gifPlayer._gifScale = settings.comboScaleGifs.currentIndex() + 1
+    self.vlc.set_text_height(settings.spinTextHeight.value())
+    self.vlc.set_text_x(settings.spinTextX.value())
+    self.vlc.set_text_y(settings.spinTextY.value())
 
+    # setup/connect hotkeys, manually refresh various parts of UI
+    connect_shortcuts(self)
+    self.refresh_shortcuts()
+    self.refresh_autoplay_button()
+    self.refresh_snapshot_button_controls()
+    self.refresh_confusing_zoom_setting_tooltip(settings.spinZoomMinimumFactor.value())
+
+    # start command interface thread
     Thread(target=self.external_command_interface_thread, daemon=True).start()
-    connect_shortcuts(self)                         # setup and connect hotkeys
 
 
 def connect_shortcuts(self: QtW.QMainWindow):
@@ -229,8 +245,6 @@ def connect_shortcuts(self: QtW.QMainWindow):
             name = name.rstrip('_')
             self.shortcuts[name][index].activated.connect(shortcut_actions[name])
             keySequenceEdit.editingFinished.connect(get_refresh_shortcuts_lambda(keySequenceEdit))  # lambda-in-iterable workaround
-    self.refresh_shortcuts()
-    self.refresh_snapshot_button_controls()
 
 
 def connect_widget_signals(self: QtW.QMainWindow):
@@ -362,6 +376,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.comboSnapshotCtrl.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.comboSnapshotAlt.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.checkTaskbarControls.toggled.connect(self.enable_taskbar_controls)
+    settings.spinZoomMinimumFactor.valueChanged.connect(self.refresh_confusing_zoom_setting_tooltip)
 
     self.position_button_group = QtW.QButtonGroup(settings)
     for button in (settings.radioTextPosition0, settings.radioTextPosition1, settings.radioTextPosition2,
