@@ -2298,7 +2298,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif settings.checkClampOnOpen.isChecked():
                 qthelpers.clampToScreen(self)           # clamping enabled but snap/resize is disabled for this media
 
-            # reset cursor, show media title on screen, and set default subtitles
+            # update taskbar icon's toolbar, reset cursor, show media title on screen, and set default subtitles
+            self.refresh_taskbar()
             self.unsetCursor()                          # in some situations, a busy cursor might appear and get "stuck" TODO DOESN'T WORK!!
             if settings.checkTextOnOpen.isChecked():    # certain combinations of autoplay + settings can override this marquee
                 if not (settings.checkAutoplayHideMarquee.isChecked() and self.current_file_is_autoplay):

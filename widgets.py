@@ -1323,6 +1323,7 @@ class QVideoSlider(QtW.QSlider):
         ''' Unpauses the player after scrubbing, unless it was paused
             originally. Does not emit the sliderReleased signal. '''
 
+        just_restarted = False
         frame = self.pixelPosToRangeValue(event.pos())                  # get frame
         if frame < gui.minimum: gui.set_and_adjust_and_update_progress(gui.minimum, 0.1)
         elif frame > gui.maximum: gui.set_and_adjust_and_update_progress(gui.maximum, 0.1)
@@ -1334,11 +1335,15 @@ class QVideoSlider(QtW.QSlider):
                 gui.vlc.player.set_media(gui.vlc.media)
                 gui.vlc.player.play()
                 gui.set_and_adjust_and_update_progress(frame)
+            elif frame == gui.frame_count:
+                just_restarted = True
+                gui.restart()
             else:
                 gui.frame_override = frame
 
-        if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
-        else: gui.player.set_pause(False or gui.is_paused)                              # stay paused if we were paused
+        if not just_restarted:                                          # do not touch pause state if we manually restarted
+            if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
+            else: gui.player.set_pause(False or gui.is_paused)                              # stay paused if we were paused
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
         if self.underMouse(): self.last_mouseover_time = time.time()    # resume drawing timestamp after release
