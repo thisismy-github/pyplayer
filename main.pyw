@@ -2513,7 +2513,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             former was never explicitly used. '''
 
         # cycle images with basic navigation keys
-        if self.is_static_image: return self.cycle_media(next=forward)
+        if self.is_static_image:
+            return self.cycle_media(next=forward)
 
         old_frame = get_progess_slider()
         seconds = seconds_spinbox.value()
@@ -2521,12 +2522,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # calculate and update to new frame as long as it's within our bounds
         if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
             if old_frame == self.frame_count and settings.checkNavigationWrap.isChecked(): new_frame = 0
-            #else: new_frame = min(self.frame_count, old_frame + self.frame_rate_rounded * seconds)
             else: new_frame = min(self.maximum, old_frame + self.frame_rate_rounded * seconds)
-        else:   # TODO use "<= 1" as workaround for bug that causes media sometimes to play 1 frame when wrapping?
-            #if old_frame <= 1 and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            if old_frame == 0 and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            #else: new_frame = max(0, old_frame - self.frame_rate_rounded * seconds)
+        else:                                       # NOTE: only wrap start-to-end if we're paused
+            if old_frame == 0 and self.is_paused and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
             else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
 
         # set progress to new frame while doing necessary adjustments/corrections/overrides
