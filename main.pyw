@@ -828,7 +828,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if event.spontaneous():                 # only show message if closeEvent was called by OS (i.e. X button pressed)
                     self.tray_icon.showMessage('PyPlayer', 'Minimized to system tray')      # this emits messageClicked signal
                 cfg.minimizedtotraywarningignored = True
-            if settings.checkFirstFileTrayReset.isChecked():
+            if settings.checkTrayResetFirstFileOnRestore.isChecked():
                 self.first_video_fully_loaded = False
             gc.collect(generation=2)
         return event.accept()
@@ -866,7 +866,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not self.was_paused and settings.checkMinimizePause.isChecked() and settings.checkMinimizeRestore.isChecked():
                 self.force_pause(False)
         if self.isFullScreen():
-            self.set_fullscreen(True)               # restore fullscreen UI
+            self.set_fullscreen(True)                   # restore fullscreen UI
         gc.collect(generation=2)
 
 
@@ -4362,6 +4362,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2}
 
 
+    def get_hotkey_full_string(self, hotkey: str):
+        ''' Returns a string in the format " (key1/key2)" for the given `hotkey`
+            group, where key1 and key2 are the two `QKeySequenceFlexibleEdit`'s.
+            Example: "mute" would return one the following:
+            1. `" ({settings.mute.toString()}/{settings.mute_.toString()})"`
+            2. `" ({settings.mute.toString()}"`
+            3. `" ({settings.mute_.toString()}"`
+            4. `""` '''
+        hotkey1 = getattr(settings, hotkey).toString()
+        hotkey2 = getattr(settings, hotkey + '_').toString()
+        if hotkey1 and hotkey2: hotkey_string = f' ({hotkey1}/{hotkey2})'
+        elif hotkey1:           hotkey_string = f' ({hotkey1})'
+        elif hotkey2:           hotkey_string = f' ({hotkey2})'
+        else:                   hotkey_string = ''
+        return hotkey_string
+
+
     def add_info_actions(self, context: QtW.QMenu):
         context.addSeparator()
         context.addAction(f'Size: {self.size_label}').setEnabled(False)
@@ -4370,7 +4387,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def swap_slider_styles(self):
-        ''' Used to switch between high-precision and low-precision sliders in update_slider_thread. '''
+        ''' Used to switch between high-precision and
+            low-precision sliders in update_slider_thread. '''
         self.swap_slider_styles_queued = True
 
 
@@ -4462,16 +4480,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             base_volume = get_volume_slider()
             boost = self.volume_boost
 
-            if muted:
-                hotkey1 = settings.mute.toString()
-                hotkey2 = settings.mute_.toString()
-                if hotkey1 and hotkey2: hotkey_string = f' ({hotkey1}/{hotkey2})'
-                elif hotkey1:           hotkey_string = f' ({hotkey1})'
-                elif hotkey2:           hotkey_string = f' ({hotkey2})'
-                else:                   hotkey_string = ''
-                marq = f'Muted{hotkey_string}'
+            if muted: marq = f'Muted{self.get_hotkey_full_string("mute")}'
             elif boost == 1.0: marq = f'Unmuted ({base_volume}%%)'
-            else: marq = f'Unmuted ({base_volume}% -> {base_volume * boost:.0f}%)\n{boost:.1f}x volume boost'
+            else: marq = f'Unmuted ({base_volume}%% -> {base_volume * boost:.0f}%%)\n{boost:.1f}x volume boost'
 
             if settings.checkTextOnMute.isChecked():
                 show_on_player(marq)
@@ -4956,12 +4967,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         boosted_volume = base_volume * boost
 
         if muted:
-            hotkey1 = settings.mute.toString()
-            hotkey2 = settings.mute_.toString()
-            if hotkey1 and hotkey2: hotkey_string = f' ({hotkey1}/{hotkey2})'
-            elif hotkey1:           hotkey_string = f' ({hotkey1})'
-            elif hotkey2:           hotkey_string = f' ({hotkey2})'
-            else:                   hotkey_string = ''
+            hotkey_string = self.get_hotkey_full_string('mute')
             if boost == 1.0: tooltip = f'{boosted_volume:.0f}%\nMuted{hotkey_string}'
             else: tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)\nMuted{hotkey_string}'
         elif boost == 1.0: tooltip = f'{boosted_volume:.0f}%'

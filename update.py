@@ -261,3 +261,4 @@ def update_migration(self, old_version: str) -> None:
         settings.comboScaleImages.setCurrentIndex(settings.comboScaleImages.currentIndex() + 1)
         settings.comboScaleArt.setCurrentIndex(settings.comboScaleArt.currentIndex() + 1)
         settings.checkFocusIgnoreAutoplay.setChecked(config.cfg.loadFrom('settings', 'checkignorefocuswithautoplay', True))
+        settings.checkTrayResetFirstFileOnRestore.setChecked(config.cfg.loadFrom('settings', 'checkfirstfiletrayreset', True))

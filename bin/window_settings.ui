@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1203</y>
-        <width>345</width>
-        <height>2809</height>
+        <y>-715</y>
+        <width>339</width>
+        <height>2810</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -553,26 +553,6 @@ next file that will play will still be file #6.</string>
                </property>
                <property name="text">
                 <string>Cycle media based on file's original filepath (tristate)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="17" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkFirstFileTrayReset">
-               <property name="toolTip">
-                <string>If checked, minimizing to the system tray,
-restoring, and opening a new piece of media
-will count as opening media for the first time,
-for any setting that mentions &quot;the first media
-file you open.&quot;</string>
-               </property>
-               <property name="text">
-                <string>&quot;First media file&quot; resets when using system tray</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -1470,7 +1450,7 @@ lower significantly and settle around 7-8mb
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
+              <item row="3" column="1">
                <widget class="QComboBox" name="comboTrayMiddleClick">
                 <property name="toolTip">
                  <string>The action to perform when middle-clicking the system tray icon.</string>
@@ -1500,13 +1480,32 @@ lower significantly and settle around 7-8mb
                 </item>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item row="3" column="0">
                <widget class="QLabel" name="label_10">
                 <property name="toolTip">
                  <string>The action to perform when middle-clicking the system tray icon.</string>
                 </property>
                 <property name="text">
                  <string>Middle-click behavior</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkTrayResetFirstFileOnRestore">
+                <property name="toolTip">
+                 <string>If checked, the first media file opened after minimizing
+to the tray and restoring will be treated like the first file
+opened for that session. Affects any setting that is based
+on &quot;the first media file you open.&quot;</string>
+                </property>
+                <property name="text">
+                 <string>&quot;First media file&quot; resets when using system tray</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+                <property name="tristate">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>

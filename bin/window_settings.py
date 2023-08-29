@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -1203, 345, 2809))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -715, 339, 2810))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -174,11 +174,6 @@ class Ui_settingsDialog(object):
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
         self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
-        self.checkFirstFileTrayReset = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkFirstFileTrayReset.setChecked(True)
-        self.checkFirstFileTrayReset.setTristate(True)
-        self.checkFirstFileTrayReset.setObjectName("checkFirstFileTrayReset")
-        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkFirstFileTrayReset)
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
@@ -434,10 +429,15 @@ class Ui_settingsDialog(object):
         self.comboTrayMiddleClick.addItem("")
         self.comboTrayMiddleClick.addItem("")
         self.comboTrayMiddleClick.addItem("")
-        self.formLayout_15.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.comboTrayMiddleClick)
+        self.formLayout_15.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.comboTrayMiddleClick)
         self.label_10 = QtWidgets.QLabel(self.groupTray)
         self.label_10.setObjectName("label_10")
-        self.formLayout_15.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_10)
+        self.formLayout_15.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_10)
+        self.checkTrayResetFirstFileOnRestore = QtWidgets.QCheckBox(self.groupTray)
+        self.checkTrayResetFirstFileOnRestore.setChecked(True)
+        self.checkTrayResetFirstFileOnRestore.setTristate(True)
+        self.checkTrayResetFirstFileOnRestore.setObjectName("checkTrayResetFirstFileOnRestore")
+        self.formLayout_15.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.checkTrayResetFirstFileOnRestore)
         self.verticalLayout_3.addWidget(self.groupTray)
         self.groupHover = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupHover.setCheckable(True)
@@ -1980,12 +1980,6 @@ class Ui_settingsDialog(object):
 "file #5, but then rename it so that it becomes file #1, the\n"
 "next file that will play will still be file #6."))
         self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
-        self.checkFirstFileTrayReset.setToolTip(_translate("settingsDialog", "If checked, minimizing to the system tray,\n"
-"restoring, and opening a new piece of media\n"
-"will count as opening media for the first time,\n"
-"for any setting that mentions \"the first media\n"
-"file you open.\""))
-        self.checkFirstFileTrayReset.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
         self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
 "recycle bin instead of being immediately/permanently deleted."))
         self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
@@ -2178,6 +2172,11 @@ class Ui_settingsDialog(object):
         self.comboTrayMiddleClick.setItemText(3, _translate("settingsDialog", "Toggle mute"))
         self.label_10.setToolTip(_translate("settingsDialog", "The action to perform when middle-clicking the system tray icon."))
         self.label_10.setText(_translate("settingsDialog", "Middle-click behavior"))
+        self.checkTrayResetFirstFileOnRestore.setToolTip(_translate("settingsDialog", "If checked, the first media file opened after minimizing\n"
+"to the tray and restoring will be treated like the first file\n"
+"opened for that session. Affects any setting that is based\n"
+"on \"the first media file you open.\""))
+        self.checkTrayResetFirstFileOnRestore.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
         self.groupHover.setTitle(_translate("settingsDialog", "Show timestamps when hovering"))
         self.label_3.setText(_translate("settingsDialog", "Font"))
         self.label_5.setText(_translate("settingsDialog", "Font size"))
