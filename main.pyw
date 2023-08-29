@@ -447,28 +447,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.playback_speed = 1.0
 
         # misc setup
-        self.increment_volume = lambda inc: set_volume_slider(get_volume_slider() + inc)
+        self.player = self.vlc.player                                        # NOTE: this is a secondary alias for other files to use
         self.is_trim_mode = lambda: self.trim_mode_action_group.checkedAction() in (self.actionTrimAuto, self.actionTrimPrecise)
-        self.statusbar.addPermanentWidget(self.save_progress_bar)            # TODO could QWIDGETMAXSIZE be used to span the widget across the entire statusbar?
         self.menuRecent.setToolTipsVisible(True)
         self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuTrimMode)
         self.menuAudio.addAction(self.actionResize)
-        self.player = self.vlc.player                                        # NOTE: this is a secondary alias for other files to use
-        self.sliderVolume.keyPressEvent = self.keyPressEvent                 # pass sliderVolume key presses directly to GUI_Instance
-        self.sliderVolume.keyReleaseEvent = self.keyReleaseEvent
-        self.sliderProgress.dragEnterEvent = self.vlc.dragEnterEvent         # reuse player's drag-and-drop code for slider
-        self.sliderProgress.dropEvent = self.vlc.dropEvent
-        self.frameAdvancedControls.setDragTarget(self)
         self.dockControls.setTitleBarWidget(QtW.QWidget(self.dockControls))  # disables QDockWidget's unique titlebar
-        self.dockControls.leaveEvent = self.leaveEvent                       # ensures leaving dockControls hides cursor/controls in fullscreen
-        self.dockControls.resizeEvent = self.dockControlsResizeEvent         # ensures dockControls correctly hides/shows widgets in fullscreen
-        self.dockControls.keyPressEvent = self.keyPressEvent                 # pass dockControls key presses directly to GUI_Instance
-        self.dockControls.keyReleaseEvent = self.keyReleaseEvent
         self.lineOutput.setIgnoreAll(False)
-
+        self.frameAdvancedControls.setDragTarget(self)
+        self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
         for spin in (self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame):
             spin.setProxyWidget(self)
 
+        # setup progress bar embedded within the status bar
+        self.statusbar.addPermanentWidget(self.save_progress_bar)            # TODO could QWIDGETMAXSIZE be used to span the widget across the entire statusbar?
         self.save_progress_bar.setMaximum(0)
         self.save_progress_bar.setMaximumHeight(16)
         self.save_progress_bar.setFormat('Saving (%p%)')                     # TODO add "(%v/%m frames)"?
@@ -476,10 +468,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar.setSizePolicy(QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Expanding)
         self.save_progress_bar.hide()
 
-        self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
-
         # set custom one-off event handlers for various widgets
-        self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
+        self.sliderVolume.keyPressEvent = self.keyPressEvent                 # pass sliderVolume key presses directly to GUI_Instance
+        self.sliderVolume.keyReleaseEvent = self.keyReleaseEvent
+        self.sliderProgress.dragEnterEvent = self.vlc.dragEnterEvent         # reuse player's drag-and-drop code for slider
+        self.sliderProgress.dropEvent = self.vlc.dropEvent
+        self.dockControls.leaveEvent = self.leaveEvent                       # ensures leaving dockControls hides cursor/controls in fullscreen
+        self.dockControls.resizeEvent = self.dockControlsResizeEvent         # ensures dockControls correctly hides/shows widgets in fullscreen
+        self.dockControls.keyPressEvent = self.keyPressEvent                 # pass dockControls key presses directly to GUI_Instance
+        self.dockControls.keyReleaseEvent = self.keyReleaseEvent
+
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
@@ -488,9 +486,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.buttonAutoplay.contextMenuEvent = self.buttonAutoplayContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
+        self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.frameVolume.contextMenuEvent = self.frameVolumeContextMenuEvent
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
 
+        # set default icons for various buttons
         self.buttonPause.setIcon(self.icons['pause'])
         self.buttonLoop.setIcon(self.icons['loop'])
         self.buttonNext.setIcon(self.icons['cycle_forward'])
@@ -872,7 +872,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else: player.set_xwindow(self.vlc.winId())                              # Linux (sometimes)
 
         # strangely, closing/reopening the window applies an alignment to our QVideoPlayer/QWidget (very bad)
-        self.gridLayout.setAlignment(self.vlc, Qt.Alignment())          # reset alignment to nothing
+        self.gridLayout.setAlignment(self.vlc, Qt.Alignment())                  # reset alignment to nothing
 
         if event.spontaneous():
             if not self.was_paused and settings.checkMinimizePause.isChecked() and settings.checkMinimizeRestore.isChecked():
@@ -1012,7 +1012,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if mod & Qt.ControlModifier:                    # TODO add more scrolling modifiers and show options like drag/drop does
             self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
             refresh_title()
-        else: self.increment_volume(get_volume_scroll_increment() if add else -get_volume_scroll_increment())
+        else:
+            inc = get_volume_scroll_increment()
+            set_volume_slider(get_volume_slider() + (inc if add else -inc))
         event.accept()
 
 
@@ -1133,7 +1135,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # main shortcut actions (only show copy image action if there's something to copy)
         context.addAction(self.actionStop)
         if self.mime_type != 'audio' or image_player.pixmap():
-            context.addAction(self.refresh_copy_image_action())
+            self.refresh_copy_image_action()
+            context.addAction(self.actionCopyImage)
         context.addAction(self.actionSettings)
 
         # add all menubar menus
@@ -1244,7 +1247,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addAction(self.actionCopyFile)
         context.addAction(self.actionCutFile)
         if image_player.pixmap():       # add "Copy image" action if we're viewing an image
-            context.addAction(self.refresh_copy_image_action())
+            self.refresh_copy_image_action()
+            context.addAction(self.actionCopyImage)
 
         self.add_info_actions(context)
         context.exec(event.globalPos())
@@ -1270,7 +1274,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context = QtW.QMenu(self)
         for index, action in enumerate(self.menuSnapshots.actions()):
             if index == 2 and image_player.pixmap():
-                context.addAction(self.refresh_copy_image_action())
+                self.refresh_copy_image_action()
+                context.addAction(self.actionCopyImage)
             context.addAction(action)
         context.exec(event.globalPos())
 
@@ -2578,6 +2583,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def force_pause(self, paused: bool):
+        ''' Immediately set pause-state to `paused`, without
+            clamping, wrapping, restarting, or showing marquees. '''
         if self.is_gif: image_player.gif.setPaused(paused)
         else: player.set_pause(paused)
         self.is_paused = paused
@@ -2611,11 +2618,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def navigate(self, forward: bool, seconds_spinbox: QtW.QSpinBox):   # slightly longer than it could be, but cleaner/more readable
-        ''' Navigates `forward` or backwards through the current media by the
-            value specified in `seconds_spinbox`.
+        ''' Navigates `forward` or backwards through the current
+            media by the value specified in `seconds_spinbox`.
 
-            NOTE: `seconds` has been replaced by `seconds_spinbox` since the
-            former was never explicitly used. '''
+            NOTE: `seconds` has been replaced by `seconds_spinbox`
+            since the former was never explicitly used. '''
 
         # cycle images with basic navigation keys
         if self.is_static_image:
@@ -2652,11 +2659,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def rename(self, new_name: str = None):
         ''' Renames the current media to `new_name`. If `new_name` is blank,
             self.lineOutput is used. See `get_renamed_output` for details. '''
+
+        # prepare aliases/variables, then stop the player
         old_name = self.video
         new_name, basename_no_ext, ext = self.get_renamed_output(new_name)
         if new_name is None: return                 # `get_renamed_output` failed to create a valid output path
         was_paused = self.is_paused
         self.stop()                                 # player must be stopped before we can rename
+
+        # actually rename the media
         try:
             try:
                 os.renames(old_name, new_name)
@@ -2759,8 +2770,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 `psz_filepath` - the path of a file or a folder to save the snapshot into.
                 `i_width` - the snapshot's width.
                 `i_height` - the snapshot's height. '''
-        frame = get_progess_slider()    # immediately get frame, regardless of whether we need it or not
 
+        # aliases/variables
+        frame = get_progess_slider()    # immediately get frame, regardless of whether we need it or not
         mime = self.mime_type
         video = self.video
         must_pause = settings.checkSnapshotPause.isChecked() or mode == 'full'
@@ -3452,9 +3464,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def _update_progress_slot(self, frame: float):
-        ''' A slot for update_progress_signal which updates our progress in a thread-safe manner and without slowing
-            down update_slider_thread. Takes `frame` as a float in order to handle partial frames caused by
-            non-1 playback speeds. Saves the partial frame for later use as updates use an integer frame. '''
+        ''' A slot for updating the UI in a thread-safe manner without slowing
+            down `self.update_slider_thread`. Takes `frame` as a float in order
+            to handle fractional frames caused by non-1x playback speeds. Casts
+            `frame` to an int and saves the remainder for the next call. '''
         # TODO: fractional_frame might not work as well as I hope
         frame += self.fractional_frame                  # add previous partial frame to get true position
         int_frame = int(frame)
@@ -3529,8 +3542,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: self.lock_progress_updates = False             # always release lock on progress updates
 
 
-    def update_frame_spin(self, frame: int):
-        ''' If media is paused, updates UI based on frame spinbox's new value. '''
+    def update_frame_spin(self, frame: int):                    # TODO this probably should be renamed
+        ''' Sets progress to `frame` if media is paused. This is meant as a
+            slot for `self.spinFrame` - Do not use this for frame seeking. '''
         try:
             if self.is_paused and not self.lock_progress_updates:
                 try:
@@ -3539,10 +3553,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     #player.next_frame()                        # NOTE: this unfortunately does not fix the issues with frame-seeking at the end of a file
                 except: logging.warning(f'Abnormal error while locking/setting/updating progress: {format_exc()}')
                 finally: self.lock_progress_updates = False     # always release lock on progress updates
-        except: logging.warning(f'Abnormal error while updating frame-spins: {format_exc()}')
+        except:
+            logging.warning(f'Abnormal error while updating frame-spins: {format_exc()}')
 
 
     def manually_update_current_time(self):
+        ''' Sets progress to the timestamp within `self.lineCurrentTime`.
+            Supports various formats, including percentages and raw seconds. '''
         text = self.lineCurrentTime.text().strip()
         if not text: return
         logging.info(f'Manually updating current time "label" to {text}')
@@ -3581,6 +3598,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         start_text: str = 'Saving (%p%)',
         active_text: str = 'Saving (%p%)'
     ) -> str:
+        ''' Executes an FFmpeg `cmd` on `infile` and outputs to `outfile`,
+            showing a progress bar on both the statusbar and the taskbar
+            icon (on Windows) by parsing FFmpeg's output. "%in" and "%out" will
+            be replaced within `cmd` if provided. If `outfile` is specified,
+            "%out" will be appended to the end of `cmd` if needed. "%in" does
+            not necessarily need to be included.
+
+            `frame_rate_hint` is used as a hint for the progress bar for files
+            that may not actually have a "frame rate" (such as audio files),
+            allowing them to still be tracked relative to some sort of total,
+            predefined frame count.
+
+            `start_text` specifies what text should be used on the progress bar
+            before the first progress update is parsed, with `active_text` being
+            after. Valid QProgressBar format variables: %p - percent complete,
+            %v - raw current value (frame), %m - raw max value (frame count).
+
+            Returns the actual final output path. '''
         start = get_time()
 
         # aliases, then show progress bar and set progress bar format text
@@ -3678,6 +3713,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_trim_start(self, *args, force=False):
+        ''' Validates a start-point marker and updates the UI accordingly.
+            If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
         if not self.video: return self.buttonTrimStart.setChecked(False)
         if self.is_static_image: return self.buttonTrimStart.setChecked(False)
         if force: self.buttonTrimStart.setChecked(True)         # force-check trim button, typically used from context menu
@@ -3689,7 +3726,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return log_on_statusbar('You cannot set the start of your trim after the end of it.')
             self.minimum = desired_minimum
 
-            h, m, s, ms = get_hms(self.current_time)  # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)            # use cleaner format for time-strings on videos > 1 hour
             if self.duration_rounded < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
             else: self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_minimum = True
@@ -3700,6 +3737,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_trim_end(self, *args, force=False):
+        ''' Validates an end-point marker and updates the UI accordingly.
+            If `force` is True, `self.buttonTrimEnd` is forcibly checked. '''
         if not self.video: return self.buttonTrimEnd.setChecked(False)
         if self.is_static_image: return self.buttonTrimEnd.setChecked(False)
         if force: self.buttonTrimEnd.setChecked(True)           # force-check trim button, typically used from context menu
@@ -3722,6 +3761,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_trim_mode(self, action: QtW.QAction):
+        ''' Updates UI/tooltips for `action`'s associated trim mode. '''
         cfg.trimmodeselected = True
         if action in (self.actionTrimAuto, self.actionTrimPrecise):
             self.buttonTrimStart.setText(self.buttonTrimStart.text().replace(' Fade to ', 'Start'))
@@ -3736,6 +3776,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def concatenate(self, action: QtW.QAction, files=None):                             # TODO this is old and needs to be unified with the other edit methods
+        ''' Opens a separate dialog for concatenation because I'm too lazy
+            to incorporate this into the main saving implementation. '''
         # https://stackoverflow.com/questions/7333232/how-to-concatenate-two-mp4-files-using-ffmpeg
         # https://stackoverflow.com/questions/31691943/ffmpeg-concat-produces-dts-out-of-order-errors
         if not constants.verify_ffmpeg(self, force_warning=True):
@@ -3838,7 +3880,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
-        ''' Resizes the dimensions of video files, and changes the length of audio files. '''
+        ''' Resizes the dimensions of video files,
+            and changes the length of audio files. '''
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
         width, height = self.show_size_dialog()
         if width is None: return            # dialog canceled
@@ -4032,6 +4075,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def show_size_dialog(self, snapshot=False):
+        ''' Opens a dialog for choosing a new size/length for a given file.
+            If `snapshot` is True, additional options for quality and format
+            are provided. '''
         dimensions = snapshot or self.mime_type != 'audio'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
@@ -4289,10 +4335,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def handle_updates(self, _launch=False):
-        ''' Handles validating/checking updates as well as updating the settings dialog. Updates
-            are only validated on launch, and if 'update_report.txt' is present. Update checks only
-            occur on launch if it has been spinUpdateFrequency days since the last check. The last
-            check date is only saved down to the day so that checks on launch are more predictable. '''
+        ''' Handles update-checking/validation as well as updating the settings
+            dialog. Updates validation only occurs on launch, and only if
+            "update_report.txt" is present. Update checks only occur on
+            launch if it has been `spinUpdateFrequency.value()` days since
+            the last check. The last check date is only saved down to the
+            day so that launch-checks are more predictable. '''
         if self.checking_for_updates: return            # prevent spamming the "check for updates" button
         just_updated = False
 
@@ -4328,11 +4376,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def _handle_updates(self, results: dict, popup_kwargs: dict):
-        ''' A slot for update.check_for_update which cleans up and handles the results of an update
-            check, if any, in a thread-safe manner. `results` is a dict containing either 'failed'
-            to represent that there was an unusual error that could still indicate a pending update
-            (mismatched URL format on Github, for example), or 'latest_version_url'. `popup_kwargs`
-            are the keyword-arguments needed to construct the relevant QMessageBox. '''
+        ''' A slot for `update.check_for_update` which cleans up and handles
+            the `results` of an update check, if any, in a thread-safe manner.
+
+            `results` contains one of two keys:
+            1. 'failed' - An error occurred. There may still be a pending update
+            (URL might have had a mismatched format on GitHub, for example).
+            2. 'latest_version_url' - The URL to download the update from.
+
+            `popup_kwargs` are a dict of keyword-arguments needed to construct
+            the relevant QMessageBox for the user, depending on `results`. '''
         try:
             logging.info(f'Cleaning up after update check. results={results}')
             settings_were_open = settings.isVisible()   # hide the always-on-top settings while we show popups
@@ -4448,7 +4501,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def set_fullscreen(self, fullscreen: bool):
         ''' Toggles fullscreen-mode on and off. Saves window-state to
-            self.was_maximized to remember if the window is maximized
+            `self.was_maximized` to remember if the window is maximized
             or not and restore the window accordingly. '''
         self.dockControls.setFloating(fullscreen)       # FramelessWindowHint and WindowStaysOnTopHint not needed
         if fullscreen:  # TODO: figure out why dockControls won't resize in fullscreen mode -> strange behavior when showing/hiding control-frames
@@ -4485,7 +4538,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_playback_speed(self, rate: float):
-        ''' Sets, saves, and displays the playback speed/rate for the media. '''
+        ''' Sets, saves, and displays the playback `rate` for the media. '''
         old_rate = player.get_rate()
         player.set_rate(rate)
         image_player.gif.setSpeed(int(rate * 100))
@@ -4493,11 +4546,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if rate == 1.0 or old_rate == 1.0:              # TODO: for now, lets just force the VLC-progress for non-standard speeds
             self.reset_progress_offset = True
             self.swap_slider_styles_queued = True
-        if settings.checkTextOnSpeed.isChecked(): show_on_player(f'{rate:.2f}x', 1000)
+        if settings.checkTextOnSpeed.isChecked():
+            show_on_player(f'{rate:.2f}x', 1000)
         log_on_statusbar(f'Playback speed set to {rate:.2f}x')
 
 
     def set_volume(self, volume) -> int:
+        ''' Sets and displays `volume`, multiplied by `self.volume_boost`.
+            Quietly unmutes player if necessary. Returns the new boosted
+            volume, or -1 if unsuccessful. '''
         try:
             boost = self.volume_boost
             boosted_volume = int(volume * boost)
@@ -4515,6 +4572,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_volume_boost(self, value: float = 1.0, increment: bool = False):
+        ''' Sets `self.volume_boost` to `value`, or increments it by `value`
+            if `increment` is True. Refreshs UI and displays marquee. '''
         base_volume = self.sliderVolume.value()
         if increment: boost = max(0.5, min(5, self.volume_boost + value))
         else: boost = max(0.5, min(5, value))
@@ -4529,6 +4588,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def set_mute(self, muted: bool) -> int:
+        ''' Sets mute-state to `muted`, updates UI, and shows a marquee.
+            Returns the player's new internal mute-state value. '''
         try:
             player.audio_set_mute(muted)
             self.sliderVolume.setEnabled(not muted)     # disabled if muted, enabled if not muted
@@ -4547,10 +4608,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def toggle_mute(self):
+        ''' Toggles mute-state to the opposite of
+            `self.sliderVolume`'s enable-state. '''
         self.set_mute(self.sliderVolume.isEnabled())
 
 
     def set_advancedcontrols_visible(self, visible: bool):
+        ''' Sets visibility of the advanced controls (controls beneath
+            the progress bar and above the status bar) to `visible`. '''
         self.vlc.last_invalid_snap_state_time = get_time()
         self.actionShowAdvancedControls.setChecked(visible)
         self.frameAdvancedControls.setVisible(visible)
@@ -4716,7 +4781,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if log: log_on_statusbar('Crop mode disabled.')
 
 
-    def is_snap_mode_enabled(self):
+    def is_snap_mode_enabled(self) -> bool:
+        ''' Returns True if snap-modes can be used on the current mime type. '''
         mime = self.mime_type
         if mime == 'audio': return image_player.pixmap() and settings.checkSnapArt.isChecked()
         elif mime == 'video': return settings.checkSnapVideos.isChecked()
@@ -4724,7 +4790,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else: return settings.checkSnapImages.isChecked()
 
 
-    def snap_to_player_size(self, shrink=False, force_instant_resize=False):
+    def snap_to_player_size(self, shrink: bool = False, force_instant_resize: bool = False):
+        ''' Resizes the window to match what the internal player is actually
+            showing, without black bars. If `shrink` is False, the window will
+            find the average between the current size and the player's size.
+            If `force_instant_resize` is True, the resize will happen instantly,
+            regardless of settings. Clamps to screen afterwards if desired. '''
         if self.video and not self.isMaximized() and not self.isFullScreen():
             vlc_size = self.vlc.size()
             expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
@@ -4765,13 +4836,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def snap_to_native_size(self):
-        if not self.video: return
+        ''' Resizes the window to the current media's native resolution, unless
+            it's an audio file without cover art. Clamps to screen afterwards. '''
+        if not self.video or (self.mime_type == 'audio' and not image_player.pixmap()): return
         excess_height = self.height() - self.vlc.height()
         self.resize(self.vwidth, self.vheight + excess_height)
         qthelpers.clampToScreen(self)
 
 
     def cycle_track(self, track_type: str):
+        ''' Cycles to the next valid `track_type` ("video", "audio", or
+            "subtitle"), if one is available. Depending on settings, this
+            may loop back around to either "Disabled" or track #1. Displays
+            a marquee if cycle could not play a new track. '''
         types = {'video':    (player.video_get_track_description, player.video_get_track_count, player.video_get_track),
                  'audio':    (player.audio_get_track_description, player.audio_get_track_count, player.audio_get_track),
                  'subtitle': (player.video_get_spu_description, player.video_get_spu_count,   player.video_get_spu)}
@@ -4804,19 +4881,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             marquee(f'No {track_type} tracks available', marq_key='TrackChanged', log=False)
 
 
-    def set_track(self, track_type: str, track: int = -1, true_index: int = None, title: str = None):
+    def set_track(self, track_type: str, track: int = -1, index_hint: int = None, title: str = None):
+        ''' Sets `track_type` ("video", "audio", or "subtitle") to `track`,
+            which can be either the `track`'s index or its associated
+            `QtW.QAction`. If provided, `index_hint` is the index to
+            show in the marquee instead of the garbage nonsense number
+            that it probably was. `title` is the custom title to use in
+            the marquee. This must be provided manually.'''
         types = {'video':    (-1, player.video_set_track),      # -1 = disabled, 0 = track 1
                  'audio':    (0,  player.audio_set_track),      # -1 = disabled, 1 = track 1
                  'subtitle': (1,  player.video_set_spu)}        # -1 = disabled, 2 = track 1
         offset_from_1, _set_track = types[track_type]
 
         if isinstance(track, QtW.QAction):                      # `track` is actually a QAction
-            true_index = int(track.toolTip())                   # true index is stored in the action's tooltip
+            index_hint = int(track.toolTip())                   # true index is stored in the action's tooltip
             track = track.data()                                # track index is stored in the action's `data` property
 
         # actually set the track, then choose what number we're going to show in the marquee
         _set_track(track)
-        track_index = true_index if true_index is not None else (track - offset_from_1)
+        track_index = index_hint if index_hint is not None else (track - offset_from_1)
 
         # check if `title` is actually unique and not something like "Track 1"
         if title is not None:
@@ -4903,9 +4986,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def _refresh_title_slot(self):                              # TODO this could theoretically be much faster, but is it worth it?
-        ''' Updates the window's titlebar using various variables, based on
-            `lineWindowTitleFormat`. This can be called directly, but you
-            probably shouldn't. '''
+        ''' Updates the window's titlebar using various variables,
+            based on `lineWindowTitleFormat`. This can be called
+            directly, but you probably shouldn't. '''
         if self.video:
             path = self.video
             basepath, name = os.path.split(path)
@@ -4944,13 +5027,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def refresh_copy_image_action(self):
+        ''' Updates `self.actionCopyImage`'s text to the current context,
+            i.e. "Copy image" for an image or "Copy cropped frame" for a
+            video with crop-mode enabled, etc. '''
         mime = self.mime_type
         cropped = self.actionCrop.isChecked()
         if mime == 'audio': text = 'Copy cover art'
         elif mime == 'video' or self.is_gif: text = 'Copy cropped frame' if cropped else 'Copy frame'
         else: text = 'Copy cropped image' if cropped else 'Copy image'
         self.actionCopyImage.setText('&' + text)
-        return self.actionCopyImage
 
 
     def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
@@ -5032,6 +5117,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def refresh_snapshot_button_controls(self):
+        ''' Updates the various actions that the snapshot button
+            can perform, updating the tooltip accordingly. '''
         default = self.snapshot_actions[settings.comboSnapshotDefault.currentIndex()]
         shift   = self.snapshot_actions[settings.comboSnapshotShift.currentIndex()]
         ctrl    = self.snapshot_actions[settings.comboSnapshotCtrl.currentIndex()]

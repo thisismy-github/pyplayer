@@ -208,8 +208,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minusframe':         self.spinFrame.stepDown,
         'plusspeed':          lambda: self.set_playback_speed(self.playback_speed + 0.05),
         'minusspeed':         lambda: self.set_playback_speed(self.playback_speed - 0.05),
-        'plus5volume':        lambda: self.increment_volume(5),
-        'minus5volume':       lambda: self.increment_volume(-5),
+        'plus5volume':        lambda: self.sliderVolume.setValue(self.sliderVolume.value() + 5),
+        'minus5volume':       lambda: self.sliderVolume.setValue(self.sliderVolume.value() - 5),
         'plusvolumeboost':    lambda: self.set_volume_boost(0.5, increment=True),
         'minusvolumeboost':   lambda: self.set_volume_boost(-0.5, increment=True),
         'mute':               self.toggle_mute,
@@ -265,6 +265,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.sliderVolume.valueChanged.connect(self.set_volume)
     self.buttonPause.clicked.connect(self.pause)
     self.actionOpen.triggered.connect(self.open)
+    self.menuFile.aboutToShow.connect(self.refresh_copy_image_action)
     self.menuRecent.aboutToShow.connect(self.refresh_recent_menu)
     self.actionClearRecent.triggered.connect(lambda: self.recent_files.clear())    # TODO why won't .clear work on its own?
     self.actionExploreMediaPath.triggered.connect(self.explore)
