@@ -1,4 +1,4 @@
-from PyQt5 import QtGui
+from PyQt5 import QtGui, QtCore
 from PyQt5 import QtWidgets as QtW
 from bin.configparsebetter import ConfigParseBetterQt
 import constants
@@ -16,20 +16,22 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     start = time.time()
     load = cfg.load
     settings = gui.dialog_settings
-    screen = gui.app.primaryScreen().size()
 
     if filename: cfg.setFilepath(filename)
     try: cfg.read(filename)
     except: cfg.read(filename, encoding=None)
 
     cfg.setSection('window')
-    gui.resize(*load('size', '871,588', ',', int, tuple))
-    gui.move(*load('pos', f'{screen.width() / 2 - (gui.width() / 2):.0f},{screen.height() / 2 - (gui.height() / 2):.0f}', ',', int, tuple))
-    if load('fullscreen', False):   # load fullscreen and last maximized state
-        gui.actionFullscreen.trigger()
-        gui.was_maximized = load('maximized', False)
-    elif load('maximized', False):
-        gui.showMaximized()
+    load('fullscreen', False)
+    load('maximized', False)
+    try:
+        if load('geometry', ''):
+            gui.restoreGeometry(QtCore.QByteArray.fromHex(cfg.geometry.encode()))
+            if cfg.fullscreen:
+                gui.actionFullscreen.setChecked(True)
+                gui.was_maximized = cfg.maximized
+    except Exception as error:
+        logger.warning(f'(!) Failed to restore geometry: {error}')
     gui.app.setStyle(str(load('windowstyle', 'WindowsVista')))
     load('lastupdatecheck')
     gui.refresh_theme_combo(set_theme=load('theme', 'Midnight'))
@@ -90,14 +92,7 @@ def saveConfig(gui, filename: str = None):
     cfg.setSection('window')
     save('fullscreen', gui.isFullScreen())                  # FullScreen with a capital S
     save('maximized', gui.isMaximized() or (gui.isFullScreen() and gui.was_maximized))
-    if not gui.isMaximized() and not gui.isFullScreen():    # preserve normal size/position
-        save('size', gui.size().width(), gui.size().height())
-        save('pos', gui.pos().x(), gui.pos().y())
-    else:
-        try:
-            save('size', gui.last_window_size.width(), gui.last_window_size.height())
-            save('pos', gui.last_window_pos.x(), gui.last_window_pos.y())
-        except Exception as error: logger.warning(f'(!) Failed to save size and position: {error}')
+    save('geometry', bytes(gui.saveGeometry().toHex()).decode())
     save('windowstyle', gui.app.style().objectName())
 
     cfg.setSection('general')

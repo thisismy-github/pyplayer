@@ -389,15 +389,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.was_paused = False
         self.lock_fullscreen_ui = False
         self.crop_restore_state = {}
-        self.ignore_next_alt = False
         self.reset_progress_offset = False
         self.add_to_progress_offset = 0.0
 
         self.last_window_size: QtCore.QSize = None
         self.last_window_pos: QtCore.QPoint = None
+        self.last_window_pos_non_zero: QtCore.QPoint = None
         self.last_move_time = 0.0
         self.last_cycle_was_forward = True
         self.last_cycle_index: int = None
+        self.invert_next_move_event = False
+        self.invert_next_resize_event = False
+        self.ignore_next_fullscreen_move_event = False
+        self.ignore_next_alt = False
 
         self.video = ''
         self.video_original_path = ''
@@ -508,12 +512,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             (lambda: self.copy_image(config.cfg.last_snapshot_path, extended=False), 'Copy the last snapshot\'s image data to your clipboard.'),
         )
 
+        def toggle_maximized():
+            if self.isFullScreen(): self.actionFullscreen.trigger()
+            if self.isMaximized(): self.showNormal()
+            else:
+                self.invert_next_move_event = True
+                self.invert_next_resize_event = True
+                self.showMaximized()
+
         # all possible double-click actions, ordered by their appearance in the settings
         self.double_click_player_actions = (
             self.dialog_settings.exec,
             self.toggle_mute,
             self.actionFullscreen.trigger,
-            lambda: self.showMaximized() if not self.isMaximized() else self.showNormal(),
+            toggle_maximized,
             lambda: self.set_playback_speed(1.0)
         )
 
@@ -523,7 +535,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.stop,
             self.toggle_mute,
             self.actionFullscreen.trigger,
-            lambda: self.showMaximized() if not self.isMaximized() else self.showNormal(),
+            toggle_maximized,
             lambda: self.set_playback_speed(1.0)
         )
 
@@ -883,15 +895,57 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def moveEvent(self, event: QtGui.QMoveEvent):
-        if not self.isMaximized() and not self.isFullScreen():          # don't save position if we're currently maximized/fullscreen
-            self.last_window_pos = event.oldPos()
+        ''' Handles moving the window. Remembers our last non-maximized,
+            non-fullscreen position by setting `self.last_window_pos`. Our
+            `toggle_maximized` function causes weird, inverted behavior however,
+            so if we're "normal" but `self.invert_next_move_event` is True, we
+            save our position anyway, and if we're "maximized/fullscreen", we
+            set `self.invert_next_move_event` back to False without saving.
+
+            Additionally, sometimes Qt likes to just report garbage numbers,
+            such as (0,0) for the position or (-1,-1) for the size. As such,
+            since `moveEvent` is evaluated first, we must also track the last
+            non-zero position so we can see if the size is garbage as well,
+            then retroactively fix it using `self.last_window_pos_non_zero`.
+
+            This is all done because `QWidget.saveGeometry()` and
+            `QWidget.restoreGeometry()` have too many edge cases I just can't
+            figure out. Hopefully we can just get rid of this eventually. '''
+        fullscreen = self.isFullScreen()
+        if not self.isMaximized() and not fullscreen:                   # don't save position if we're maximized/fullscreen
+            if self.invert_next_move_event:
+                self.invert_next_move_event = False
+            else:
+                if not event.oldPos().isNull():                         # save non-zero position to two separate properties
+                    self.last_window_pos_non_zero = event.oldPos()
+                self.last_window_pos = event.oldPos()
             if self.timer_id_resize_snap is None or app.mouseButtons() != Qt.LeftButton:
                 self.last_move_time = get_time()                        # don't save move time if we're actually resizing
+        elif fullscreen:
+            if self.ignore_next_fullscreen_move_event:                  # if the user is trying to move an already...
+                self.ignore_next_fullscreen_move_event = False          # ...fullscreen window, leave fullscreen. window...
+            else:                                                       # ...will be in the wrong place, but whatever
+                self.actionFullscreen.trigger()
+        elif self.invert_next_move_event:                               # set `last_window_size` here instead for inverted behavior
+            if not event.oldPos().isNull():
+                self.last_window_pos_non_zero = event.oldPos()
+            self.last_window_pos = event.oldPos()
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
+        ''' Refer to `self.moveEvent` for why this is such a disaster. '''
         if not self.isMaximized() and not self.isFullScreen():          # don't save size if we're currently maximized/fullscreen
-            self.last_window_size = event.oldSize()
+            if self.invert_next_resize_event:
+                self.invert_next_resize_event = False
+            elif event.oldSize().width() != -1:                         # ignore garbage size (-1, -1)
+                self.last_window_size = event.oldSize()
+            elif self.last_window_pos.isNull():                         # garbage size AND position - ignore size, revert position
+                self.last_window_pos = self.last_window_pos_non_zero
+        elif self.invert_next_resize_event:
+            if event.oldSize().width() != -1:
+                self.last_window_size = event.oldSize()
+            elif self.last_window_pos.isNull():
+                self.last_window_pos = self.last_window_pos_non_zero
 
 
     def dockControlsResizeEvent(self, event: QtGui.QResizeEvent):
@@ -4420,6 +4474,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.menubar.setVisible(False)              # TODO should this be like set_crop_mode's version? this requires up to 2 alt-presses to open
             self.was_maximized = self.isMaximized()     # remember if we're maximized or not
             self.vlc.last_move_time = get_time()        # reset last_move_time, just in case we literally haven't moved the mouse yet
+            self.ignore_next_fullscreen_move_event = True
             return self.showFullScreen()                # FullScreen with a capital S
         else:
             self.statusbar.setVisible(self.actionShowStatusBar.isChecked())

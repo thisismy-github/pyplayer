@@ -132,8 +132,8 @@ def after_show_setup(self: QtW.QMainWindow):
         self.refresh_title_signal.emit()
 
     # set last window size/pos if window still has default geometry after loading config
-    if self.last_window_size is None: self.last_window_size = QtCore.QSize(*config.cfg.size)
-    if self.last_window_pos is None: self.last_window_pos = QtCore.QPoint(*config.cfg.pos)
+    if self.last_window_size is None: self.last_window_size = self.size()
+    if self.last_window_pos is None: self.last_window_pos = self.pos()
 
     # populate recent files list
     recent_files_count = self.dialog_settings.spinRecentFiles.value()

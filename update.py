@@ -262,3 +262,9 @@ def update_migration(self, old_version: str) -> None:
         settings.comboScaleArt.setCurrentIndex(settings.comboScaleArt.currentIndex() + 1)
         settings.checkFocusIgnoreAutoplay.setChecked(config.cfg.loadFrom('settings', 'checkignorefocuswithautoplay', True))
         settings.checkTrayResetFirstFileOnRestore.setChecked(config.cfg.loadFrom('settings', 'checkfirstfiletrayreset', True))
+        try: self.resize(*config.cfg.load('size', '871,588', ',', int, tuple))
+        except: pass
+        try:
+            screen = self.app.primaryScreen().size()
+            self.move(*config.cfg.load('pos', f'{screen.width() / 2 - (self.width() / 2):.0f},{screen.height() / 2 - (self.height() / 2):.0f}', ',', int, tuple))
+        except: pass
