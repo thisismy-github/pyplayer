@@ -1684,6 +1684,16 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
         return super().timerEvent(event)
 
 
+    def toString(self, format: QtGui.QKeySequence.SequenceFormat = QtGui.QKeySequence.SequenceFormat.PortableText):
+        ''' Returns the embedded key sequence as a string. '''
+        return self.keySequence().toString(format)
+
+
+    def __repr__(self):
+        ''' Returns the embedded key sequence as a string. '''
+        return self.keySequence().toString()
+
+
 
 
 class QWidgetPassthrough(QtW.QWidget):

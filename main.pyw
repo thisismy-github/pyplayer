@@ -372,7 +372,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def setup(self):
-        self.first_video_fully_loaded = False
+        self.first_video_fully_loaded = False   # NOTE: this can reset! use `videos_opened` to !00% know if files were opened this session
         self.closed = False
         self.restarted = False
         self.is_paused = False
@@ -400,18 +400,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_cycle_index: int = None
 
         self.video = ''
-        self.video_basename = ''
         self.video_original_path = ''
         self.locked_video: str = None
-        self.recent_files = []
-        self.mime_type = 'image'    # defaults to 'image' since self.pause() is disabled for 'image' mime_types
+        self.recent_files = []                  # NOTE: the user-friendly list of recent files
+        self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
+        self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = '?'
         self.is_gif = False
         self.is_static_image = True
         self.is_pitch_sensitive_audio = False
         self.is_bad_with_vlc = False
         self.clipboard_image_buffer = None
-        #self.PIL_image = None       # TODO: store images in memory for quick copying?
+        #self.PIL_image = None                  # TODO: store images in memory for quick copying?
 
         self.fractional_frame = 0.0
         self.delay = 0.0
@@ -429,7 +429,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.vsize = QtCore.QSize(1000, 1000)
         #self.resolution_label = '0x0'
         self.ratio = '0:0'
-        self.size_label = '0.00mb'  # NOTE: do NOT use `self.size` - this is reserved for Qt
+        self.size_label = '0.00mb'              # NOTE: do NOT use `self.size` - this is reserved for Qt
 
         self.last_amplify_audio_value = 100
         self.current_file_is_autoplay = False
@@ -474,6 +474,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
 
+        # set custom one-off event handlers for various widgets
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
@@ -483,6 +484,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.buttonAutoplay.contextMenuEvent = self.buttonAutoplayContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
+        self.frameVolume.contextMenuEvent = self.frameVolumeContextMenuEvent
+        self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
 
         self.buttonPause.setIcon(self.icons['pause'])
         self.buttonLoop.setIcon(self.icons['loop'])
@@ -1093,6 +1096,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
+    # ---------------------
+    # >>> CUSTOM EVENTS <<<
+    # ---------------------
     def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the progress slider. '''
         precision_action = QtW.QAction(settings.checkHighPrecisionProgress.text())
@@ -1250,6 +1256,39 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addAction(open_update_action)
         context.addAction(open_no_update_action)
         context.exec(event.globalPos())
+
+
+    def frameVolumeContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles the context (right-click) menu for the volume slider's
+            frame. A frame is used since the slider can be disabled.'''
+        mute_action = QtW.QAction('Mute')
+        mute_action.setCheckable(True)
+        mute_action.setChecked(not self.sliderVolume.isEnabled())
+        mute_action.toggled.connect(self.toggle_mute)
+
+        next_boost = min(self.volume_boost + 0.5, 5)
+        last_boost = min(self.volume_boost - 0.5, 5)
+        inc_boost_action = QtW.QAction(f'Increase boost to {next_boost:.1f}x')
+        inc_boost_action.triggered.connect(lambda: self.set_volume_boost(next_boost))
+        dec_boost_action = QtW.QAction(f'Decrease boost to {last_boost:.1f}x')
+        dec_boost_action.triggered.connect(lambda: self.set_volume_boost(last_boost))
+        reset_boost_action = QtW.QAction('Reset boost')
+        reset_boost_action.triggered.connect(self.set_volume_boost)
+
+        context = QtW.QMenu(self)
+        context.addAction(mute_action)
+        context.addSeparator()
+        context.addAction(inc_boost_action)
+        context.addAction(dec_boost_action)
+        context.addAction(reset_boost_action)
+        context.exec(event.globalPos())
+
+
+    def frameVolumeMousePressEvent(self, event: QtGui.QMouseEvent):
+        ''' Handles clicking on the volume slider's frame. A frame is used
+            since the slider can be disabled. Unmutes on left-click. '''
+        if event.button() == Qt.LeftButton:
+            self.set_mute(False)
 
 
     # ---------------------
@@ -2186,7 +2225,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_paused = False                          # slightly more efficient than using `force_pause`
             self.buttonPause.setIcon(self.icons['pause'])
             self.restarted = False
-            #if not self.first_video_fully_loaded: self.set_volume(get_volume_slider())         # force volume to quickly correct gain issue
             self.lineOutput.clearFocus()                    # clear focus from output line so it doesn't interfere with keyboard shortcuts
             self.current_file_is_autoplay = _from_autoplay
 
@@ -2308,7 +2346,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not settings.checkAutoEnableSubtitles.isChecked():
                 player.video_set_spu(-1)
 
-            self.first_video_fully_loaded = True
+            # force volume/mute-state to quickly correct gain issues
+            # player doesn't always want to update immediately after first file is opened - keep trying
+            if self.videos_opened == 0:
+                muted = not self.sliderVolume.isEnabled()
+                while self.set_volume(get_volume_slider()) != player.audio_get_volume():
+                    sleep(0.002)
+                while self.set_mute(muted) == -1:
+                    sleep(0.002)
+
+            self.videos_opened += 1                     # can't reset
+            self.first_video_fully_loaded = True        # can reset
+
+            # gifs LOVE to pause themselves randomly
             image_player.gif.setPaused(False)
 
             # warn users that the current media will not scrub/navigate very well
@@ -4170,12 +4220,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def marquee(self, text: str, timeout: int = 350, marq_key: str = '', log: bool = True):
         ''' Conditionally displays `text` as a marquee over the player if
-            the associated setting at `marq_key` is checked. Alawys displayed
-            on statusbar. Logs as well if `log` is True.
+            the associated setting at `marq_key` is checked. Always displayed
+            on statusbar. Logs as well if `log` is True. Escaped %-signs (%%)
+            are replaced by regular %-signs when displayed on the statusbar.
 
             Example: marq_key='Save' -> checkTextOnSave.isChecked()? '''
-        if log: log_on_statusbar(text)
-        else: show_on_statusbar(text, 10000)
+        if log: log_on_statusbar(text.replace('%%', '%'))
+        else: show_on_statusbar(text.replace('%%', '%'), 10000)
         try:
             if settings.__dict__[f'checkTextOn{marq_key}'].isChecked():
                 show_on_player(text, timeout)
@@ -4373,33 +4424,64 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         log_on_statusbar(f'Playback speed set to {rate:.2f}x')
 
 
-    def set_volume(self, volume):
+    def set_volume(self, volume) -> int:
         try:
-            volume = int(volume * self.volume_boost)
-            player.audio_set_volume(volume)
+            boost = self.volume_boost
+            boosted_volume = int(volume * boost)
+            player.audio_set_volume(boosted_volume)
             player.audio_set_mute(False)
             self.sliderVolume.setEnabled(True)
-            self.sliderVolume.setToolTip(f'{volume}%')
-            if settings.checkTextOnVolume.isChecked(): show_on_player(f'{volume}%%', 200)
+            if settings.checkTextOnVolume.isChecked():
+                show_on_player(f'{boosted_volume}%%', 200)
             refresh_title()
+            self.refresh_volume_tooltip()
+            return boosted_volume
         except:
-            if self.first_video_fully_loaded:
-                logging.error(format_exc())
+            logging.error(format_exc())
+            return -1
 
 
-    def set_mute(self, muted: bool):
+    def set_volume_boost(self, value: float = 1.0, increment: bool = False):
+        base_volume = self.sliderVolume.value()
+        if increment: boost = max(0.5, min(5, self.volume_boost + value))
+        else: boost = max(0.5, min(5, value))
+
+        self.volume_boost = boost
+        if not self.player.audio_get_mute(): self.set_volume(base_volume)
+        else: self.refresh_volume_tooltip()
+
+        if boost == 1.0: marq = f'{boost:.1f}x volume boost ({base_volume}%%)'
+        else: marq = f'{boost:.1f}x volume boost ({base_volume}%% -> {base_volume * boost:.0f}%%)'
+        self.marquee(marq, marq_key='VolumeBoost', log=False)
+
+
+    def set_mute(self, muted: bool) -> int:
         try:
             player.audio_set_mute(muted)
             self.sliderVolume.setEnabled(not muted)     # disabled if muted, enabled if not muted
-            self.sliderVolume.setToolTip('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%)')
+            base_volume = get_volume_slider()
+            boost = self.volume_boost
+
+            if muted:
+                hotkey1 = settings.mute.toString()
+                hotkey2 = settings.mute_.toString()
+                if hotkey1 and hotkey2: hotkey_string = f' ({hotkey1}/{hotkey2})'
+                elif hotkey1:           hotkey_string = f' ({hotkey1})'
+                elif hotkey2:           hotkey_string = f' ({hotkey2})'
+                else:                   hotkey_string = ''
+                marq = f'Muted{hotkey_string}'
+            elif boost == 1.0: marq = f'Unmuted ({base_volume}%%)'
+            else: marq = f'Unmuted ({base_volume}% -> {base_volume * boost:.0f}%)\n{boost:.1f}x volume boost'
+
             if settings.checkTextOnMute.isChecked():
-                show_on_player('Muted (M)' if muted else f'Unmuted ({get_volume_slider()}%%)')
-        except:
-            logging.error(format_exc())
+                show_on_player(marq)
+            self.refresh_volume_tooltip()
+        except: logging.error(format_exc())
+        finally: return player.audio_get_mute()
 
 
     def toggle_mute(self):
-        self.set_mute(not bool(player.audio_get_mute()))
+        self.set_mute(self.sliderVolume.isEnabled())
 
 
     def set_advancedcontrols_visible(self, visible: bool):
@@ -4858,11 +4940,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def refresh_confusing_zoom_setting_tooltip(self, value: float):
-        ''' Updates the values in the tooltip for a particularly confusing
+        ''' Updates the `value`'s in a tooltip for a particularly confusing
             setting to make it more obvious what the setting actually does. '''
         settings.checkZoomForceMinimum.setToolTip(
             constants.ZOOM_FORCE_MINIMUM_TOOLTIP_BASE.replace('?value', str(value))
         )
+
+
+    def refresh_volume_tooltip(self):
+        ''' Updates the volume slider's tooltip to include
+            mute-state and current volume boost, if necessary. '''
+        muted = not self.sliderVolume.isEnabled()
+        boost = self.volume_boost
+        base_volume = get_volume_slider()
+        boosted_volume = base_volume * boost
+
+        if muted:
+            hotkey1 = settings.mute.toString()
+            hotkey2 = settings.mute_.toString()
+            if hotkey1 and hotkey2: hotkey_string = f' ({hotkey1}/{hotkey2})'
+            elif hotkey1:           hotkey_string = f' ({hotkey1})'
+            elif hotkey2:           hotkey_string = f' ({hotkey2})'
+            else:                   hotkey_string = ''
+            if boost == 1.0: tooltip = f'{boosted_volume:.0f}%\nMuted{hotkey_string}'
+            else: tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)\nMuted{hotkey_string}'
+        elif boost == 1.0: tooltip = f'{boosted_volume:.0f}%'
+        else: tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)'
+
+        self.sliderVolume.setToolTip(tooltip)
 
 
     def refresh_snapshot_button_controls(self):

@@ -157,7 +157,7 @@ def after_show_setup(self: QtW.QMainWindow):
         self.taskbar.setWindow(self.windowHandle())
         self.enable_taskbar_controls(checked=config.cfg.checktaskbarcontrols)
 
-    # manually refresh various settings
+    # manually refresh various settings after config is fully loaded
     settings = self.dialog_settings
     self.set_trim_mode(self.trim_mode_action_group.checkedAction())
     self.gifPlayer._imageScale = settings.comboScaleImages.currentIndex()
@@ -170,6 +170,7 @@ def after_show_setup(self: QtW.QMainWindow):
     # setup/connect hotkeys, manually refresh various parts of UI
     connect_shortcuts(self)
     self.refresh_shortcuts()
+    self.refresh_volume_tooltip()
     self.refresh_autoplay_button()
     self.refresh_snapshot_button_controls()
     self.refresh_confusing_zoom_setting_tooltip(settings.spinZoomMinimumFactor.value())
@@ -180,12 +181,7 @@ def after_show_setup(self: QtW.QMainWindow):
 
 def connect_shortcuts(self: QtW.QMainWindow):
     # TODO add standardShortcuts | TODO are these noticably slower than using keyPressEvent or am I crazy?
-    def increment_volume_boost(value=0.5):
-        self.volume_boost = min(self.volume_boost + value, 5)
-        self.set_volume(self.sliderVolume.value())
-        self.marquee(f'{self.volume_boost:.1f}x volume multiplier', marq_key='VolumeBoost', log=False)
-
-    def increment_subtitle_delay(value=50):
+    def increment_subtitle_delay(value: int = 50):
         if (self.player.video_get_spu_count() - 1) <= 0: return self.marquee('No subtitles available', marq_key='SubtitleDelay', log=False)
         new_delay = self.player.video_get_spu_delay() + (value * 1000)
         self.player.video_set_spu_delay(new_delay)
@@ -214,8 +210,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minusspeed':         lambda: self.set_playback_speed(self.playback_speed - 0.05),
         'plus5volume':        lambda: self.increment_volume(5),
         'minus5volume':       lambda: self.increment_volume(-5),
-        'plusvolumeboost':    increment_volume_boost,
-        'minusvolumeboost':   lambda: increment_volume_boost(-0.5),
+        'plusvolumeboost':    lambda: self.set_volume_boost(0.5, increment=True),
+        'minusvolumeboost':   lambda: self.set_volume_boost(-0.5, increment=True),
         'mute':               self.toggle_mute,
         'fullscreen':         self.actionFullscreen.trigger,
         'crop':               self.actionCrop.trigger,
