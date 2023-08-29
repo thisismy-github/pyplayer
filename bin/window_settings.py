@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -715, 339, 2810))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 2856))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -86,7 +86,7 @@ class Ui_settingsDialog(object):
 "Leave blank to always save unspecified videos to their source folder.")
         self.label_2.setText("Default output path")
         self.label_2.setObjectName("label_2")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_2)
+        self.formLayout.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_2)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setSpacing(2)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
@@ -101,28 +101,28 @@ class Ui_settingsDialog(object):
         self.buttonBrowseDefaultOutputPath.setText("...")
         self.buttonBrowseDefaultOutputPath.setObjectName("buttonBrowseDefaultOutputPath")
         self.horizontalLayout_2.addWidget(self.buttonBrowseDefaultOutputPath)
-        self.formLayout.setLayout(2, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2)
+        self.formLayout.setLayout(4, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_2)
         self.label_58 = QtWidgets.QLabel(self.tabGeneral)
         self.label_58.setObjectName("label_58")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_58)
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_58)
         self.spinRecentFiles = QtWidgets.QSpinBox(self.tabGeneral)
         self.spinRecentFiles.setMaximum(1000)
         self.spinRecentFiles.setProperty("value", 25)
         self.spinRecentFiles.setObjectName("spinRecentFiles")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinRecentFiles)
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.spinRecentFiles)
         self.label_50 = QtWidgets.QLabel(self.tabGeneral)
         self.label_50.setObjectName("label_50")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_50)
+        self.formLayout.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.label_50)
         self.comboDialogPosition = QtWidgets.QComboBox(self.tabGeneral)
         self.comboDialogPosition.setObjectName("comboDialogPosition")
         self.comboDialogPosition.addItem("")
         self.comboDialogPosition.addItem("")
         self.comboDialogPosition.addItem("")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.comboDialogPosition)
+        self.formLayout.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.comboDialogPosition)
         self.checkHideIdleCursor = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkHideIdleCursor.setChecked(True)
         self.checkHideIdleCursor.setObjectName("checkHideIdleCursor")
-        self.formLayout.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.checkHideIdleCursor)
+        self.formLayout.setWidget(7, QtWidgets.QFormLayout.LabelRole, self.checkHideIdleCursor)
         self.spinHideIdleCursorDuration = QtWidgets.QDoubleSpinBox(self.tabGeneral)
         self.spinHideIdleCursorDuration.setDecimals(1)
         self.spinHideIdleCursorDuration.setMinimum(0.0)
@@ -130,54 +130,68 @@ class Ui_settingsDialog(object):
         self.spinHideIdleCursorDuration.setSingleStep(0.1)
         self.spinHideIdleCursorDuration.setProperty("value", 1.5)
         self.spinHideIdleCursorDuration.setObjectName("spinHideIdleCursorDuration")
-        self.formLayout.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.spinHideIdleCursorDuration)
+        self.formLayout.setWidget(7, QtWidgets.QFormLayout.FieldRole, self.spinHideIdleCursorDuration)
         self.checkHighPrecisionProgress = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkHighPrecisionProgress.setChecked(True)
         self.checkHighPrecisionProgress.setObjectName("checkHighPrecisionProgress")
-        self.formLayout.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkHighPrecisionProgress)
+        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkHighPrecisionProgress)
         self.checkFFprobe = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkFFprobe.setChecked(True)
         self.checkFFprobe.setObjectName("checkFFprobe")
-        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
+        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
         self.checkAlwaysSaveAs = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAlwaysSaveAs.setChecked(True)
         self.checkAlwaysSaveAs.setObjectName("checkAlwaysSaveAs")
-        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
+        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
         self.checkRenameMissingImages = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRenameMissingImages.setChecked(True)
         self.checkRenameMissingImages.setObjectName("checkRenameMissingImages")
-        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
+        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
         self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkSaveAsUseMediaFolder.setChecked(True)
         self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
-        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
+        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
         self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkStopOnFinish.setObjectName("checkStopOnFinish")
-        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
         self.checkCopyEscapeBackslashes = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCopyEscapeBackslashes.setChecked(True)
         self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
-        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
         self.checkRememberDropFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRememberDropFolder.setChecked(True)
         self.checkRememberDropFolder.setObjectName("checkRememberDropFolder")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
+        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
         self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
         self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
-        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
+        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
         self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRecycleBin.setChecked(True)
         self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.formLayout.setWidget(20, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.label_70 = QtWidgets.QLabel(self.tabGeneral)
+        self.label_70.setObjectName("label_70")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_70)
+        self.lineDateFormatShort = QtWidgets.QLineEdit(self.tabGeneral)
+        self.lineDateFormatShort.setText("%-D %-I:%M%p")
+        self.lineDateFormatShort.setObjectName("lineDateFormatShort")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.lineDateFormatShort)
+        self.label_71 = QtWidgets.QLabel(self.tabGeneral)
+        self.label_71.setObjectName("label_71")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_71)
+        self.lineDateFormatLong = QtWidgets.QLineEdit(self.tabGeneral)
+        self.lineDateFormatLong.setText("%I:%M:%S %p | %a, %b %-e, %Y")
+        self.lineDateFormatLong.setObjectName("lineDateFormatLong")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.lineDateFormatLong)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 0, -1, 0)
@@ -1983,6 +1997,40 @@ class Ui_settingsDialog(object):
         self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
 "recycle bin instead of being immediately/permanently deleted."))
         self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
+        self.label_70.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation date when\n"
+"right-clicking the player. Refer to https://strftime.org/ for a full\n"
+"list of format codes, and https://www.strfti.me/ for an interactive\n"
+"sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
+        self.label_70.setText(_translate("settingsDialog", "Short date format"))
+        self.lineDateFormatShort.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation date when\n"
+"right-clicking the player. Refer to https://strftime.org/ for a full\n"
+"list of format codes, and https://www.strfti.me/ for an interactive\n"
+"sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
+        self.label_71.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation/modified dates\n"
+"when right-clicking the player and hovering over the short date entry.\n"
+"Refer to https://strftime.org/ for a full list of format codes, and\n"
+"https://www.strfti.me/ for an interactive sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
+        self.label_71.setText(_translate("settingsDialog", "Long date format"))
+        self.lineDateFormatLong.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation/modified dates\n"
+"when right-clicking the player and hovering over the short date entry.\n"
+"Refer to https://strftime.org/ for a full list of format codes, and\n"
+"https://www.strfti.me/ for an interactive sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusAggressive.setToolTip(_translate("settingsDialog", "If checked, PyPlayer will use COM and native Windows\' APIs\n"
 "to aggressively steal focus on Windows. Otherwise, Windows\n"

@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-715</y>
+        <y>0</y>
         <width>339</width>
-        <height>2810</height>
+        <height>2856</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -211,7 +211,7 @@ following variables are replaced with their corresponding values:
                </property>
               </widget>
              </item>
-             <item row="2" column="0">
+             <item row="4" column="0">
               <widget class="QLabel" name="label_2">
                <property name="toolTip">
                 <string notr="true">When saving an edited video without specifying a folder in
@@ -224,7 +224,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
+             <item row="4" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_2">
                <property name="spacing">
                 <number>2</number>
@@ -257,7 +257,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
-             <item row="3" column="0">
+             <item row="5" column="0">
               <widget class="QLabel" name="label_58">
                <property name="toolTip">
                 <string>The number of files to remember between sessions
@@ -275,7 +275,7 @@ Otherwise, the recent files are validated on launch.</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="1">
+             <item row="5" column="1">
               <widget class="QSpinBox" name="spinRecentFiles">
                <property name="specialValueText">
                 <string>Do not track recent files</string>
@@ -294,7 +294,7 @@ Otherwise, the recent files are validated on launch.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="0">
+             <item row="6" column="0">
               <widget class="QLabel" name="label_50">
                <property name="toolTip">
                 <string>The location where popups and other dialogs will initially appear.</string>
@@ -304,7 +304,7 @@ Otherwise, the recent files are validated on launch.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="6" column="1">
               <widget class="QComboBox" name="comboDialogPosition">
                <item>
                 <property name="text">
@@ -323,7 +323,7 @@ Otherwise, the recent files are validated on launch.</string>
                </item>
               </widget>
              </item>
-             <item row="5" column="0">
+             <item row="7" column="0">
               <widget class="QCheckBox" name="checkHideIdleCursor">
                <property name="toolTip">
                 <string>If checked, your cursor will disappear until moved
@@ -338,7 +338,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="1">
+             <item row="7" column="1">
               <widget class="QDoubleSpinBox" name="spinHideIdleCursorDuration">
                <property name="prefix">
                 <string>After: </string>
@@ -363,7 +363,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkHighPrecisionProgress">
                <property name="toolTip">
                 <string>If checked, the progress bar for the current media will be faked in
@@ -381,7 +381,7 @@ If not checked, VLC's native updates will be used.</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <widget class="QCheckBox" name="checkFFprobe">
                <property name="toolTip">
                 <string>If checked, FFprobe will be used (if it exists) to parse media files
@@ -405,7 +405,7 @@ opening media, you can try disabling this setting.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAlwaysSaveAs">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -423,7 +423,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRenameMissingImages">
                <property name="toolTip">
                 <string>If checked, renaming an image file that doesn't
@@ -441,7 +441,7 @@ doesn't exist anymore will do nothing.</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default
@@ -457,7 +457,7 @@ folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
                 <string>If checked, the media player will completely stop upon the
@@ -474,7 +474,7 @@ or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
                </property>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
                <property name="toolTip">
                 <string>If checked, copying a media's path to your clipboard
@@ -492,7 +492,7 @@ systems do not use backslashes in their paths.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRememberDropFolder">
                <property name="toolTip">
                 <string>If checked, dragging and dropping media will remember
@@ -509,7 +509,7 @@ folders remembered.</string>
                </property>
               </widget>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -524,7 +524,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
                <property name="toolTip">
                 <string>If checked, opening recent files through
@@ -536,7 +536,7 @@ the newly played file to the top.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="18" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -562,7 +562,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="18" column="0" colspan="2">
+             <item row="20" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -573,6 +573,74 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_70">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation date when
+right-clicking the player. Refer to https://strftime.org/ for a full
+list of format codes, and https://www.strfti.me/ for an interactive
+sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string>Short date format</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLineEdit" name="lineDateFormatShort">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation date when
+right-clicking the player. Refer to https://strftime.org/ for a full
+list of format codes, and https://www.strfti.me/ for an interactive
+sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string notr="true">%-D %-I:%M%p</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_71">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation/modified dates
+when right-clicking the player and hovering over the short date entry.
+Refer to https://strftime.org/ for a full list of format codes, and
+https://www.strfti.me/ for an interactive sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string>Long date format</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLineEdit" name="lineDateFormatLong">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation/modified dates
+when right-clicking the player and hovering over the short date entry.
+Refer to https://strftime.org/ for a full list of format codes, and
+https://www.strfti.me/ for an interactive sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string notr="true">%I:%M:%S %p | %a, %b %-e, %Y</string>
                </property>
               </widget>
              </item>

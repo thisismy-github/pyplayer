@@ -434,6 +434,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         #self.resolution_label = '0x0'
         self.ratio = '0:0'
         self.size_label = '0.00mb'              # NOTE: do NOT use `self.size` - this is reserved for Qt
+        self.stat: os.stat_result = None
 
         self.last_amplify_audio_value = 100
         self.current_file_is_autoplay = False
@@ -1149,7 +1150,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addMenu(self.menuHelp)
 
         # add labels with info about the current media, then show context menu
-        if self.video: self.add_info_actions(context)
+        if self.video:
+            self.add_info_actions(context)
         context.exec(event.globalPos())
 
 
@@ -2187,7 +2189,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # get stats and size of media
             start = get_time()
-            stat = os.stat(file)
+            self.stat = stat = os.stat(file)
             filesize = stat.st_size
             basename = file[file.rfind(sep) + 1:]           # shorthand for os.path.basename NOTE: safe when `file` is provided automatically
 
@@ -4487,10 +4489,48 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def add_info_actions(self, context: QtW.QMenu):
+        ''' Appends greyed-out actions to `context` containing
+            information about the current media. '''
         context.addSeparator()
-        context.addAction(f'Size: {self.size_label}').setEnabled(False)
-        context.addAction(f'Res: {self.vwidth:.0f}x{self.vheight:.0f}').setEnabled(False)
-        context.addAction(f'Ratio: {self.ratio}').setEnabled(False)
+        if '?size' not in settings.lineWindowTitleFormat.text():
+            context.addAction(f'Size: {self.size_label}').setEnabled(False)
+        if '?resolution' not in settings.lineWindowTitleFormat.text():
+            context.addAction(f'Res: {self.vwidth:.0f}x{self.vheight:.0f}').setEnabled(False)
+        if '?ratio' not in settings.lineWindowTitleFormat.text():
+            context.addAction(f'Ratio: {self.ratio}').setEnabled(False)
+
+        # generate timestamps for media's ctime/mtime
+        # enable tooltips for the menu if long format is present (or error occurred)
+        short_format = settings.lineDateFormatShort.text().strip()
+        long_format = settings.lineDateFormatLong.text().strip()
+        if short_format:                                # don't do anything if short format is empty
+            if constants.IS_WINDOWS:
+                short_format = short_format.replace('%-', '%#')
+                long_format = long_format.replace('%-', '%#')
+            else:
+                short_format = short_format.replace('%#', '%-')
+                long_format = long_format.replace('%#', '%-')
+            try:
+                ctime_struct = localtime(self.stat.st_ctime)
+                mtime_struct = localtime(self.stat.st_mtime)
+                short_timestamp = strftime(short_format, ctime_struct)
+                if long_format:
+                    long_ctimestamp = strftime(long_format, ctime_struct)
+                    long_mtimestamp = strftime(long_format, mtime_struct)
+                    tooltip = (f'Date created:\t{long_ctimestamp}\n'
+                               f'Date modified:\t{long_mtimestamp}')
+                else:
+                    tooltip = ''
+            except ValueError:
+                short_timestamp = 'Invalid date format!'
+                tooltip = ('Change the two date formats in your settings.\n'
+                           'See https://strftime.org/ for valid format codes, or\n'
+                           'use https://www.strfti.me/ for an interactive sandbox.')
+            action = context.addAction(short_timestamp)
+            action.setEnabled(False)
+            if tooltip:
+                action.setToolTip(tooltip)
+                context.setToolTipsVisible(True)
 
 
     def swap_slider_styles(self):
