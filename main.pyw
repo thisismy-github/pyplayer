@@ -2411,9 +2411,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # player doesn't always want to update immediately after first file is opened - keep trying
             if self.videos_opened == 0:
                 muted = not self.sliderVolume.isEnabled()
-                while self.set_volume(get_volume_slider()) != player.audio_get_volume():
+                volume = get_volume_slider()
+                while self.set_volume(volume, verbose=False) != player.audio_get_volume():
                     sleep(0.002)
-                while self.set_mute(muted) == -1:
+                while self.set_mute(muted, verbose=False) == -1:
                     sleep(0.002)
 
             self.videos_opened += 1                     # can't reset
@@ -4591,17 +4592,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         log_on_statusbar(f'Playback speed set to {rate:.2f}x')
 
 
-    def set_volume(self, volume) -> int:
+    def set_volume(self, volume: int, verbose: bool = True) -> int:
         ''' Sets and displays `volume`, multiplied by `self.volume_boost`.
-            Quietly unmutes player if necessary. Returns the new boosted
-            volume, or -1 if unsuccessful. '''
+            Quietly unmutes player if necessary. Refreshes UI and displays
+            a marquee (if `verbose`). Returns the new boosted volume,
+            or -1 if unsuccessful. '''
         try:
             boost = self.volume_boost
             boosted_volume = int(volume * boost)
             player.audio_set_volume(boosted_volume)
             player.audio_set_mute(False)
             self.sliderVolume.setEnabled(True)
-            if settings.checkTextOnVolume.isChecked():
+
+            if settings.checkTextOnVolume.isChecked() and verbose:
                 show_on_player(f'{boosted_volume}%%', 200)
             refresh_title()
             self.refresh_volume_tooltip()
@@ -4627,9 +4630,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.marquee(marq, marq_key='VolumeBoost', log=False)
 
 
-    def set_mute(self, muted: bool) -> int:
-        ''' Sets mute-state to `muted`, updates UI, and shows a marquee.
-            Returns the player's new internal mute-state value. '''
+    def set_mute(self, muted: bool, verbose: bool = True) -> int:
+        ''' Sets mute-state to `muted`, updates UI, and shows a marquee (if
+            `verbose`). Returns the player's new internal mute-state value. '''
         try:
             player.audio_set_mute(muted)
             self.sliderVolume.setEnabled(not muted)     # disabled if muted, enabled if not muted
@@ -4640,7 +4643,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif boost == 1.0: marq = f'Unmuted ({base_volume}%%)'
             else: marq = f'Unmuted ({base_volume}%% -> {base_volume * boost:.0f}%%)\n{boost:.1f}x volume boost'
 
-            if settings.checkTextOnMute.isChecked():
+            if settings.checkTextOnMute.isChecked() and verbose:
                 show_on_player(marq)
             self.refresh_volume_tooltip()
         except: logging.error(format_exc())
