@@ -35,7 +35,7 @@ def add_path_suffix(path: str, suffix: str, unique: bool = False) -> str:
 def ffmpeg(cmd: str) -> None:   # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
+    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -map_metadata 0 -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
     subprocess.run(cmd, startupinfo=startupinfo, shell=True)
 
@@ -43,7 +43,7 @@ def ffmpeg(cmd: str) -> None:   # https://code.activestate.com/recipes/409002-la
 def ffmpeg_async(cmd: str) -> subprocess.Popen:
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
+    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -map_metadata 0 -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
     return subprocess.Popen(cmd, startupinfo=startupinfo, shell=True, stdout=subprocess.PIPE, text=True)
 
@@ -239,6 +239,65 @@ def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple:
     if new_x <= 0:   new_x = round((float(new_y) / y) * x)
     elif new_y <= 0: new_y = round((float(new_x) / x) * y)
     return new_x, new_y
+
+
+def setctime(path: str, ctime: int):
+    ''' A slightly stripped down version of the `win32_setctime` library,
+        which I had trouble importing correctly after compiling. Sets the
+        creation time of `path` to `ctime` seconds (a unix timestamp). To
+        set last modified time or last accessed time, use `os.utime()`.
+        Windows-only. https://github.com/Delgan/win32-setctime '''
+
+    if not constants.IS_WINDOWS: return
+    from ctypes import byref, get_last_error, wintypes, WinDLL, WinError
+
+    kernel32 = WinDLL("kernel32", use_last_error=True)
+    CreateFileW = kernel32.CreateFileW
+    SetFileTime = kernel32.SetFileTime
+    CloseHandle = kernel32.CloseHandle
+
+    CreateFileW.argtypes = (
+        wintypes.LPWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    )
+    CreateFileW.restype = wintypes.HANDLE
+
+    SetFileTime.argtypes = (
+        wintypes.HANDLE,
+        wintypes.PFILETIME,
+        wintypes.PFILETIME,
+        wintypes.PFILETIME,
+    )
+    SetFileTime.restype = wintypes.BOOL
+
+    CloseHandle.argtypes = (wintypes.HANDLE,)
+    CloseHandle.restype = wintypes.BOOL
+
+    # ---
+
+    path = os.path.normpath(os.path.abspath(path))
+    ctime = int(ctime * 10000000) + 116444736000000000
+    if not 0 < ctime < (1 << 64):
+        raise ValueError("The system value of the timestamp exceeds u64 size: %d" % ctime)
+
+    atime = wintypes.FILETIME(0xFFFFFFFF, 0xFFFFFFFF)
+    mtime = wintypes.FILETIME(0xFFFFFFFF, 0xFFFFFFFF)
+    ctime = wintypes.FILETIME(ctime & 0xFFFFFFFF, ctime >> 32)
+
+    flags = 128 | 0x02000000
+    handle = wintypes.HANDLE(CreateFileW(path, 256, 0, None, 3, flags, None))
+
+    if handle.value == wintypes.HANDLE(-1).value:
+        raise WinError(get_last_error())
+    if not wintypes.BOOL(SetFileTime(handle, byref(ctime), byref(atime), byref(mtime))):
+        raise WinError(get_last_error())
+    if not wintypes.BOOL(CloseHandle(handle)):
+        raise WinError(get_last_error())
 
 
 if constants.IS_WINDOWS: file_is_hidden = lambda path: os.stat(path).st_file_attributes & 2

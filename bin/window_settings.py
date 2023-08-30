@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 339, 2856))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -132, 339, 3175))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -79,6 +79,20 @@ class Ui_settingsDialog(object):
         self.lineWindowTitleFormat.setText("?paused ?name (?duration | ?fpsfps | ?size)")
         self.lineWindowTitleFormat.setObjectName("lineWindowTitleFormat")
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.lineWindowTitleFormat)
+        self.label_70 = QtWidgets.QLabel(self.tabGeneral)
+        self.label_70.setObjectName("label_70")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_70)
+        self.lineDateFormatShort = QtWidgets.QLineEdit(self.tabGeneral)
+        self.lineDateFormatShort.setText("%-D %-I:%M%p")
+        self.lineDateFormatShort.setObjectName("lineDateFormatShort")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.lineDateFormatShort)
+        self.label_71 = QtWidgets.QLabel(self.tabGeneral)
+        self.label_71.setObjectName("label_71")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_71)
+        self.lineDateFormatLong = QtWidgets.QLineEdit(self.tabGeneral)
+        self.lineDateFormatLong.setText("%I:%M:%S %p | %a, %b %-e, %Y")
+        self.lineDateFormatLong.setObjectName("lineDateFormatLong")
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.lineDateFormatLong)
         self.label_2 = QtWidgets.QLabel(self.tabGeneral)
         self.label_2.setToolTip("When saving an edited video without specifying a folder in\n"
 "its output name, the new video will default to this folder.\n"
@@ -139,60 +153,142 @@ class Ui_settingsDialog(object):
         self.checkFFprobe.setChecked(True)
         self.checkFFprobe.setObjectName("checkFFprobe")
         self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
-        self.checkAlwaysSaveAs = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkAlwaysSaveAs.setChecked(True)
-        self.checkAlwaysSaveAs.setObjectName("checkAlwaysSaveAs")
-        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
-        self.checkRenameMissingImages = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRenameMissingImages.setChecked(True)
-        self.checkRenameMissingImages.setObjectName("checkRenameMissingImages")
-        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
-        self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkSaveAsUseMediaFolder.setChecked(True)
-        self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
-        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
-        self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkStopOnFinish.setObjectName("checkStopOnFinish")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
+        self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRecycleBin.setChecked(True)
+        self.checkRecycleBin.setObjectName("checkRecycleBin")
+        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
         self.checkCopyEscapeBackslashes = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCopyEscapeBackslashes.setChecked(True)
         self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.checkAlwaysSaveAs = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkAlwaysSaveAs.setChecked(True)
+        self.checkAlwaysSaveAs.setObjectName("checkAlwaysSaveAs")
+        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkAlwaysSaveAs)
+        self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkSaveAsUseMediaFolder.setChecked(True)
+        self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
+        self.checkRenameMissingImages = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRenameMissingImages.setChecked(True)
+        self.checkRenameMissingImages.setObjectName("checkRenameMissingImages")
+        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
         self.checkRememberDropFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRememberDropFolder.setChecked(True)
         self.checkRememberDropFolder.setObjectName("checkRememberDropFolder")
         self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
-        self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkAutoEnableSubtitles.setChecked(True)
-        self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
-        self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
-        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
-        self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRecycleBin.setChecked(True)
-        self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(20, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
-        self.label_70 = QtWidgets.QLabel(self.tabGeneral)
-        self.label_70.setObjectName("label_70")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_70)
-        self.lineDateFormatShort = QtWidgets.QLineEdit(self.tabGeneral)
-        self.lineDateFormatShort.setText("%-D %-I:%M%p")
-        self.lineDateFormatShort.setObjectName("lineDateFormatShort")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.lineDateFormatShort)
-        self.label_71 = QtWidgets.QLabel(self.tabGeneral)
-        self.label_71.setObjectName("label_71")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_71)
-        self.lineDateFormatLong = QtWidgets.QLineEdit(self.tabGeneral)
-        self.lineDateFormatLong.setText("%I:%M:%S %p | %a, %b %-e, %Y")
-        self.lineDateFormatLong.setObjectName("lineDateFormatLong")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.lineDateFormatLong)
+        self.formLayout.setWidget(16, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkStopOnFinish.setObjectName("checkStopOnFinish")
+        self.formLayout.setWidget(18, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
+        self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkAutoEnableSubtitles.setChecked(True)
+        self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
+        self.formLayout.setWidget(19, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
+        self.formLayout.setWidget(17, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
         self.verticalLayout_3.addLayout(self.formLayout)
+        self.groupBox_16 = QtWidgets.QGroupBox(self.tabGeneral)
+        self.groupBox_16.setObjectName("groupBox_16")
+        self.verticalLayout_5 = QtWidgets.QVBoxLayout(self.groupBox_16)
+        self.verticalLayout_5.setContentsMargins(7, 3, 7, 7)
+        self.verticalLayout_5.setSpacing(0)
+        self.verticalLayout_5.setObjectName("verticalLayout_5")
+        self.checkEditCtimeOnNew = QtWidgets.QCheckBox(self.groupBox_16)
+        self.checkEditCtimeOnNew.setChecked(True)
+        self.checkEditCtimeOnNew.setObjectName("checkEditCtimeOnNew")
+        self.verticalLayout_5.addWidget(self.checkEditCtimeOnNew)
+        self.checkEditCtimeOnOriginal = QtWidgets.QCheckBox(self.groupBox_16)
+        self.checkEditCtimeOnOriginal.setChecked(True)
+        self.checkEditCtimeOnOriginal.setObjectName("checkEditCtimeOnOriginal")
+        self.verticalLayout_5.addWidget(self.checkEditCtimeOnOriginal)
+        self.checkEditMtimeOnNew = QtWidgets.QCheckBox(self.groupBox_16)
+        self.checkEditMtimeOnNew.setObjectName("checkEditMtimeOnNew")
+        self.verticalLayout_5.addWidget(self.checkEditMtimeOnNew)
+        self.checkEditMtimeOnOriginal = QtWidgets.QCheckBox(self.groupBox_16)
+        self.checkEditMtimeOnOriginal.setObjectName("checkEditMtimeOnOriginal")
+        self.verticalLayout_5.addWidget(self.checkEditMtimeOnOriginal)
+        spacerItem1 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.verticalLayout_5.addItem(spacerItem1)
+        self.groupBox_20 = QtWidgets.QGroupBox(self.groupBox_16)
+        self.groupBox_20.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_20.setObjectName("groupBox_20")
+        self.horizontalLayout_47 = QtWidgets.QHBoxLayout(self.groupBox_20)
+        self.horizontalLayout_47.setContentsMargins(7, 3, 7, 7)
+        self.horizontalLayout_47.setSpacing(10)
+        self.horizontalLayout_47.setObjectName("horizontalLayout_47")
+        self.groupBox_17 = QtWidgets.QGroupBox(self.groupBox_20)
+        self.groupBox_17.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_17.setObjectName("groupBox_17")
+        self.verticalLayout_13 = QtWidgets.QVBoxLayout(self.groupBox_17)
+        self.verticalLayout_13.setContentsMargins(9, 2, 0, 4)
+        self.verticalLayout_13.setSpacing(0)
+        self.verticalLayout_13.setObjectName("verticalLayout_13")
+        self.radioEditCtimeConflictUseNow = QtWidgets.QRadioButton(self.groupBox_17)
+        self.radioEditCtimeConflictUseNow.setObjectName("radioEditCtimeConflictUseNow")
+        self.verticalLayout_13.addWidget(self.radioEditCtimeConflictUseNow)
+        self.radioEditCtimeConflictUseOriginal = QtWidgets.QRadioButton(self.groupBox_17)
+        self.radioEditCtimeConflictUseOriginal.setObjectName("radioEditCtimeConflictUseOriginal")
+        self.verticalLayout_13.addWidget(self.radioEditCtimeConflictUseOriginal)
+        self.radioEditCtimeConflictUseOther = QtWidgets.QRadioButton(self.groupBox_17)
+        self.radioEditCtimeConflictUseOther.setObjectName("radioEditCtimeConflictUseOther")
+        self.verticalLayout_13.addWidget(self.radioEditCtimeConflictUseOther)
+        self.radioEditCtimeConflictUseNewest = QtWidgets.QRadioButton(self.groupBox_17)
+        self.radioEditCtimeConflictUseNewest.setObjectName("radioEditCtimeConflictUseNewest")
+        self.verticalLayout_13.addWidget(self.radioEditCtimeConflictUseNewest)
+        self.radioEditCtimeConflictUseOldest = QtWidgets.QRadioButton(self.groupBox_17)
+        self.radioEditCtimeConflictUseOldest.setChecked(True)
+        self.radioEditCtimeConflictUseOldest.setObjectName("radioEditCtimeConflictUseOldest")
+        self.verticalLayout_13.addWidget(self.radioEditCtimeConflictUseOldest)
+        self.horizontalLayout_47.addWidget(self.groupBox_17)
+        self.groupBox_18 = QtWidgets.QGroupBox(self.groupBox_20)
+        self.groupBox_18.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_18.setObjectName("groupBox_18")
+        self.verticalLayout_14 = QtWidgets.QVBoxLayout(self.groupBox_18)
+        self.verticalLayout_14.setContentsMargins(9, 2, 0, 4)
+        self.verticalLayout_14.setSpacing(0)
+        self.verticalLayout_14.setObjectName("verticalLayout_14")
+        self.radioEditMtimeConflictUseNow = QtWidgets.QRadioButton(self.groupBox_18)
+        self.radioEditMtimeConflictUseNow.setChecked(True)
+        self.radioEditMtimeConflictUseNow.setObjectName("radioEditMtimeConflictUseNow")
+        self.verticalLayout_14.addWidget(self.radioEditMtimeConflictUseNow)
+        self.radioEditMtimeConflictUseOriginal = QtWidgets.QRadioButton(self.groupBox_18)
+        self.radioEditMtimeConflictUseOriginal.setObjectName("radioEditMtimeConflictUseOriginal")
+        self.verticalLayout_14.addWidget(self.radioEditMtimeConflictUseOriginal)
+        self.radioEditMtimeConflictUseOther = QtWidgets.QRadioButton(self.groupBox_18)
+        self.radioEditMtimeConflictUseOther.setObjectName("radioEditMtimeConflictUseOther")
+        self.verticalLayout_14.addWidget(self.radioEditMtimeConflictUseOther)
+        self.radioEditMtimeConflictUseNewest = QtWidgets.QRadioButton(self.groupBox_18)
+        self.radioEditMtimeConflictUseNewest.setObjectName("radioEditMtimeConflictUseNewest")
+        self.verticalLayout_14.addWidget(self.radioEditMtimeConflictUseNewest)
+        self.radioEditMtimeConflictUseOldest = QtWidgets.QRadioButton(self.groupBox_18)
+        self.radioEditMtimeConflictUseOldest.setObjectName("radioEditMtimeConflictUseOldest")
+        self.verticalLayout_14.addWidget(self.radioEditMtimeConflictUseOldest)
+        self.horizontalLayout_47.addWidget(self.groupBox_18)
+        self.verticalLayout_5.addWidget(self.groupBox_20)
+        spacerItem2 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.verticalLayout_5.addItem(spacerItem2)
+        self.groupBox_19 = QtWidgets.QGroupBox(self.groupBox_16)
+        self.groupBox_19.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_19.setObjectName("groupBox_19")
+        self.verticalLayout_15 = QtWidgets.QVBoxLayout(self.groupBox_19)
+        self.verticalLayout_15.setContentsMargins(7, 3, 7, 7)
+        self.verticalLayout_15.setSpacing(0)
+        self.verticalLayout_15.setObjectName("verticalLayout_15")
+        self.checkEditOlderMtimeAlwaysReuse = QtWidgets.QCheckBox(self.groupBox_19)
+        self.checkEditOlderMtimeAlwaysReuse.setObjectName("checkEditOlderMtimeAlwaysReuse")
+        self.verticalLayout_15.addWidget(self.checkEditOlderMtimeAlwaysReuse)
+        self.checkEditOlderMtimeUseAsCtime = QtWidgets.QCheckBox(self.groupBox_19)
+        self.checkEditOlderMtimeUseAsCtime.setChecked(True)
+        self.checkEditOlderMtimeUseAsCtime.setObjectName("checkEditOlderMtimeUseAsCtime")
+        self.verticalLayout_15.addWidget(self.checkEditOlderMtimeUseAsCtime)
+        self.verticalLayout_5.addWidget(self.groupBox_19)
+        self.verticalLayout_3.addWidget(self.groupBox_16)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 0, -1, 0)
         self.verticalLayout.setSpacing(3)
@@ -410,8 +506,8 @@ class Ui_settingsDialog(object):
         self.checkTaskbarControls.setChecked(True)
         self.checkTaskbarControls.setObjectName("checkTaskbarControls")
         self.formLayout_8.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkTaskbarControls)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_8.setItem(4, QtWidgets.QFormLayout.SpanningRole, spacerItem1)
+        spacerItem3 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_8.setItem(4, QtWidgets.QFormLayout.SpanningRole, spacerItem3)
         self.label_9 = QtWidgets.QLabel(self.groupBox_15)
         self.label_9.setObjectName("label_9")
         self.formLayout_8.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.label_9)
@@ -482,8 +578,8 @@ class Ui_settingsDialog(object):
         self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_6.setSpacing(5)
         self.horizontalLayout_6.setObjectName("horizontalLayout_6")
-        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem2)
+        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem4)
         self.label_6 = QtWidgets.QLabel(self.groupHover)
         self.label_6.setObjectName("label_6")
         self.horizontalLayout_6.addWidget(self.label_6)
@@ -492,14 +588,14 @@ class Ui_settingsDialog(object):
         self.buttonHoverFontColor.setText("")
         self.buttonHoverFontColor.setObjectName("buttonHoverFontColor")
         self.horizontalLayout_6.addWidget(self.buttonHoverFontColor)
-        spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem3)
+        spacerItem5 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem5)
         self.checkHoverShadow = QtWidgets.QCheckBox(self.groupHover)
         self.checkHoverShadow.setChecked(True)
         self.checkHoverShadow.setObjectName("checkHoverShadow")
         self.horizontalLayout_6.addWidget(self.checkHoverShadow)
-        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem4)
+        spacerItem6 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem6)
         self.formLayout_2.setLayout(3, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_6)
         self.spinHoverFadeDuration = QtWidgets.QDoubleSpinBox(self.groupHover)
         self.spinHoverFadeDuration.setMinimum(0.0)
@@ -858,8 +954,8 @@ class Ui_settingsDialog(object):
         self.comboSnapshotAlt.addItem("")
         self.formLayout_12.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.comboSnapshotAlt)
         self.formLayout_4.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.groupBox_8)
-        spacerItem5 = QtWidgets.QSpacerItem(1, 3, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_4.setItem(11, QtWidgets.QFormLayout.SpanningRole, spacerItem5)
+        spacerItem7 = QtWidgets.QSpacerItem(1, 3, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_4.setItem(11, QtWidgets.QFormLayout.SpanningRole, spacerItem7)
         self.label_65 = QtWidgets.QLabel(self.groupBox_3)
         self.label_65.setObjectName("label_65")
         self.formLayout_4.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_65)
@@ -1122,8 +1218,8 @@ class Ui_settingsDialog(object):
         self.spinVolumeScroll.setProperty("value", 5)
         self.spinVolumeScroll.setObjectName("spinVolumeScroll")
         self.formLayout_13.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.spinVolumeScroll)
-        spacerItem6 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_13.setItem(1, QtWidgets.QFormLayout.SpanningRole, spacerItem6)
+        spacerItem8 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_13.setItem(1, QtWidgets.QFormLayout.SpanningRole, spacerItem8)
         self.label_69 = QtWidgets.QLabel(self.groupBox_11)
         self.label_69.setObjectName("label_69")
         self.formLayout_13.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_69)
@@ -1135,8 +1231,8 @@ class Ui_settingsDialog(object):
         self.comboPlayerDoubleClick.addItem("")
         self.comboPlayerDoubleClick.addItem("")
         self.formLayout_13.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.comboPlayerDoubleClick)
-        spacerItem7 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_13.setItem(3, QtWidgets.QFormLayout.SpanningRole, spacerItem7)
+        spacerItem9 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_13.setItem(3, QtWidgets.QFormLayout.SpanningRole, spacerItem9)
         self.label_11 = QtWidgets.QLabel(self.groupBox_11)
         self.label_11.setObjectName("label_11")
         self.formLayout_13.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_11)
@@ -1149,8 +1245,8 @@ class Ui_settingsDialog(object):
         self.comboPlayerMiddleClick.addItem("")
         self.comboPlayerMiddleClick.addItem("")
         self.formLayout_13.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.comboPlayerMiddleClick)
-        spacerItem8 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_13.setItem(5, QtWidgets.QFormLayout.SpanningRole, spacerItem8)
+        spacerItem10 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_13.setItem(5, QtWidgets.QFormLayout.SpanningRole, spacerItem10)
         self.checkTrackCycleCantDisable = QtWidgets.QCheckBox(self.groupBox_11)
         self.checkTrackCycleCantDisable.setChecked(True)
         self.checkTrackCycleCantDisable.setObjectName("checkTrackCycleCantDisable")
@@ -1686,8 +1782,8 @@ class Ui_settingsDialog(object):
         self.labelGithub.setAlignment(QtCore.Qt.AlignCenter)
         self.labelGithub.setObjectName("labelGithub")
         self.verticalLayout_6.addWidget(self.labelGithub)
-        spacerItem9 = QtWidgets.QSpacerItem(20, 1276, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout_6.addItem(spacerItem9)
+        spacerItem11 = QtWidgets.QSpacerItem(20, 1276, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout_6.addItem(spacerItem11)
         self.tabWidget.addTab(self.tabUpdates, "")
         self.verticalLayout_4.addWidget(self.tabWidget)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
@@ -1724,14 +1820,9 @@ class Ui_settingsDialog(object):
         settingsDialog.setTabOrder(self.checkHideIdleCursor, self.spinHideIdleCursorDuration)
         settingsDialog.setTabOrder(self.spinHideIdleCursorDuration, self.checkHighPrecisionProgress)
         settingsDialog.setTabOrder(self.checkHighPrecisionProgress, self.checkAlwaysSaveAs)
-        settingsDialog.setTabOrder(self.checkAlwaysSaveAs, self.checkSaveAsUseMediaFolder)
-        settingsDialog.setTabOrder(self.checkSaveAsUseMediaFolder, self.checkStopOnFinish)
-        settingsDialog.setTabOrder(self.checkStopOnFinish, self.checkCopyEscapeBackslashes)
-        settingsDialog.setTabOrder(self.checkCopyEscapeBackslashes, self.checkRememberDropFolder)
-        settingsDialog.setTabOrder(self.checkRememberDropFolder, self.checkAutoEnableSubtitles)
-        settingsDialog.setTabOrder(self.checkAutoEnableSubtitles, self.checkCycleRememberOriginalPath)
-        settingsDialog.setTabOrder(self.checkCycleRememberOriginalPath, self.checkRecycleBin)
-        settingsDialog.setTabOrder(self.checkRecycleBin, self.checkMinimizePause)
+        settingsDialog.setTabOrder(self.checkAlwaysSaveAs, self.checkStopOnFinish)
+        settingsDialog.setTabOrder(self.checkStopOnFinish, self.checkAutoEnableSubtitles)
+        settingsDialog.setTabOrder(self.checkAutoEnableSubtitles, self.checkMinimizePause)
         settingsDialog.setTabOrder(self.checkMinimizePause, self.checkMinimizeRestore)
         settingsDialog.setTabOrder(self.checkMinimizeRestore, self.checkSnapVideos)
         settingsDialog.setTabOrder(self.checkSnapVideos, self.checkSnapGifs)
@@ -1889,6 +1980,40 @@ class Ui_settingsDialog(object):
 "?ratio        The aspect ratio of the media being played.\n"
 "?volume        The volume of the media being played.\n"
 "?speed        The playback speed of the media being played."))
+        self.label_70.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation date when\n"
+"right-clicking the player. Refer to https://strftime.org/ for a full\n"
+"list of format codes, and https://www.strfti.me/ for an interactive\n"
+"sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
+        self.label_70.setText(_translate("settingsDialog", "Short date format"))
+        self.lineDateFormatShort.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation date when\n"
+"right-clicking the player. Refer to https://strftime.org/ for a full\n"
+"list of format codes, and https://www.strfti.me/ for an interactive\n"
+"sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
+        self.label_71.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation/modified dates\n"
+"when right-clicking the player and hovering over the short date entry.\n"
+"Refer to https://strftime.org/ for a full list of format codes, and\n"
+"https://www.strfti.me/ for an interactive sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
+        self.label_71.setText(_translate("settingsDialog", "Long date format"))
+        self.lineDateFormatLong.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation/modified dates\n"
+"when right-clicking the player and hovering over the short date entry.\n"
+"Refer to https://strftime.org/ for a full list of format codes, and\n"
+"https://www.strfti.me/ for an interactive sandbox for testing.\n"
+"\n"
+"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
+"PyPlayer will automatically make this conversion for you,\n"
+"and vice versa."))
         self.label_58.setToolTip(_translate("settingsDialog", "The number of files to remember between sessions\n"
 "after being played.\n"
 "\n"
@@ -1933,34 +2058,9 @@ class Ui_settingsDialog(object):
 "NOTE: If you experience noticable delays while\n"
 "opening media, you can try disabling this setting."))
         self.checkFFprobe.setText(_translate("settingsDialog", "Use FFprobe when possible (requires PyPlayer restart)"))
-        self.checkAlwaysSaveAs.setToolTip(_translate("settingsDialog", "If checked, saving an edit with no name specified in the\n"
-"output box at the bottom of the window will bring up\n"
-"the \"Save as...\" prompt.\n"
-"\n"
-"If not checked, the edited file will have the same name\n"
-"name as the source file, with \"_edited\" appended to it."))
-        self.checkAlwaysSaveAs.setText(_translate("settingsDialog", "Use \"Save as...\" prompt when saving without a name"))
-        self.checkRenameMissingImages.setToolTip(_translate("settingsDialog", "If checked, renaming an image file that doesn\'t\n"
-"exist anymore will save the currently cached\n"
-"image as a new file with your desired name.\n"
-"\n"
-"If not checked, renaming an image file that\n"
-"doesn\'t exist anymore will do nothing."))
-        self.checkRenameMissingImages.setText(_translate("settingsDialog", "Renaming missing image files creates a new one"))
-        self.checkSaveAsUseMediaFolder.setToolTip(_translate("settingsDialog", "If checked, the \"Save as...\" prompt will default\n"
-"to the current media\'s folder if possible. Otherwise,\n"
-"the prompt will open to the most recently accessed\n"
-"folder from any dialog."))
-        self.checkSaveAsUseMediaFolder.setText(_translate("settingsDialog", "\"Save as...\" prompt defaults to current media\'s folder"))
-        self.checkStopOnFinish.setToolTip(_translate("settingsDialog", "If checked, the media player will completely stop upon the\n"
-"completion of a media file, instead of just pausing the media.\n"
-"This is how VLC handles media files.\n"
-"\n"
-"NOTE: If the player is not stopped, video and audio files will\n"
-"still be considered \"in-use\" by your OS. You can manually\n"
-"stop the player by right-clicking the player or pause button,\n"
-"or by going to \"File -> Stop Player\" in the menubar."))
-        self.checkStopOnFinish.setText(_translate("settingsDialog", "Stop player after media has finished (VLC behavior)"))
+        self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
+"recycle bin instead of being immediately/permanently deleted."))
+        self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
         self.checkCopyEscapeBackslashes.setToolTip(_translate("settingsDialog", "If checked, copying a media\'s path to your clipboard\n"
 "will escape all backslashes ( \\ → \\\\ ), which is useful\n"
 "for certain use-cases.\n"
@@ -1968,20 +2068,31 @@ class Ui_settingsDialog(object):
 "This is only relevant on Windows as other operating\n"
 "systems do not use backslashes in their paths."))
         self.checkCopyEscapeBackslashes.setText(_translate("settingsDialog", "Escape backslashes ( \\ → \\\\ ) when copying media path"))
+        self.checkAlwaysSaveAs.setToolTip(_translate("settingsDialog", "If checked, saving an edit with no name specified in the\n"
+"output box at the bottom of the window will bring up\n"
+"the \"Save as...\" prompt.\n"
+"\n"
+"If not checked, the edited file will have the same name\n"
+"name as the source file, with \"_edited\" appended to it."))
+        self.checkAlwaysSaveAs.setText(_translate("settingsDialog", "Use \"Save as...\" prompt when saving without a name"))
+        self.checkSaveAsUseMediaFolder.setToolTip(_translate("settingsDialog", "If checked, the \"Save as...\" prompt will default\n"
+"to the current media\'s folder if possible. Otherwise,\n"
+"the prompt will open to the most recently accessed\n"
+"folder from any dialog."))
+        self.checkSaveAsUseMediaFolder.setText(_translate("settingsDialog", "\"Save as...\" prompt defaults to current media\'s folder"))
+        self.checkRenameMissingImages.setToolTip(_translate("settingsDialog", "If checked, renaming an image file that doesn\'t\n"
+"exist anymore will save the currently cached\n"
+"image as a new file with your desired name.\n"
+"\n"
+"If not checked, renaming an image file that\n"
+"doesn\'t exist anymore will do nothing."))
+        self.checkRenameMissingImages.setText(_translate("settingsDialog", "Renaming missing image files creates a new one"))
         self.checkRememberDropFolder.setToolTip(_translate("settingsDialog", "If checked, dragging and dropping media will remember\n"
 "that media\'s folder and use it as the default for the next\n"
 "time you open a file-browsing dialog. Otherwise, only\n"
 "media opened through those dialogs will have their\n"
 "folders remembered."))
         self.checkRememberDropFolder.setText(_translate("settingsDialog", "Remember folders for drag-and-dropped media"))
-        self.checkAutoEnableSubtitles.setToolTip(_translate("settingsDialog", "If checked, subtitle tracks will be automatically\n"
-"enabled if they\'re available. This includes both\n"
-"pre-existing tracks and manually-added tracks."))
-        self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
-        self.checkRecentFilesReorderFromMenu.setToolTip(_translate("settingsDialog", "If checked, opening recent files through\n"
-"the menu will update their order, moving\n"
-"the newly played file to the top."))
-        self.checkRecentFilesReorderFromMenu.setText(_translate("settingsDialog", "Opening recent files from the menu updates their order"))
         self.checkCycleRememberOriginalPath.setToolTip(_translate("settingsDialog", "Tristate:\n"
 "\n"
 "Fully checked: media that is renamed and/or edited will act\n"
@@ -1994,43 +2105,134 @@ class Ui_settingsDialog(object):
 "file #5, but then rename it so that it becomes file #1, the\n"
 "next file that will play will still be file #6."))
         self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
-        self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
-"recycle bin instead of being immediately/permanently deleted."))
-        self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
-        self.label_70.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation date when\n"
-"right-clicking the player. Refer to https://strftime.org/ for a full\n"
-"list of format codes, and https://www.strfti.me/ for an interactive\n"
-"sandbox for testing.\n"
+        self.checkStopOnFinish.setToolTip(_translate("settingsDialog", "If checked, the media player will completely stop upon the\n"
+"completion of a media file, instead of just pausing the media.\n"
+"This is how VLC handles media files.\n"
 "\n"
-"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
-"PyPlayer will automatically make this conversion for you,\n"
-"and vice versa."))
-        self.label_70.setText(_translate("settingsDialog", "Short date format"))
-        self.lineDateFormatShort.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation date when\n"
-"right-clicking the player. Refer to https://strftime.org/ for a full\n"
-"list of format codes, and https://www.strfti.me/ for an interactive\n"
-"sandbox for testing.\n"
+"NOTE: If the player is not stopped, video and audio files will\n"
+"still be considered \"in-use\" by your OS. You can manually\n"
+"stop the player by right-clicking the player or pause button,\n"
+"or by going to \"File -> Stop Player\" in the menubar."))
+        self.checkStopOnFinish.setText(_translate("settingsDialog", "Stop player after media has finished (VLC behavior)"))
+        self.checkAutoEnableSubtitles.setToolTip(_translate("settingsDialog", "If checked, subtitle tracks will be automatically\n"
+"enabled if they\'re available. This includes both\n"
+"pre-existing tracks and manually-added tracks."))
+        self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
+        self.checkRecentFilesReorderFromMenu.setToolTip(_translate("settingsDialog", "If checked, opening recent files through\n"
+"the menu will update their order, moving\n"
+"the newly played file to the top."))
+        self.checkRecentFilesReorderFromMenu.setText(_translate("settingsDialog", "Opening recent files from the menu updates their order"))
+        self.groupBox_16.setTitle(_translate("settingsDialog", "Edit behavior"))
+        self.checkEditCtimeOnNew.setToolTip(_translate("settingsDialog", "If checked, the current media\'s creation time will be\n"
+"applied to any new files that are saved. Otherwise,\n"
+"the creation time will be set to the time of the edit.\n"
 "\n"
-"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
-"PyPlayer will automatically make this conversion for you,\n"
-"and vice versa."))
-        self.label_71.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation/modified dates\n"
-"when right-clicking the player and hovering over the short date entry.\n"
-"Refer to https://strftime.org/ for a full list of format codes, and\n"
-"https://www.strfti.me/ for an interactive sandbox for testing.\n"
+"Note: Creation times are Windows-only."))
+        self.checkEditCtimeOnNew.setText(_translate("settingsDialog", "Reuse creation time when saving new file"))
+        self.checkEditCtimeOnOriginal.setToolTip(_translate("settingsDialog", "If checked, the current media\'s creation time will\n"
+"be reused when overwriting itself. Otherwise, the\n"
+"creation time will be set to the time of the edit.\n"
 "\n"
-"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
-"PyPlayer will automatically make this conversion for you,\n"
-"and vice versa."))
-        self.label_71.setText(_translate("settingsDialog", "Long date format"))
-        self.lineDateFormatLong.setToolTip(_translate("settingsDialog", "The format to use for displaying the media\'s creation/modified dates\n"
-"when right-clicking the player and hovering over the short date entry.\n"
-"Refer to https://strftime.org/ for a full list of format codes, and\n"
-"https://www.strfti.me/ for an interactive sandbox for testing.\n"
+"Note: Creation times are Windows-only."))
+        self.checkEditCtimeOnOriginal.setText(_translate("settingsDialog", "Reuse creation time when replacing original file"))
+        self.checkEditMtimeOnNew.setToolTip(_translate("settingsDialog", "If checked, the current media\'s last modified time will\n"
+"be applied to any new files that are saved. Otherwise,\n"
+"the modified time will be set to the time of the edit."))
+        self.checkEditMtimeOnNew.setText(_translate("settingsDialog", "Reuse modified time when saving new file"))
+        self.checkEditMtimeOnOriginal.setToolTip(_translate("settingsDialog", "If checked, the current media\'s last modified time will\n"
+"be reused when overwriting itself. Otherwise, the last\n"
+"modified time will be set to the time of the edit."))
+        self.checkEditMtimeOnOriginal.setText(_translate("settingsDialog", "Reuse modified time when replacing original file"))
+        self.groupBox_20.setTitle(_translate("settingsDialog", "When replacing different file..."))
+        self.groupBox_17.setTitle(_translate("settingsDialog", "Set creation time to..."))
+        self.radioEditCtimeConflictUseNow.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate file\n"
+"during an edit, the creation time will be set to the time\n"
+"of the edit.\n"
 "\n"
-"NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
-"PyPlayer will automatically make this conversion for you,\n"
-"and vice versa."))
+"Note: Creation times are Windows-only."))
+        self.radioEditCtimeConflictUseNow.setText(_translate("settingsDialog", "Now"))
+        self.radioEditCtimeConflictUseOriginal.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate\n"
+"file during an edit, the creation time will be set to\n"
+"the current media\'s creation time.\n"
+"\n"
+"Note: Creation times are Windows-only."))
+        self.radioEditCtimeConflictUseOriginal.setText(_translate("settingsDialog", "Original file"))
+        self.radioEditCtimeConflictUseOther.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate file\n"
+"during an edit, the creation time will be set to that of\n"
+"the file being replaced.\n"
+"\n"
+"Note: Creation times are Windows-only."))
+        self.radioEditCtimeConflictUseOther.setText(_translate("settingsDialog", "Other file"))
+        self.radioEditCtimeConflictUseNewest.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate\n"
+"file during an edit, the creation time will be set to the\n"
+"newest creation time between the current media and\n"
+"the file being replaced.\n"
+"\n"
+"Note: Creation times are Windows-only."))
+        self.radioEditCtimeConflictUseNewest.setText(_translate("settingsDialog", "Newest"))
+        self.radioEditCtimeConflictUseOldest.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate\n"
+"file during an edit, the creation time will be set to the\n"
+"oldest creation time between the current media and\n"
+"the file being replaced.\n"
+"\n"
+"Note: Creation times are Windows-only."))
+        self.radioEditCtimeConflictUseOldest.setText(_translate("settingsDialog", "Oldest"))
+        self.groupBox_18.setTitle(_translate("settingsDialog", "Set modified time to..."))
+        self.radioEditMtimeConflictUseNow.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate file\n"
+"during an edit, the last modified time will be set to the\n"
+"time of the edit."))
+        self.radioEditMtimeConflictUseNow.setText(_translate("settingsDialog", "Now"))
+        self.radioEditMtimeConflictUseOriginal.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate\n"
+"file during an edit, the last modified time will be set\n"
+"to the current media\'s last modified time."))
+        self.radioEditMtimeConflictUseOriginal.setText(_translate("settingsDialog", "Original file"))
+        self.radioEditMtimeConflictUseOther.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate file\n"
+"during an edit, the last modified time will be set to that\n"
+"of the file being replaced."))
+        self.radioEditMtimeConflictUseOther.setText(_translate("settingsDialog", "Other file"))
+        self.radioEditMtimeConflictUseNewest.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate\n"
+"file during an edit, the last modified time will be set\n"
+"to the newest last modified time between the current\n"
+"media and the file being replaced."))
+        self.radioEditMtimeConflictUseNewest.setText(_translate("settingsDialog", "Newest"))
+        self.radioEditMtimeConflictUseOldest.setToolTip(_translate("settingsDialog", "If checked, when replacing an existing but separate\n"
+"file during an edit, the last modified time will be set\n"
+"to the oldest last modified time between the current\n"
+"media and the file being replaced."))
+        self.radioEditMtimeConflictUseOldest.setText(_translate("settingsDialog", "Oldest"))
+        self.groupBox_19.setTitle(_translate("settingsDialog", "If modified time is older than creation time..."))
+        self.checkEditOlderMtimeAlwaysReuse.setToolTip(_translate("settingsDialog", "If checked, and the last modified time of the current\n"
+"media is older than its creation time, then the last\n"
+"modified time will always be used rather than the\n"
+"time of the edit, regardless of the above settings.\n"
+"\n"
+"Example: If you edit a file with a creation time of 2023\n"
+"and a last modified time of 2021, your new file will also\n"
+"have a last modified time of 2021.\n"
+"\n"
+"Note: This has NO effect when replacing different files,\n"
+"only when saving new files or replacing the original.\n"
+"\n"
+"Note: Creation times are Windows-only."))
+        self.checkEditOlderMtimeAlwaysReuse.setText(_translate("settingsDialog", "Always reuse modified time"))
+        self.checkEditOlderMtimeUseAsCtime.setToolTip(_translate("settingsDialog", "If checked, and the last modified time of the current media is\n"
+"older than its creation time, then the creation time of your edit\n"
+"will be set to the last modified time.\n"
+"\n"
+"Example: If you edit a file with a creation time of 2023 and a\n"
+"last modified time of 2021, your new file will have a creation\n"
+"time of 2021.\n"
+"\n"
+"Note: When replacing different files, this ONLY applies to\n"
+"the original file, and is applied before \"oldest creation time\"\n"
+"is evaluated. The file being replaced will not be considered\n"
+"or altered prior to the edit.\n"
+"\n"
+"Note: Creation time and last modified time are not\n"
+"swapped - last modified time will remain the same.\n"
+"\n"
+"Note: Creation times are Windows-only."))
+        self.checkEditOlderMtimeUseAsCtime.setText(_translate("settingsDialog", "Set creation time to modified time"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusAggressive.setToolTip(_translate("settingsDialog", "If checked, PyPlayer will use COM and native Windows\' APIs\n"
 "to aggressively steal focus on Windows. Otherwise, Windows\n"

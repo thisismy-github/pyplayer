@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-132</y>
         <width>339</width>
-        <height>2856</height>
+        <height>3175</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -208,6 +208,74 @@ following variables are replaced with their corresponding values:
                </property>
                <property name="text">
                 <string notr="true">?paused ?name (?duration | ?fpsfps | ?size)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_70">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation date when
+right-clicking the player. Refer to https://strftime.org/ for a full
+list of format codes, and https://www.strfti.me/ for an interactive
+sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string>Short date format</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLineEdit" name="lineDateFormatShort">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation date when
+right-clicking the player. Refer to https://strftime.org/ for a full
+list of format codes, and https://www.strfti.me/ for an interactive
+sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string notr="true">%-D %-I:%M%p</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_71">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation/modified dates
+when right-clicking the player and hovering over the short date entry.
+Refer to https://strftime.org/ for a full list of format codes, and
+https://www.strfti.me/ for an interactive sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string>Long date format</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLineEdit" name="lineDateFormatLong">
+               <property name="toolTip">
+                <string>The format to use for displaying the media's creation/modified dates
+when right-clicking the player and hovering over the short date entry.
+Refer to https://strftime.org/ for a full list of format codes, and
+https://www.strfti.me/ for an interactive sandbox for testing.
+
+NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
+PyPlayer will automatically make this conversion for you,
+and vice versa.</string>
+               </property>
+               <property name="text">
+                <string notr="true">%I:%M:%S %p | %a, %b %-e, %Y</string>
                </property>
               </widget>
              </item>
@@ -406,6 +474,38 @@ opening media, you can try disabling this setting.</string>
               </widget>
              </item>
              <item row="10" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRecycleBin">
+               <property name="toolTip">
+                <string>If checked, files marked for deletion are sent to your computer's
+recycle bin instead of being immediately/permanently deleted.</string>
+               </property>
+               <property name="text">
+                <string>Deleted files are moved to recycle bin</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="11" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
+               <property name="toolTip">
+                <string>If checked, copying a media's path to your clipboard
+will escape all backslashes ( \ → \\ ), which is useful
+for certain use-cases.
+
+This is only relevant on Windows as other operating
+systems do not use backslashes in their paths.</string>
+               </property>
+               <property name="text">
+                <string>Escape backslashes ( \ → \\ ) when copying media path</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="12" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAlwaysSaveAs">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -423,25 +523,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRenameMissingImages">
-               <property name="toolTip">
-                <string>If checked, renaming an image file that doesn't
-exist anymore will save the currently cached
-image as a new file with your desired name.
-
-If not checked, renaming an image file that
-doesn't exist anymore will do nothing.</string>
-               </property>
-               <property name="text">
-                <string>Renaming missing image files creates a new one</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="12" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default
@@ -457,35 +539,18 @@ folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="13" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkStopOnFinish">
-               <property name="toolTip">
-                <string>If checked, the media player will completely stop upon the
-completion of a media file, instead of just pausing the media.
-This is how VLC handles media files.
-
-NOTE: If the player is not stopped, video and audio files will
-still be considered &quot;in-use&quot; by your OS. You can manually
-stop the player by right-clicking the player or pause button,
-or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
-               </property>
-               <property name="text">
-                <string>Stop player after media has finished (VLC behavior)</string>
-               </property>
-              </widget>
-             </item>
              <item row="14" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
+              <widget class="QCheckBox" name="checkRenameMissingImages">
                <property name="toolTip">
-                <string>If checked, copying a media's path to your clipboard
-will escape all backslashes ( \ → \\ ), which is useful
-for certain use-cases.
+                <string>If checked, renaming an image file that doesn't
+exist anymore will save the currently cached
+image as a new file with your desired name.
 
-This is only relevant on Windows as other operating
-systems do not use backslashes in their paths.</string>
+If not checked, renaming an image file that
+doesn't exist anymore will do nothing.</string>
                </property>
                <property name="text">
-                <string>Escape backslashes ( \ → \\ ) when copying media path</string>
+                <string>Renaming missing image files creates a new one</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -510,6 +575,49 @@ folders remembered.</string>
               </widget>
              </item>
              <item row="16" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
+               <property name="toolTip">
+                <string>Tristate:
+
+Fully checked: media that is renamed and/or edited will act
+as if it were in its original place when attempting to cycle to
+the next or previous media media file in the current folder.
+
+Partially checked: ditto, but only for renaming, not editing.
+
+Example: If there are 10 files in a folder, and you're playing
+file #5, but then rename it so that it becomes file #1, the
+next file that will play will still be file #6.</string>
+               </property>
+               <property name="text">
+                <string>Cycle media based on file's original filepath (tristate)</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <property name="tristate">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="18" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkStopOnFinish">
+               <property name="toolTip">
+                <string>If checked, the media player will completely stop upon the
+completion of a media file, instead of just pausing the media.
+This is how VLC handles media files.
+
+NOTE: If the player is not stopped, video and audio files will
+still be considered &quot;in-use&quot; by your OS. You can manually
+stop the player by right-clicking the player or pause button,
+or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
+               </property>
+               <property name="text">
+                <string>Stop player after media has finished (VLC behavior)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="19" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -536,115 +644,420 @@ the newly played file to the top.</string>
                </property>
               </widget>
              </item>
-             <item row="18" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
-               <property name="toolTip">
-                <string>Tristate:
-
-Fully checked: media that is renamed and/or edited will act
-as if it were in its original place when attempting to cycle to
-the next or previous media media file in the current folder.
-
-Partially checked: ditto, but only for renaming, not editing.
-
-Example: If there are 10 files in a folder, and you're playing
-file #5, but then rename it so that it becomes file #1, the
-next file that will play will still be file #6.</string>
-               </property>
-               <property name="text">
-                <string>Cycle media based on file's original filepath (tristate)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="20" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRecycleBin">
-               <property name="toolTip">
-                <string>If checked, files marked for deletion are sent to your computer's
-recycle bin instead of being immediately/permanently deleted.</string>
-               </property>
-               <property name="text">
-                <string>Deleted files are moved to recycle bin</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_70">
-               <property name="toolTip">
-                <string>The format to use for displaying the media's creation date when
-right-clicking the player. Refer to https://strftime.org/ for a full
-list of format codes, and https://www.strfti.me/ for an interactive
-sandbox for testing.
-
-NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
-PyPlayer will automatically make this conversion for you,
-and vice versa.</string>
-               </property>
-               <property name="text">
-                <string>Short date format</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QLineEdit" name="lineDateFormatShort">
-               <property name="toolTip">
-                <string>The format to use for displaying the media's creation date when
-right-clicking the player. Refer to https://strftime.org/ for a full
-list of format codes, and https://www.strfti.me/ for an interactive
-sandbox for testing.
-
-NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
-PyPlayer will automatically make this conversion for you,
-and vice versa.</string>
-               </property>
-               <property name="text">
-                <string notr="true">%-D %-I:%M%p</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_71">
-               <property name="toolTip">
-                <string>The format to use for displaying the media's creation/modified dates
-when right-clicking the player and hovering over the short date entry.
-Refer to https://strftime.org/ for a full list of format codes, and
-https://www.strfti.me/ for an interactive sandbox for testing.
-
-NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
-PyPlayer will automatically make this conversion for you,
-and vice versa.</string>
-               </property>
-               <property name="text">
-                <string>Long date format</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QLineEdit" name="lineDateFormatLong">
-               <property name="toolTip">
-                <string>The format to use for displaying the media's creation/modified dates
-when right-clicking the player and hovering over the short date entry.
-Refer to https://strftime.org/ for a full list of format codes, and
-https://www.strfti.me/ for an interactive sandbox for testing.
-
-NOTE: On Windows, &quot;%-&quot; is represented by &quot;%#&quot; instead.
-PyPlayer will automatically make this conversion for you,
-and vice versa.</string>
-               </property>
-               <property name="text">
-                <string notr="true">%I:%M:%S %p | %a, %b %-e, %Y</string>
-               </property>
-              </widget>
-             </item>
             </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_16">
+             <property name="title">
+              <string>Edit behavior</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_5">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>7</number>
+              </property>
+              <property name="topMargin">
+               <number>3</number>
+              </property>
+              <property name="rightMargin">
+               <number>7</number>
+              </property>
+              <property name="bottomMargin">
+               <number>7</number>
+              </property>
+              <item>
+               <widget class="QCheckBox" name="checkEditCtimeOnNew">
+                <property name="toolTip">
+                 <string>If checked, the current media's creation time will be
+applied to any new files that are saved. Otherwise,
+the creation time will be set to the time of the edit.
+
+Note: Creation times are Windows-only.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse creation time when saving new file</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkEditCtimeOnOriginal">
+                <property name="toolTip">
+                 <string>If checked, the current media's creation time will
+be reused when overwriting itself. Otherwise, the
+creation time will be set to the time of the edit.
+
+Note: Creation times are Windows-only.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse creation time when replacing original file</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkEditMtimeOnNew">
+                <property name="toolTip">
+                 <string>If checked, the current media's last modified time will
+be applied to any new files that are saved. Otherwise,
+the modified time will be set to the time of the edit.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse modified time when saving new file</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkEditMtimeOnOriginal">
+                <property name="toolTip">
+                 <string>If checked, the current media's last modified time will
+be reused when overwriting itself. Otherwise, the last
+modified time will be set to the time of the edit.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse modified time when replacing original file</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_8">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_20">
+                <property name="title">
+                 <string>When replacing different file...</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_47">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>3</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_17">
+                   <property name="title">
+                    <string>Set creation time to...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_13">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseNow">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the creation time will be set to the time
+of the edit.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Now</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOriginal">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the creation time will be set to
+the current media's creation time.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Original file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOther">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the creation time will be set to that of
+the file being replaced.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Other file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseNewest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the creation time will be set to the
+newest creation time between the current media and
+the file being replaced.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOldest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the creation time will be set to the
+oldest creation time between the current media and
+the file being replaced.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_18">
+                   <property name="title">
+                    <string>Set modified time to...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_14">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseNow">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the last modified time will be set to the
+time of the edit.</string>
+                      </property>
+                      <property name="text">
+                       <string>Now</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOriginal">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the last modified time will be set
+to the current media's last modified time.</string>
+                      </property>
+                      <property name="text">
+                       <string>Original file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOther">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the last modified time will be set to that
+of the file being replaced.</string>
+                      </property>
+                      <property name="text">
+                       <string>Other file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseNewest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the last modified time will be set
+to the newest last modified time between the current
+media and the file being replaced.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOldest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the last modified time will be set
+to the oldest last modified time between the current
+media and the file being replaced.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_7">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_19">
+                <property name="title">
+                 <string>If modified time is older than creation time...</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_15">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>3</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <item>
+                  <widget class="QCheckBox" name="checkEditOlderMtimeAlwaysReuse">
+                   <property name="toolTip">
+                    <string>If checked, and the last modified time of the current
+media is older than its creation time, then the last
+modified time will always be used rather than the
+time of the edit, regardless of the above settings.
+
+Example: If you edit a file with a creation time of 2023
+and a last modified time of 2021, your new file will also
+have a last modified time of 2021.
+
+Note: This has NO effect when replacing different files,
+only when saving new files or replacing the original.
+
+Note: Creation times are Windows-only.</string>
+                   </property>
+                   <property name="text">
+                    <string>Always reuse modified time</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="checkEditOlderMtimeUseAsCtime">
+                   <property name="toolTip">
+                    <string>If checked, and the last modified time of the current media is
+older than its creation time, then the creation time of your edit
+will be set to the last modified time.
+
+Example: If you edit a file with a creation time of 2023 and a
+last modified time of 2021, your new file will have a creation
+time of 2021.
+
+Note: When replacing different files, this ONLY applies to
+the original file, and is applied before &quot;oldest creation time&quot;
+is evaluated. The file being replaced will not be considered
+or altered prior to the edit.
+
+Note: Creation time and last modified time are not
+swapped - last modified time will remain the same.
+
+Note: Creation times are Windows-only.</string>
+                   </property>
+                   <property name="text">
+                    <string>Set creation time to modified time</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <layout class="QVBoxLayout" name="verticalLayout">
@@ -5106,13 +5519,8 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
   <tabstop>spinHideIdleCursorDuration</tabstop>
   <tabstop>checkHighPrecisionProgress</tabstop>
   <tabstop>checkAlwaysSaveAs</tabstop>
-  <tabstop>checkSaveAsUseMediaFolder</tabstop>
   <tabstop>checkStopOnFinish</tabstop>
-  <tabstop>checkCopyEscapeBackslashes</tabstop>
-  <tabstop>checkRememberDropFolder</tabstop>
   <tabstop>checkAutoEnableSubtitles</tabstop>
-  <tabstop>checkCycleRememberOriginalPath</tabstop>
-  <tabstop>checkRecycleBin</tabstop>
   <tabstop>checkMinimizePause</tabstop>
   <tabstop>checkMinimizeRestore</tabstop>
   <tabstop>checkSnapVideos</tabstop>

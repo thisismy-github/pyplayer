@@ -176,7 +176,7 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from util import add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, scale, file_is_hidden
+from util import add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, scale, setctime, file_is_hidden
 from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 
@@ -3083,15 +3083,51 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         is_static_image = self.is_static_image
         minimum, maximum, frame_count, frame_rate, duration = self.minimum, self.maximum, self.frame_count, self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
-
         audio_tracks = player.audio_get_track_count()
 
+        # get the new ctime/mtime to set out output file to (0 means don't change)
+        # NOTE: ctime in this case means creation time - on non-Windows sytems, ctime...
+        #       ...represents something else ("changed time") -> we don't want to touch that
+        old_ctime = self.stat.st_ctime
+        old_mtime = self.stat.st_mtime
+        new_ctime = 0
+        new_mtime = 0
+
         replacing_original = dest == video                              # whether or not our new video has same name as original
-        delete_after_save = self.checkDeleteOriginal.checkState()       # what will we do to the media file after saving? (0, 1, or 2)
-        NO_DELETE =   0                                                 # checkState() values for delete_after_save
+        older_mtime = old_mtime < (old_ctime - 60)                      # mtime must be at least one minute older
+        if older_mtime and settings.checkEditOlderMtimeUseAsCtime.isChecked():
+            old_ctime = old_mtime                                       # use mtime for ctime
+
+        if replacing_original:
+            if settings.checkEditCtimeOnOriginal.isChecked():           new_ctime = old_ctime
+            if settings.checkEditMtimeOnOriginal.isChecked():           new_mtime = old_mtime
+            if older_mtime:
+                if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
+        elif not exists(dest):
+            if settings.checkEditCtimeOnNew.isChecked():                new_ctime = old_ctime
+            if settings.checkEditMtimeOnNew.isChecked():                new_mtime = old_mtime
+            if older_mtime:
+                if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
+        else:
+            other_stat = os.stat(dest)
+            other_ctime = other_stat.st_ctime
+            other_mtime = other_stat.st_mtime
+            if settings.radioEditCtimeConflictUseOriginal.isChecked():  new_ctime = old_ctime
+            elif settings.radioEditCtimeConflictUseOther.isChecked():   new_ctime = other_ctime
+            elif settings.radioEditCtimeConflictUseNewest.isChecked():  new_ctime = max(old_ctime, other_ctime)
+            elif settings.radioEditCtimeConflictUseOldest.isChecked():  new_ctime = min(old_ctime, other_ctime)
+            if settings.radioEditMtimeConflictUseOriginal.isChecked():  new_mtime = old_mtime
+            elif settings.radioEditMtimeConflictUseOther.isChecked():   new_mtime = other_mtime
+            elif settings.radioEditMtimeConflictUseNewest.isChecked():  new_mtime = max(old_mtime, other_mtime)
+            elif settings.radioEditMtimeConflictUseOldest.isChecked():  new_mtime = min(old_mtime, other_mtime)
+
+        # what will we do to the media file after saving? (0, 1, or 2)
+        delete_after_save = self.checkDeleteOriginal.checkState()
+        NO_DELETE =   0
         MARK_DELETE = 1
         FULL_DELETE = 2
 
+        # operation aliases
         op_replace_audio = operations.get('replace audio', None)        # path to audio track
         op_add_audio =     operations.get('add audio', None)            # path to audio track
         op_remove_track =  operations.get('remove track', None)         # track to remove
@@ -3405,6 +3441,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.video == final_dest: self.stop()        # stop player again if necessary
                 if exists(final_dest): os.replace(dest, final_dest)
                 else: os.rename(dest, final_dest)
+
+                # update `final_dest`'s ctime/mtime if necessary
+                if new_ctime and constants.IS_WINDOWS:          # ctime means something else on other systems
+                    try: setctime(path=final_dest, ctime=new_ctime)
+                    except: log_on_statusbar(f'(!) Failed to update creation time for file: {format_exc()}')
+                if new_mtime:                                   # os.utime takes (atime, mtime) -> set atime to now
+                    try: os.utime(path=final_dest, times=(start_time, new_mtime))
+                    except: log_on_statusbar(f'(!) Failed to update modified time for file: {format_exc()}')
 
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video:
