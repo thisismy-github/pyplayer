@@ -3108,42 +3108,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         minimum, maximum, frame_count, frame_rate, duration = self.minimum, self.maximum, self.frame_count, self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
         audio_tracks = player.audio_get_track_count()
+        replacing_original = video == dest
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
-        # NOTE: ctime in this case means creation time - on non-Windows sytems, ctime...
-        #       ...represents something else ("changed time") -> we don't want to touch that
-        old_ctime = self.stat.st_ctime
-        old_mtime = self.stat.st_mtime
-        new_ctime = 0
-        new_mtime = 0
-
-        replacing_original = dest == video                              # whether or not our new video has same name as original
-        older_mtime = old_mtime < (old_ctime - 60)                      # mtime must be at least one minute older
-        if older_mtime and settings.checkEditOlderMtimeUseAsCtime.isChecked():
-            old_ctime = old_mtime                                       # use mtime for ctime
-
-        if replacing_original:
-            if settings.checkEditCtimeOnOriginal.isChecked():           new_ctime = old_ctime
-            if settings.checkEditMtimeOnOriginal.isChecked():           new_mtime = old_mtime
-            if older_mtime:
-                if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
-        elif not exists(dest):
-            if settings.checkEditCtimeOnNew.isChecked():                new_ctime = old_ctime
-            if settings.checkEditMtimeOnNew.isChecked():                new_mtime = old_mtime
-            if older_mtime:
-                if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
-        else:
-            other_stat = os.stat(dest)
-            other_ctime = other_stat.st_ctime
-            other_mtime = other_stat.st_mtime
-            if settings.radioEditCtimeConflictUseOriginal.isChecked():  new_ctime = old_ctime
-            elif settings.radioEditCtimeConflictUseOther.isChecked():   new_ctime = other_ctime
-            elif settings.radioEditCtimeConflictUseNewest.isChecked():  new_ctime = max(old_ctime, other_ctime)
-            elif settings.radioEditCtimeConflictUseOldest.isChecked():  new_ctime = min(old_ctime, other_ctime)
-            if settings.radioEditMtimeConflictUseOriginal.isChecked():  new_mtime = old_mtime
-            elif settings.radioEditMtimeConflictUseOther.isChecked():   new_mtime = other_mtime
-            elif settings.radioEditMtimeConflictUseNewest.isChecked():  new_mtime = max(old_mtime, other_mtime)
-            elif settings.radioEditMtimeConflictUseOldest.isChecked():  new_mtime = min(old_mtime, other_mtime)
+        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest)
 
         # what will we do to the media file after saving? (0, 1, or 2)
         delete_after_save = self.checkDeleteOriginal.checkState()
@@ -3467,12 +3435,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else: os.rename(dest, final_dest)
 
                 # update `final_dest`'s ctime/mtime if necessary
-                if new_ctime and constants.IS_WINDOWS:          # ctime means something else on other systems
-                    try: setctime(path=final_dest, ctime=new_ctime)
-                    except: log_on_statusbar(f'(!) Failed to update creation time for file: {format_exc()}')
-                if new_mtime:                                   # os.utime takes (atime, mtime) -> set atime to now
-                    try: os.utime(path=final_dest, times=(start_time, new_mtime))
-                    except: log_on_statusbar(f'(!) Failed to update modified time for file: {format_exc()}')
+                self.set_file_timestamps(
+                    path=final_dest,
+                    ctime=new_ctime,
+                    mtime=new_mtime
+                )
 
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video:
@@ -3486,8 +3453,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 elif settings.checkTextOnSave.isChecked():
                     show_on_player(f'Changes saved to {final_dest}.')
                 log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
-            else: return log_on_statusbar('No changes have been made.')
-        except: log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
+            else:
+                return log_on_statusbar('No changes have been made.')
+        except:
+            log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
         finally:                                                # NOTE: this order is intentional
             self.locked_video = None                            # unlock video if needed
             self.set_save_progress_visible_signal.emit(False)   # hide the progress bar no matter what
@@ -4582,6 +4551,51 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if settings_were_open: settings.show()      # restore settings if they were originally open
 
 
+    def add_info_actions(self, context: QtW.QMenu):
+        ''' Appends greyed-out actions to `context` containing
+            information about the current media. '''
+        context.addSeparator()
+        if '?size' not in settings.lineWindowTitleFormat.text():
+            context.addAction(f'Size: {self.size_label}').setEnabled(False)
+        if '?resolution' not in settings.lineWindowTitleFormat.text():
+            context.addAction(f'Res: {self.vwidth:.0f}x{self.vheight:.0f}').setEnabled(False)
+        if '?ratio' not in settings.lineWindowTitleFormat.text():
+            context.addAction(f'Ratio: {self.ratio}').setEnabled(False)
+
+        # generate timestamps for media's ctime/mtime
+        # enable tooltips for the menu if long format is present (or error occurred)
+        short_format = settings.lineDateFormatShort.text().strip()
+        long_format = settings.lineDateFormatLong.text().strip()
+        if short_format:                                # don't do anything if short format is empty
+            if constants.IS_WINDOWS:
+                short_format = short_format.replace('%-', '%#')
+                long_format = long_format.replace('%-', '%#')
+            else:
+                short_format = short_format.replace('%#', '%-')
+                long_format = long_format.replace('%#', '%-')
+            try:
+                ctime_struct = localtime(self.stat.st_ctime)
+                mtime_struct = localtime(self.stat.st_mtime)
+                short_timestamp = strftime(short_format, ctime_struct)
+                if long_format:
+                    long_ctimestamp = strftime(long_format, ctime_struct)
+                    long_mtimestamp = strftime(long_format, mtime_struct)
+                    tooltip = (f'Date created:\t{long_ctimestamp}\n'
+                               f'Date modified:\t{long_mtimestamp}')
+                else:
+                    tooltip = ''
+            except ValueError:
+                short_timestamp = 'Invalid date format!'
+                tooltip = ('Change the two date formats in your settings.\n'
+                           'See https://strftime.org/ for valid format codes, or\n'
+                           'use https://www.strfti.me/ for an interactive sandbox.')
+            action = context.addAction(short_timestamp)
+            action.setEnabled(False)
+            if tooltip:
+                action.setToolTip(tooltip)
+                context.setToolTipsVisible(True)
+
+
     def get_renamed_output(
         self,
         new_name: str = None,
@@ -4659,55 +4673,56 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return hotkey_string
 
 
-    def add_info_actions(self, context: QtW.QMenu):
-        ''' Appends greyed-out actions to `context` containing
-            information about the current media. '''
-        context.addSeparator()
-        if '?size' not in settings.lineWindowTitleFormat.text():
-            context.addAction(f'Size: {self.size_label}').setEnabled(False)
-        if '?resolution' not in settings.lineWindowTitleFormat.text():
-            context.addAction(f'Res: {self.vwidth:.0f}x{self.vheight:.0f}').setEnabled(False)
-        if '?ratio' not in settings.lineWindowTitleFormat.text():
-            context.addAction(f'Ratio: {self.ratio}').setEnabled(False)
+    def get_new_file_timestamps(self, source: str, dest: str) -> tuple:
+        ''' Returns a tuple of floats containing the new creation time and
+            modified time to use when saving a potential `source` file to `dest`
+            based on the various settings the user has checked/unchecked.
+            NOTE: Times that should not be changed will be returned as 0. '''
+        old_ctime = self.stat.st_ctime
+        old_mtime = self.stat.st_mtime
+        new_ctime = 0
+        new_mtime = 0
 
-        # generate timestamps for media's ctime/mtime
-        # enable tooltips for the menu if long format is present (or error occurred)
-        short_format = settings.lineDateFormatShort.text().strip()
-        long_format = settings.lineDateFormatLong.text().strip()
-        if short_format:                                # don't do anything if short format is empty
-            if constants.IS_WINDOWS:
-                short_format = short_format.replace('%-', '%#')
-                long_format = long_format.replace('%-', '%#')
-            else:
-                short_format = short_format.replace('%#', '%-')
-                long_format = long_format.replace('%#', '%-')
-            try:
-                ctime_struct = localtime(self.stat.st_ctime)
-                mtime_struct = localtime(self.stat.st_mtime)
-                short_timestamp = strftime(short_format, ctime_struct)
-                if long_format:
-                    long_ctimestamp = strftime(long_format, ctime_struct)
-                    long_mtimestamp = strftime(long_format, mtime_struct)
-                    tooltip = (f'Date created:\t{long_ctimestamp}\n'
-                               f'Date modified:\t{long_mtimestamp}')
-                else:
-                    tooltip = ''
-            except ValueError:
-                short_timestamp = 'Invalid date format!'
-                tooltip = ('Change the two date formats in your settings.\n'
-                           'See https://strftime.org/ for valid format codes, or\n'
-                           'use https://www.strfti.me/ for an interactive sandbox.')
-            action = context.addAction(short_timestamp)
-            action.setEnabled(False)
-            if tooltip:
-                action.setToolTip(tooltip)
-                context.setToolTipsVisible(True)
+        mtime_is_older = old_mtime < (old_ctime - 60)                   # mtime must be at least one minute older
+        if mtime_is_older and settings.checkEditOlderMtimeUseAsCtime.isChecked():
+            old_ctime = old_mtime                                       # use mtime for ctime
+
+        if source == dest:
+            if settings.checkEditCtimeOnOriginal.isChecked():           new_ctime = old_ctime
+            if settings.checkEditMtimeOnOriginal.isChecked():           new_mtime = old_mtime
+            if mtime_is_older:
+                if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
+        elif not exists(dest):
+            if settings.checkEditCtimeOnNew.isChecked():                new_ctime = old_ctime
+            if settings.checkEditMtimeOnNew.isChecked():                new_mtime = old_mtime
+            if mtime_is_older:
+                if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
+        else:
+            other_stat = os.stat(dest)
+            other_ctime = other_stat.st_ctime
+            other_mtime = other_stat.st_mtime
+            if settings.radioEditCtimeConflictUseOriginal.isChecked():  new_ctime = old_ctime
+            elif settings.radioEditCtimeConflictUseOther.isChecked():   new_ctime = other_ctime
+            elif settings.radioEditCtimeConflictUseNewest.isChecked():  new_ctime = max(old_ctime, other_ctime)
+            elif settings.radioEditCtimeConflictUseOldest.isChecked():  new_ctime = min(old_ctime, other_ctime)
+            if settings.radioEditMtimeConflictUseOriginal.isChecked():  new_mtime = old_mtime
+            elif settings.radioEditMtimeConflictUseOther.isChecked():   new_mtime = other_mtime
+            elif settings.radioEditMtimeConflictUseNewest.isChecked():  new_mtime = max(old_mtime, other_mtime)
+            elif settings.radioEditMtimeConflictUseOldest.isChecked():  new_mtime = min(old_mtime, other_mtime)
+
+        return new_ctime, new_mtime
 
 
-    def swap_slider_styles(self):
-        ''' Used to switch between high-precision and
-            low-precision sliders in update_slider_thread. '''
-        self.swap_slider_styles_queued = True
+    def set_file_timestamps(path: str, ctime: float = 0, mtime: float = 0):
+        ''' Sets a `path`'s creation time and modified time to `ctime` and
+            `mtime`, if non-zero. NOTE: "ctime" represents "changed time" on
+            non-Windows systems, so `ctime` is ignored outside of Windows. '''
+        if ctime and constants.IS_WINDOWS:          # ctime means something else on other systems
+            try: setctime(path=path, ctime=ctime)
+            except: log_on_statusbar(f'(!) Failed to update creation time for file: {format_exc()}')
+        if mtime:                                   # os.utime takes (atime, mtime) -> set atime to now
+            try: os.utime(path=path, times=(get_time(), mtime))
+            except: log_on_statusbar(f'(!) Failed to update modified time for file: {format_exc()}')
 
 
     def set_fullscreen(self, fullscreen: bool):
@@ -5345,6 +5360,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         )
 
 
+    def handle_snapshot_button(self):
+        mod = app.keyboardModifiers()
+        if not mod:                    self.snapshot_actions[settings.comboSnapshotDefault.currentIndex()][0]()
+        elif mod & Qt.ShiftModifier:   self.snapshot_actions[settings.comboSnapshotShift.currentIndex()][0]()
+        elif mod & Qt.ControlModifier: self.snapshot_actions[settings.comboSnapshotCtrl.currentIndex()][0]()
+        elif mod & Qt.AltModifier:     self.snapshot_actions[settings.comboSnapshotAlt.currentIndex()][0]()
+        else:                          self.snapshot_actions[settings.comboSnapshotAlt.currentIndex()][0]()
+
+
     def refresh_taskbar(self):
         ''' Updates the current pause-state icon in the taskbar toolbar,
             as well as the current overlay icon. NOTE: Windows-only. '''
@@ -5453,15 +5477,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.taskbar_toolbar.setWindow(self.windowHandle())
 
 
-    def handle_snapshot_button(self):
-        mod = app.keyboardModifiers()
-        if not mod:                    self.snapshot_actions[settings.comboSnapshotDefault.currentIndex()][0]()
-        elif mod & Qt.ShiftModifier:   self.snapshot_actions[settings.comboSnapshotShift.currentIndex()][0]()
-        elif mod & Qt.ControlModifier: self.snapshot_actions[settings.comboSnapshotCtrl.currentIndex()][0]()
-        elif mod & Qt.AltModifier:     self.snapshot_actions[settings.comboSnapshotAlt.currentIndex()][0]()
-        else:                          self.snapshot_actions[settings.comboSnapshotAlt.currentIndex()][0]()
-
-
     def page_step_slider(self, action):
         ''' Required because Qt genuinely doesn't emit any other signals for page steps. Values
             are clamped to the progress slider's minimum and maximum values, to prevent wrapping. '''
@@ -5474,6 +5489,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             set_and_adjust_and_update_progress(new_frame, 0.1)
         if self.restarted and settings.checkNavigationUnpause.isChecked():
             self.pause()    # auto-unpause after restart
+
+
+    def swap_slider_styles(self):
+        ''' Used to switch between high-precision and
+            low-precision sliders in update_slider_thread. '''
+        self.swap_slider_styles_queued = True
 
 
     def mark_for_deletion(self, checked: bool = False, file=None, mode=None):
