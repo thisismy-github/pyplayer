@@ -214,8 +214,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
     # ---------------------
     # Cropping Utilities
     # ---------------------
-    def get_crop_point_index_in_range(self, pos: QtCore.QPoint, _range: int = 30, p=False):
-        ''' Gets the index of the closest crop-corner to `pos`, if any are within `_range` pixels, otherwise None. '''
+    def get_crop_point_index_in_range(self, pos: QtCore.QPoint, _range: int = 30) -> int:
+        ''' Gets the index of the closest crop-corner to `pos`,
+            if any are within `_range` pixels, otherwise None. '''
         min_dist = 1000
         min_point = None
         for point in self.selection:
@@ -227,7 +228,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         return None if min_dist > _range else self.selection.index(min_point)
 
 
-    def get_crop_edge_index_in_range(self, pos: QtCore.QPoint, _range: int = 15):
+    def get_crop_edge_index_in_range(self, pos: QtCore.QPoint, _range: int = 15) -> int:
         ''' Gets the closest crop-edge to `pos`, if any are within `_range` pixels, otherwise None. Returns
             the index of an associated corner for each edge. Left: 0, Top: 1, Right: 2, Bottom: 3. '''
         s = self.selection
@@ -239,7 +240,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         return None
 
 
-    def correct_points(self, changed_point_index):
+    def correct_points(self, changed_point_index: int):
         reference_point = self.selection[changed_point_index]
         x, y = reference_point.x(), reference_point.y()
         corrective_functions = self.reference_example[changed_point_index]
@@ -894,9 +895,14 @@ class QVideoPlayerLabel(QtW.QLabel):
         return zoom
 
 
-    def setZoom(self, zoom: float, pos: QtCore.QPoint = None,
-                globalPos: QtCore.QPoint = None,
-                force: bool = False, _smooth: bool = False) -> float:
+    def setZoom(
+        self,
+        zoom: float,
+        pos: QtCore.QPoint = None,
+        globalPos: QtCore.QPoint = None,
+        force: bool = False,
+        _smooth: bool = False
+    ) -> float:
         is_gif = bool(self.movie())
         maxZoom = 100.0 if not is_gif else 20.0
         minZoomFactor = settings.spinZoomMinimumFactor.value()
@@ -1469,36 +1475,51 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         context.exec(event.globalPos())
 
 
-    def add(self, *args, files=None, index=None):
-        if files is None: files, cfg.lastdir = qthelpers.browseForFiles(lastdir=cfg.lastdir,
-                                                                        caption='Select video to add',
-                                                                        filter='MP4 files (*.mp4);;All files (*)')
-        elif isinstance(files, str): files = (files,)
+    def add(self, *args, files: tuple = None, index: int = None):
+        ''' Adds a list/tuple of `files` as `QVideoListItemWidget`'s. If `files`
+            is a string, it will be interpreted as the sole element of a tuple.
+            If `index` is specified, `files` will be inserted at that spot. '''
+        if isinstance(files, str):
+            files = (files,)
+        elif files is None:
+            files, cfg.lastdir = qthelpers.browseForFiles(
+                lastdir=cfg.lastdir,
+                caption='Select video to add',
+                filter='MP4 files (*.mp4);;All files (*)'
+            )
 
         # create QVideoListItemWidgets on top of QListWidgetItems for each file
         thumbnails_needed = []
-        for video in files:
-            thumbnail_name = get_unique_path(os.path.basename(video).replace('/', '.').replace('\\', '.'))
+        for file in files:
+            basename = os.path.basename(file)
+            thumbnail_name = get_unique_path(basename.replace('/', '.').replace('\\', '.'))
             thumbnail_path = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
-            last_modified = time.strftime('%#m/%#d/%y | %#I:%M:%S%p', time.localtime(os.path.getmtime(video))).lower()
-            html = f'<html><head/><body><p style="line-height:0.5"><span style="font-family:Yu Gothic; font-size:12pt;">{os.path.basename(video)}</span></p><p><span style="color:#676767;">{last_modified}</span></p></body></html>'
-            item_widget = QVideoListItemWidget(self, thumbnail_path, html, video == gui.video)
+            last_modified = time.strftime('%#m/%#d/%y | %#I:%M:%S%p', time.localtime(os.path.getmtime(file))).lower()
+            html = f'<html><head/><body><p style="line-height:0.5"><span style="font-family:Yu Gothic; font-size:12pt;">{basename}</span></p><p><span style="color:#676767;">{last_modified}</span></p></body></html>'
+            item_widget = QVideoListItemWidget(
+                parent=self,
+                thumbnail_path=thumbnail_path,
+                text=html,
+                is_playing=file == gui.video
+            )
 
             # create and setup QListWidgetItem as the base for our QVideoListItemWidget with our file and QLabel
-            if index is not None:           # {index} is used exclusively for moving items (which requires the workaround too)
+            if index is None:
+                item_base = QtW.QListWidgetItem(self)
+            else:                           # {index} is used exclusively for moving items (which requires the workaround too)
                 item_base = QtW.QListWidgetItem()
                 self.insertItem(index, item_base)
-            else: item_base = QtW.QListWidgetItem(self)
-            item_base.setToolTip(video)
+            item_base.setToolTip(file)
             self.setItemWidget(item_base, item_widget)
             item_base.setSizeHint(QtCore.QSize(0, 64))          # default width/height is -1, but this is invalid. yeah.
 
             # check if thumbnail actually existed or not
             if not os.path.exists(thumbnail_path):              # check if thumbnail existed or not
-                thumbnails_needed.append((thumbnail_path, video, item_widget))
+                thumbnails_needed.append((thumbnail_path, file, item_widget))
 
         # ensure thumbnail folder exists, then create threads to generate thumbnails
-        if not os.path.exists(constants.THUMBNAIL_DIR): os.makedirs(constants.THUMBNAIL_DIR)
+        if not os.path.exists(constants.THUMBNAIL_DIR):
+            os.makedirs(constants.THUMBNAIL_DIR)
         for thumbnail_args in thumbnails_needed:                # TODO: there needs to be some way of cancelling these threads
             Thread(target=self.get_thumbnail, args=thumbnail_args, daemon=True).start()
 
@@ -1507,7 +1528,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
 
     def remove(self):
-        ''' Removes all selected QVideoListItemWidgets and updates title. '''
+        ''' Removes all selected `QVideoListItemWidget`'s and updates title. '''
         qthelpers.listRemoveSelected(self)
         self.refresh_title()
 
@@ -1526,6 +1547,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
 
     def refresh_title(self):
+        ''' Refreshes parent's titlebar to mention the current file count. '''
         count = self.count()
         if count < 2: self.parent().setWindowTitle('Videos to concatenate')
         else: self.parent().setWindowTitle(f'{count} videos to concatenate')
@@ -1568,14 +1590,20 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 class QVideoListItemWidget(QtW.QWidget):    # TODO this likely does not get garbage collected
     ''' An item representing a media file within a
         QVideoList, within the concatenation menu. '''
-    def __init__(self, parent, image, text, is_playing):
+    def __init__(
+        self,
+        parent: QtW.QWidget,
+        thumbnail_path: str,
+        text: str,
+        is_playing: bool
+    ):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)     # required for dragging to work
         self.layout = QtW.QHBoxLayout()
         self.setLayout(self.layout)
 
         self.thumbnail = QtW.QLabel(self)
-        self.thumbnail.setPixmap(QtGui.QPixmap(image))
+        self.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
         self.thumbnail.setAlignment(Qt.AlignCenter)
         if not is_playing: self.thumbnail.setStyleSheet('QLabel { padding: 4px; }')
         else: self.thumbnail.setStyleSheet('QLabel { padding: 4px;background-color: qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0.573864 rgba(0,255,255,255),stop:1 rgba(0,0,119,255)); }')
@@ -1598,7 +1626,17 @@ class QVideoListItemWidget(QtW.QWidget):    # TODO this likely does not get garb
 class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
     ''' QKeySequenceEdit which supports limiting to a single sequence, ignorable sequences, customizable editing
         delays, clearing focus/sequences with Esc, a clear button, and easier access to the underlying QLineEdit. '''
-    def __init__(self, *args, singleSequence=True, escClearsFocus=True, escClearsSequence=True, clearButton=False, delay=200, ignored=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        singleSequence: bool = True,
+        escClearsFocus: bool = True,
+        escClearsSequence: bool = True,
+        clearButton: bool = False,
+        delay: int = 200,
+        ignored: tuple = None,
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self._timerID = None
         self._editing = False
@@ -1684,12 +1722,15 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
         return super().timerEvent(event)
 
 
-    def toString(self, format: QtGui.QKeySequence.SequenceFormat = QtGui.QKeySequence.SequenceFormat.PortableText):
+    def toString(
+        self,
+        format: QtGui.QKeySequence.SequenceFormat = QtGui.QKeySequence.SequenceFormat.PortableText
+    ) -> str:
         ''' Returns the embedded key sequence as a string. '''
         return self.keySequence().toString(format)
 
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         ''' Returns the embedded key sequence as a string. '''
         return self.keySequence().toString()
 
@@ -1704,9 +1745,19 @@ class QWidgetPassthrough(QtW.QWidget):
     base = QtW.QWidget      # TODO semi-bandaid fix. without this, we can't access the correct keyPressEvent in subclasses(...?)
 
     # TODO make the getting/setting syntax fully Qt-like or make it fully normal
-    def __init__(self, *args, proxy=None, escClearsFocus=True, passFocus=True,
-                 alpha=True, punctuation=True, numeric=False, ignored=tuple(), **kwargs):
-        super().__init__(*args, **kwargs)   # normally these kwargs are True, False, False, False
+    def __init__(
+        self,
+        *args,
+        proxy: QtW.QWidget = None,
+        escClearsFocus: bool = True,
+        passFocus: bool = True,
+        alpha: bool = True,
+        punctuation: bool = True,
+        numeric: bool = False,
+        ignored: tuple = tuple(),
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)       # normally these kwargs are True, False, False, False
         self.escClearsFocus = escClearsFocus
         self.passFocus = passFocus
         self.ignoreAlpha = alpha
@@ -1720,7 +1771,7 @@ class QWidgetPassthrough(QtW.QWidget):
             self._proxyWidget = self.parent()
             self._proxyWidgetIsParent = True
 
-    def proxyWidget(self):  # pointless, but consistent with Qt
+    def proxyWidget(self) -> QtW.QWidget:                      # pointless, but consistent with Qt
         return self._proxyWidget
 
     def setProxyWidget(self, widget: QtW.QWidget):
@@ -1748,7 +1799,7 @@ class QWidgetPassthrough(QtW.QWidget):
     def setIgnoreNumeric(self, ignore: bool): self.ignoreNumeric = ignore
     def setIgnoredKeys(self, *args): self.ignoredKeys = args
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent):
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> QtGui.QKeyEvent:
         key = event.key()
         if self.escClearsFocus and key == 16777216:
             if self.passFocus: return self._proxyWidget.setFocus()
@@ -1776,7 +1827,13 @@ class QDraggableWindowFrame(QtW.QFrame):
         `button`. If `button` is None, then any click on the widget will move the `dragTarget`. The target widget
         is moved relative to this widget, and does not move while fullscreen or maximized. If no `dragTarget` is
         specified, parent() is used instead, which persists through setParent() until a unique dragTarget is set. '''
-    def __init__(self, *args, dragTarget: QtW.QWidget = None, button: int = Qt.LeftButton, **kwargs):
+    def __init__(
+        self,
+        *args,
+        dragTarget: QtW.QWidget = None,
+        button: int = Qt.LeftButton,
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         if dragTarget:
             self._dragTarget = dragTarget
@@ -1788,7 +1845,7 @@ class QDraggableWindowFrame(QtW.QFrame):
         self._validDrag = False
         self._draggingOffset: QtCore.QPoint = None
 
-    def dragTarget(self):   # pointless, but consistent with Qt
+    def dragTarget(self) -> QtW.QWidget:        # pointless, but consistent with Qt
         return self._dragTarget
 
     def setDragTarget(self, widget: QtW.QWidget):
@@ -1796,15 +1853,16 @@ class QDraggableWindowFrame(QtW.QFrame):
         self._dragTarget = widget
         self._dragTargetIsParent = widget is self.parent()
 
-    def button(self):       # pointless, but consistent with Qt
+    def button(self) -> int:                    # pointless, but consistent with Qt
         return self._button
 
     def setButton(self, button: int):
         self._button = button
 
-    def setParent(self, parent):
-        ''' Captures setParent and sets `dragTarget` to the new `parent`
-            if our drag target and parent are expected to be linked. '''
+    def setParent(self, parent: QtW.QWidget):
+        ''' Captures `QFrame.setParent()` and sets `parent` as our
+            new `self._dragTarget` if our drag target and parent are
+            expected to be linked (`self._dragTargetIsParent`). '''
         super().setParent(parent)
         if self._dragTargetIsParent:
             self._dragTarget = parent

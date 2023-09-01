@@ -300,7 +300,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.menuConcatenate.triggered.connect(self.concatenate)
     self.menuVideoTracks.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuVideoTracks))
     self.menuSubtitles.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuSubtitles))
-    self.actionAddSubtitleFile.triggered.connect(self.browse_for_subtitle_file)
+    self.actionAddSubtitleFile.triggered.connect(self.browse_for_subtitle_files)
     self.menuRotate.triggered.connect(self.rotate_video)
     self.actionCrop.triggered.connect(self.set_crop_mode)
     self.actionResize.triggered.connect(self.resize_media)

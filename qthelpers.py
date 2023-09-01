@@ -400,10 +400,10 @@ def browseForFiles(lastdir='.', caption='Select files', filter='All files (*)',
         initialFilter=selectedFilter
     )
     try:
-        if not files: return (tuple(), '', lastdir) if returnFilter else (tuple(), lastdir)
+        if not files: return (list(), '', lastdir) if returnFilter else (list(), lastdir)
         lastdir = (os.sep).join((files[-1].toLocalFile() if url else files[-1]).split('/')[:-1])  # base lastdir on last file's directory
         return (files, filter, lastdir) if returnFilter else (files, lastdir)
-    except: return (tuple(), '', lastdir) if returnFilter else (tuple(), lastdir)
+    except: return (list(), '', lastdir) if returnFilter else (list(), lastdir)
 
 def saveFile(lastdir='.', caption='Save file', filter='All files (*)',
              selectedFilter='', returnFilter=False,

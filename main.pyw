@@ -363,9 +363,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             'autoplay':          QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay.png'),
             'autoplay_backward': QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay_backward.png'),
             'autoplay_shuffle':  QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay_shuffle.png'),
-            'reverse_vertical':  QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}reverse_vertical.png'),
             'cycle_forward':     QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}cycle_forward.png'),
             'cycle_backward':    QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}cycle_backward.png'),
+            'reverse_vertical':  QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}reverse_vertical.png'),
         }
         self.setWindowIcon(self.icons['window'])
         app.setWindowIcon(self.icons['window'])
@@ -1039,7 +1039,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 break
 
         # if AltModifier is True but we aren't pressing alt, ignore next alt release
-        if key != 16777251 and mod & Qt.AltModifier: self.ignore_next_alt = True
+        if key != 16777251 and mod & Qt.AltModifier:
+            self.ignore_next_alt = True
 
         # numbers 0-9
         if 48 <= key <= 57:
@@ -1062,7 +1063,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 new_frame = int(self.frame_count / 10 * (key - 48))
                 set_and_adjust_and_update_progress(new_frame, 0.075)
             elif play_recent:
-                if not self.recent_files: return show_on_statusbar('No recent files available.')
+                if not self.recent_files:
+                    return show_on_statusbar('No recent files available.')
                 if key == 48:
                     if settings.checkNumKeys0PlaysLeastRecentFile.isChecked(): index = 0
                     else: index = -10
@@ -1389,31 +1391,39 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.themes.append(theme)
 
 
-    def refresh_theme_combo(self, *args, restore_theme=True, set_theme=None):   # *args to capture unused signal args
-        self.load_themes()
+    def refresh_theme_combo(self, *args, restore_theme: bool = True, set_theme: str = None):
+        self.load_themes()                                  # ^ *args to capture unused signal args
         comboThemes = settings.comboThemes
         old_theme = comboThemes.currentText()               # save current theme's name
-        for _ in range(comboThemes.count()): comboThemes.removeItem(1)
+
+        for _ in range(comboThemes.count()):
+            comboThemes.removeItem(1)
         for theme in self.themes:
             try:
                 name = theme.get('name', None)
                 if name: comboThemes.addItem(name)
-            except: logging.warning(f'Could not add theme {name} to theme combo: {format_exc()}')
+            except:
+                logging.warning(f'Could not add theme {name} to theme combo: {format_exc()}')
+
         if set_theme: comboThemes.setCurrentText(set_theme)
         elif restore_theme: comboThemes.setCurrentText(old_theme)               # attempt to restore theme based on previous theme's name
         return old_theme
 
 
-    def get_theme(self, theme_name):
-        if theme_name == 'none' or theme_name == '': return None
-        for theme in self.themes:
-            try:
-                if theme_name.lower() == theme['name'].lower():
-                    return theme
-            except: pass
+    def get_theme(self, theme_name: str) -> dict:
+        ''' Returns the theme dictionary for the first theme called `theme_name`.
+            If no matching theme is found, None is returned. '''
+        if theme_name and theme_name != 'none':
+            for theme in self.themes:
+                try:
+                    if theme_name.lower() == theme['name'].lower():
+                        return theme
+                except: pass
 
 
-    def set_theme(self, theme_name):
+    def set_theme(self, theme_name: str):
+        ''' Gets and sets the current theme to the first theme with called
+            `theme_name`. If not found, the "default" theme is used. '''
         theme = self.get_theme(theme_name)
         logging.info(f'Setting theme to {theme.get("name") if theme else None}')
         old_theme = self.get_theme(config.cfg.theme)        # config.cfg must be used because this is called before cfg is returned from config.py
@@ -1462,7 +1472,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # -------------------------------
     # >>> BASIC VIDEO OPERATIONS <<<
     # -------------------------------
-    def shuffle_media(self, folder: str = None):
+    def shuffle_media(self, folder: str = None) -> str:
         if folder is None:                                  # no folder provided, shuffle within current folder
             base_file = self.video
             current_dir, current_basename = os.path.split(base_file)
@@ -1559,7 +1569,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         update_recent_list: bool = True,
         autoplay: bool = False,
         index_override: int = 0
-    ):                                              # *args to capture unused signal args
+    ) -> str:                                       # *args to capture unused signal args
         ''' Cycles through the current media's folder and looks for the `next`
             or previous openable, non-hidden file that isn't in the `ignore`
             list. If there are no other openable files, nothing happens.
@@ -1692,7 +1702,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: self.refresh_recent_menu()
 
 
-    def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True):
+    def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True) -> int:
         try:
             if mod & Qt.AltModifier:                # alt (use shuffle mode to play video but disable autoplay)
                 self.actionAutoplay.setChecked(False)
@@ -1732,6 +1742,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return -1
         except: log_on_statusbar(f'(!) Failed while checking folder "{folder}" for openable media: {format_exc()}')
         finally: self.refresh_autoplay_button()
+        return 1
 
 
     def open_lastdir(self):
@@ -2157,7 +2168,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         extension: str = None,
         _from_cycle: bool = False,
         _from_autoplay: bool = False
-    ):
+    ) -> int:
         ''' Opens, parses, and plays a media `file`. Returns -1 if unsuccessful.
 
             If `file` is None, a file-browsing dialog will be opened.
@@ -2175,8 +2186,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # validate `file`. open file-dialog if needed, check if it's a folder, check if it's locked, etc.
             # (if called from sort of auto-cycling function, we can assume this stuff is already sorted out)
             if not _from_cycle:
-                if not file: file, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, 'Select media file to open')
-                if not file: return -1
+                if not file:
+                    file, cfg.lastdir = qthelpers.browseForFile(
+                        lastdir=cfg.lastdir,
+                        caption='Select media file to open'
+                    )
+                if not file:
+                    return -1
 
                 file = abspath(file)
                 if os.path.isdir(file):
@@ -2361,8 +2377,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # log opening time. all done! (except for cleanup)
             logging.info(f'Initial media opening completed after {get_time() - start:.4f} seconds.')
+            return 1
 
-        except: log_on_statusbar(f'(!) OPEN FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) OPEN FAILED: {format_exc()}')
+            return -1
 
 
     def _open_cleanup_slot(self):
@@ -2674,7 +2693,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             try:
                 os.renames(old_name, new_name)
-                marquee(f'File renamed to {new_name}', 2500, marq_key='Save')
+                marquee(f'File renamed to {new_name}', marq_key='Save', timeout=2500)
             except FileNotFoundError:               # images/gifs are cached so they can be altered behind the scenes
                 if self.mime_type == 'image' and settings.checkRenameMissingImages.isChecked():
                     image_player.art.save(new_name)
@@ -2870,11 +2889,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 selected_filter = 'JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif)' if format == 'JPEG' else ''
                 base_path = os.path.join(cfg.last_snapshot_folder if use_snapshot_lastdir else cfg.lastdir, default_name)
                 path = f'{base_path}{".png" if not selected_filter else ".jpg"}'
-                path, format, lastdir = qthelpers.saveFile(lastdir=get_unique_path(path, key='?count', zeros=1, strict=True),
-                                                            caption='Save snapshot as',
-                                                            filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
-                                                            selectedFilter=selected_filter,
-                                                            returnFilter=True)
+                path, format, lastdir = qthelpers.saveFile(
+                    lastdir=get_unique_path(path, key='?count', zeros=1, strict=True),
+                    caption='Save snapshot as',
+                    filter='PNG (*.png);;JPEG (*.jpg; *.jpeg; *.jpe; *.jfif; *.exif);;All files (*)',
+                    selectedFilter=selected_filter,
+                    returnFilter=True
+                )
                 if use_snapshot_lastdir: cfg.last_snapshot_folder = lastdir
                 else: cfg.lastdir = lastdir
                 if path is None: return
@@ -2945,7 +2966,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # return snapshot path
             return path
 
-        except: log_on_statusbar(f'(!) SNAPSHOT FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) SNAPSHOT FAILED: {format_exc()}')
         finally:                                                    # restore pause-state before leaving
             if self.is_gif: image_player.gif.setPaused(self.is_paused)
             else: player.set_pause(self.is_paused)                  # NOTE: DON'T do both - QMovie will emit a "frameChanged" signal!!!
@@ -2954,12 +2976,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def save_as(
         self,
         *args,
-        noun='media',
-        filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
-        valid_extensions=constants.ALL_MEDIA_EXTENSIONS,
-        ext_hint=None,
-        default_path=None,
-        unique_default=True
+        noun: str = 'media',
+        filter: str = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
+        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        ext_hint: str = None,
+        default_path: str = None,
+        unique_default: bool = True
     ):
         ''' Opens a file dialog with `filter` and the caption "Save `noun`
             as...", before saving to the user-selected path, if any.
@@ -2984,18 +3006,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if file is None: return
             logging.info(f'Saving as \'{file}\'')
             self.save(dest=file)
-        except: log_on_statusbar(f'(!) SAVE_AS FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) SAVE_AS FAILED: {format_exc()}')
 
 
     def save(
         self,
         *args,                                                                  # *args to capture unused signal args
-        dest=None,
-        ext_hint=None,
-        noun='media',
-        filter='MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
-        valid_extensions=constants.ALL_MEDIA_EXTENSIONS,
-        preferred_extensions=None
+        dest: str = None,
+        ext_hint: str = None,
+        noun: str = 'media',
+        filter: str = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
+        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        preferred_extensions: tuple = None
     ):
         ''' Checks for any edit operations, applies them to the current media,
             and saves the new file to `dest`. If `dest` is None, `save_as()`
@@ -3019,7 +3042,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ext = ''
 
         # see if we haven't sufficiently edited the destination (no abspath specified, same basename (excluding the extension))
-        if not dest: dest_was_not_modified = True                               # TODO i don't think this code actually matters anymore
+        if not dest:
+            dest_was_not_modified = True                                        # TODO i don't think this code actually matters anymore
         else:
             old_tail_base = os.path.split(old_base)[-1]
             new_base, new_ext = splitext_media(dest)
@@ -3759,7 +3783,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return outfile
 
 
-    def set_trim_start(self, *args, force=False):
+    def set_trim_start(self, *args, force: bool = False):
         ''' Validates a start-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
         if not self.video: return self.buttonTrimStart.setChecked(False)
@@ -3783,7 +3807,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.sliderProgress.clamp_minimum = False
 
 
-    def set_trim_end(self, *args, force=False):
+    def set_trim_end(self, *args, force: bool = False):
         ''' Validates an end-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimEnd` is forcibly checked. '''
         if not self.video: return self.buttonTrimEnd.setChecked(False)
@@ -3822,7 +3846,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 button.setToolTip(constants.TRIM_BUTTON_TOOLTIP_BASE.replace('?mode', 'fade'))
 
 
-    def concatenate(self, action: QtW.QAction, files=None):                             # TODO this is old and needs to be unified with the other edit methods
+    def concatenate(self, action: QtW.QAction, files: list = None):                     # TODO this is old and needs to be unified with the other edit methods
         ''' Opens a separate dialog for concatenation because I'm too lazy
             to incorporate this into the main saving implementation. '''
         # https://stackoverflow.com/questions/7333232/how-to-concatenate-two-mp4-files-using-ffmpeg
@@ -3913,7 +3937,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if dialog.checkOpen.isChecked(): self.open(output, focus_window=settings.checkFocusOnEdit.isChecked())
             if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
             elif dialog.checkDelete.checkState() == 2: self.delete(files)
-        except: logging.error(f'(!) CONCATENATION FAILED: {format_exc()}')
+        except:
+            logging.error(f'(!) CONCATENATION FAILED: {format_exc()}')
         finally:
             try:
                 dialog.close()              # TODO: !!! memory leak?
@@ -3923,7 +3948,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 dialog.deleteLater()        # deleting the dialog does not free up the list's memory either (you cannot delete the list items either)
                 del dialog
                 gc.collect(generation=2)
-            except: logging.warning(f'(!) Unexpected error while closing concatenation dialog: {format_exc()}')
+            except:
+                logging.warning(f'(!) Unexpected error while closing concatenation dialog: {format_exc()}')
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
@@ -3965,8 +3991,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def add_audio(self, *args, path: str = None, save: bool = True):
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
         try:
-            if path is None: path, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, caption='Select audio file to add')
-            if not path: return                                             # cancel selected
+            if not path:
+                path, cfg.lastdir = qthelpers.browseForFile(
+                    lastdir=cfg.lastdir,
+                    caption='Select audio file to add'
+                )
+                if not path:                                                # cancel selected
+                    return
             self.operations['add audio'] = path
             if self.mime_type == 'image':
                 filter = 'MP4 files (*.mp4);;All files (*)'
@@ -3987,7 +4018,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: log_on_statusbar(f'(!) ADD_AUDIO FAILED: {format_exc()}')
 
 
-    def amplify_audio(self):                # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
+    # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
+    def amplify_audio(self):
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
         if self.mime_type == 'image' or (self.mime_type == 'video' and player.audio_get_track_count() == 0):
@@ -4026,13 +4058,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dialog.exec()
 
 
-    def replace_audio(self, *args, path=None):
+    def replace_audio(self, *args, path: str = None):
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'image': return self.add_audio(path=path)
         try:
-            if path is None: path, cfg.lastdir = qthelpers.browseForFile(cfg.lastdir, caption='Select audio file to replace audio track with')
-            if not path: return                                             # cancel selected
+            if not path:
+                path, cfg.lastdir = qthelpers.browseForFile(
+                    lastdir=cfg.lastdir,
+                    caption='Select audio file to replace audio track with'
+                )
+                if not path:                                                # cancel selected
+                    return
             self.operations['replace audio'] = path
             self.save(
                 noun='video with replaced audio track',
@@ -4043,7 +4080,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: log_on_statusbar(f'(!) REPLACE_AUDIO FAILED: {format_exc()}')
 
 
-    def remove_track(self, *args, audio=True):     # https://superuser.com/questions/268985/remove-audio-from-video-file-with-ffmpeg
+    # https://superuser.com/questions/268985/remove-audio-from-video-file-with-ffmpeg
+    def remove_track(self, *args, audio: bool = True):
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Track removal for audio files is not supported yet.', 10000)
@@ -4073,15 +4111,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> PROMPTS <<<
     # ---------------------
-    def browse_for_directory(self, lineEdit=None, noun=None, default_path=None):
+    def browse_for_directory(
+        self,
+        lineEdit: QtW.QLineEdit = None,
+        noun: str = None,
+        default_path: str = None
+    ) -> str:
         if default_path is None: default_path = cfg.lastdir
         caption = f'Select {noun} directory' if noun else 'Select directory'
-        path, cfg.lastdir = qthelpers.browseForDirectory(default_path, caption=caption, lineEdit=lineEdit)
+        path, cfg.lastdir = qthelpers.browseForDirectory(
+            lastdir=default_path,
+            caption=caption,
+            lineEdit=lineEdit
+        )
         if path is None: return
         return path
 
 
-    def browse_for_save_file(self, lineEdit=None, noun=None, filter='All files (*)', default_path=None, unique_default=True):
+    def browse_for_save_file(
+        self,
+        lineEdit: QtW.QLineEdit = None,
+        noun: str = None,
+        filter: str = 'All files (*)',
+        default_path: str = None,
+        unique_default: bool = True
+    ) -> str:
         if default_path is None or not exists(os.path.dirname(default_path)):
             current_path = self.video or '*.*'
             if settings.checkSaveAsUseMediaFolder.isChecked(): default_path = current_path
@@ -4102,11 +4156,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return path
 
 
-    def browse_for_subtitle_file(self, urls=None):
+    def browse_for_subtitle_files(self, urls: tuple = None) -> None:
         if self.mime_type == 'image': show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if urls is None:
             urls, cfg.lastdir = qthelpers.browseForFiles(
-                cfg.lastdir,
+                lastdir=cfg.lastdir,
                 caption='Select subtitle file(s) to add',
                 filter='Subtitle Files (*.cdg *.idx *.srt *.sub *.utf *.ass *.ssa *.aqt *.jss *.psb *.it *.sami *smi *.txt *.smil *.stl *.usf *.dks *.pjs *.mpl2 *.mks *.vtt *.tt *.ttml *.dfxp *.scc);;All files (*)',
                 url=True
@@ -4121,7 +4175,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if settings.checkTextOnSubtitleAdded.isChecked(): show_on_player('Failed to add subtitle file')
 
 
-    def show_size_dialog(self, snapshot=False):
+    def show_size_dialog(self, snapshot: bool = False):
         ''' Opens a dialog for choosing a new size/length for a given file.
             If `snapshot` is True, additional options for quality and format
             are provided. '''
@@ -4279,10 +4333,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: cfg.trimmodeselected = True                        # set this to True no matter what (_save is waiting on this)
 
 
-    def show_delete_prompt(self, *args, exiting: bool = False):     # *args to capture unused signal args
+    def show_delete_prompt(self, *args, exiting: bool = False) -> QtW.QDialogButtonBox.StandardButton:     # *args to capture unused signal args
         ''' Creates and shows a dialog for deleting marked files. Dialog
-            consists of a QGroupBox containing a QCheckBox for each file,
-            with Yes/No/Cancel buttons at the bottom. '''
+            consists of a `QGroupBox` containing a `QCheckBox` for each file,
+            with Yes/No/Cancel buttons at the bottom. Returns the button chosen,
+            or None if there was an error. If `exiting` is True, the dialog will
+            not mention what happens if "No" is selected. '''
         marked_for_deletion = self.marked_for_deletion
 
         # remove missing files from list and check if any are left
@@ -4339,8 +4395,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def show_color_picker(self):
-        ''' Opens color-picking dialog, specifically for the hover-timestamp font color setting.
-            Saves new color and adjusts the color of the color-picker's button through a stylesheet. '''
+        ''' Opens color-picking dialog, specifically for the hover-timestamp
+            font color setting. Saves new color and adjusts the color of the
+            color-picker's button through a stylesheet. '''
         # NOTE: F suffix is Float -> values are represented from 0-1 (e.g. getRgb() becomes getRgbF())
         try:                                            # TODO: add support for marquee colors
             picker = QtW.QColorDialog()
@@ -4358,30 +4415,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # -------------------------------
     # >>> UTILITY FUNCTIONS <<<
     # -------------------------------
-    def _log_on_statusbar_slot(self, msg, timeout=20000):
+    def _log_on_statusbar_slot(self, msg: str, timeout: int = 20000):
         ''' Logs a `msg` while simultaneously displaying it
-            on the status bar for `timeout` milliseconds. '''
+            on the statusbar for `timeout` milliseconds. '''
         logging.info(msg)
         show_on_statusbar(msg, timeout)
 
 
-    def marquee(self, text: str, timeout: int = 350, marq_key: str = '', log: bool = True):
+    def marquee(self, text: str, marq_key: str = '', timeout: int = 350, log: bool = True):
         ''' Conditionally displays `text` as a marquee over the player if
             the associated setting at `marq_key` is checked. Always displayed
             on statusbar. Logs as well if `log` is True. Escaped %-signs (%%)
             are replaced by regular %-signs when displayed on the statusbar.
+            If `marq_key` is not provided, `text` will be shown on the player
+            and statusbar no matter what.
 
-            Example: marq_key='Save' -> checkTextOnSave.isChecked()? '''
+            Example: marq_key="Save" -> `checkTextOnSave.isChecked()`? '''
         if log: log_on_statusbar(text.replace('%%', '%'))
         else: show_on_statusbar(text.replace('%%', '%'), 10000)
         try:
-            if settings.__dict__[f'checkTextOn{marq_key}'].isChecked():
+            if not marq_key or settings.__dict__[f'checkTextOn{marq_key}'].isChecked():
                 show_on_player(text, timeout)
         except:
             pass
 
 
-    def handle_updates(self, _launch=False):
+    def handle_updates(self, _launch: bool = False):
         ''' Handles update-checking/validation as well as updating the settings
             dialog. Updates validation only occurs on launch, and only if
             "update_report.txt" is present. Update checks only occur on
@@ -4453,19 +4512,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         download_url = f'{latest_version_url.replace("/tag/", "/download/")}/{filename}'
                         download_path = f'{constants.TEMP_DIR}{sep}{filename}'
                         update.download_update(self, latest_version, download_url, download_path)
-                else: return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()  # non-windows version of popup
+                else:
+                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()  # non-windows version of popup
         finally:
             self.checking_for_updates = False
             settings.buttonCheckForUpdates.setText('Check for updates')
             if settings_were_open: settings.show()      # restore settings if they were originally open
 
 
-    def get_renamed_output(self, new_name: str = None, valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS) -> tuple:
-        ''' Returns `new_name` or `self.lineOutput` as a valid/sanitized/unique
-            path, along with its extensionless basename and its extension (as
-            determined by `valid_extensions`). If `new_name` ends up the same
-            as `self.video`, `new_name` and `self.lineOutput` are both blank,
-            or no media is playing, then three None's are returned. '''
+    def get_renamed_output(
+        self,
+        new_name: str = None,
+        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS
+    ) -> tuple:
+        ''' Returns `new_name` or `self.lineOutput.text()` as a unique, valid,
+            sanitized, absolute path, along with its extensionless basename and
+            extension (as determined by `valid_extensions`). If `new_name` ends
+            up the same as `self.video`, `new_name`/`self.lineOutput` are both
+            blank, or no media is playing, then three None's are returned. '''
         output_text = self.lineOutput.text().strip()
         video = self.video
         if not video or (not new_name and not output_text):
@@ -4501,7 +4565,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             os.chdir(old_oscwd)                         # reset os module's CWD before returning
 
 
-    def get_popup_location(self):
+    def get_popup_location(self) -> dict:
         ''' Returns keyword arguments as a dictionary for
             the center-parameters of popups and dialogs. '''
         index = settings.comboDialogPosition.currentIndex()
@@ -4516,7 +4580,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2}
 
 
-    def get_hotkey_full_string(self, hotkey: str):
+    def get_hotkey_full_string(self, hotkey: str) -> str:
         ''' Returns a string in the format " (key1/key2)" for the given `hotkey`
             group, where key1 and key2 are the two `QKeySequenceFlexibleEdit`'s.
             Example: "mute" would return one the following:
@@ -4740,7 +4804,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.resize(self.width(), self.height() + (height if visible else -height))             # resize window to preserve player size
 
 
-    def set_crop_mode(self, on):     # https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
+    # https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
+    def set_crop_mode(self, on: bool):
         try:
             mime = self.mime_type
             is_gif = self.is_gif
