@@ -688,9 +688,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         elif gui.video:
             mod = event.keyboardModifiers()
             if mod & Qt.ControlModifier:                # ctrl (concat before current)
-                gui.concatenate(action=gui.actionCatBefore, files=files)
+                gui.concatenate(action=gui.actionCatBeforeThis, files=files)
             elif mod & Qt.AltModifier:                  # alt (concat after current)
-                gui.concatenate(action=gui.actionCatAfter, files=files)
+                gui.concatenate(action=gui.actionCatAfterThis, files=files)
             elif mod & Qt.ShiftModifier:                # shift (add audio track, one file at time currently)
                 file = files[0]
                 if os.path.abspath(file) != gui.video: gui.add_audio(path=file)
@@ -1462,11 +1462,22 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             through the itemClicked signal. '''
         item = self.itemAt(event.pos())     # get item under mouse to work with
         if not item: return                 # no item under mouse, return
+        path = item.toolTip()
+
+        def play_and_refresh():
+            gui.open(
+                path,
+                focus_window=False,
+                flash_window=False,
+                update_recent_list=path in gui.recent_files,
+                update_raw_last_file=False
+            )
+            self.refresh_thumbnail_outlines()
 
         action1 = QtW.QAction('&Play')
-        action1.triggered.connect(lambda: gui.open(item.toolTip(), focus_window=False, flash_window=False))
+        action1.triggered.connect(play_and_refresh)
         action2 = QtW.QAction('&Explore')
-        action2.triggered.connect(lambda: qthelpers.openPath(item.toolTip(), explore=True))
+        action2.triggered.connect(lambda: qthelpers.openPath(path, explore=True))
         action3 = QtW.QAction('&Remove')
         action3.triggered.connect(lambda: qthelpers.listRemoveSelected(self))
 
@@ -1491,6 +1502,9 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         # create QVideoListItemWidgets on top of QListWidgetItems for each file
         thumbnails_needed = []
         for file in files:
+            if not file or not os.path.exists(file):
+                continue
+
             basename = os.path.basename(file)
             thumbnail_name = get_unique_path(basename.replace('/', '.').replace('\\', '.'))
             thumbnail_path = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
@@ -1544,6 +1558,13 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
         try: os.remove(temp_path)
         except Exception as error: logger.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')
+
+
+    def refresh_thumbnail_outlines(self):
+        for item in self:
+            set_style = self.itemWidget(item).thumbnail.setStyleSheet
+            if item.toolTip() != gui.video: set_style('QLabel { padding: 4px; }')
+            else: set_style('QLabel { padding: 4px;background-color: qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0.573864 rgba(0,255,255,255),stop:1 rgba(0,0,119,255)); }')
 
 
     def refresh_title(self):

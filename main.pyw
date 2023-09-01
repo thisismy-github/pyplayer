@@ -366,6 +366,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             'cycle_forward':     QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}cycle_forward.png'),
             'cycle_backward':    QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}cycle_backward.png'),
             'reverse_vertical':  QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}reverse_vertical.png'),
+            'recent':            QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}recent.png'),
         }
         self.setWindowIcon(self.icons['window'])
         app.setWindowIcon(self.icons['window'])
@@ -406,6 +407,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.video = ''
         self.video_original_path = ''
         self.locked_video: str = None
+        self.last_video = ''                    # NOTE: the actual last non-edited file played
         self.recent_files = []                  # NOTE: the user-friendly list of recent files
         self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
@@ -2163,6 +2165,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         focus_window: bool = None,
         flash_window: bool = True,
         update_recent_list: bool = True,
+        update_raw_last_file: bool = True,
         remember_old_file: bool = False,
         mime: str = None,
         extension: str = None,
@@ -2205,6 +2208,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # get stats and size of media
             start = get_time()
+            old_file = self.video
             self.stat = stat = os.stat(file)
             filesize = stat.st_size
             basename = file[file.rfind(sep) + 1:]           # shorthand for os.path.basename NOTE: safe when `file` is provided automatically
@@ -2348,8 +2352,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 set_marquee_int(VideoMarqueeOption.X,    int(height * vlc.text_x_percent))
                 set_marquee_int(VideoMarqueeOption.Y,    int(height * vlc.text_y_percent))
 
+            # update original path and literal last video if this is a new file and not an edit
             if not remember_old_file or not self.video_original_path:
                 self.video_original_path = file
+                if update_raw_last_file:
+                    self.last_video = old_file
 
             # update recent media list
             if update_recent_list:
@@ -3815,110 +3822,286 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 button.setToolTip(constants.TRIM_BUTTON_TOOLTIP_BASE.replace('?mode', 'fade'))
 
 
-    def concatenate(self, action: QtW.QAction, files: list = None):                     # TODO this is old and needs to be unified with the other edit methods
-        ''' Opens a separate dialog for concatenation because I'm too lazy
-            to incorporate this into the main saving implementation. '''
+    def concatenate(self, action: QtW.QAction, files: list = None):
+        ''' Opens a separate dialog for concatenation with `files` included by
+            default. Behavior changes depending on which `action` is passed:
+
+            - `actionCatBeforeThis` - Open file browser first, then the dialog if
+                                      more than one additional file was provided.
+                                      Cancel if file browser is canceled. Files
+                                      picked are inserted BEFORE `self.video`.
+            - `actionCatAfterThis`  - Ditto, but files are appended AFTER.
+            - `actionCatBeforeLast` - Open dialog immediately with `self.video`
+                                      placed before `self.last_video`. If
+                                      `self.last_video` doesn't exist, cancel.
+            - `actionCatAfterLast`  - Ditto, but the order is reversed.
+            - `actionCatDialog`     - Open dialog immediately with `self.video`
+                                      if present, otherwise an empty dialog.
+
+            Dialog (if opened) stays open indefinitely until user either
+            successfully concatenates or deliberately closes the dialog.
+            Output naming, save-prompts, and the "Save"/"Save as..." buttons
+            follow the same conventions as normal saving. '''
+        # TODO this needs to be unified with the other edit methods in some way and allow chaining
         # https://stackoverflow.com/questions/7333232/how-to-concatenate-two-mp4-files-using-ffmpeg
         # https://stackoverflow.com/questions/31691943/ffmpeg-concat-produces-dts-out-of-order-errors
-        if not constants.verify_ffmpeg(self, force_warning=True):
-            return marquee('You don\'t have FFmpeg installed!')
-
-        style = {self.actionCatNone: 0, self.actionCatAny: 1, self.actionCatBefore: 2, self.actionCatAfter: 3}[action]
-        if self.mime_type != 'video' and style > 1:
-            return show_on_statusbar('Concatenation is not implemented for audio and image files yet.', 10000)
-
         try:
-            if style > 1 and not self.video: return show_on_statusbar('No video is playing.', 10000)        # for styles that assume a video is playing -> return
-            logging.info(f'Preparing to concatenate videos with style={style} and files={files}')
+            if not constants.verify_ffmpeg(self, force_warning=True):
+                return marquee('You don\'t have FFmpeg installed!')
 
-            # create/setup dialog and connect signals
-            from bin.window_cat import Ui_catDialog
-            dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_location())
-            dialog.checkOpen.setChecked(cfg.concatenate.open)
-            dialog.checkExplore.setChecked(cfg.concatenate.explore)
-            dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our current delete setting
-            dialog.output.setText(self.lineOutput.text().strip())                       # set dialog's output text to our current output text
-            dialog.reverse.setIcon(self.icons['reverse_vertical'])
+            # aliases for the main types of behavior the user can choose from/expect
+            CAT_APPEND_THIS  = action in (self.actionCatBeforeThis, self.actionCatAfterThis)
+            CAT_APPEND_LAST  = action in (self.actionCatBeforeLast, self.actionCatAfterLast)
+            CAT_APPEND_AFTER = action in (self.actionCatAfterThis, self.actionCatAfterLast)
+            CAT_BROWSE       = files is None and action is not self.actionCatDialog and not CAT_APPEND_LAST
 
-            dialog.add.clicked.connect(dialog.videoList.add)
-            dialog.delete.clicked.connect(dialog.videoList.remove)
-            dialog.up.clicked.connect(dialog.videoList.move)
-            dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
-            dialog.reverse.clicked.connect(dialog.videoList.reverse)
-            dialog.browse.clicked.connect(lambda: self.browse_for_save_file(dialog.output, 'concatenated video'))
-            dialog.videoList.itemDoubleClicked.connect(lambda item: self.open(item.toolTip(), focus_window=False, flash_window=False))
+            # determine if our current file, our last file, or no file should be included by default
+            # if we're adding to the current file but our current file isn't a video, just return
+            output = ''
+            files = files or list()
+            if CAT_APPEND_LAST:             base_video = self.last_video
+            elif self.mime_type == 'video': base_video = self.video
+            elif CAT_APPEND_THIS: return show_on_statusbar('Concatenation is not implemented for audio and image files yet.', 10000)
+            else:                           base_video = ''
 
-            # getting videos
-            if files is None:
-                if style == 0: files = tuple()                      # style 0 -> no videos, no browser. we just want the dialog
-                elif style == 1 and self.video: files = (self.video,)                    # style 1 and video playing -> open the dialog with current video already present
-                else: files, cfg.lastdir = qthelpers.browseForFiles(cfg.lastdir,         # style 1-3 -> browse for videos first
-                                                                    caption='Select media files to concatenate together',
-                                                                    filter='All files (*)')
-                if len(files) == 0 and style != 0: return           # cancel selected (and an empty dialog was not requested) -> return
-            if style == 2: files.append(self.video)                 # add currently playing video to selected files
-            elif style == 3: files.insert(0, self.video)
+            # if we're adding our last file and current file together,...
+            # ...add current file to `files` (which should be empty)
+            if CAT_APPEND_LAST: files.append(self.video)
+
+            # see where in the file list to put our base video if we have one
+            # if we expected it to be our last file but it's not there, warn user and return
+            # if we expected it to be our current file, don't return. the user is more likely...
+            # ...to be okay with this behavior for the current file rather than the last file
+            if exists(base_video):
+                if CAT_APPEND_AFTER: files.insert(0, base_video)
+                else:                files.append(base_video)
+            elif CAT_APPEND_LAST:
+                if self.last_video == '': return marquee('No other files have been played.')
+                else:                     return marquee('Last file no longer exists.')
+
+            # browse for additional files before (possibly) showing dialog
+            # if no files are selected and we were expecting some, just return
+            if CAT_BROWSE:
+                new_files, cfg.lastdir = qthelpers.browseForFiles(
+                    lastdir=cfg.lastdir,
+                    caption='Select media files to concatenate together',
+                    filter='All files (*)'
+                )
+                if len(new_files) == 0 and CAT_APPEND_THIS:
+                    return
+                files += new_files
             files = tuple(file.strip() for file in files if file)
 
-            # open concatenation dialog
-            if not (len(files) == 2 and style > 1):                 # style 2-3 and exactly 2 files selected means we know the videos and their order -> skip dialog
+            # only 2 files and we know their desired order -> skip dialog entirely
+            # NOTE: do NOT do this when using the last file, the user may want to verify what it was first
+            if len(files) == 2 and CAT_APPEND_THIS:
+                dialog = None
+                CAT_OPEN = True
+                CAT_EXPLORE = False
+                CAT_MARK = self.checkDeleteOriginal.checkState() == 1
+                CAT_DELETE = self.checkDeleteOriginal.checkState() == 2
+                output = self.lineOutput.text().strip()
+                if not output:
+                    output = self.browse_for_save_file(noun='concatenated video')
+
+        # >>> create, setup, and open dialog <<<
+            else:
+                from bin.window_cat import Ui_catDialog
+                dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_location())
+
+                dialog.checkOpen.setChecked(cfg.concatenate.open)
+                dialog.checkExplore.setChecked(cfg.concatenate.explore)
+                dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our current delete setting
+                dialog.output.setText(self.lineOutput.text().strip())                       # set dialog's output text to our current output text
+                dialog.reverse.setIcon(self.icons['reverse_vertical'])
+                dialog.recent.setIcon(self.icons['recent'])
+                dialog.recent.setMenu(QtW.QMenu(dialog))
                 dialog.videoList.add(files=files)
-                if dialog.exec() == QtW.QDialog.Rejected: return    # cancel selected on dialog -> return
-                files = tuple(item.toolTip() for item in dialog.videoList)
-                logging.info(f'Concatenation dialog files: {files}')
-                if len(files) < 2: return log_on_statusbar('Not enough videos to concatenate.')             # user ended up with <2 videos in dialog and hit OK -> return
-            elif not dialog.output.text(): self.browse_for_save_file(dialog.output, 'concatenated video')   # dialog skipped, but no output text on main window (set on dialog earlier)
-            log_on_statusbar(f'Concatenating files: {files}')
 
-            # preparing videos for concatenation
-            intermediate_files = []
-            for file in files:
-                temp_filename = file.replace('.mp4', '.ts').replace('/', '.').replace('\\', '.')
-                intermediate_file = f'{constants.TEMP_DIR}{sep}{temp_filename}'
-                try: os.remove(intermediate_file)
-                except: pass
-                intermediate_files.append(intermediate_file)
-                ffmpeg(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
+                # change "Save All" to say "Save as..."
+                # we could just add our own buttons manually but it doesn't really make...
+                # ...a difference (unless we remove the Save All button from the .ui file)
+                for button in dialog.buttonBox.buttons():
+                    if button.text() == 'Save All':
+                        button.setText('Save as...')
 
-            # preparing output destination
-            output = dialog.output.text().strip()
-            if not output: output = add_path_suffix(files[0] if style < 2 else self.video, '_concatenated')      # no output name -> default to first file's name + "_concatenated"
-            if not splitext_media(output)[-1]: output = f'{output}{splitext_media(files[0], strict=False)[-1]}'  # append appropriate extension if needed
-            output = get_unique_path(output)
-            dirname, basename = os.path.split(output)
-            if not dirname:                                         # no output directory specified
-                default_dir = settings.lineDefaultOutputPath.text().strip()
-                dirname = default_dir if default_dir else os.path.dirname(files[0])
-            output = os.path.join(dirname, sanitize(basename))      # `sanitize` does not account for full paths
+                # TODO ctrl adds recent files when menu isn't open. should it?
+                def keyPressEvent(event: QtGui.QKeyEvent):
+                    ''' If 0-9 is pressed while the recent files menu is open,
+                        add that number's file to the dialog (0 adds the least
+                        recent file). If the menu isn't open, only add files
+                        if Ctrl is also held down.'''
+                    key = event.key()
+                    mod = event.modifiers()
+                    if 48 <= key <= 57:                         # numbers 0-9
+                        if dialog.recent.menu().isVisible() or mod & Qt.ControlModifier:
+                            index = -(key - 48)
+                            path = self.recent_files[max(index, -len(self.recent_files))]
+                            dialog.videoList.add(files=(path,))
 
-            # actually concatentating videos
-            if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{output}"'
-            else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}"'
-            ffmpeg(cmd)
-            for intermediate_file in intermediate_files:
-                try: os.remove(intermediate_file)
-                except: pass
+                def set_choice(button: QtW.QAbstractButton):
+                    ''' Sets `button` to a `choice` property on the dialog,
+                        allowing us to know which save-button was clicked,
+                        even after the dialog is closed. '''
+                    dialog.choice = button
 
-            if not exists(output): return log_on_statusbar('(!) Concatenation failed. No files have been altered.')
-            log_on_statusbar(f'Concatenation saved to {output}.')
+                def refresh_cat_recent_menu():
+                    ''' Refreshes the dialog's own recent files menu. Clicking
+                        a file adds it to the dialog rather than playing it. '''
+                    cat_recent_menu = dialog.recent.menu()
+                    cat_recent_menu.clear()
+                    get_add_lambda = lambda path: lambda: dialog.videoList.add(files=(path,))
+                    get_basename = os.path.basename
+                    for index, file in enumerate(reversed(self.recent_files)):  # reversed to show most recent first
+                        number = str(index + 1)
+                        action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {get_basename(file)}', cat_recent_menu)
+                        action.triggered.connect(get_add_lambda(file))          # workaround for python bug/oddity involving creating lambdas in iterables
+                        action.setToolTip(file)
+                        cat_recent_menu.addAction(action)
 
-            if dialog.checkExplore.isChecked(): qthelpers.openPath(output, explore=True)
-            if dialog.checkOpen.isChecked(): self.open(output, focus_window=settings.checkFocusOnEdit.isChecked())
-            if dialog.checkDelete.checkState() == 1: self.marked_for_deletion.update(files)
-            elif dialog.checkDelete.checkState() == 2: self.delete(files)
-        except:
-            logging.error(f'(!) CONCATENATION FAILED: {format_exc()}')
-        finally:
+                # connect dialog signals/events
+                dialog.keyPressEvent = keyPressEvent
+                dialog.buttonBox.clicked.connect(set_choice)
+                dialog.add.clicked.connect(dialog.videoList.add)
+                dialog.delete.clicked.connect(dialog.videoList.remove)
+                dialog.up.clicked.connect(dialog.videoList.move)
+                dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
+                dialog.reverse.clicked.connect(dialog.videoList.reverse)
+                dialog.recent.clicked.connect(lambda: dialog.videoList.add(files=(self.last_video,)))
+                dialog.recent.contextMenuEvent = lambda *args: dialog.recent.showMenu()
+                dialog.recent.menu().aboutToShow.connect(refresh_cat_recent_menu)
+                dialog.browse.clicked.connect(
+                    lambda: self.browse_for_save_file(
+                        lineEdit=dialog.output,
+                        noun='concatenated video',
+                        default_path=dialog.output.text().strip(),
+                        fallback_override=dialog.videoList.item(0).toolTip() if dialog.videoList.count() else None
+                    )
+                )
+                dialog.videoList.itemDoubleClicked.connect(
+                    lambda item: (
+                        self.open(
+                            item.toolTip(),
+                            focus_window=False,
+                            flash_window=False,
+                            update_recent_list=item.toolTip() in self.recent_files,
+                            update_raw_last_file=False
+                        ),
+                        dialog.videoList.refresh_thumbnail_outlines()
+                    )
+                )
+
+                # repeatedly open dialog until user succeeds or outright cancels
+                while True:
+                    logging.info('Opening concatenation dialog...')
+                    if dialog.exec() == QtW.QDialog.Rejected:   # cancel selected on dialog -> return
+                        return log_on_statusbar('Concatenation canceled.')
+                    files = tuple(abspath(item.toolTip()) for item in dialog.videoList)
+
+                    # check if any files have stopped existing - if so, show a warning and re-loop
+                    missing = [(i, f) for i, f in enumerate(files) if not exists(f)]
+                    if missing:
+                        logging.info(f'(?) Files to be concatenated no longer exist, cancelling: {missing}')
+                        if len(missing) == 1: header = 'The file at the following index no longer exists:\n\n'
+                        else:                 header = 'The files at the following indexes no longer exist:\n\n'
+                        missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
+                        qthelpers.getPopup(
+                            title='Concatenation canceled!',
+                            text=header + missing_string,
+                            icon='warning',
+                            centerWidget=dialog
+                        ).exec()
+
+                    elif len(files) < 2:
+                        marquee('Not enough files to concatenate.', log=False)
+                        continue
+
+                    else:
+                        output = dialog.output.text().strip()
+                        unchanged = output == self.lineOutput.text().strip()
+                        no_output = output == ''
+
+                        # if output is provided and altered, sanitize and validate it...
+                        # ...so the extra validation we're about to do actually works
+                        if not unchanged and not no_output:
+                            if not splitext_media(output)[-1]:  # append appropriate extension if needed
+                                output = f'{output}{splitext_media(files[0], strict=False)[-1]}'
+                            dirname, basename = os.path.split(output)
+                            if not dirname:                     # no output directory specified
+                                default_dir = settings.lineDefaultOutputPath.text().strip()
+                                dirname = default_dir or os.path.dirname(files[0])
+                            output = os.path.join(dirname, sanitize(basename))  # `sanitize` doesn't account for full paths
+
+                        # if output already exists or was unchanged from our...
+                        # ...normal output, show "Save as..." for confirmation
+                        # if output is blank, show "Save as..." if desired, else auto-name it
+                        already_exists = exists(output)
+                        save_as_chosen = dialog.choice.text() == 'Save as...'
+                        if save_as_chosen or unchanged or already_exists or (no_output and settings.checkAlwaysSaveAs.isChecked()):
+                            unique_default = save_as_chosen or (not already_exists and not unchanged)
+                            default_path = output or files[0]
+                            output = self.browse_for_save_file(
+                                noun='concatenated video',
+                                default_path=default_path,      # use first file's path as default if no ouput was provided
+                                unique_default=unique_default   # if exists/unchanged, assume user wants to overwrite -> no unique default name
+                            )
+                            if not output:
+                                continue
+                        elif no_output:                         # no output -> default to first file's name + "_concatenated"
+                            output = add_path_suffix(files[0], '_concatenated', unique=True)
+                        break                                   # we have our files, we have our name -> break loop
+
+                logging.info(f'Concatenation dialog files to {output}: {files}')
+                CAT_OPEN = dialog.checkOpen.isChecked()
+                CAT_EXPLORE = dialog.checkExplore.isChecked()
+                CAT_MARK = dialog.checkDelete.checkState() == 1
+                CAT_DELETE = dialog.checkDelete.checkState() == 2
+
+        # >>> prepare and concatenate files <<<
             try:
-                dialog.close()              # TODO: !!! memory leak?
-                cfg.concatenate.open = dialog.checkOpen.isChecked()
-                cfg.concatenate.explore = dialog.checkExplore.isChecked()
-                dialog.videoList.clear()    # clearing list does not free up the memory it takes
-                dialog.deleteLater()        # deleting the dialog does not free up the list's memory either (you cannot delete the list items either)
-                del dialog
-                gc.collect(generation=2)
+                intermediate_files = []
+                for file in files:
+                    temp_filename = file.replace('.mp4', '.ts').replace('/', '.').replace('\\', '.')
+                    intermediate_file = f'{constants.TEMP_DIR}{sep}{temp_filename}'
+                    try: os.remove(intermediate_file)
+                    except: pass
+                    intermediate_files.append(intermediate_file)
+                    ffmpeg(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
+
+                # concatentate with ffmpeg
+                if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{output}"'
+                else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{output}"'
+                ffmpeg(cmd)
+                for intermediate_file in intermediate_files:
+                    try: os.remove(intermediate_file)
+                    except: pass
+
+                # validiate output and open/explore/delete/mark
+                if not exists(output):
+                    return log_on_statusbar('(!) Concatenation failed. No files have been altered.')
+                log_on_statusbar(f'Concatenation saved to {output}.')
+
+                if CAT_EXPLORE: qthelpers.openPath(output, explore=True)
+                if CAT_OPEN: self.open(output, focus_window=settings.checkFocusOnEdit.isChecked())
+                if CAT_MARK: self.marked_for_deletion.update(files)
+                elif CAT_DELETE: self.delete(files)
+
             except:
-                logging.warning(f'(!) Unexpected error while closing concatenation dialog: {format_exc()}')
+                log_on_statusbar(f'(!) FFmpeg concatenation failed: {format_exc()}')
+            finally:
+                try:
+                    if dialog is not None:
+                        dialog.close()              # TODO: !!! memory leak?
+                        cfg.concatenate.open = dialog.checkOpen.isChecked()
+                        cfg.concatenate.explore = dialog.checkExplore.isChecked()
+                        dialog.videoList.clear()    # clearing list does not free up the memory it takes
+                        dialog.deleteLater()        # deleting the dialog does not free up the list's memory either (you cannot delete the list items either)
+                        del dialog
+                    gc.collect(generation=2)
+                except:
+                    logging.warning(f'(!) Unexpected error while closing concatenation dialog: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) Concatenation preparation failed: {format_exc()}')
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option

@@ -188,11 +188,13 @@
      <property name="title">
       <string>C&amp;oncatenate</string>
      </property>
-     <addaction name="actionCatBefore"/>
-     <addaction name="actionCatAfter"/>
+     <addaction name="actionCatAfterLast"/>
+     <addaction name="actionCatBeforeLast"/>
      <addaction name="separator"/>
-     <addaction name="actionCatAny"/>
-     <addaction name="actionCatNone"/>
+     <addaction name="actionCatBeforeThis"/>
+     <addaction name="actionCatAfterThis"/>
+     <addaction name="separator"/>
+     <addaction name="actionCatDialog"/>
     </widget>
     <widget class="QMenu" name="menuRotate">
      <property name="title">
@@ -1318,19 +1320,19 @@ automatically play upon completion of the current media.</string>
     <enum>QAction::AboutRole</enum>
    </property>
   </action>
-  <action name="actionCatAny">
+  <action name="actionCatDialog">
    <property name="text">
-    <string>Any &amp;clips</string>
+    <string>Concatenation dialog</string>
    </property>
   </action>
-  <action name="actionCatBefore">
+  <action name="actionCatBeforeThis">
    <property name="text">
-    <string>&amp;Before this clip</string>
+    <string>Any clip before this clip</string>
    </property>
   </action>
-  <action name="actionCatAfter">
+  <action name="actionCatAfterThis">
    <property name="text">
-    <string>&amp;After this clip</string>
+    <string>Any clip after this clip</string>
    </property>
   </action>
   <action name="actionExploreMediaPath">
@@ -1773,6 +1775,16 @@ for deletion, without actually deleting them.</string>
    </property>
    <property name="text">
     <string>Disabled</string>
+   </property>
+  </action>
+  <action name="actionCatAfterLast">
+   <property name="text">
+    <string>This clip after last clip</string>
+   </property>
+  </action>
+  <action name="actionCatBeforeLast">
+   <property name="text">
+    <string>This clip before last clip</string>
    </property>
   </action>
  </widget>
