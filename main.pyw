@@ -4117,11 +4117,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         noun: str = None,
         default_path: str = None
     ) -> str:
-        if default_path is None: default_path = cfg.lastdir
         caption = f'Select {noun} directory' if noun else 'Select directory'
         path, cfg.lastdir = qthelpers.browseForDirectory(
-            lastdir=default_path,
+            lastdir=cfg.lastdir,
             caption=caption,
+            directory=default_path,
             lineEdit=lineEdit
         )
         if path is None: return
@@ -4134,24 +4134,86 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         noun: str = None,
         filter: str = 'All files (*)',
         default_path: str = None,
-        unique_default: bool = True
+        unique_default: bool = True,
+        fallback_override: str = None
     ) -> str:
-        if default_path is None or not exists(os.path.dirname(default_path)):
-            current_path = self.video or '*.*'
-            if settings.checkSaveAsUseMediaFolder.isChecked(): default_path = current_path
-            else: default_path = os.path.join(cfg.lastdir, os.path.basename(current_path))
-        caption = f'Save {noun} as...' if noun else 'Save as...'
-        default_is_dir = os.path.isdir(default_path)
-        if unique_default and not default_is_dir: default_path = get_unique_path(default_path)
-        kwarg = {'directory' if default_is_dir else 'lastdir': default_path}
-        selected_filter = 'All files (*)'       # NOTE: this simply does nothing if this filter isn't available
+        ''' Opens a file-browsing dialog and returns a path to save to. Assigns
+            path to `lineEdit` if provided. Dialog caption will read, "Save
+            `noun` as..." if provided, otherwise "Save as...". If `default_path`
+            if provided, it will be validated and used as the starting folder
+            and filename for the dialog. If not provided or invalid, it will
+            fallback to:
+
+            1. `fallback_override` if provided (if THAT'S invalid, fallback
+            to `cfg.lastdir`)
+            2. `self.video` if valid and `settings.checkSaveAsUseMediaFolder`
+            is checked
+            3. `cfg.lastdir`
+
+            `default_path` may be a relative path. After the above validation,
+            if `default_path` included a path separator but the directory did
+            not exist, it will evaluated relative to the new validated path.
+            Example:
+
+            1. Provided `default_path`: "downloads/test.mp3"
+            2. Fallback directory: "C:/Users/Name"
+            3. Validated `default_path`: "C:/Users/Name/test.mp3"
+            4. Potential relative `default_path`: "C:/Users/Name/Downloads/test.mp3"
+
+            If `default_path` starts with '.' or '..', the validated path will
+            be tried first, then the script/executable's directory second.
+            If `unique_default` is True, `default_path` will become unique (for
+            when you expect the user doesn't want to overwrite anything). '''
+        if not default_path:
+            dirname = ''
+            basename = None
+        else:
+            if os.path.isdir(default_path): dirname, basename = default_path, None
+            else:                           dirname, basename = os.path.split(default_path)
+
+        # validate `default_path`. use fallback if needed (see docstring)
+        if not default_path or not exists(dirname):
+            if fallback_override:
+                fallback_override = abspath(fallback_override)
+                if exists(fallback_override):
+                    fallback = fallback_override
+                    if os.path.isdir(fallback_override):
+                        fallback += sep
+                else: fallback = cfg.lastdir
+            else: fallback = self.video
+
+            if fallback:
+                if settings.checkSaveAsUseMediaFolder.isChecked(): default_path = fallback
+                else: default_path = os.path.join(cfg.lastdir, os.path.basename(fallback))
+            else: default_path = cfg.lastdir
+
+            # evaluate possible relative paths (see docstring)
+            if dirname:
+                potential_dir = default_path if os.path.isdir(default_path) else os.path.dirname(default_path)
+                potential_path = os.path.join(potential_dir, dirname)
+                if exists(potential_path):
+                    default_path = os.path.join(potential_path, basename)
+
+        if os.path.isdir(default_path):
+            directory = default_path
+            name = basename
+        else:
+            if unique_default:
+                default_path = get_unique_path(default_path)
+            dirname, newbasename = os.path.split(default_path)
+            directory = dirname
+            name = basename or newbasename or None
+
         path, cfg.lastdir = qthelpers.saveFile(
-            **kwarg,
-            caption=caption,
+            lastdir=cfg.lastdir,
+            directory=directory,
+            name=name,
+            caption=f'Save {noun} as...' if noun else 'Save as...',
             filter=filter,
-            selectedFilter=selected_filter,
+            selectedFilter='All files (*)',     # NOTE: this simply does nothing if this filter isn't available
             lineEdit=lineEdit
         )
+
         if path is None: return
         return path
 

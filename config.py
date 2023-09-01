@@ -37,7 +37,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     gui.refresh_theme_combo(set_theme=load('theme', 'Midnight'))
 
     cfg.setSection('general')       # NOTE: 'recent_files' gets loaded in qtstart.after_show_setup()
-    load('lastdir', '.')
+    load('lastdir', '.' if constants.IS_COMPILED else constants.CWD)
     load('last_snapshot_path')
     load('last_snapshot_folder', '%USERPROFILE%\\Pictures')
     gui.sliderVolume.setValue(load('volume', gui.sliderVolume.value()))
