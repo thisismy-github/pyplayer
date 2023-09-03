@@ -4095,6 +4095,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # >>> prepare and concatenate files <<<
             try:
+                new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=output)
+
                 intermediate_files = []
                 for file in files:
                     temp_filename = file.replace('.mp4', '.ts').replace('/', '.').replace('\\', '.')
@@ -4111,6 +4113,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 for intermediate_file in intermediate_files:
                     try: os.remove(intermediate_file)
                     except: pass
+
+                # update `output`'s ctime/mtime if necessary
+                self.set_file_timestamps(
+                    path=output,
+                    ctime=new_ctime,
+                    mtime=new_mtime
+                )
 
                 # validiate output and open/explore/delete/mark
                 if not exists(output):
@@ -4898,31 +4907,132 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return hotkey_string
 
 
-    def get_new_file_timestamps(self, source: str, dest: str) -> tuple:
+    def get_new_file_timestamps(self, *sources: str, dest: str) -> tuple:
         ''' Returns a tuple of floats containing the new creation time and
-            modified time to use when saving a potential `source` file to `dest`
-            based on the various settings the user has checked/unchecked.
+            modified time to use when saving `sources` to `dest`, based on
+            the various settings the user has checked/unchecked. If more than
+            one file is provided for `sources`, concatenation settings are
+            used to determine which times constitute the "original file."
             NOTE: Times that should not be changed will be returned as 0. '''
-        old_ctime = self.stat.st_ctime
-        old_mtime = self.stat.st_mtime
+
+        # one source -> we can avoid the nightmare below
+        if len(sources) == 1:
+            stat = os.stat(sources[0])
+            old_ctime = stat.st_ctime
+            old_mtime = stat.st_mtime
+
+        # multiple sources -> use concat settings to figure out what times to use
+        else:
+            def get_extremes() -> tuple:
+                ''' Returns a tuple of tuples. The outer tuple consists of the
+                    four extremes - oldest/newest ctime/mtime. Each inner tuple
+                    contains the source file, its stat result, and the actual
+                    ctime or mtime value (only used for faster comparisons). '''
+                all_stats = ((s, os.stat(s)) for s in sources)
+                oldest_ctime = (sources[0], None, 99999999999)
+                oldest_mtime = (sources[0], None, 99999999999)
+                newest_ctime = (sources[0], None, 0)    # ^ NOTE: increase this number in a couple thousand years
+                newest_mtime = (sources[0], None, 0)
+                for source, stat in all_stats:
+                    ctime = stat.st_ctime
+                    mtime = stat.st_mtime
+                    if ctime < oldest_ctime[-1]: oldest_ctime = (source, stat, ctime)
+                    if ctime > newest_ctime[-1]: newest_ctime = (source, stat, ctime)
+                    if mtime < oldest_mtime[-1]: oldest_mtime = (source, stat, mtime)
+                    if mtime > newest_mtime[-1]: newest_mtime = (source, stat, mtime)
+                return oldest_ctime, oldest_mtime, newest_ctime, newest_mtime
+
+            # if `self.video` is preferred and is present in `sources`, use that
+            if settings.checkEditCatPreferCurrentMedia.isChecked() and self.video in sources:
+                old_ctime = self.stat.st_ctime
+                old_mtime = self.stat.st_mtime
+
+            # take both times from the same file
+            elif settings.groupEditCatBoth.isChecked():
+                if settings.radioEditCatBothFirst.isChecked():
+                    first = os.stat(sources[0])
+                    old_ctime = first.st_ctime
+                    old_mtime = first.st_mtime
+                elif settings.radioEditCatBothLast.isChecked():
+                    last = os.stat(sources[-1])
+                    old_ctime = last.st_ctime
+                    old_mtime = last.st_mtime
+                else:
+                    oldest_ctime, oldest_mtime, newest_ctime, newest_mtime = get_extremes()
+                    if settings.radioEditCatBothOldestCtime.isChecked():
+                        old_ctime = oldest_ctime[1].st_ctime
+                        old_mtime = oldest_ctime[1].st_mtime
+                    elif settings.radioEditCatBothOldestMtime.isChecked():
+                        old_ctime = oldest_mtime[1].st_ctime
+                        old_mtime = oldest_mtime[1].st_mtime
+                    elif settings.radioEditCatBothOldest.isChecked():
+                        if oldest_ctime[-1] < oldest_mtime[-1]:
+                            old_ctime = oldest_ctime[1].st_ctime
+                            old_mtime = oldest_ctime[1].st_mtime
+                        else:
+                            old_ctime = oldest_mtime[1].st_ctime
+                            old_mtime = oldest_mtime[1].st_mtime
+                    elif settings.radioEditCatBothNewestCtime.isChecked():
+                        old_ctime = newest_ctime[1].st_ctime
+                        old_mtime = newest_ctime[1].st_mtime
+                    elif settings.radioEditCatBothNewestMtime.isChecked():
+                        old_ctime = newest_mtime[1].st_ctime
+                        old_mtime = newest_mtime[1].st_mtime
+                    elif settings.radioEditCatBothNewest.isChecked():
+                        if newest_ctime[-1] > newest_mtime[-1]:
+                            old_ctime = newest_ctime[1].st_ctime
+                            old_mtime = newest_ctime[1].st_mtime
+                        else:
+                            old_ctime = newest_mtime[1].st_ctime
+                            old_mtime = newest_mtime[1].st_mtime
+
+            # take each time separately (but still possibly from the same file)
+            else:
+                first = os.stat(sources[0])
+                last = os.stat(sources[-1])
+                old_ctime = 0
+                old_mtime = 0
+                if settings.radioEditCatCtimeFirst.isChecked():
+                    old_ctime = first.st_ctime
+                elif settings.radioEditCatCtimeLast.isChecked():
+                    old_ctime = last.st_ctime
+                if settings.radioEditCatMtimeFirst.isChecked():
+                    old_mtime = first.st_mtime
+                elif settings.radioEditCatMtimeLast.isChecked():
+                    old_mtime = last.st_mtime
+
+                if old_ctime == 0 or old_mtime == 0:
+                    oldest_ctime, oldest_mtime, newest_ctime, newest_mtime = get_extremes()
+                    if settings.radioEditCatCtimeOldest.isChecked():
+                        old_ctime = oldest_ctime[1].st_ctime
+                    elif settings.radioEditCatCtimeNewest.isChecked():
+                        old_ctime = newest_ctime[1].st_ctime
+                    if settings.radioEditCatMtimeOldest.isChecked():
+                        old_mtime = oldest_mtime[1].st_mtime
+                    elif settings.radioEditCatMtimeNewest.isChecked():
+                        old_mtime = newest_mtime[1].st_mtime
+
+        # check if mtime and ctime should be swapped (mtime must be at least one minute older than ctime)
+        mtime_is_older = old_mtime < (old_ctime - 60)
+        if mtime_is_older and settings.checkEditOlderMtimeUseAsCtime.isChecked():
+            old_ctime = old_mtime
+
+        # the ctime/mtime we'll be returning
         new_ctime = 0
         new_mtime = 0
 
-        mtime_is_older = old_mtime < (old_ctime - 60)                   # mtime must be at least one minute older
-        if mtime_is_older and settings.checkEditOlderMtimeUseAsCtime.isChecked():
-            old_ctime = old_mtime                                       # use mtime for ctime
-
-        if source == dest:
+        # evaluate which ctime/mtime to return
+        if dest in sources:                         # dest is replacing one of the sources
             if settings.checkEditCtimeOnOriginal.isChecked():           new_ctime = old_ctime
             if settings.checkEditMtimeOnOriginal.isChecked():           new_mtime = old_mtime
             if mtime_is_older:
                 if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
-        elif not exists(dest):
+        elif not exists(dest):                      # dest is a new file
             if settings.checkEditCtimeOnNew.isChecked():                new_ctime = old_ctime
             if settings.checkEditMtimeOnNew.isChecked():                new_mtime = old_mtime
             if mtime_is_older:
                 if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
-        else:
+        else:                                       # dest is replacing a different file
             other_stat = os.stat(dest)
             other_ctime = other_stat.st_ctime
             other_mtime = other_stat.st_mtime
@@ -4938,7 +5048,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return new_ctime, new_mtime
 
 
-    def set_file_timestamps(path: str, ctime: float = 0, mtime: float = 0):
+    def set_file_timestamps(self, path: str, ctime: float = 0, mtime: float = 0):
         ''' Sets a `path`'s creation time and modified time to `ctime` and
             `mtime`, if non-zero. NOTE: "ctime" represents "changed time" on
             non-Windows systems, so `ctime` is ignored outside of Windows. '''

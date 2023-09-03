@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -132, 339, 3175))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, -658, 339, 3511))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -288,6 +288,117 @@ class Ui_settingsDialog(object):
         self.checkEditOlderMtimeUseAsCtime.setObjectName("checkEditOlderMtimeUseAsCtime")
         self.verticalLayout_15.addWidget(self.checkEditOlderMtimeUseAsCtime)
         self.verticalLayout_5.addWidget(self.groupBox_19)
+        spacerItem3 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.verticalLayout_5.addItem(spacerItem3)
+        self.groupBox_21 = QtWidgets.QGroupBox(self.groupBox_16)
+        self.groupBox_21.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_21.setObjectName("groupBox_21")
+        self.gridLayout_4 = QtWidgets.QGridLayout(self.groupBox_21)
+        self.gridLayout_4.setContentsMargins(7, 5, 7, 7)
+        self.gridLayout_4.setVerticalSpacing(3)
+        self.gridLayout_4.setObjectName("gridLayout_4")
+        self.groupEditCatBoth = QtWidgets.QGroupBox(self.groupBox_21)
+        self.groupEditCatBoth.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupEditCatBoth.setCheckable(True)
+        self.groupEditCatBoth.setObjectName("groupEditCatBoth")
+        self.gridLayout_5 = QtWidgets.QGridLayout(self.groupEditCatBoth)
+        self.gridLayout_5.setContentsMargins(-1, 4, 0, 5)
+        self.gridLayout_5.setHorizontalSpacing(6)
+        self.gridLayout_5.setVerticalSpacing(0)
+        self.gridLayout_5.setObjectName("gridLayout_5")
+        self.radioEditCatBothFirst = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothFirst.setChecked(True)
+        self.radioEditCatBothFirst.setObjectName("radioEditCatBothFirst")
+        self.gridLayout_5.addWidget(self.radioEditCatBothFirst, 0, 0, 1, 1)
+        self.radioEditCatBothLast = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothLast.setObjectName("radioEditCatBothLast")
+        self.gridLayout_5.addWidget(self.radioEditCatBothLast, 0, 1, 1, 1)
+        self.radioEditCatBothOldestCtime = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothOldestCtime.setObjectName("radioEditCatBothOldestCtime")
+        self.gridLayout_5.addWidget(self.radioEditCatBothOldestCtime, 1, 0, 1, 1)
+        self.radioEditCatBothNewestCtime = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothNewestCtime.setObjectName("radioEditCatBothNewestCtime")
+        self.gridLayout_5.addWidget(self.radioEditCatBothNewestCtime, 1, 1, 1, 1)
+        self.radioEditCatBothOldestMtime = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothOldestMtime.setObjectName("radioEditCatBothOldestMtime")
+        self.gridLayout_5.addWidget(self.radioEditCatBothOldestMtime, 2, 0, 1, 1)
+        self.radioEditCatBothNewestMtime = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothNewestMtime.setObjectName("radioEditCatBothNewestMtime")
+        self.gridLayout_5.addWidget(self.radioEditCatBothNewestMtime, 2, 1, 1, 1)
+        self.radioEditCatBothOldest = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothOldest.setObjectName("radioEditCatBothOldest")
+        self.gridLayout_5.addWidget(self.radioEditCatBothOldest, 3, 0, 1, 1)
+        self.radioEditCatBothNewest = QtWidgets.QRadioButton(self.groupEditCatBoth)
+        self.radioEditCatBothNewest.setObjectName("radioEditCatBothNewest")
+        self.gridLayout_5.addWidget(self.radioEditCatBothNewest, 3, 1, 1, 1)
+        self.gridLayout_4.addWidget(self.groupEditCatBoth, 2, 0, 1, 2)
+        self.groupBox_24 = QtWidgets.QGroupBox(self.groupBox_21)
+        self.groupBox_24.setEnabled(False)
+        self.groupBox_24.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_24.setObjectName("groupBox_24")
+        self.verticalLayout_17 = QtWidgets.QVBoxLayout(self.groupBox_24)
+        self.verticalLayout_17.setContentsMargins(-1, 2, 0, 3)
+        self.verticalLayout_17.setSpacing(0)
+        self.verticalLayout_17.setObjectName("verticalLayout_17")
+        self.radioEditCatMtimeFirst = QtWidgets.QRadioButton(self.groupBox_24)
+        self.radioEditCatMtimeFirst.setObjectName("radioEditCatMtimeFirst")
+        self.verticalLayout_17.addWidget(self.radioEditCatMtimeFirst)
+        self.radioEditCatMtimeLast = QtWidgets.QRadioButton(self.groupBox_24)
+        self.radioEditCatMtimeLast.setObjectName("radioEditCatMtimeLast")
+        self.verticalLayout_17.addWidget(self.radioEditCatMtimeLast)
+        self.radioEditCatMtimeNewest = QtWidgets.QRadioButton(self.groupBox_24)
+        self.radioEditCatMtimeNewest.setObjectName("radioEditCatMtimeNewest")
+        self.verticalLayout_17.addWidget(self.radioEditCatMtimeNewest)
+        self.radioEditCatMtimeOldest = QtWidgets.QRadioButton(self.groupBox_24)
+        self.radioEditCatMtimeOldest.setChecked(True)
+        self.radioEditCatMtimeOldest.setObjectName("radioEditCatMtimeOldest")
+        self.verticalLayout_17.addWidget(self.radioEditCatMtimeOldest)
+        self.gridLayout_4.addWidget(self.groupBox_24, 3, 1, 1, 1)
+        self.groupBox_22 = QtWidgets.QGroupBox(self.groupBox_21)
+        self.groupBox_22.setTitle("")
+        self.groupBox_22.setObjectName("groupBox_22")
+        self.verticalLayout_18 = QtWidgets.QVBoxLayout(self.groupBox_22)
+        self.verticalLayout_18.setContentsMargins(-1, 6, -1, 7)
+        self.verticalLayout_18.setObjectName("verticalLayout_18")
+        self.label_79 = QtWidgets.QLabel(self.groupBox_22)
+        self.label_79.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_79.setObjectName("label_79")
+        self.verticalLayout_18.addWidget(self.label_79)
+        self.gridLayout_4.addWidget(self.groupBox_22, 0, 0, 1, 2)
+        self.groupBox_23 = QtWidgets.QGroupBox(self.groupBox_21)
+        self.groupBox_23.setEnabled(False)
+        self.groupBox_23.setAlignment(QtCore.Qt.AlignCenter)
+        self.groupBox_23.setObjectName("groupBox_23")
+        self.verticalLayout_16 = QtWidgets.QVBoxLayout(self.groupBox_23)
+        self.verticalLayout_16.setContentsMargins(-1, 2, 0, 3)
+        self.verticalLayout_16.setSpacing(0)
+        self.verticalLayout_16.setObjectName("verticalLayout_16")
+        self.radioEditCatCtimeFirst = QtWidgets.QRadioButton(self.groupBox_23)
+        self.radioEditCatCtimeFirst.setObjectName("radioEditCatCtimeFirst")
+        self.verticalLayout_16.addWidget(self.radioEditCatCtimeFirst)
+        self.radioEditCatCtimeLast = QtWidgets.QRadioButton(self.groupBox_23)
+        self.radioEditCatCtimeLast.setObjectName("radioEditCatCtimeLast")
+        self.verticalLayout_16.addWidget(self.radioEditCatCtimeLast)
+        self.radioEditCatCtimeNewest = QtWidgets.QRadioButton(self.groupBox_23)
+        self.radioEditCatCtimeNewest.setObjectName("radioEditCatCtimeNewest")
+        self.verticalLayout_16.addWidget(self.radioEditCatCtimeNewest)
+        self.radioEditCatCtimeOldest = QtWidgets.QRadioButton(self.groupBox_23)
+        self.radioEditCatCtimeOldest.setChecked(True)
+        self.radioEditCatCtimeOldest.setObjectName("radioEditCatCtimeOldest")
+        self.verticalLayout_16.addWidget(self.radioEditCatCtimeOldest)
+        self.gridLayout_4.addWidget(self.groupBox_23, 3, 0, 1, 1)
+        self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
+        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_4.addItem(spacerItem4)
+        self.checkEditCatPreferCurrentMedia = QtWidgets.QCheckBox(self.groupBox_21)
+        self.checkEditCatPreferCurrentMedia.setMinimumSize(QtCore.QSize(192, 0))
+        self.checkEditCatPreferCurrentMedia.setObjectName("checkEditCatPreferCurrentMedia")
+        self.horizontalLayout_4.addWidget(self.checkEditCatPreferCurrentMedia)
+        spacerItem5 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_4.addItem(spacerItem5)
+        self.gridLayout_4.addLayout(self.horizontalLayout_4, 1, 0, 1, 2)
+        self.verticalLayout_5.addWidget(self.groupBox_21)
         self.verticalLayout_3.addWidget(self.groupBox_16)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 0, -1, 0)
@@ -506,8 +617,8 @@ class Ui_settingsDialog(object):
         self.checkTaskbarControls.setChecked(True)
         self.checkTaskbarControls.setObjectName("checkTaskbarControls")
         self.formLayout_8.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkTaskbarControls)
-        spacerItem3 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_8.setItem(4, QtWidgets.QFormLayout.SpanningRole, spacerItem3)
+        spacerItem6 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_8.setItem(4, QtWidgets.QFormLayout.SpanningRole, spacerItem6)
         self.label_9 = QtWidgets.QLabel(self.groupBox_15)
         self.label_9.setObjectName("label_9")
         self.formLayout_8.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.label_9)
@@ -578,8 +689,8 @@ class Ui_settingsDialog(object):
         self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_6.setSpacing(5)
         self.horizontalLayout_6.setObjectName("horizontalLayout_6")
-        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem4)
+        spacerItem7 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem7)
         self.label_6 = QtWidgets.QLabel(self.groupHover)
         self.label_6.setObjectName("label_6")
         self.horizontalLayout_6.addWidget(self.label_6)
@@ -588,14 +699,14 @@ class Ui_settingsDialog(object):
         self.buttonHoverFontColor.setText("")
         self.buttonHoverFontColor.setObjectName("buttonHoverFontColor")
         self.horizontalLayout_6.addWidget(self.buttonHoverFontColor)
-        spacerItem5 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem5)
+        spacerItem8 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem8)
         self.checkHoverShadow = QtWidgets.QCheckBox(self.groupHover)
         self.checkHoverShadow.setChecked(True)
         self.checkHoverShadow.setObjectName("checkHoverShadow")
         self.horizontalLayout_6.addWidget(self.checkHoverShadow)
-        spacerItem6 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem6)
+        spacerItem9 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_6.addItem(spacerItem9)
         self.formLayout_2.setLayout(3, QtWidgets.QFormLayout.SpanningRole, self.horizontalLayout_6)
         self.spinHoverFadeDuration = QtWidgets.QDoubleSpinBox(self.groupHover)
         self.spinHoverFadeDuration.setMinimum(0.0)
@@ -954,8 +1065,8 @@ class Ui_settingsDialog(object):
         self.comboSnapshotAlt.addItem("")
         self.formLayout_12.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.comboSnapshotAlt)
         self.formLayout_4.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.groupBox_8)
-        spacerItem7 = QtWidgets.QSpacerItem(1, 3, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_4.setItem(11, QtWidgets.QFormLayout.SpanningRole, spacerItem7)
+        spacerItem10 = QtWidgets.QSpacerItem(1, 3, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_4.setItem(11, QtWidgets.QFormLayout.SpanningRole, spacerItem10)
         self.label_65 = QtWidgets.QLabel(self.groupBox_3)
         self.label_65.setObjectName("label_65")
         self.formLayout_4.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_65)
@@ -1218,8 +1329,8 @@ class Ui_settingsDialog(object):
         self.spinVolumeScroll.setProperty("value", 5)
         self.spinVolumeScroll.setObjectName("spinVolumeScroll")
         self.formLayout_13.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.spinVolumeScroll)
-        spacerItem8 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_13.setItem(1, QtWidgets.QFormLayout.SpanningRole, spacerItem8)
+        spacerItem11 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_13.setItem(1, QtWidgets.QFormLayout.SpanningRole, spacerItem11)
         self.label_69 = QtWidgets.QLabel(self.groupBox_11)
         self.label_69.setObjectName("label_69")
         self.formLayout_13.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_69)
@@ -1231,8 +1342,8 @@ class Ui_settingsDialog(object):
         self.comboPlayerDoubleClick.addItem("")
         self.comboPlayerDoubleClick.addItem("")
         self.formLayout_13.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.comboPlayerDoubleClick)
-        spacerItem9 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_13.setItem(3, QtWidgets.QFormLayout.SpanningRole, spacerItem9)
+        spacerItem12 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_13.setItem(3, QtWidgets.QFormLayout.SpanningRole, spacerItem12)
         self.label_11 = QtWidgets.QLabel(self.groupBox_11)
         self.label_11.setObjectName("label_11")
         self.formLayout_13.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_11)
@@ -1245,8 +1356,8 @@ class Ui_settingsDialog(object):
         self.comboPlayerMiddleClick.addItem("")
         self.comboPlayerMiddleClick.addItem("")
         self.formLayout_13.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.comboPlayerMiddleClick)
-        spacerItem10 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.formLayout_13.setItem(5, QtWidgets.QFormLayout.SpanningRole, spacerItem10)
+        spacerItem13 = QtWidgets.QSpacerItem(20, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.formLayout_13.setItem(5, QtWidgets.QFormLayout.SpanningRole, spacerItem13)
         self.checkTrackCycleCantDisable = QtWidgets.QCheckBox(self.groupBox_11)
         self.checkTrackCycleCantDisable.setChecked(True)
         self.checkTrackCycleCantDisable.setObjectName("checkTrackCycleCantDisable")
@@ -1782,8 +1893,8 @@ class Ui_settingsDialog(object):
         self.labelGithub.setAlignment(QtCore.Qt.AlignCenter)
         self.labelGithub.setObjectName("labelGithub")
         self.verticalLayout_6.addWidget(self.labelGithub)
-        spacerItem11 = QtWidgets.QSpacerItem(20, 1276, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout_6.addItem(spacerItem11)
+        spacerItem14 = QtWidgets.QSpacerItem(20, 1276, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout_6.addItem(spacerItem14)
         self.tabWidget.addTab(self.tabUpdates, "")
         self.verticalLayout_4.addWidget(self.tabWidget)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
@@ -1810,6 +1921,8 @@ class Ui_settingsDialog(object):
         self.checkHideIdleCursor.toggled['bool'].connect(self.spinHideIdleCursorDuration.setEnabled) # type: ignore
         self.checkZoomSmooth.toggled['bool'].connect(self.spinZoomSmoothFactor.setEnabled) # type: ignore
         self.checkMinimizePause.toggled['bool'].connect(self.checkMinimizeRestore.setEnabled) # type: ignore
+        self.groupEditCatBoth.toggled['bool'].connect(self.groupBox_23.setDisabled) # type: ignore
+        self.groupEditCatBoth.toggled['bool'].connect(self.groupBox_24.setDisabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(settingsDialog)
         settingsDialog.setTabOrder(self.comboThemes, self.buttonRefreshThemes)
         settingsDialog.setTabOrder(self.buttonRefreshThemes, self.lineWindowTitleFormat)
@@ -2075,10 +2188,9 @@ class Ui_settingsDialog(object):
 "If not checked, the edited file will have the same name\n"
 "name as the source file, with \"_edited\" appended to it."))
         self.checkAlwaysSaveAs.setText(_translate("settingsDialog", "Use \"Save as...\" prompt when saving without a name"))
-        self.checkSaveAsUseMediaFolder.setToolTip(_translate("settingsDialog", "If checked, the \"Save as...\" prompt will default\n"
-"to the current media\'s folder if possible. Otherwise,\n"
-"the prompt will open to the most recently accessed\n"
-"folder from any dialog."))
+        self.checkSaveAsUseMediaFolder.setToolTip(_translate("settingsDialog", "If checked, the \"Save as...\" prompt will default to the current\n"
+"media\'s folder if possible. Otherwise, the prompt will open to\n"
+"the most recently accessed folder from any dialog."))
         self.checkSaveAsUseMediaFolder.setText(_translate("settingsDialog", "\"Save as...\" prompt defaults to current media\'s folder"))
         self.checkRenameMissingImages.setToolTip(_translate("settingsDialog", "If checked, renaming an image file that doesn\'t\n"
 "exist anymore will save the currently cached\n"
@@ -2233,6 +2345,107 @@ class Ui_settingsDialog(object):
 "\n"
 "Note: Creation times are Windows-only."))
         self.checkEditOlderMtimeUseAsCtime.setText(_translate("settingsDialog", "Set creation time to modified time"))
+        self.groupBox_21.setTitle(_translate("settingsDialog", "For concatenation, which times should be used?"))
+        self.groupEditCatBoth.setToolTip(_translate("settingsDialog", "If checked, both times will be taken from the same\n"
+"file in your concatenation list. Otherwise, the creation\n"
+"and modified times will be taken separately."))
+        self.groupEditCatBoth.setTitle(_translate("settingsDialog", "Take both times from the..."))
+        self.radioEditCatBothFirst.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time from\n"
+"the first file in your concatenation list will be used."))
+        self.radioEditCatBothFirst.setText(_translate("settingsDialog", "First file"))
+        self.radioEditCatBothLast.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time from\n"
+"the last file in your concatenation list will be used."))
+        self.radioEditCatBothLast.setText(_translate("settingsDialog", "The last file"))
+        self.radioEditCatBothOldestCtime.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time\n"
+"from the file in your concatenation list with the\n"
+"oldest creation time will be used."))
+        self.radioEditCatBothOldestCtime.setText(_translate("settingsDialog", "File with oldest\n"
+"creation time"))
+        self.radioEditCatBothNewestCtime.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time\n"
+"from the file in your concatenation list with the\n"
+"newest creation time will be used."))
+        self.radioEditCatBothNewestCtime.setText(_translate("settingsDialog", "File with newest\n"
+"creation time"))
+        self.radioEditCatBothOldestMtime.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time\n"
+"from the file in your concatenation list with the\n"
+"oldest modified time will be used."))
+        self.radioEditCatBothOldestMtime.setText(_translate("settingsDialog", "File with oldest\n"
+"modified time"))
+        self.radioEditCatBothNewestMtime.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time\n"
+"from the file in your concatenation list with the\n"
+"newest modified time will be used."))
+        self.radioEditCatBothNewestMtime.setText(_translate("settingsDialog", "File with newest\n"
+"modified time"))
+        self.radioEditCatBothOldest.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time\n"
+"from the file in your concatenation list with the\n"
+"oldest creation OR modified time will be used.\n"
+"Example:\n"
+"\n"
+"File 1:\n"
+"> Created - 2021\n"
+"> Modified - 2023\n"
+"\n"
+"File 2:\n"
+"> Created - 2022\n"
+"> Modified - 2022\n"
+"\n"
+"Output:\n"
+"> Created - 2021\n"
+"> Modified - 2023"))
+        self.radioEditCatBothOldest.setText(_translate("settingsDialog", "Oldest overall"))
+        self.radioEditCatBothNewest.setToolTip(_translate("settingsDialog", "If checked, the creation time and modified time\n"
+"from the file in your concatenation list with the\n"
+"newest creation OR modified time will be used.\n"
+"Example:\n"
+"\n"
+"File 1:\n"
+"> Created - 2021\n"
+"> Modified - 2023\n"
+"\n"
+"File 2:\n"
+"> Created - 2022\n"
+"> Modified - 2022\n"
+"\n"
+"Output:\n"
+"> Created - 2021\n"
+"> Modified - 2023"))
+        self.radioEditCatBothNewest.setText(_translate("settingsDialog", "Newest overall"))
+        self.groupBox_24.setTitle(_translate("settingsDialog", "Modified time from..."))
+        self.radioEditCatMtimeFirst.setToolTip(_translate("settingsDialog", "If checked, the modified time from the first\n"
+"file in your concatenation list will be used."))
+        self.radioEditCatMtimeFirst.setText(_translate("settingsDialog", "The first file"))
+        self.radioEditCatMtimeLast.setToolTip(_translate("settingsDialog", "If checked, the modified time from the last\n"
+"file in your concatenation list will be used."))
+        self.radioEditCatMtimeLast.setText(_translate("settingsDialog", "The last file"))
+        self.radioEditCatMtimeNewest.setToolTip(_translate("settingsDialog", "If checked, the modified time from the\n"
+"file in your concatenation list with the\n"
+"newest modified time will be used."))
+        self.radioEditCatMtimeNewest.setText(_translate("settingsDialog", "Newest"))
+        self.radioEditCatMtimeOldest.setToolTip(_translate("settingsDialog", "If checked, the modified time from the\n"
+"file in your concatenation list with the\n"
+"oldest modified time will be used."))
+        self.radioEditCatMtimeOldest.setText(_translate("settingsDialog", "Oldest"))
+        self.label_79.setText(_translate("settingsDialog", "Note: When replacing a file outside your\n"
+"concatenation list, these times will be used\n"
+"as the \"original file\" for comparisons."))
+        self.groupBox_23.setTitle(_translate("settingsDialog", "Creation time from..."))
+        self.radioEditCatCtimeFirst.setToolTip(_translate("settingsDialog", "If checked, the creation time from the first\n"
+"file in your concatenation list will be used."))
+        self.radioEditCatCtimeFirst.setText(_translate("settingsDialog", "The first file"))
+        self.radioEditCatCtimeLast.setToolTip(_translate("settingsDialog", "If checked, the creation time from the last\n"
+"file in your concatenation list will be used."))
+        self.radioEditCatCtimeLast.setText(_translate("settingsDialog", "The last file"))
+        self.radioEditCatCtimeNewest.setToolTip(_translate("settingsDialog", "If checked, the creation time from the\n"
+"file in your concatenation list with the\n"
+"newest creation time will be used."))
+        self.radioEditCatCtimeNewest.setText(_translate("settingsDialog", "Newest"))
+        self.radioEditCatCtimeOldest.setToolTip(_translate("settingsDialog", "If checked, the creation time from the\n"
+"file in your concatenation list with the\n"
+"oldest creation time will be used."))
+        self.radioEditCatCtimeOldest.setText(_translate("settingsDialog", "Oldest"))
+        self.checkEditCatPreferCurrentMedia.setToolTip(_translate("settingsDialog", "If checked, always use the current media\'s creation and\n"
+"modified time if present in your concatentation list."))
+        self.checkEditCatPreferCurrentMedia.setText(_translate("settingsDialog", "Prefer the current media if present"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusAggressive.setToolTip(_translate("settingsDialog", "If checked, PyPlayer will use COM and native Windows\' APIs\n"
 "to aggressively steal focus on Windows. Otherwise, Windows\n"

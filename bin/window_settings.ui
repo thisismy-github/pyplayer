@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-132</y>
+        <y>-658</y>
         <width>339</width>
-        <height>3175</height>
+        <height>3511</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -526,10 +526,9 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
              <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
-                <string>If checked, the &quot;Save as...&quot; prompt will default
-to the current media's folder if possible. Otherwise,
-the prompt will open to the most recently accessed
-folder from any dialog.</string>
+                <string>If checked, the &quot;Save as...&quot; prompt will default to the current
+media's folder if possible. Otherwise, the prompt will open to
+the most recently accessed folder from any dialog.</string>
                </property>
                <property name="text">
                 <string>&quot;Save as...&quot; prompt defaults to current media's folder</string>
@@ -1052,6 +1051,437 @@ Note: Creation times are Windows-only.</string>
                     <bool>true</bool>
                    </property>
                   </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_9">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_21">
+                <property name="title">
+                 <string>For concatenation, which times should be used?</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_4">
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>5</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="verticalSpacing">
+                  <number>3</number>
+                 </property>
+                 <item row="2" column="0" colspan="2">
+                  <widget class="QGroupBox" name="groupEditCatBoth">
+                   <property name="toolTip">
+                    <string>If checked, both times will be taken from the same
+file in your concatenation list. Otherwise, the creation
+and modified times will be taken separately.</string>
+                   </property>
+                   <property name="title">
+                    <string>Take both times from the...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <property name="checkable">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout_5">
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>5</number>
+                    </property>
+                    <property name="horizontalSpacing">
+                     <number>6</number>
+                    </property>
+                    <property name="verticalSpacing">
+                     <number>0</number>
+                    </property>
+                    <item row="0" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothFirst">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time from
+the first file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>First file</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothLast">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time from
+the last file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The last file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothOldestCtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+oldest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with oldest
+creation time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothNewestCtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+newest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with newest
+creation time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothOldestMtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+oldest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with oldest
+modified time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothNewestMtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+newest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with newest
+modified time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothOldest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+oldest creation OR modified time will be used.
+Example:
+
+File 1:
+&gt; Created - 2021
+&gt; Modified - 2023
+
+File 2:
+&gt; Created - 2022
+&gt; Modified - 2022
+
+Output:
+&gt; Created - 2021
+&gt; Modified - 2023</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest overall</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothNewest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+newest creation OR modified time will be used.
+Example:
+
+File 1:
+&gt; Created - 2021
+&gt; Modified - 2023
+
+File 2:
+&gt; Created - 2022
+&gt; Modified - 2022
+
+Output:
+&gt; Created - 2021
+&gt; Modified - 2023</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest overall</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QGroupBox" name="groupBox_24">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="title">
+                    <string>Modified time from...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_17">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>3</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeFirst">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the first
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The first file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeLast">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the last
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The last file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeNewest">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the
+file in your concatenation list with the
+newest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeOldest">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the
+file in your concatenation list with the
+oldest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QGroupBox" name="groupBox_22">
+                   <property name="title">
+                    <string/>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_18">
+                    <property name="topMargin">
+                     <number>6</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>7</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="label_79">
+                      <property name="text">
+                       <string>Note: When replacing a file outside your
+concatenation list, these times will be used
+as the &quot;original file&quot; for comparisons.</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QGroupBox" name="groupBox_23">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="title">
+                    <string>Creation time from...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_16">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>3</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeFirst">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the first
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The first file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeLast">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the last
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The last file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeNewest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the
+file in your concatenation list with the
+newest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeOldest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the
+file in your concatenation list with the
+oldest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" colspan="2">
+                  <layout class="QHBoxLayout" name="horizontalLayout_4">
+                   <item>
+                    <spacer name="horizontalSpacer_5">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkEditCatPreferCurrentMedia">
+                     <property name="minimumSize">
+                      <size>
+                       <width>192</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>If checked, always use the current media's creation and
+modified time if present in your concatentation list.</string>
+                     </property>
+                     <property name="text">
+                      <string>Prefer the current media if present</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_6">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
                  </item>
                 </layout>
                </widget>
@@ -5676,12 +6106,12 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>92</x>
-     <y>-508</y>
+     <x>95</x>
+     <y>-231</y>
     </hint>
     <hint type="destinationlabel">
-     <x>358</x>
-     <y>-507</y>
+     <x>316</x>
+     <y>-231</y>
     </hint>
    </hints>
   </connection>
@@ -5692,12 +6122,12 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>91</x>
-     <y>484</y>
+     <x>103</x>
+     <y>1983</y>
     </hint>
     <hint type="destinationlabel">
-     <x>216</x>
-     <y>485</y>
+     <x>311</x>
+     <y>1984</y>
     </hint>
    </hints>
   </connection>
@@ -5708,12 +6138,44 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>157</x>
-     <y>-142</y>
+     <x>166</x>
+     <y>1322</y>
     </hint>
     <hint type="destinationlabel">
-     <x>347</x>
-     <y>-142</y>
+     <x>308</x>
+     <y>1322</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>groupEditCatBoth</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBox_23</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>117</x>
+     <y>469</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>93</x>
+     <y>594</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>groupEditCatBoth</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBox_24</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>167</x>
+     <y>467</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>232</x>
+     <y>593</y>
     </hint>
    </hints>
   </connection>
