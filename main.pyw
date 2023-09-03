@@ -279,17 +279,49 @@ def get_PIL_safe_path(original_path: str, final_path: str):
             except: logging.warning('(!) FAILED TO RENAME TEMPORARY IMAGE PATH' + format_exc())
 
 
-def splitext_media(path: str, valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS, strict: bool = True) -> tuple:
+def splitext_media(
+    path: str,
+    valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+    invalid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+    *,
+    strict: bool = True
+) -> tuple:
+    ''' Split the extension from a `path`, as long as the extension is within a
+        list of `valid_extensions`. If not, the extension is returned empty. If
+        `strict` is False, an unknown extension can still be returned intact if:
+
+        1. It is not within a list of `invalid_extensions`
+        2. It is 6 characters or shorter
+        3. It contains at least one letter
+        4. It does not contain anything other than letters and numbers
+
+        NOTE: `strict` must be provided as a keyword argument.
+
+        NOTE: `valid_extensions` is evaluated first. `invalid_extensions` should
+        rarely be changed, but may be passed as None/False/'' if desired. '''
+
     base, ext = os.path.splitext(path)
     ext = ext.lower()
-    if not ext: return path, ''
+
+    # if no ext to begin with, return immediately
+    if not ext:
+        return path, ''
+
+    # if `strict` is False and ext is invalid, only return if ext is >6 characters
     if ext not in valid_extensions:
-        if strict or len(ext) > 6: return base, ''
+        if strict or len(ext) > 6 or ext in (invalid_extensions or tuple()):
+            return base, ''
+
+        # verify ext has at least one letter and no symbols
         has_letters = False
         for c in ext[1:]:
-            if c.isalpha(): has_letters = True
-            elif not c.isdigit(): return base, ''
-        if not has_letters: return base, ''
+            if c.isalpha():
+                has_letters = True
+            elif not c.isdigit():
+                return base, ''
+        if not has_letters:
+            return base, ''
+
     return base, ext
 
 
@@ -2975,9 +3007,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except:
             log_on_statusbar(f'(!) SNAPSHOT FAILED: {format_exc()}')
-        finally:                                                    # restore pause-state before leaving
+        finally:                                                # restore pause-state before leaving
             if self.is_gif: image_player.gif.setPaused(self.is_paused)
-            else: player.set_pause(self.is_paused)                  # NOTE: DON'T do both - QMovie will emit a "frameChanged" signal!!!
+            else: player.set_pause(self.is_paused)              # NOTE: DON'T do both - QMovie will emit a "frameChanged" signal!!!
 
 
     def save_as(
@@ -2993,20 +3025,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Opens a file dialog with `filter` and the caption "Save `noun`
             as...", before saving to the user-selected path, if any.
             See `save()` for more details. '''
-        video = self.video
-        if not video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
         try:
-            if default_path is None:
-                base, ext = splitext_media(video, valid_extensions)
-                if ext: default_path = video
-                else: default_path = base + ext_hint
-
             logging.info('Opening \'Save As...\' dialog.')
             file = self.browse_for_save_file(
                 noun=noun,
                 filter=filter,
-                default_path=default_path,
+                valid_extensions=valid_extensions,
+                ext_hint=ext_hint,
+                default_path=default_path or self.video,
                 unique_default=unique_default
             )
 
@@ -3019,7 +3047,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def save(
         self,
-        *args,                                                                  # *args to capture unused signal args
+        *args,                                                  # *args to capture unused signal args
         dest: str = None,
         ext_hint: str = None,
         noun: str = 'media',
@@ -3050,7 +3078,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # see if we haven't sufficiently edited the destination (no abspath specified, same basename (excluding the extension))
         if not dest:
-            dest_was_not_modified = True                                        # TODO i don't think this code actually matters anymore
+            dest_was_not_modified = True                        # TODO i don't think this code actually matters anymore
         else:
             old_tail_base = os.path.split(old_base)[-1]
             new_base, new_ext = splitext_media(dest)
@@ -3059,27 +3087,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # get output name
         if dest_was_not_modified:
             output_text, _, ext = self.get_renamed_output(valid_extensions=valid_extensions)
-            if not output_text or output_text == video:                         # no name OR name is same as original video
+            if not output_text or output_text == video:         # no name OR name is same as original video
                 if settings.checkAlwaysSaveAs.isChecked():
                     return self.save_as(
                         noun=noun,
                         filter=filter,
                         valid_extensions=preferred_extensions or valid_extensions,
-                        ext_hint=ext_hint or old_ext,                           # ^ pass preferred extensions if provided
+                        ext_hint=ext_hint or old_ext,           # ^ pass preferred extensions if provided
                         unique_default=False
                     )
                 elif operations:
                     dest = add_path_suffix(video, '_edited', unique=True)
             else:
                 dest = output_text
-                if not os.path.dirname(dest):                                   # output text is just a name w/ no directory
+                if not os.path.dirname(dest):                   # output text is just a name w/ no directory
                     default_dir = settings.lineDefaultOutputPath.text().strip()
                     if not default_dir: default_dir = os.path.dirname(video)    # if no default path, use source video's path
                     dest = abspath(os.path.expandvars(os.path.join(default_dir, dest)))
                 if not splitext_media(dest, valid_extensions)[-1]:              # append extension if needed
                     ext = ext_hint or old_ext
-                    dest += ext                             # use extension hint if specified, otherwise just use source file's extension
-            dirname, basename = os.path.split(dest)         # sanitize our custom destination (`sanitize` does not account for full paths)
+                    dest += ext                                 # use extension hint if specified, otherwise just use source file's extension
+            dirname, basename = os.path.split(dest)             # sanitize our custom destination (`sanitize` does not account for full paths)
             dest = os.path.join(dirname, sanitize(basename))
 
         # ensure output has valid extension included
@@ -3093,9 +3121,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # no operations -> check if video was renamed and return without starting a new thread
         if not operations:
-            if dest != video:                               # no operations, but name is changed
+            if dest != video:                                   # no operations, but name is changed
                 logging.info(f'No operations detected, but a new name was specified. Renaming to {dest}')
-                return self.rename(dest)                    # do a normal rename and return
+                return self.rename(dest)                        # do a normal rename and return
             return marquee('No changes have been made.', log=False)
 
         # do actual saving in separate thread
@@ -3118,7 +3146,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         replacing_original = video == dest
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
-        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest)
+        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
 
         # what will we do to the media file after saving? (0, 1, or 2)
         delete_after_save = self.checkDeleteOriginal.checkState()
@@ -3902,7 +3930,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 CAT_DELETE = self.checkDeleteOriginal.checkState() == 2
                 output = self.lineOutput.text().strip()
                 if not output:
-                    output = self.browse_for_save_file(noun='concatenated video')
+                    output = self.browse_for_save_file(
+                        noun='concatenated video',
+                        valid_extensions=constants.VIDEO_EXTENSIONS,
+                        ext_hint='.mp4'
+                    )
 
         # >>> create, setup, and open dialog <<<
             else:
@@ -3974,6 +4006,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     lambda: self.browse_for_save_file(
                         lineEdit=dialog.output,
                         noun='concatenated video',
+                        valid_extensions=constants.VIDEO_EXTENSIONS,
+                        ext_hint='.mp4',
                         default_path=dialog.output.text().strip(),
                         fallback_override=dialog.videoList.item(0).toolTip() if dialog.videoList.count() else None
                     )
@@ -4005,11 +4039,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if len(missing) == 1: header = 'The file at the following index no longer exists:\n\n'
                         else:                 header = 'The files at the following indexes no longer exist:\n\n'
                         missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
-                        qthelpers.getPopup(
-                            title='Concatenation canceled!',
-                            text=header + missing_string,
+                        qthelpers.getPopup(                     # TODO this is a rare scenario so it just shows...
+                            title='Concatenation canceled!',    # ...the popup and goes away, but it should...
+                            text=header + missing_string,       # ...really give "discard" and "ignore" options
                             icon='warning',
-                            centerWidget=dialog
+                            centerMouse=True
                         ).exec()
 
                     elif len(files) < 2:
@@ -4023,8 +4057,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                         # if output is provided and altered, sanitize and validate it...
                         # ...so the extra validation we're about to do actually works
-                        if not unchanged and not no_output:
-                            if not splitext_media(output)[-1]:  # append appropriate extension if needed
+                        if not unchanged and not no_output:     # append appropriate extension if needed
+                            if not splitext_media(output, constants.VIDEO_EXTENSIONS)[-1]:
                                 output = f'{output}{splitext_media(files[0], strict=False)[-1]}'
                             dirname, basename = os.path.split(output)
                             if not dirname:                     # no output directory specified
@@ -4036,12 +4070,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         # ...normal output, show "Save as..." for confirmation
                         # if output is blank, show "Save as..." if desired, else auto-name it
                         already_exists = exists(output)
-                        save_as_chosen = dialog.choice.text() == 'Save as...'
-                        if save_as_chosen or unchanged or already_exists or (no_output and settings.checkAlwaysSaveAs.isChecked()):
-                            unique_default = save_as_chosen or (not already_exists and not unchanged)
+                        chose_save_as = dialog.choice.text() == 'Save as...'
+                        if chose_save_as or unchanged or already_exists or (no_output and settings.checkAlwaysSaveAs.isChecked()):
+                            unique_default = chose_save_as or (not already_exists and not unchanged)
                             default_path = output or files[0]
                             output = self.browse_for_save_file(
                                 noun='concatenated video',
+                                valid_extensions=constants.VIDEO_EXTENSIONS,
+                                ext_hint='.mp4',
                                 default_path=default_path,      # use first file's path as default if no ouput was provided
                                 unique_default=unique_default   # if exists/unchanged, assume user wants to overwrite -> no unique default name
                             )
@@ -4285,6 +4321,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         lineEdit: QtW.QLineEdit = None,
         noun: str = None,
         filter: str = 'All files (*)',
+        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        ext_hint: str = None,
         default_path: str = None,
         unique_default: bool = True,
         fallback_override: str = None
@@ -4303,18 +4341,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             3. `cfg.lastdir`
 
             `default_path` may be a relative path. After the above validation,
-            if `default_path` included a path separator but the directory did
+            if `default_path` included path separators but its directory did
             not exist, it will evaluated relative to the new validated path.
             Example:
 
-            1. Provided `default_path`: "downloads/test.mp3"
+            1. Provided `default_path`: "music/test.mp3"
             2. Fallback directory: "C:/Users/Name"
             3. Validated `default_path`: "C:/Users/Name/test.mp3"
-            4. Potential relative `default_path`: "C:/Users/Name/Downloads/test.mp3"
+            4. Potential relative `default_path`: "C:/Users/Name/Music/test.mp3"
 
-            If `default_path` starts with '.' or '..', the validated path will
-            be tried first, then the script/executable's directory second.
-            If `unique_default` is True, `default_path` will become unique (for
+            If `default_path` starts with '.' or '..', the validated directory
+            will be tried first, then the script/executable's directory second.
+            If `default_path` lacks an extension within `valid_extensions`,
+            `ext_hint` will be appended to `default_path`, if provided. If
+            `unique_default` is True, `default_path` will become unique (for
             when you expect the user doesn't want to overwrite anything). '''
         if not default_path:
             dirname = ''
@@ -4347,19 +4387,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     default_path = os.path.join(potential_path, basename)
 
         if os.path.isdir(default_path):
-            directory = default_path
-            name = basename
+            dirname = default_path              # simply reuse basename if it was already set
         else:
             if unique_default:
                 default_path = get_unique_path(default_path)
-            dirname, newbasename = os.path.split(default_path)
-            directory = dirname
-            name = basename or newbasename or None
+            dirname, basename = os.path.split(default_path)
+
+        # verify the extension on the filename we're about to use
+        if basename:
+            base, ext = splitext_media(basename, valid_extensions)
+            if ext_hint and not ext: basename = base + ext_hint
 
         path, cfg.lastdir = qthelpers.saveFile(
             lastdir=cfg.lastdir,
-            directory=directory,
-            name=name,
+            directory=dirname,
+            name=basename,
             caption=f'Save {noun} as...' if noun else 'Save as...',
             filter=filter,
             selectedFilter='All files (*)',     # NOTE: this simply does nothing if this filter isn't available
