@@ -73,9 +73,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-658</y>
-        <width>339</width>
-        <height>3511</height>
+        <y>0</y>
+        <width>345</width>
+        <height>2745</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -94,6 +94,9 @@
            </property>
            <item>
             <layout class="QFormLayout" name="formLayout">
+             <property name="horizontalSpacing">
+              <number>6</number>
+             </property>
              <property name="verticalSpacing">
               <number>3</number>
              </property>
@@ -280,52 +283,6 @@ and vice versa.</string>
               </widget>
              </item>
              <item row="4" column="0">
-              <widget class="QLabel" name="label_2">
-               <property name="toolTip">
-                <string notr="true">When saving an edited video without specifying a folder in
-its output name, the new video will default to this folder.
-
-Leave blank to always save unspecified videos to their source folder.</string>
-               </property>
-               <property name="text">
-                <string notr="true">Default output path</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_2">
-               <property name="spacing">
-                <number>2</number>
-               </property>
-               <item>
-                <widget class="QLineEdit" name="lineDefaultOutputPath">
-                 <property name="placeholderText">
-                  <string notr="true">Same as source media</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="buttonBrowseDefaultOutputPath">
-                 <property name="minimumSize">
-                  <size>
-                   <width>22</width>
-                   <height>22</height>
-                  </size>
-                 </property>
-                 <property name="toolTip">
-                  <string notr="true">Refresh theme list</string>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QPushButton { padding-bottom: 3px; }</string>
-                 </property>
-                 <property name="text">
-                  <string notr="true">...</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="5" column="0">
               <widget class="QLabel" name="label_58">
                <property name="toolTip">
                 <string>The number of files to remember between sessions
@@ -343,7 +300,7 @@ Otherwise, the recent files are validated on launch.</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="1">
+             <item row="4" column="1">
               <widget class="QSpinBox" name="spinRecentFiles">
                <property name="specialValueText">
                 <string>Do not track recent files</string>
@@ -362,7 +319,7 @@ Otherwise, the recent files are validated on launch.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0">
+             <item row="5" column="0">
               <widget class="QLabel" name="label_50">
                <property name="toolTip">
                 <string>The location where popups and other dialogs will initially appear.</string>
@@ -372,7 +329,7 @@ Otherwise, the recent files are validated on launch.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="1">
+             <item row="5" column="1">
               <widget class="QComboBox" name="comboDialogPosition">
                <item>
                 <property name="text">
@@ -391,8 +348,14 @@ Otherwise, the recent files are validated on launch.</string>
                </item>
               </widget>
              </item>
-             <item row="7" column="0">
+             <item row="6" column="0">
               <widget class="QCheckBox" name="checkHideIdleCursor">
+               <property name="minimumSize">
+                <size>
+                 <width>95</width>
+                 <height>0</height>
+                </size>
+               </property>
                <property name="toolTip">
                 <string>If checked, your cursor will disappear until moved
 if left idle over the player for the specified amount
@@ -406,7 +369,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="1">
+             <item row="6" column="1">
               <widget class="QDoubleSpinBox" name="spinHideIdleCursorDuration">
                <property name="prefix">
                 <string>After: </string>
@@ -431,7 +394,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkHighPrecisionProgress">
                <property name="toolTip">
                 <string>If checked, the progress bar for the current media will be faked in
@@ -449,7 +412,7 @@ If not checked, VLC's native updates will be used.</string>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkFFprobe">
                <property name="toolTip">
                 <string>If checked, FFprobe will be used (if it exists) to parse media files
@@ -473,7 +436,7 @@ opening media, you can try disabling this setting.</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -487,7 +450,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
                <property name="toolTip">
                 <string>If checked, copying a media's path to your clipboard
@@ -505,58 +468,7 @@ systems do not use backslashes in their paths.</string>
                </property>
               </widget>
              </item>
-             <item row="12" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkAlwaysSaveAs">
-               <property name="toolTip">
-                <string>If checked, saving an edit with no name specified in the
-output box at the bottom of the window will bring up
-the &quot;Save as...&quot; prompt.
-
-If not checked, the edited file will have the same name
-name as the source file, with &quot;_edited&quot; appended to it.</string>
-               </property>
-               <property name="text">
-                <string>Use &quot;Save as...&quot; prompt when saving without a name</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="13" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
-               <property name="toolTip">
-                <string>If checked, the &quot;Save as...&quot; prompt will default to the current
-media's folder if possible. Otherwise, the prompt will open to
-the most recently accessed folder from any dialog.</string>
-               </property>
-               <property name="text">
-                <string>&quot;Save as...&quot; prompt defaults to current media's folder</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="14" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRenameMissingImages">
-               <property name="toolTip">
-                <string>If checked, renaming an image file that doesn't
-exist anymore will save the currently cached
-image as a new file with your desired name.
-
-If not checked, renaming an image file that
-doesn't exist anymore will do nothing.</string>
-               </property>
-               <property name="text">
-                <string>Renaming missing image files creates a new one</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="15" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRememberDropFolder">
                <property name="toolTip">
                 <string>If checked, dragging and dropping media will remember
@@ -573,33 +485,19 @@ folders remembered.</string>
                </property>
               </widget>
              </item>
-             <item row="16" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
+             <item row="12" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
                <property name="toolTip">
-                <string>Tristate:
-
-Fully checked: media that is renamed and/or edited will act
-as if it were in its original place when attempting to cycle to
-the next or previous media media file in the current folder.
-
-Partially checked: ditto, but only for renaming, not editing.
-
-Example: If there are 10 files in a folder, and you're playing
-file #5, but then rename it so that it becomes file #1, the
-next file that will play will still be file #6.</string>
+                <string>If checked, opening recent files through
+the menu will update their order, moving
+the newly played file to the top.</string>
                </property>
                <property name="text">
-                <string>Cycle media based on file's original filepath (tristate)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
+                <string>Opening recent files from the menu updates their order</string>
                </property>
               </widget>
              </item>
-             <item row="18" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
                 <string>If checked, the media player will completely stop upon the
@@ -616,7 +514,7 @@ or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
                </property>
               </widget>
              </item>
-             <item row="19" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkAutoEnableSubtitles">
                <property name="toolTip">
                 <string>If checked, subtitle tracks will be automatically
@@ -631,863 +529,7 @@ pre-existing tracks and manually-added tracks.</string>
                </property>
               </widget>
              </item>
-             <item row="17" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
-               <property name="toolTip">
-                <string>If checked, opening recent files through
-the menu will update their order, moving
-the newly played file to the top.</string>
-               </property>
-               <property name="text">
-                <string>Opening recent files from the menu updates their order</string>
-               </property>
-              </widget>
-             </item>
             </layout>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_16">
-             <property name="title">
-              <string>Edit behavior</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_5">
-              <property name="spacing">
-               <number>0</number>
-              </property>
-              <property name="leftMargin">
-               <number>7</number>
-              </property>
-              <property name="topMargin">
-               <number>3</number>
-              </property>
-              <property name="rightMargin">
-               <number>7</number>
-              </property>
-              <property name="bottomMargin">
-               <number>7</number>
-              </property>
-              <item>
-               <widget class="QCheckBox" name="checkEditCtimeOnNew">
-                <property name="toolTip">
-                 <string>If checked, the current media's creation time will be
-applied to any new files that are saved. Otherwise,
-the creation time will be set to the time of the edit.
-
-Note: Creation times are Windows-only.</string>
-                </property>
-                <property name="text">
-                 <string>Reuse creation time when saving new file</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="checkEditCtimeOnOriginal">
-                <property name="toolTip">
-                 <string>If checked, the current media's creation time will
-be reused when overwriting itself. Otherwise, the
-creation time will be set to the time of the edit.
-
-Note: Creation times are Windows-only.</string>
-                </property>
-                <property name="text">
-                 <string>Reuse creation time when replacing original file</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="checkEditMtimeOnNew">
-                <property name="toolTip">
-                 <string>If checked, the current media's last modified time will
-be applied to any new files that are saved. Otherwise,
-the modified time will be set to the time of the edit.</string>
-                </property>
-                <property name="text">
-                 <string>Reuse modified time when saving new file</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QCheckBox" name="checkEditMtimeOnOriginal">
-                <property name="toolTip">
-                 <string>If checked, the current media's last modified time will
-be reused when overwriting itself. Otherwise, the last
-modified time will be set to the time of the edit.</string>
-                </property>
-                <property name="text">
-                 <string>Reuse modified time when replacing original file</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer_8">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_20">
-                <property name="title">
-                 <string>When replacing different file...</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignCenter</set>
-                </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_47">
-                 <property name="spacing">
-                  <number>10</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>3</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>7</number>
-                 </property>
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_17">
-                   <property name="title">
-                    <string>Set creation time to...</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignCenter</set>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_13">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>9</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>2</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>4</number>
-                    </property>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCtimeConflictUseNow">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate file
-during an edit, the creation time will be set to the time
-of the edit.
-
-Note: Creation times are Windows-only.</string>
-                      </property>
-                      <property name="text">
-                       <string>Now</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOriginal">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate
-file during an edit, the creation time will be set to
-the current media's creation time.
-
-Note: Creation times are Windows-only.</string>
-                      </property>
-                      <property name="text">
-                       <string>Original file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOther">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate file
-during an edit, the creation time will be set to that of
-the file being replaced.
-
-Note: Creation times are Windows-only.</string>
-                      </property>
-                      <property name="text">
-                       <string>Other file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCtimeConflictUseNewest">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate
-file during an edit, the creation time will be set to the
-newest creation time between the current media and
-the file being replaced.
-
-Note: Creation times are Windows-only.</string>
-                      </property>
-                      <property name="text">
-                       <string>Newest</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOldest">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate
-file during an edit, the creation time will be set to the
-oldest creation time between the current media and
-the file being replaced.
-
-Note: Creation times are Windows-only.</string>
-                      </property>
-                      <property name="text">
-                       <string>Oldest</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_18">
-                   <property name="title">
-                    <string>Set modified time to...</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignCenter</set>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_14">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>9</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>2</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>4</number>
-                    </property>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditMtimeConflictUseNow">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate file
-during an edit, the last modified time will be set to the
-time of the edit.</string>
-                      </property>
-                      <property name="text">
-                       <string>Now</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOriginal">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate
-file during an edit, the last modified time will be set
-to the current media's last modified time.</string>
-                      </property>
-                      <property name="text">
-                       <string>Original file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOther">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate file
-during an edit, the last modified time will be set to that
-of the file being replaced.</string>
-                      </property>
-                      <property name="text">
-                       <string>Other file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditMtimeConflictUseNewest">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate
-file during an edit, the last modified time will be set
-to the newest last modified time between the current
-media and the file being replaced.</string>
-                      </property>
-                      <property name="text">
-                       <string>Newest</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOldest">
-                      <property name="toolTip">
-                       <string>If checked, when replacing an existing but separate
-file during an edit, the last modified time will be set
-to the oldest last modified time between the current
-media and the file being replaced.</string>
-                      </property>
-                      <property name="text">
-                       <string>Oldest</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer_7">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_19">
-                <property name="title">
-                 <string>If modified time is older than creation time...</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignCenter</set>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_15">
-                 <property name="spacing">
-                  <number>0</number>
-                 </property>
-                 <property name="leftMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>3</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>7</number>
-                 </property>
-                 <item>
-                  <widget class="QCheckBox" name="checkEditOlderMtimeAlwaysReuse">
-                   <property name="toolTip">
-                    <string>If checked, and the last modified time of the current
-media is older than its creation time, then the last
-modified time will always be used rather than the
-time of the edit, regardless of the above settings.
-
-Example: If you edit a file with a creation time of 2023
-and a last modified time of 2021, your new file will also
-have a last modified time of 2021.
-
-Note: This has NO effect when replacing different files,
-only when saving new files or replacing the original.
-
-Note: Creation times are Windows-only.</string>
-                   </property>
-                   <property name="text">
-                    <string>Always reuse modified time</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="checkEditOlderMtimeUseAsCtime">
-                   <property name="toolTip">
-                    <string>If checked, and the last modified time of the current media is
-older than its creation time, then the creation time of your edit
-will be set to the last modified time.
-
-Example: If you edit a file with a creation time of 2023 and a
-last modified time of 2021, your new file will have a creation
-time of 2021.
-
-Note: When replacing different files, this ONLY applies to
-the original file, and is applied before &quot;oldest creation time&quot;
-is evaluated. The file being replaced will not be considered
-or altered prior to the edit.
-
-Note: Creation time and last modified time are not
-swapped - last modified time will remain the same.
-
-Note: Creation times are Windows-only.</string>
-                   </property>
-                   <property name="text">
-                    <string>Set creation time to modified time</string>
-                   </property>
-                   <property name="checked">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer_9">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QGroupBox" name="groupBox_21">
-                <property name="title">
-                 <string>For concatenation, which times should be used?</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignCenter</set>
-                </property>
-                <layout class="QGridLayout" name="gridLayout_4">
-                 <property name="leftMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="topMargin">
-                  <number>5</number>
-                 </property>
-                 <property name="rightMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="bottomMargin">
-                  <number>7</number>
-                 </property>
-                 <property name="verticalSpacing">
-                  <number>3</number>
-                 </property>
-                 <item row="2" column="0" colspan="2">
-                  <widget class="QGroupBox" name="groupEditCatBoth">
-                   <property name="toolTip">
-                    <string>If checked, both times will be taken from the same
-file in your concatenation list. Otherwise, the creation
-and modified times will be taken separately.</string>
-                   </property>
-                   <property name="title">
-                    <string>Take both times from the...</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignCenter</set>
-                   </property>
-                   <property name="checkable">
-                    <bool>true</bool>
-                   </property>
-                   <layout class="QGridLayout" name="gridLayout_5">
-                    <property name="topMargin">
-                     <number>4</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>5</number>
-                    </property>
-                    <property name="horizontalSpacing">
-                     <number>6</number>
-                    </property>
-                    <property name="verticalSpacing">
-                     <number>0</number>
-                    </property>
-                    <item row="0" column="0">
-                     <widget class="QRadioButton" name="radioEditCatBothFirst">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time from
-the first file in your concatenation list will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>First file</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="0" column="1">
-                     <widget class="QRadioButton" name="radioEditCatBothLast">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time from
-the last file in your concatenation list will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>The last file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="0">
-                     <widget class="QRadioButton" name="radioEditCatBothOldestCtime">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time
-from the file in your concatenation list with the
-oldest creation time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>File with oldest
-creation time</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="1">
-                     <widget class="QRadioButton" name="radioEditCatBothNewestCtime">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time
-from the file in your concatenation list with the
-newest creation time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>File with newest
-creation time</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="2" column="0">
-                     <widget class="QRadioButton" name="radioEditCatBothOldestMtime">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time
-from the file in your concatenation list with the
-oldest modified time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>File with oldest
-modified time</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="2" column="1">
-                     <widget class="QRadioButton" name="radioEditCatBothNewestMtime">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time
-from the file in your concatenation list with the
-newest modified time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>File with newest
-modified time</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="0">
-                     <widget class="QRadioButton" name="radioEditCatBothOldest">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time
-from the file in your concatenation list with the
-oldest creation OR modified time will be used.
-Example:
-
-File 1:
-&gt; Created - 2021
-&gt; Modified - 2023
-
-File 2:
-&gt; Created - 2022
-&gt; Modified - 2022
-
-Output:
-&gt; Created - 2021
-&gt; Modified - 2023</string>
-                      </property>
-                      <property name="text">
-                       <string>Oldest overall</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="1">
-                     <widget class="QRadioButton" name="radioEditCatBothNewest">
-                      <property name="toolTip">
-                       <string>If checked, the creation time and modified time
-from the file in your concatenation list with the
-newest creation OR modified time will be used.
-Example:
-
-File 1:
-&gt; Created - 2021
-&gt; Modified - 2023
-
-File 2:
-&gt; Created - 2022
-&gt; Modified - 2022
-
-Output:
-&gt; Created - 2021
-&gt; Modified - 2023</string>
-                      </property>
-                      <property name="text">
-                       <string>Newest overall</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QGroupBox" name="groupBox_24">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="title">
-                    <string>Modified time from...</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignCenter</set>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_17">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>2</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>3</number>
-                    </property>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatMtimeFirst">
-                      <property name="toolTip">
-                       <string>If checked, the modified time from the first
-file in your concatenation list will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>The first file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatMtimeLast">
-                      <property name="toolTip">
-                       <string>If checked, the modified time from the last
-file in your concatenation list will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>The last file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatMtimeNewest">
-                      <property name="toolTip">
-                       <string>If checked, the modified time from the
-file in your concatenation list with the
-newest modified time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>Newest</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatMtimeOldest">
-                      <property name="toolTip">
-                       <string>If checked, the modified time from the
-file in your concatenation list with the
-oldest modified time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>Oldest</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item row="0" column="0" colspan="2">
-                  <widget class="QGroupBox" name="groupBox_22">
-                   <property name="title">
-                    <string/>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_18">
-                    <property name="topMargin">
-                     <number>6</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>7</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="label_79">
-                      <property name="text">
-                       <string>Note: When replacing a file outside your
-concatenation list, these times will be used
-as the &quot;original file&quot; for comparisons.</string>
-                      </property>
-                      <property name="alignment">
-                       <set>Qt::AlignCenter</set>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QGroupBox" name="groupBox_23">
-                   <property name="enabled">
-                    <bool>false</bool>
-                   </property>
-                   <property name="title">
-                    <string>Creation time from...</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignCenter</set>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_16">
-                    <property name="spacing">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>2</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>3</number>
-                    </property>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatCtimeFirst">
-                      <property name="toolTip">
-                       <string>If checked, the creation time from the first
-file in your concatenation list will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>The first file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatCtimeLast">
-                      <property name="toolTip">
-                       <string>If checked, the creation time from the last
-file in your concatenation list will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>The last file</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatCtimeNewest">
-                      <property name="toolTip">
-                       <string>If checked, the creation time from the
-file in your concatenation list with the
-newest creation time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>Newest</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QRadioButton" name="radioEditCatCtimeOldest">
-                      <property name="toolTip">
-                       <string>If checked, the creation time from the
-file in your concatenation list with the
-oldest creation time will be used.</string>
-                      </property>
-                      <property name="text">
-                       <string>Oldest</string>
-                      </property>
-                      <property name="checked">
-                       <bool>true</bool>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item row="1" column="0" colspan="2">
-                  <layout class="QHBoxLayout" name="horizontalLayout_4">
-                   <item>
-                    <spacer name="horizontalSpacer_5">
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="checkEditCatPreferCurrentMedia">
-                     <property name="minimumSize">
-                      <size>
-                       <width>192</width>
-                       <height>0</height>
-                      </size>
-                     </property>
-                     <property name="toolTip">
-                      <string>If checked, always use the current media's creation and
-modified time if present in your concatentation list.</string>
-                     </property>
-                     <property name="text">
-                      <string>Prefer the current media if present</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <spacer name="horizontalSpacer_6">
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-             </layout>
-            </widget>
            </item>
            <item>
             <layout class="QVBoxLayout" name="verticalLayout">
@@ -1797,7 +839,7 @@ the current foreground window is fullscreen (i.e. a game).</string>
                       <number>6</number>
                      </property>
                      <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0">
+                      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0">
                        <property name="spacing">
                         <number>8</number>
                        </property>
@@ -1821,7 +863,7 @@ the current foreground window is fullscreen (i.e. a game).</string>
                         <widget class="QCheckBox" name="checkSnapGifs">
                          <property name="minimumSize">
                           <size>
-                           <width>55</width>
+                           <width>46</width>
                            <height>0</height>
                           </size>
                          </property>
@@ -1837,7 +879,7 @@ the current foreground window is fullscreen (i.e. a game).</string>
                         <widget class="QCheckBox" name="checkSnapImages">
                          <property name="minimumSize">
                           <size>
-                           <width>55</width>
+                           <width>56</width>
                            <height>0</height>
                           </size>
                          </property>
@@ -1850,7 +892,7 @@ the current foreground window is fullscreen (i.e. a game).</string>
                         <widget class="QCheckBox" name="checkSnapArt">
                          <property name="minimumSize">
                           <size>
-                           <width>55</width>
+                           <width>68</width>
                            <height>0</height>
                           </size>
                          </property>
@@ -1858,6 +900,19 @@ the current foreground window is fullscreen (i.e. a game).</string>
                           <string>Cover Art</string>
                          </property>
                         </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_7">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
                        </item>
                       </layout>
                      </item>
@@ -1937,17 +992,20 @@ accident, but I couldn't let it go to waste.</string>
                      <string>Image scaling</string>
                     </property>
                     <layout class="QFormLayout" name="formLayout_14">
+                     <property name="horizontalSpacing">
+                      <number>5</number>
+                     </property>
                      <property name="verticalSpacing">
                       <number>3</number>
                      </property>
                      <property name="leftMargin">
-                      <number>7</number>
+                      <number>6</number>
                      </property>
                      <property name="topMargin">
                       <number>3</number>
                      </property>
                      <property name="rightMargin">
-                      <number>7</number>
+                      <number>6</number>
                      </property>
                      <property name="bottomMargin">
                       <number>3</number>
@@ -2750,6 +1808,12 @@ NOTE: This setting is far more intense with smooth zooming enabled.</string>
               </item>
               <item row="1" column="0">
                <widget class="QCheckBox" name="checkZoomSmooth">
+                <property name="minimumSize">
+                 <size>
+                  <width>104</width>
+                  <height>0</height>
+                 </size>
+                </property>
                 <property name="toolTip">
                  <string>If checked, zooming will smoothly transition between zoom levels.</string>
                 </property>
@@ -4348,27 +3412,1211 @@ the currently playing media's height.</string>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tabKeys">
+         <widget class="QWidget" name="tabEditing">
+          <attribute name="title">
+           <string>Editing</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_19">
+           <property name="spacing">
+            <number>20</number>
+           </property>
+           <item>
+            <layout class="QFormLayout" name="formLayout_18">
+             <property name="horizontalSpacing">
+              <number>12</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>2</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="toolTip">
+                <string notr="true">When saving an edited video without specifying a folder in
+its output name, the new video will default to this folder.
+
+Leave blank to always save unspecified videos to their source folder.</string>
+               </property>
+               <property name="text">
+                <string notr="true">Default output path</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_45">
+               <property name="spacing">
+                <number>2</number>
+               </property>
+               <item>
+                <widget class="QLineEdit" name="lineDefaultOutputPath">
+                 <property name="placeholderText">
+                  <string notr="true">Same as source media</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="buttonBrowseDefaultOutputPath">
+                 <property name="minimumSize">
+                  <size>
+                   <width>22</width>
+                   <height>22</height>
+                  </size>
+                 </property>
+                 <property name="toolTip">
+                  <string notr="true">Refresh theme list</string>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton { padding-bottom: 3px; }</string>
+                 </property>
+                 <property name="text">
+                  <string notr="true">...</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRenameMissingImages">
+               <property name="toolTip">
+                <string>If checked, renaming an image file that doesn't
+exist anymore will save the currently cached
+image as a new file with your desired name.
+
+If not checked, renaming an image file that
+doesn't exist anymore will do nothing.</string>
+               </property>
+               <property name="text">
+                <string>Renaming missing image files creates a new one</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkSaveAsForceOnNoName">
+               <property name="toolTip">
+                <string>If checked, saving an edit with no name specified in the
+output box at the bottom of the window will bring up
+the &quot;Save as...&quot; prompt.
+
+If not checked, the edited file will have the same name
+name as the source file, with &quot;_edited&quot; appended to it.</string>
+               </property>
+               <property name="text">
+                <string>Use &quot;Save as...&quot; prompt when saving without a name</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
+               <property name="toolTip">
+                <string>If checked, the &quot;Save as...&quot; prompt will default to the current
+media's folder if possible. Otherwise, the prompt will open to
+the most recently accessed folder from any dialog.</string>
+               </property>
+               <property name="text">
+                <string>&quot;Save as...&quot; prompt defaults to current media's folder</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
+               <property name="toolTip">
+                <string>Tristate:
+
+Fully checked: media that is renamed and/or edited will act
+as if it were in its original place when attempting to cycle to
+the next or previous media media file in the current folder.
+
+Partially checked: ditto, but only for renaming, not editing.
+
+Example: If there are 10 files in a folder, and you're playing
+file #5, but then rename it so that it becomes file #1, the
+next file that will play will still be file #6.</string>
+               </property>
+               <property name="text">
+                <string>Cycle media based on file's original filepath (tristate)</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <property name="tristate">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_16">
+             <property name="title">
+              <string>File timestamps</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_5">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>7</number>
+              </property>
+              <property name="topMargin">
+               <number>3</number>
+              </property>
+              <property name="rightMargin">
+               <number>7</number>
+              </property>
+              <property name="bottomMargin">
+               <number>7</number>
+              </property>
+              <item>
+               <widget class="QCheckBox" name="checkEditCtimeOnNew">
+                <property name="toolTip">
+                 <string>If checked, the current media's creation time will be
+applied to any new files that are saved. Otherwise,
+the creation time will be set to the time of the edit.
+
+Note: Creation times are Windows-only.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse creation time when saving new file</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkEditCtimeOnOriginal">
+                <property name="toolTip">
+                 <string>If checked, the current media's creation time will
+be reused when overwriting itself. Otherwise, the
+creation time will be set to the time of the edit.
+
+Note: Creation times are Windows-only.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse creation time when replacing original file</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkEditMtimeOnNew">
+                <property name="toolTip">
+                 <string>If checked, the current media's last modified time will
+be applied to any new files that are saved. Otherwise,
+the modified time will be set to the time of the edit.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse modified time when saving new file</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QCheckBox" name="checkEditMtimeOnOriginal">
+                <property name="toolTip">
+                 <string>If checked, the current media's last modified time will
+be reused when overwriting itself. Otherwise, the last
+modified time will be set to the time of the edit.</string>
+                </property>
+                <property name="text">
+                 <string>Reuse modified time when replacing original file</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_8">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_20">
+                <property name="title">
+                 <string>When replacing different file...</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_47">
+                 <property name="spacing">
+                  <number>10</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>3</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_17">
+                   <property name="title">
+                    <string>Set creation time to...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_13">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseNow">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the creation time will be set to the time
+of the edit.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Now</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOriginal">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the creation time will be set to
+the current media's creation time.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Original file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOther">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the creation time will be set to that of
+the file being replaced.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Other file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseNewest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the creation time will be set to the
+newest creation time between the current media and
+the file being replaced.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCtimeConflictUseOldest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the creation time will be set to the
+oldest creation time between the current media and
+the file being replaced.
+
+Note: Creation times are Windows-only.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_18">
+                   <property name="title">
+                    <string>Set modified time to...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_14">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>4</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseNow">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the last modified time will be set to the
+time of the edit.</string>
+                      </property>
+                      <property name="text">
+                       <string>Now</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOriginal">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the last modified time will be set
+to the current media's last modified time.</string>
+                      </property>
+                      <property name="text">
+                       <string>Original file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOther">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate file
+during an edit, the last modified time will be set to that
+of the file being replaced.</string>
+                      </property>
+                      <property name="text">
+                       <string>Other file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseNewest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the last modified time will be set
+to the newest last modified time between the current
+media and the file being replaced.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditMtimeConflictUseOldest">
+                      <property name="toolTip">
+                       <string>If checked, when replacing an existing but separate
+file during an edit, the last modified time will be set
+to the oldest last modified time between the current
+media and the file being replaced.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_7">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_19">
+                <property name="title">
+                 <string>If modified time is older than creation time...</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_15">
+                 <property name="spacing">
+                  <number>0</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>3</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <item>
+                  <widget class="QCheckBox" name="checkEditOlderMtimeAlwaysReuse">
+                   <property name="toolTip">
+                    <string>If checked, and the last modified time of the current
+media is older than its creation time, then the last
+modified time will always be used rather than the
+time of the edit, regardless of the above settings.
+
+Example: If you edit a file with a creation time of 2023
+and a last modified time of 2021, your new file will also
+have a last modified time of 2021.
+
+Note: This has NO effect when replacing different files,
+only when saving new files or replacing the original.
+
+Note: Creation times are Windows-only.</string>
+                   </property>
+                   <property name="text">
+                    <string>Always reuse modified time</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="checkEditOlderMtimeUseAsCtime">
+                   <property name="toolTip">
+                    <string>If checked, and the last modified time of the current media is
+older than its creation time, then the creation time of your edit
+will be set to the last modified time.
+
+Example: If you edit a file with a creation time of 2023 and a
+last modified time of 2021, your new file will have a creation
+time of 2021.
+
+Note: When replacing different files, this ONLY applies to
+the original file, and is applied before &quot;oldest creation time&quot;
+is evaluated. The file being replaced will not be considered
+or altered prior to the edit.
+
+Note: Creation time and last modified time are not
+swapped - last modified time will remain the same.
+
+Note: Creation times are Windows-only.</string>
+                   </property>
+                   <property name="text">
+                    <string>Set creation time to modified time</string>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_9">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>5</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QGroupBox" name="groupBox_21">
+                <property name="title">
+                 <string>For concatenation, which times should be used?</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_4">
+                 <property name="leftMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>5</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>7</number>
+                 </property>
+                 <property name="verticalSpacing">
+                  <number>3</number>
+                 </property>
+                 <item row="2" column="0" colspan="2">
+                  <widget class="QGroupBox" name="groupEditCatBoth">
+                   <property name="toolTip">
+                    <string>If checked, both times will be taken from the same
+file in your concatenation list. Otherwise, the creation
+and modified times will be taken separately.</string>
+                   </property>
+                   <property name="title">
+                    <string>Take both times from the...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <property name="checkable">
+                    <bool>true</bool>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout_5">
+                    <property name="topMargin">
+                     <number>4</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>5</number>
+                    </property>
+                    <property name="horizontalSpacing">
+                     <number>6</number>
+                    </property>
+                    <property name="verticalSpacing">
+                     <number>0</number>
+                    </property>
+                    <item row="0" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothFirst">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time from
+the first file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>First file</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothLast">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time from
+the last file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The last file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothOldestCtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+oldest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with oldest
+creation time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothNewestCtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+newest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with newest
+creation time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothOldestMtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+oldest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with oldest
+modified time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothNewestMtime">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+newest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>File with newest
+modified time</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QRadioButton" name="radioEditCatBothOldest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+oldest creation OR modified time will be used.
+Example:
+
+File 1:
+&gt; Created - 2021
+&gt; Modified - 2023
+
+File 2:
+&gt; Created - 2022
+&gt; Modified - 2022
+
+Output:
+&gt; Created - 2021
+&gt; Modified - 2023</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest overall</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QRadioButton" name="radioEditCatBothNewest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time and modified time
+from the file in your concatenation list with the
+newest creation OR modified time will be used.
+Example:
+
+File 1:
+&gt; Created - 2021
+&gt; Modified - 2023
+
+File 2:
+&gt; Created - 2022
+&gt; Modified - 2022
+
+Output:
+&gt; Created - 2021
+&gt; Modified - 2023</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest overall</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QGroupBox" name="groupBox_24">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="title">
+                    <string>Modified time from...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_17">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>3</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeFirst">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the first
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The first file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeLast">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the last
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The last file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeNewest">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the
+file in your concatenation list with the
+newest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatMtimeOldest">
+                      <property name="toolTip">
+                       <string>If checked, the modified time from the
+file in your concatenation list with the
+oldest modified time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QGroupBox" name="groupBox_22">
+                   <property name="title">
+                    <string/>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_18">
+                    <property name="topMargin">
+                     <number>6</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>7</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="label_79">
+                      <property name="text">
+                       <string>Note: When replacing a file outside your
+concatenation list, these times will be used
+as the &quot;original file&quot; for comparisons.</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignCenter</set>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QGroupBox" name="groupBox_23">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="title">
+                    <string>Creation time from...</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_16">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>2</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>3</number>
+                    </property>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeFirst">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the first
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The first file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeLast">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the last
+file in your concatenation list will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>The last file</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeNewest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the
+file in your concatenation list with the
+newest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Newest</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QRadioButton" name="radioEditCatCtimeOldest">
+                      <property name="toolTip">
+                       <string>If checked, the creation time from the
+file in your concatenation list with the
+oldest creation time will be used.</string>
+                      </property>
+                      <property name="text">
+                       <string>Oldest</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" colspan="2">
+                  <layout class="QHBoxLayout" name="horizontalLayout_4">
+                   <item>
+                    <spacer name="horizontalSpacer_5">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkEditCatPreferCurrentMedia">
+                     <property name="minimumSize">
+                      <size>
+                       <width>192</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>If checked, always use the current media's creation and
+modified time if present in your concatentation list.</string>
+                     </property>
+                     <property name="text">
+                      <string>Prefer the current media if present</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_6">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_10">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tabHotkeys">
           <attribute name="title">
            <string>&amp;Hotkeys</string>
           </attribute>
-          <layout class="QFormLayout" name="formLayout_3">
-           <property name="labelAlignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          <layout class="QVBoxLayout" name="verticalLayout_20">
+           <property name="spacing">
+            <number>20</number>
            </property>
-           <property name="verticalSpacing">
-            <number>10</number>
-           </property>
-           <property name="leftMargin">
-            <number>9</number>
-           </property>
-           <property name="topMargin">
-            <number>9</number>
-           </property>
-           <property name="rightMargin">
-            <number>9</number>
-           </property>
-           <item row="0" column="0" colspan="2">
+           <item>
+            <layout class="QFormLayout" name="formLayout_19">
+             <property name="horizontalSpacing">
+              <number>12</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>3</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_33">
+               <property name="text">
+                <string>Scrollwheel volume</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QSpinBox" name="spinVolumeScroll">
+               <property name="suffix">
+                <string>%</string>
+               </property>
+               <property name="prefix">
+                <string>Increment volume by </string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>100</number>
+               </property>
+               <property name="value">
+                <number>5</number>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_69">
+               <property name="toolTip">
+                <string>The action to perform when double-clicking the player.</string>
+               </property>
+               <property name="text">
+                <string>Player double-click</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="comboPlayerDoubleClick">
+               <property name="toolTip">
+                <string>The action to perform when double-clicking the player.</string>
+               </property>
+               <property name="currentIndex">
+                <number>2</number>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Settings</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Toggle mute</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Toggle fullscreen</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Toggle maximized</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Reset playback speed</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_11">
+               <property name="toolTip">
+                <string>The action to perform when middle-clicking the player.</string>
+               </property>
+               <property name="text">
+                <string>Player middle-click</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QComboBox" name="comboPlayerMiddleClick">
+               <property name="toolTip">
+                <string>The action to perform when middle-clicking the player.</string>
+               </property>
+               <property name="currentIndex">
+                <number>4</number>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Settings</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Stop player</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Toggle mute</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Toggle fullscreen</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Toggle maximized</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Reset playback speed</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkTrackCycleCantDisable">
+               <property name="toolTip">
+                <string>If checked, using the &quot;cycle audio/video tracks&quot; hotkeys
+will loop back around to the first available track once all
+tracks have been cycled through. Otherwise, it will loop
+around to &quot;disabled&quot; first.</string>
+               </property>
+               <property name="text">
+                <string>Do not disable audio/video tracks while cycling</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkTrackCycleShowTitle">
+               <property name="toolTip">
+                <string>If checked, using the &quot;cycle audio/video tracks&quot;
+hotkeys will display the new track's title.
+
+Checked: &quot;Audio track 2 'Microphone' enabled&quot;
+Unchecked: &quot;Audio track 2 enabled&quot;</string>
+               </property>
+               <property name="text">
+                <string>Display track title while cycling</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkNavigationWrap">
+               <property name="toolTip">
+                <string>If checked, navigating forwards or backwards in
+media while paused will wrap around to opposite
+side if you're at the start/end of the media.
+
+Example: If you're at the end of a video and press ➞
+(default hotkey), you'll be placed back at the start.</string>
+               </property>
+               <property name="text">
+                <string>Navigation wraps around progress bar</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkNavigationUnpause">
+               <property name="toolTip">
+                <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
+has finished will automatically unpause the media and resume playback.</string>
+               </property>
+               <property name="text">
+                <string>Navigation unpauses media after media has finished</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
             <widget class="QGroupBox" name="groupBox_5">
              <property name="title">
               <string>Number keys behavior</string>
@@ -4568,280 +4816,7 @@ simply be replayed as it is the most recent file.</string>
              </layout>
             </widget>
            </item>
-           <item row="1" column="0" colspan="2">
-            <widget class="QGroupBox" name="groupBox_10">
-             <property name="title">
-              <string>Navigation keys behavior</string>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_3">
-              <property name="topMargin">
-               <number>5</number>
-              </property>
-              <property name="bottomMargin">
-               <number>7</number>
-              </property>
-              <property name="verticalSpacing">
-               <number>3</number>
-              </property>
-              <item row="1" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkNavigationUnpause">
-                <property name="toolTip">
-                 <string>If checked, navigating with the arrow keys, J/L, scrubbing, etc. after the media
-has finished will automatically unpause the media and resume playback.</string>
-                </property>
-                <property name="text">
-                 <string>Navigation unpauses media after media has finished</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkNavigationWrap">
-                <property name="toolTip">
-                 <string>If checked, navigating forwards or backwards in
-media while paused will wrap around to opposite
-side if you're at the start/end of the media.
-
-Example: If you're at the end of a video and press ➞
-(default hotkey), you'll be placed back at the start.</string>
-                </property>
-                <property name="text">
-                 <string>Navigation wraps around progress bar</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item row="2" column="0" colspan="2">
-            <widget class="QGroupBox" name="groupBox_11">
-             <property name="title">
-              <string>Miscellaneous behavior</string>
-             </property>
-             <layout class="QFormLayout" name="formLayout_13">
-              <property name="labelAlignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="verticalSpacing">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>5</number>
-              </property>
-              <property name="bottomMargin">
-               <number>7</number>
-              </property>
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_33">
-                <property name="text">
-                 <string>Scrollwheel volume</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QSpinBox" name="spinVolumeScroll">
-                <property name="suffix">
-                 <string>%</string>
-                </property>
-                <property name="prefix">
-                 <string>Increment volume by </string>
-                </property>
-                <property name="minimum">
-                 <number>1</number>
-                </property>
-                <property name="maximum">
-                 <number>100</number>
-                </property>
-                <property name="value">
-                 <number>5</number>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0" colspan="2">
-               <spacer name="verticalSpacer_6">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_69">
-                <property name="toolTip">
-                 <string>The action to perform when double-clicking the player.</string>
-                </property>
-                <property name="text">
-                 <string>Player double-click</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QComboBox" name="comboPlayerDoubleClick">
-                <property name="toolTip">
-                 <string>The action to perform when double-clicking the player.</string>
-                </property>
-                <property name="currentIndex">
-                 <number>2</number>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Settings</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Toggle mute</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Toggle fullscreen</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Toggle maximized</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Reset playback speed</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="3" column="0" colspan="2">
-               <spacer name="verticalSpacer_4">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="label_11">
-                <property name="toolTip">
-                 <string>The action to perform when middle-clicking the player.</string>
-                </property>
-                <property name="text">
-                 <string>Player middle-click</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QComboBox" name="comboPlayerMiddleClick">
-                <property name="toolTip">
-                 <string>The action to perform when middle-clicking the player.</string>
-                </property>
-                <property name="currentIndex">
-                 <number>4</number>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Settings</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Stop player</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Toggle mute</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Toggle fullscreen</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Toggle maximized</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Reset playback speed</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="5" column="0" colspan="2">
-               <spacer name="verticalSpacer_5">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeType">
-                 <enum>QSizePolicy::Fixed</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>5</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item row="6" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkTrackCycleCantDisable">
-                <property name="toolTip">
-                 <string>If checked, using the &quot;cycle audio/video tracks&quot; hotkeys
-will loop back around to the first available track once all
-tracks have been cycled through. Otherwise, it will loop
-around to &quot;disabled&quot; first.</string>
-                </property>
-                <property name="text">
-                 <string>Do not disable audio/video tracks while cycling</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkTrackCycleShowTitle">
-                <property name="toolTip">
-                 <string>If checked, using the &quot;cycle audio/video tracks&quot;
-hotkeys will display the new track's title.
-
-Checked: &quot;Audio track 2 'Microphone' enabled&quot;
-Unchecked: &quot;Audio track 2 enabled&quot;</string>
-                </property>
-                <property name="text">
-                 <string>Display track title while cycling</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item row="3" column="0" colspan="2">
+           <item>
             <layout class="QFormLayout" name="formKeys">
              <property name="labelAlignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -5814,6 +5789,19 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
              </item>
             </layout>
            </item>
+           <item>
+            <spacer name="verticalSpacer_11">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
           </layout>
          </widget>
          <widget class="QWidget" name="tabUpdates">
@@ -5942,13 +5930,10 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
   <tabstop>comboThemes</tabstop>
   <tabstop>buttonRefreshThemes</tabstop>
   <tabstop>lineWindowTitleFormat</tabstop>
-  <tabstop>lineDefaultOutputPath</tabstop>
-  <tabstop>buttonBrowseDefaultOutputPath</tabstop>
   <tabstop>comboDialogPosition</tabstop>
   <tabstop>checkHideIdleCursor</tabstop>
   <tabstop>spinHideIdleCursorDuration</tabstop>
   <tabstop>checkHighPrecisionProgress</tabstop>
-  <tabstop>checkAlwaysSaveAs</tabstop>
   <tabstop>checkStopOnFinish</tabstop>
   <tabstop>checkAutoEnableSubtitles</tabstop>
   <tabstop>checkMinimizePause</tabstop>
@@ -6144,38 +6129,6 @@ Unchecked: &quot;Audio track 2 enabled&quot;</string>
     <hint type="destinationlabel">
      <x>308</x>
      <y>1322</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>groupEditCatBoth</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>groupBox_23</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>117</x>
-     <y>469</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>93</x>
-     <y>594</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>groupEditCatBoth</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>groupBox_24</receiver>
-   <slot>setDisabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>167</x>
-     <y>467</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>232</x>
-     <y>593</y>
     </hint>
    </hints>
   </connection>

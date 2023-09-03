@@ -262,6 +262,7 @@ def update_migration(self, old_version: str) -> None:
         settings.comboScaleArt.setCurrentIndex(settings.comboScaleArt.currentIndex() + 1)
         settings.checkFocusIgnoreAutoplay.setChecked(config.cfg.loadFrom('settings', 'checkignorefocuswithautoplay', True))
         settings.checkTrayResetFirstFileOnRestore.setChecked(config.cfg.loadFrom('settings', 'checkfirstfiletrayreset', True))
+        settings.checkSaveAsForceOnNoName.setChecked(config.cfg.loadFrom('settings', 'checkalwayssaveas', True))
         try: self.resize(*config.cfg.load('size', '871,588', ',', int, tuple))
         except: pass
         try:

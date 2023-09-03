@@ -193,7 +193,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
         self.actionLoop.trigger()
 
     settings = self.dialog_settings
-    shortcut_actions = {      # NOTE: having empty rows in tabKeys's formLayout (in QtDesigner) causes actions below empty rows to not work
+    shortcut_actions = {      # NOTE: having empty rows in tabHotkeys's formLayout causes actions below empty rows to not work
         'pause':              self.pause,
         'stop':               self.stop,
         'plus1':              lambda: self.navigate(forward=True,  seconds_spinbox=settings.spinNavigation1),

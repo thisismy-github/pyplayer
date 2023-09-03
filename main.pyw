@@ -3088,7 +3088,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if dest_was_not_modified:
             output_text, _, ext = self.get_renamed_output(valid_extensions=valid_extensions)
             if not output_text or output_text == video:         # no name OR name is same as original video
-                if settings.checkAlwaysSaveAs.isChecked():
+                if settings.checkSaveAsForceOnNoName.isChecked():
                     return self.save_as(
                         noun=noun,
                         filter=filter,
@@ -4071,7 +4071,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         # if output is blank, show "Save as..." if desired, else auto-name it
                         already_exists = exists(output)
                         chose_save_as = dialog.choice.text() == 'Save as...'
-                        if chose_save_as or unchanged or already_exists or (no_output and settings.checkAlwaysSaveAs.isChecked()):
+                        if chose_save_as or unchanged or already_exists or (no_output and settings.checkSaveAsForceOnNoName.isChecked()):
                             unique_default = chose_save_as or (not already_exists and not unchanged)
                             default_path = output or files[0]
                             output = self.browse_for_save_file(
