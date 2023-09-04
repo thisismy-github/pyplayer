@@ -4522,18 +4522,257 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def show_about_dialog(self):                # lazy version of about dialog
         from bin.window_about import Ui_aboutDialog
-        dialog_about = qthelpers.getDialogFromUiClass(Ui_aboutDialog, **self.get_popup_location(),
-                                                      modal=True, deleteOnClose=True)
-        dialog_about.labelLogo.setPixmap(QtGui.QPixmap(f'{constants.RESOURCE_DIR}{sep}logo_filled.png'))
-        dialog_about.labelVersion.setText(dialog_about.labelVersion.text().replace('?version', constants.VERSION))
+        dialog = qthelpers.getDialogFromUiClass(
+            Ui_aboutDialog,
+            **self.get_popup_location(),
+            modal=True,
+            deleteOnClose=True
+        )
+
+        dialog.labelLogo.setPixmap(QtGui.QPixmap(f'{constants.RESOURCE_DIR}{sep}logo_filled.png'))
+        dialog.labelVersion.setText(dialog.labelVersion.text().replace('?version', constants.VERSION))
 
         settings_were_open = settings.isVisible()               # hide the always-on-top settings while we show popups
         if settings_were_open: settings.hide()
-        dialog_about.adjustSize()                               # adjust size to match version string/OS fonts
-        dialog_about.exec()                                     # don't bother setting a fixed size or using open()
+        dialog.adjustSize()                                     # adjust size to match version string/OS fonts
+        dialog.exec()                                           # don't bother setting a fixed size or using open()
         if settings_were_open: settings.show()                  # restore settings if they were originally open
 
-        del dialog_about
+        del dialog
+        gc.collect(generation=2)
+
+
+    def show_timestamp_dialog(self, *args, file: str = None):   # *args to capture unused signal args
+        from bin.window_timestamp import Ui_timestampDialog
+        dialog = qthelpers.getDialogFromUiClass(
+            Ui_timestampDialog,
+            **self.get_popup_location(),
+            modal=False,
+            deleteOnClose=True
+        )
+
+
+        class Timestamp:
+            __slots__ = 'original_time', 'dateTime', 'dateTimeEdit'
+
+            def __init__(self, letter: str, stat: os.stat_result):
+                self.original_time = int(getattr(stat, f'st_{letter}time'))
+                self.dateTime = QtCore.QDateTime()
+                self.dateTime.setSecsSinceEpoch(self.original_time)
+                self.dateTimeEdit = getattr(dialog, f'date{letter.upper()}time')
+                self.dateTimeEdit.setDateTime(self.dateTime)
+
+            def reset(self, seconds: int = 0):
+                self.dateTime.setSecsSinceEpoch(seconds or self.original_time)
+                self.dateTimeEdit.setDateTime(self.dateTime)
+
+
+        def open_file(file: str):
+            ''' Reads `file`'s timestamps and updates the UI accordingly. '''
+            try:
+                dialog.file = file
+                dialog.buttonPath.setText(os.path.basename(file))
+                dialog.buttonPath.setToolTip(file)
+                stat = os.stat(file)
+                timestamps['c'] = Timestamp('c', stat)
+                timestamps['m'] = Timestamp('m', stat)
+                timestamps['a'] = Timestamp('a', stat)
+            except:
+                log_on_statusbar(f'(!) Failed to add file: {format_exc()}')
+
+
+        def sync_file(file: str):
+            sync_stat = os.stat(file)
+            if dialog.checkCtime.isChecked(): timestamps['c'].reset(sync_stat.st_ctime)
+            if dialog.checkMtime.isChecked(): timestamps['m'].reset(sync_stat.st_mtime)
+            if dialog.checkAtime.isChecked(): timestamps['a'].reset(sync_stat.st_atime)
+
+
+        def browse_for_file() -> str:
+            ''' Browses for a file/folder to open.
+                Returns opened file if successful. ''' 
+            new_file, cfg.lastdir = qthelpers.browseForFile(
+                lastdir=cfg.lastdir,
+                caption='Select file to set timestamps for'
+            )
+            if new_file:
+                open_file(new_file)
+            return new_file
+
+
+        def refresh_sync_button():
+            ''' Disables `dialog.buttonSync` if no timestamps are checked. '''
+            dialog.buttonSync.setEnabled(
+                dialog.checkCtime.isChecked()
+                or dialog.checkMtime.isChecked()
+                or dialog.checkAtime.isChecked()
+            )
+
+
+        def get_timestamp_string(seconds: int) -> str:
+            ''' Returns `seconds` as a timestamp formatted
+                according to `dialog.lineFormat.text()`. '''
+            date = QtCore.QDateTime()
+            date.setSecsSinceEpoch(seconds)
+            return date.toString(dialog.lineFormat.text())
+
+
+        def swap(a: QtW.QDateTimeEdit, b: QtW.QDateTimeEdit):
+            ''' From Qt's documentation:
+                `QDateTime::swap(QDateTime &other) - Swaps this datetime
+                with other. This operation is very fast and never fails.`
+
+                It fails. '''
+            a_date = a.dateTime()   # (only because of the bad way QDateTimeEdit holds its...
+            b_date = b.dateTime()   # ...QDateTime property; QDateTime.swap() actually works fine)
+            a.setDateTime(b_date)
+            b.setDateTime(a_date)
+
+
+        def on_menu(letter: str):
+            ''' Generates a menu for the given `letter`time, i.e. "c" for ctime,
+                "m" for ctime, etc. Menu re-reads current file's stats to
+                provide the "current time" for a file. '''
+            try:
+                timestamp = timestamps[letter]
+                current_time = int(getattr(os.stat(dialog.file), f'st_{letter}time'))
+
+                action_swap_ctime = QtW.QAction('Swap with creation time')
+                action_swap_ctime.triggered.connect(lambda: swap(timestamp.dateTimeEdit, dialog.dateCtime))
+                action_swap_mtime = QtW.QAction('Swap with modified time')
+                action_swap_mtime.triggered.connect(lambda: swap(timestamp.dateTimeEdit, dialog.dateMtime))
+                action_swap_atime = QtW.QAction('Swap with accessed time')
+                action_swap_atime.triggered.connect(lambda: swap(timestamp.dateTimeEdit, dialog.dateAtime))
+                if letter == 'c':   swap_actions = (action_swap_mtime, action_swap_atime)
+                elif letter == 'm': swap_actions = (action_swap_ctime, action_swap_atime)
+                else:               swap_actions = (action_swap_ctime, action_swap_mtime)
+
+                action_reset_original = QtW.QAction(f'Reset to original: {get_timestamp_string(timestamp.original_time)}')
+                action_reset_original.triggered.connect(lambda: timestamp.reset())
+                action_reset_current = QtW.QAction(f'Reset to current: {get_timestamp_string(current_time)}')
+                action_reset_current.triggered.connect(lambda: timestamp.reset(seconds=current_time))
+
+                context = QtW.QMenu(self)
+                context.addActions(swap_actions)
+                context.addSeparator()
+                context.addAction(action_reset_original)
+                context.addAction(action_reset_current)
+                context.exec(QtGui.QCursor().pos())
+            except:
+                log_on_statusbar(f'(!) Failed to generate menu for {letter}time: {format_exc()}')
+
+
+        def on_click(button: QtW.QPushButton):
+            ''' Handles `dialog.buttonBox` clicks
+                based on which `button` was pressed. '''
+            cfg.timestampdialogformat = dialog.lineFormat.text()
+            role = dialog.buttonBox.buttonRole(button)
+            if role == QtW.QDialogButtonBox.ResetRole:
+                timestamps['c'].reset()
+                timestamps['m'].reset()
+                timestamps['a'].reset()
+
+            elif role in (QtW.QDialogButtonBox.AcceptRole, QtW.QDialogButtonBox.ApplyRole):
+                ctime = mtime = atime = 0
+                if dialog.checkCtime.isChecked(): ctime = dialog.dateCtime.dateTime().toSecsSinceEpoch()
+                if dialog.checkMtime.isChecked(): mtime = dialog.dateMtime.dateTime().toSecsSinceEpoch()
+                if dialog.checkAtime.isChecked(): atime = dialog.dateAtime.dateTime().toSecsSinceEpoch()
+                self.set_file_timestamps(
+                    path=dialog.file,
+                    ctime=ctime,
+                    mtime=mtime,
+                    atime=atime
+                )
+
+
+        def on_sync():
+            ''' Browses for new file to sync timestamps with.
+                Only timestamps that are enabled will be synced. '''
+            try:
+                new_file, cfg.lastdir = qthelpers.browseForFile(
+                    lastdir=cfg.lastdir,
+                    caption='Select file to take timestamps from'
+                )
+                if new_file:
+                    sync_file()
+            except:
+                log_on_statusbar(f'(!) Failed to sync timestamps: {format_exc()}')
+
+
+        def on_update_format(format: str):
+            ''' Updates all timestamps to use `format`. Uses
+                fallback if `format` is now an empty string. '''
+            if not format: format = 'MM/dd/yy - hh:mm:ss AP'
+            dialog.dateCtime.setDisplayFormat(format)
+            dialog.dateMtime.setDisplayFormat(format)
+            dialog.dateAtime.setDisplayFormat(format)
+
+
+        def dialogDragEnterEvent(event: QtGui.QDragEnterEvent):
+            ''' Accepts a cursor-drag if files are being dragged.
+                Requires `dialog.setAcceptDrops(True)`. '''
+            if event.mimeData().hasUrls(): event.accept()
+            else: event.ignore()
+
+
+        def dialogDragMoveEvent(event: QtGui.QDragMoveEvent):
+            ''' Accepts a cursor-drag if files are being dragged. Requires
+                `dialog.setAcceptDrops(True)`. Animates the sync button to
+                appear pressed when hovering over it, to convey that it can
+                be dropped over to sync the file rather than open it. '''
+            dialog.buttonSync.setDown(dialog.buttonSync.geometry().contains(event.pos()))
+
+
+        def dialogDragLeaveEvent(event: QtGui.QDragLeaveEvent):
+            ''' Ensure the sync button no longer appears pressed
+                after dragging off of the window, just in case. '''
+            dialog.buttonSync.setDown(False)
+
+
+        def dialogDropEvent(event: QtGui.QDropEvent):
+            ''' Opens the first dropped file/folder, or syncs its timestamps
+                to the current file if dropped over the sync button. '''
+            files = [url.toLocalFile() for url in event.mimeData().urls()]
+            over_sync = dialog.buttonSync.geometry().contains(event.pos())
+            if over_sync and dialog.buttonSync.isEnabled(): sync_file(files[0])
+            else: open_file(files[0])
+            dialog.buttonSync.setDown(False)
+
+
+        # setup dialog and create timestamps dictionary
+        timestamps = {}
+        dialog.lineFormat.setText(cfg.loadFrom('general', 'timestampdialogformat', dialog.lineFormat.text()))
+        dialog.setWindowFlags(Qt.WindowStaysOnTopHint)
+
+        # connect events/signals
+        dialog.dragEnterEvent = dialogDragEnterEvent
+        dialog.dragMoveEvent = dialogDragMoveEvent
+        dialog.dragLeaveEvent = dialogDragLeaveEvent
+        dialog.dropEvent = dialogDropEvent
+        dialog.buttonPath.clicked.connect(browse_for_file)
+        dialog.checkCtime.clicked.connect(refresh_sync_button)
+        dialog.checkMtime.clicked.connect(refresh_sync_button)
+        dialog.checkAtime.clicked.connect(refresh_sync_button)
+        dialog.toolCtime.clicked.connect(lambda: on_menu('c'))
+        dialog.toolMtime.clicked.connect(lambda: on_menu('m'))
+        dialog.toolAtime.clicked.connect(lambda: on_menu('a'))
+        dialog.lineFormat.textChanged.connect(on_update_format)
+        dialog.buttonSync.clicked.connect(on_sync)
+        dialog.buttonBox.clicked.connect(on_click)
+
+        # open `file` if provided. default to `self.video` if possible, otherwise open browsing dialog
+        if file is None:
+            if self.video:
+                file = self.video
+                open_file(file)
+            else:
+                file = browse_for_file()
+                if not file:
+                    return show_on_statusbar('No media is playing.', 10000)
+
+        # open dialog then do cleanup after it's closed
+        dialog.exec()
+        del dialog
         gc.collect(generation=2)
 
 
@@ -5048,15 +5287,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return new_ctime, new_mtime
 
 
-    def set_file_timestamps(self, path: str, ctime: float = 0, mtime: float = 0):
-        ''' Sets a `path`'s creation time and modified time to `ctime` and
-            `mtime`, if non-zero. NOTE: "ctime" represents "changed time" on
+    def set_file_timestamps(self, path: str, ctime: float = 0, mtime: float = 0, atime: float = 0):
+        ''' Sets a `path`'s creation time and modified time to `ctime`, `mtime`,
+            and `atime`, if non-zero. NOTE: "ctime" represents "changed time" on
             non-Windows systems, so `ctime` is ignored outside of Windows. '''
         if ctime and constants.IS_WINDOWS:          # ctime means something else on other systems
             try: setctime(path=path, ctime=ctime)
             except: log_on_statusbar(f'(!) Failed to update creation time for file: {format_exc()}')
-        if mtime:                                   # os.utime takes (atime, mtime) -> set atime to now
-            try: os.utime(path=path, times=(get_time(), mtime))
+        if mtime or atime:                          # os.utime takes (atime, mtime)
+            stat = os.stat(path)
+            if mtime == 0: mtime = stat.st_mtime
+            if atime == 0: atime = stat.st_atime
+            try: os.utime(path=path, times=(atime, mtime))
             except: log_on_statusbar(f'(!) Failed to update modified time for file: {format_exc()}')
 
 

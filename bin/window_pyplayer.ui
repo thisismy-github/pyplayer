@@ -140,16 +140,24 @@
      <addaction name="actionAutoplayDirectionBackwards"/>
      <addaction name="actionAutoplayDirectionDynamic"/>
     </widget>
+    <widget class="QMenu" name="menuDelete">
+     <property name="title">
+      <string>Delete</string>
+     </property>
+     <addaction name="actionMarkDeleted"/>
+     <addaction name="actionClearMarked"/>
+     <addaction name="actionShowDeletePrompt"/>
+     <addaction name="actionDeleteImmediately"/>
+     <addaction name="separator"/>
+    </widget>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
     <addaction name="actionLoop"/>
     <addaction name="menuAutoplay"/>
     <addaction name="menuSnapshots"/>
+    <addaction name="menuDelete"/>
     <addaction name="separator"/>
-    <addaction name="actionMarkDeleted"/>
-    <addaction name="actionClearMarked"/>
-    <addaction name="actionShowDeletePrompt"/>
-    <addaction name="actionDeleteImmediately"/>
+    <addaction name="actionEditFileTimestamps"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -1785,6 +1793,11 @@ for deletion, without actually deleting them.</string>
   <action name="actionCatBeforeLast">
    <property name="text">
     <string>This clip before last clip</string>
+   </property>
+  </action>
+  <action name="actionEditFileTimestamps">
+   <property name="text">
+    <string>Edit timestamps</string>
    </property>
   </action>
  </widget>

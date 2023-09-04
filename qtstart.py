@@ -297,6 +297,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionClearMarked.triggered.connect(self.clear_marked_for_deletion)
     self.actionShowDeletePrompt.triggered.connect(self.show_delete_prompt)
     self.actionDeleteImmediately.triggered.connect(self.delete)
+    self.actionEditFileTimestamps.triggered.connect(self.show_timestamp_dialog)
     self.menuConcatenate.triggered.connect(self.concatenate)
     self.menuVideoTracks.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuVideoTracks))
     self.menuSubtitles.aboutToShow.connect(lambda: self.refresh_track_menu(self.menuSubtitles))
