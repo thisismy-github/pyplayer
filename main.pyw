@@ -680,6 +680,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         check_interval = 1
         intercheck_count = 20
         delay_per_intercheck = check_interval / intercheck_count
+        vlc_desync_counter_limit = 2                    # how many times in a row VLC must be desynced before caring
 
         while not self.closed:
             # stay relatively idle while window is minimized OR nothing is actively playing
@@ -692,6 +693,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.reset_progress_offset = False
             self.add_to_progress_offset = 0.0
             vlc_desync_limit = self.frame_rate * 2
+            vlc_desync_counter = 0
 
             while is_playing() and not self.reset_progress_offset:
                 seconds_elapsed = (_get_time() - play_started) * get_rate()
@@ -704,7 +706,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # if we're greater than 1 second off our expected time or 2 seconds off VLC's time...
                 # ...something is wrong -> reset to just past VLC's frame (VLC is usually a bit behind)
-                if abs(time_desync) >= 1 or (abs(vlc_desync) > vlc_desync_limit and vlc_frame > 0):
+                # NOTE: VLC can be deceptive - only listen to VLC if it's been desynced for a while
+                vlc_is_desynced = vlc_frame > 0 and abs(vlc_desync) > vlc_desync_limit
+                if vlc_is_desynced: vlc_desync_counter += 1
+                else: vlc_desync_counter = 0
+                if abs(time_desync) >= 1 or vlc_desync_counter >= vlc_desync_counter_limit:
                     if not self.reset_progress_offset:
                         self.ui_delay = self.delay
                         true_frame = (player.get_position() * self.frame_count) + (self.frame_rate * 0.2)
