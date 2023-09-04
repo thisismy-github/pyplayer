@@ -677,7 +677,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         vlc_desync = 0.0
 
         # re-define global aliases -> having them as locals is even faster
-        get_current_frame = self.sliderProgress.value
+        get_ui_frame = self.sliderProgress.value
         player = self.vlc.player
         is_playing = player.is_playing
         get_rate = player.get_rate
@@ -695,7 +695,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             start = _get_time()
             play_started = start + self.add_to_progress_offset
-            frame_started = get_current_frame()
+            frame_started = get_ui_frame()
             self.reset_progress_offset = False
             self.add_to_progress_offset = 0.0
             vlc_desync_limit = self.frame_rate * 2
@@ -703,7 +703,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             while is_playing() and not self.reset_progress_offset:
                 seconds_elapsed = (_get_time() - play_started) * get_rate()
                 frames_elapsed = seconds_elapsed * self.frame_rate
-                current_frame = get_current_frame()
+                current_frame = get_ui_frame()
                 vlc_frame = player.get_position() * self.frame_count
                 frame_desync = current_frame - frames_elapsed - frame_started
                 time_desync = frame_desync / self.frame_rate
@@ -745,7 +745,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info('Slider-updating thread started.')
 
         # re-define global aliases -> having them as locals is even faster
-        get_current_frame = self.sliderProgress.value
+        get_ui_frame = self.sliderProgress.value
         player = self.vlc.player
         is_playing = player.is_playing
         is_high_precision = self.dialog_settings.checkHighPrecisionProgress.isChecked
@@ -789,7 +789,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
 
                     # no frame override -> increment `get_rate()` frames forward (i.e. at 1x speed -> 1 frame)
-                    elif (next_frame := get_current_frame() + get_rate()) <= self.frame_count:      # do NOT update progress if we're at the end
+                    elif (next_frame := get_ui_frame() + get_rate()) <= self.frame_count:           # do NOT update progress if we're at the end
                         _emit_update_progress_signal(next_frame)                                    # update_progress_signal -> _update_progress_slot
 
                     _sleep(0.0001)                      # sleep to force-update get_time()
@@ -818,7 +818,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # no frame override -> set slider to VLC's progress if VLC has actually updated
                     else:
                         new_frame = (player.get_position() * self.frame_count) + vlc_offset         # convert VLC position to frame
-                        if new_frame >= get_current_frame():
+                        if new_frame >= get_ui_frame():
                             _emit_update_progress_signal(new_frame)
                         #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
                         #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
@@ -884,7 +884,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def hideEvent(self, event: QtGui.QHideEvent):       # 'spontaneous' -> native minimize button pressed
         if constants.IS_WINDOWS and settings.checkTaskbarIconPauseMinimized.isChecked():
-            at_end = get_progess_slider() == self.frame_count
+            at_end = get_ui_frame() == self.frame_count
             self.taskbar.setOverlayIcon(self.icons['restart' if at_end else 'pause' if self.is_paused else 'play'])
 
         if event.spontaneous():
@@ -2535,7 +2535,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if self.restarted:
                 logging.info('Double-restart detected. Ignoring...')
                 self.restarted = False              # set this so we don't get trapped in an infinite restart-loop
-                frame = get_progess_slider()
+                frame = get_ui_frame()
                 play(video)
                 return set_and_update_progress(frame)
             self.frame_override = -1                # reset frame_override in case it's set
@@ -2549,7 +2549,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # HACK: skip this restart if needed and restore actual progress
             if self.ignore_imminent_restart:
                 self.ignore_imminent_restart = False
-                frame = get_progess_slider()
+                frame = get_ui_frame()
                 play(video)
                 set_player_position((frame - 2) / frame)
                 self.restarted = True
@@ -2623,7 +2623,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 was_paused = old_state != QtGui.QMovie.Running          # V .fileName() is formatted wrong -> fix with `abspath`
                 if was_paused and abspath(image_player.gif.fileName()) != image_player.filename:
                     image_player.gif.setFileName(image_player.filename)
-                    set_gif_position(get_progess_slider())
+                    set_gif_position(get_ui_frame())
                 image_player.gif.setPaused(not was_paused)
                 will_pause = not was_paused
                 frame = image_player.gif.currentFrameNumber()
@@ -2631,7 +2631,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # videos/audio
         else:
-            frame = get_progess_slider()
+            frame = get_ui_frame()
             old_state = player.get_state()
             if old_state == State.Stopped:
                 if self.restart() == -1:                                # restart media if currently stopped
@@ -2708,7 +2708,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.is_static_image:
             return self.cycle_media(next=forward)
 
-        old_frame = get_progess_slider()
+        old_frame = get_ui_frame()
         seconds = seconds_spinbox.value()
 
         # calculate and update to new frame as long as it's within our bounds
@@ -2781,7 +2781,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: log_on_statusbar(f'RENAME FAILED: {format_exc()}')
 
         # replay the media, then restore position and pause state (no need for full-scale open())
-        frame = get_progess_slider()
+        frame = get_ui_frame()
         if self.is_gif:                                             # gifs
             image_player.gif.setFileName(new_name)                  # don't need to play new path - just update filename
             set_gif_position(frame)
@@ -2857,7 +2857,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 `i_height` - the snapshot's height. '''
 
         # aliases/variables
-        frame = get_progess_slider()    # immediately get frame, regardless of whether we need it or not
+        frame = get_ui_frame()                      # immediately get frame, regardless of whether we need it or not
         mime = self.mime_type
         video = self.video
         must_pause = settings.checkSnapshotPause.isChecked() or mode == 'full'
@@ -3819,7 +3819,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if force: self.buttonTrimStart.setChecked(True)         # force-check trim button, typically used from context menu
 
         if self.buttonTrimStart.isChecked():
-            desired_minimum = get_progess_slider()
+            desired_minimum = get_ui_frame()
             if desired_minimum >= self.maximum:
                 self.buttonTrimStart.setChecked(False)
                 return log_on_statusbar('You cannot set the start of your trim after the end of it.')
@@ -3843,7 +3843,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if force: self.buttonTrimEnd.setChecked(True)           # force-check trim button, typically used from context menu
 
         if self.buttonTrimEnd.isChecked():
-            desired_maximum = get_progess_slider()
+            desired_maximum = get_ui_frame()
             if desired_maximum <= self.minimum:
                 self.buttonTrimEnd.setChecked(False)
                 return log_on_statusbar('You cannot set the end of your trim before the start of it.')
@@ -5826,7 +5826,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             base, _ = splitext_media(name, strict=False)        # don't actually need ext, just the accurate basename
 
             mime = self.mime_type.capitalize()                  # capitalize first letter of mime type
-            paused = '■' if get_progess_slider() == self.frame_count else '▷' if not self.is_paused else '𝗜𝗜'   # ▶
+            paused = '■' if get_ui_frame() == self.frame_count else '▷' if not self.is_paused else '𝗜𝗜'   # ▶
             h, m, s, _ = get_hms(self.duration_rounded)         # no milliseconds in window title
             duration = f'{m}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
             if mime != 'Audio':                                 # remember, we just capitalized this
@@ -5976,7 +5976,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not constants.IS_WINDOWS: return
 
         overlay_taskbar_icon = self.isMinimized() and settings.checkTaskbarIconPauseMinimized.isChecked()
-        if get_progess_slider() == self.frame_count:
+        if get_ui_frame() == self.frame_count:
             self.taskbar_toolbar_restart.setVisible(True)
             self.taskbar_toolbar_play.setVisible(False)
             self.taskbar_toolbar_pause.setVisible(False)
@@ -6198,7 +6198,7 @@ if __name__ == "__main__":
         set_volume_slider = gui.sliderVolume.setValue
         get_volume_slider = gui.sliderVolume.value
         get_volume_scroll_increment = settings.spinVolumeScroll.value
-        get_progess_slider = gui.sliderProgress.value
+        get_ui_frame = gui.sliderProgress.value
         set_progress_slider = gui.sliderProgress.setValue
         set_hour_spin = gui.spinHour.setValue
         set_minute_spin = gui.spinMinute.setValue
