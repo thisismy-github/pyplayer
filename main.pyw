@@ -524,6 +524,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.frameVolume.contextMenuEvent = self.frameVolumeContextMenuEvent
+        self.buttonPause.mousePressEvent = self.pauseButtonMousePressEvent
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
 
         # set default icons for various buttons
@@ -548,20 +549,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             (lambda: self.copy_image(config.cfg.last_snapshot_path, extended=False), 'Copy the last snapshot\'s image data to your clipboard.'),
         )
 
-        def toggle_maximized():
-            if self.isFullScreen(): self.actionFullscreen.trigger()
-            if self.isMaximized(): self.showNormal()
-            else:
-                self.invert_next_move_event = True
-                self.invert_next_resize_event = True
-                self.showMaximized()
-
         # all possible double-click actions, ordered by their appearance in the settings
         self.double_click_player_actions = (
             self.dialog_settings.exec,
             self.toggle_mute,
             self.actionFullscreen.trigger,
-            toggle_maximized,
+            self.toggle_maximized,
             lambda: self.set_playback_speed(1.0)
         )
 
@@ -571,7 +564,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.stop,
             self.toggle_mute,
             self.actionFullscreen.trigger,
-            toggle_maximized,
+            self.toggle_maximized,
             lambda: self.set_playback_speed(1.0)
         )
 
@@ -932,8 +925,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def moveEvent(self, event: QtGui.QMoveEvent):
         ''' Handles moving the window. Remembers our last non-maximized,
-            non-fullscreen position by setting `self.last_window_pos`. Our
-            `toggle_maximized` function causes weird, inverted behavior however,
+            non-fullscreen position by setting `self.last_window_pos`. However,
+            out `self.toggle_maximized` method causes weird/inverted behavior,
             so if we're "normal" but `self.invert_next_move_event` is True, we
             save our position anyway, and if we're "maximized/fullscreen", we
             set `self.invert_next_move_event` back to False without saving.
@@ -1380,6 +1373,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addAction(dec_boost_action)
         context.addAction(reset_boost_action)
         context.exec(event.globalPos())
+
+
+    def pauseButtonMousePressEvent(self, event: QtGui.QMouseEvent):
+        ''' Handles clicking on the volume slider's frame. A frame is used
+            since the slider can be disabled. Unmutes on left-click. '''
+        if event.button() == Qt.MiddleButton: self.stop()
+        else: QtW.QPushButton.mousePressEvent(self.buttonPause, event)
 
 
     def frameVolumeMousePressEvent(self, event: QtGui.QMouseEvent):
@@ -5326,44 +5326,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except: log_on_statusbar(f'(!) Failed to update modified time for file: {format_exc()}')
 
 
-    def set_fullscreen(self, fullscreen: bool):
-        ''' Toggles fullscreen-mode on and off. Saves window-state to
-            `self.was_maximized` to remember if the window is maximized
-            or not and restore the window accordingly. '''
-        self.dockControls.setFloating(fullscreen)       # FramelessWindowHint and WindowStaysOnTopHint not needed
-        if fullscreen:  # TODO: figure out why dockControls won't resize in fullscreen mode -> strange behavior when showing/hiding control-frames
-            current_screen = app.screenAt(self.mapToGlobal(self.rect().center()))       # fullscreen destination is based on center of window
-            screen_size = current_screen.size()
-            screen_geometry = current_screen.geometry()
-
-            width_factor = settings.spinFullScreenWidth.value() / 100
-            width = int(screen_size.width() * width_factor)
-            height = sum(frame.height() for frame in (self.frameProgress, self.frameAdvancedControls) if frame.isVisible())
-            x = int(screen_geometry.right() - ((screen_size.width() + width) / 2))      # adjust x/y values for screen's actual global position
-            y = screen_geometry.bottom() - height
-
-            self.dockControls.resize(width, height)
-            #self.dockControls.setFixedWidth(width)     # TODO this is bad for DPI/scale and doesn't even fully get rid of the horizontal separator cursors. bandaid fix
-            self.dockControls.move(x, y)
-            self.dockControls.setWindowOpacity(settings.spinFullScreenMaxOpacity.value() / 100)     # opacity only applies while floating
-
-            # if we're already hovering over the pending dockControls rect OR the video already ended (and we're not paused) -> lock fullscreen controls
-            self.lock_fullscreen_ui = (not player.is_playing() and not self.is_paused) or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos())
-
-            self.statusbar.setVisible(False)
-            self.menubar.setVisible(False)              # TODO should this be like set_crop_mode's version? this requires up to 2 alt-presses to open
-            self.was_maximized = self.isMaximized()     # remember if we're maximized or not
-            self.vlc.last_move_time = get_time()        # reset last_move_time, just in case we literally haven't moved the mouse yet
-            self.ignore_next_fullscreen_move_event = True
-            return self.showFullScreen()                # FullScreen with a capital S
-        else:
-            self.statusbar.setVisible(self.actionShowStatusBar.isChecked())
-            self.menubar.setVisible(self.actionShowMenuBar.isChecked())
-            #self.dockControls.setFixedWidth(QWIDGETSIZE_MAX)
-            if self.was_maximized: self.showMaximized()
-            else: self.showNormal()
-
-
     def set_playback_speed(self, rate: float):
         ''' Sets, saves, and displays the playback `rate` for the media. '''
         old_rate = player.get_rate()
@@ -5440,6 +5402,55 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Toggles mute-state to the opposite of
             `self.sliderVolume`'s enable-state. '''
         self.set_mute(self.sliderVolume.isEnabled())
+
+
+    def set_fullscreen(self, fullscreen: bool):
+        ''' Toggles fullscreen-mode on and off. Saves window-state to
+            `self.was_maximized` to remember if the window is maximized
+            or not and restore the window accordingly. '''
+        self.dockControls.setFloating(fullscreen)       # FramelessWindowHint and WindowStaysOnTopHint not needed
+        if fullscreen:  # TODO: figure out why dockControls won't resize in fullscreen mode -> strange behavior when showing/hiding control-frames
+            current_screen = app.screenAt(self.mapToGlobal(self.rect().center()))       # fullscreen destination is based on center of window
+            screen_size = current_screen.size()
+            screen_geometry = current_screen.geometry()
+
+            width_factor = settings.spinFullScreenWidth.value() / 100
+            width = int(screen_size.width() * width_factor)
+            height = sum(frame.height() for frame in (self.frameProgress, self.frameAdvancedControls) if frame.isVisible())
+            x = int(screen_geometry.right() - ((screen_size.width() + width) / 2))      # adjust x/y values for screen's actual global position
+            y = screen_geometry.bottom() - height
+
+            self.dockControls.resize(width, height)
+            #self.dockControls.setFixedWidth(width)     # TODO this is bad for DPI/scale and doesn't even fully get rid of the horizontal separator cursors. bandaid fix
+            self.dockControls.move(x, y)
+            self.dockControls.setWindowOpacity(settings.spinFullScreenMaxOpacity.value() / 100)     # opacity only applies while floating
+
+            # if we're already hovering over the pending dockControls rect OR the video already ended (and we're not paused) -> lock fullscreen controls
+            self.lock_fullscreen_ui = (not player.is_playing() and not self.is_paused) or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos())
+
+            self.statusbar.setVisible(False)
+            self.menubar.setVisible(False)              # TODO should this be like set_crop_mode's version? this requires up to 2 alt-presses to open
+            self.was_maximized = self.isMaximized()     # remember if we're maximized or not
+            self.vlc.last_move_time = get_time()        # reset last_move_time, just in case we literally haven't moved the mouse yet
+            self.ignore_next_fullscreen_move_event = True
+            return self.showFullScreen()                # FullScreen with a capital S
+        else:
+            self.statusbar.setVisible(self.actionShowStatusBar.isChecked())
+            self.menubar.setVisible(self.actionShowMenuBar.isChecked())
+            #self.dockControls.setFixedWidth(QWIDGETSIZE_MAX)
+            if self.was_maximized: self.showMaximized()
+            else: self.showNormal()
+
+
+    def toggle_maximized(self):
+        if self.isFullScreen():
+            self.actionFullscreen.trigger()
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.invert_next_move_event = True
+            self.invert_next_resize_event = True
+            self.showMaximized()
 
 
     def set_advancedcontrols_visible(self, visible: bool):
@@ -5611,106 +5622,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if log: log_on_statusbar('Crop mode disabled.')
 
 
-    def is_snap_mode_enabled(self) -> bool:
-        ''' Returns True if snap-modes can be used on the current mime type. '''
-        mime = self.mime_type
-        if mime == 'audio': return image_player.pixmap() and settings.checkSnapArt.isChecked()
-        elif mime == 'video': return settings.checkSnapVideos.isChecked()
-        elif self.is_gif: return settings.checkSnapGifs.isChecked()
-        else: return settings.checkSnapImages.isChecked()
-
-
-    def snap_to_player_size(self, shrink: bool = False, force_instant_resize: bool = False):
-        ''' Resizes the window to match what the internal player is actually
-            showing, without black bars. If `shrink` is False, the window will
-            find the average between the current size and the player's size.
-            If `force_instant_resize` is True, the resize will happen instantly,
-            regardless of settings. Clamps to screen afterwards if desired. '''
-        if self.video and not self.isMaximized() and not self.isFullScreen():
-            vlc_size = self.vlc.size()
-            expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
-            void_width = vlc_size.width() - expected_vlc_size.width()
-            void_height = vlc_size.height() - expected_vlc_size.height()
-
-            # default instant snap. normally this shrinks the window, but to mitigate this and have a more balanced...
-            # ...resize, we snap twice - once to resize it bigger than needed, then again to shrink it back down
-            if force_instant_resize or settings.checkSnapOnResize.checkState() == 2:
-                if not shrink:      # to shrink the window, just skip this -> shrinking is the default behavior
-                    ratio = self.vwidth / self.vheight
-                    void = round((void_width if void_width else void_height) / 2)
-
-                    # TODO +28 here or window gets smaller when switching between videos with different ratios
-                    expected_vlc_size.scale(expected_vlc_size.width() + round(void * ratio), expected_vlc_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
-                    true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
-                    if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
-                    return self.snap_to_player_size(shrink=True)    # snap again, but shrink this time
-
-            # experimental animated snap (discovered by accident)
-            else:
-                expected_vlc_size.setWidth(expected_vlc_size.width() + round(void_width / 2))
-                expected_vlc_size.setHeight(expected_vlc_size.height() + round(void_height / 2))
-
-            # resize window if player size does not match the expected size (expected size = w/o black bars)
-            true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
-            if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
-
-            # move and resize to fit within screen if necessary
-            if settings.checkClampOnResize.isChecked():
-                frame_size = self.frameGeometry().size()
-                screen = qthelpers.getScreenForRect(self.geometry())
-                screen_size = screen.availableSize()
-                if frame_size.height() > screen_size.height() or frame_size.width() > screen_size.width():
-                    self.resize(self.frameGeometry().size().boundedTo(screen_size))
-                    self.snap_to_player_size(shrink=True)
-                qthelpers.clampToScreen(self, screen=screen, resize=False)
-
-
-    def snap_to_native_size(self):
-        ''' Resizes the window to the current media's native resolution, unless
-            it's an audio file without cover art. Clamps to screen afterwards. '''
-        if not self.video or (self.mime_type == 'audio' and not image_player.pixmap()): return
-        excess_height = self.height() - self.vlc.height()
-        self.resize(self.vwidth, self.vheight + excess_height)
-        qthelpers.clampToScreen(self)
-
-
-    def cycle_track(self, track_type: str):
-        ''' Cycles to the next valid `track_type` ("video", "audio", or
-            "subtitle"), if one is available. Depending on settings, this
-            may loop back around to either "Disabled" or track #1. Displays
-            a marquee if cycle could not play a new track. '''
-        types = {'video':    (player.video_get_track_description, player.video_get_track_count, player.video_get_track),
-                 'audio':    (player.audio_get_track_description, player.audio_get_track_count, player.audio_get_track),
-                 'subtitle': (player.video_get_spu_description, player.video_get_spu_count,   player.video_get_spu)}
-        get_description, get_count, get_track = types[track_type]
-
-        track_count = get_count() - 1
-        if track_count > 0:
-            current_track = get_track()
-            first_track_parameters = (-1, None, None)
-            show_title = settings.checkTrackCycleShowTitle.isChecked()
-            for true_index, (track_index, track_title) in enumerate(get_description()):
-                track_title = str(track_title)[2:-1] if show_title else None
-                if first_track_parameters[0] == -1 and track_index > -1:
-                    first_track_parameters = (track_index, true_index, track_title)
-                if track_index > current_track:                 # ^ mark the first valid track
-                    self.set_track(track_type, track_index, true_index, track_title)
-                    break
-
-            # `else` is reached if we didn't break the for-loop (we ran out of tracks to cycle through)
-            # loop back to either the first valid track or to "disabled", depending on user settings
-            else:
-                if settings.checkTrackCycleCantDisable.isChecked():
-                    if first_track_parameters[0] != current_track:
-                        self.set_track(track_type, *first_track_parameters)
-                    else:                                       # display special message if there's nothing else to cycle to
-                        marquee(f'No other {track_type} tracks available', marq_key='TrackChanged', log=False)
-                else:
-                    self.set_track(track_type, -1)
-        else:
-            marquee(f'No {track_type} tracks available', marq_key='TrackChanged', log=False)
-
-
     def set_track(self, track_type: str, track: int = -1, index_hint: int = None, title: str = None):
         ''' Sets `track_type` ("video", "audio", or "subtitle") to `track`,
             which can be either the `track`'s index or its associated
@@ -5751,6 +5662,43 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if track != -1: marquee(title, marq_key='TrackChanged', log=False)
         else: marquee(f'{track_type.capitalize()} disabled', marq_key='TrackChanged', log=False)
         gc.collect(generation=2)
+
+
+    def cycle_track(self, track_type: str):
+        ''' Cycles to the next valid `track_type` ("video", "audio", or
+            "subtitle"), if one is available. Depending on settings, this
+            may loop back around to either "Disabled" or track #1. Displays
+            a marquee if cycle could not play a new track. '''
+        types = {'video':    (player.video_get_track_description, player.video_get_track_count, player.video_get_track),
+                 'audio':    (player.audio_get_track_description, player.audio_get_track_count, player.audio_get_track),
+                 'subtitle': (player.video_get_spu_description, player.video_get_spu_count,   player.video_get_spu)}
+        get_description, get_count, get_track = types[track_type]
+
+        track_count = get_count() - 1
+        if track_count > 0:
+            current_track = get_track()
+            first_track_parameters = (-1, None, None)
+            show_title = settings.checkTrackCycleShowTitle.isChecked()
+            for true_index, (track_index, track_title) in enumerate(get_description()):
+                track_title = str(track_title)[2:-1] if show_title else None
+                if first_track_parameters[0] == -1 and track_index > -1:
+                    first_track_parameters = (track_index, true_index, track_title)
+                if track_index > current_track:                 # ^ mark the first valid track
+                    self.set_track(track_type, track_index, true_index, track_title)
+                    break
+
+            # `else` is reached if we didn't break the for-loop (we ran out of tracks to cycle through)
+            # loop back to either the first valid track or to "disabled", depending on user settings
+            else:
+                if settings.checkTrackCycleCantDisable.isChecked():
+                    if first_track_parameters[0] != current_track:
+                        self.set_track(track_type, *first_track_parameters)
+                    else:                                       # display special message if there's nothing else to cycle to
+                        marquee(f'No other {track_type} tracks available', marq_key='TrackChanged', log=False)
+                else:
+                    self.set_track(track_type, -1)
+        else:
+            marquee(f'No {track_type} tracks available', marq_key='TrackChanged', log=False)
 
 
     def refresh_track_menu(self, menu: QtW.QMenu):
@@ -6076,6 +6024,69 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             is True. This cannot be undone. NOTE: Windows-only. '''
         if checked and constants.IS_WINDOWS:
             self.taskbar_toolbar.setWindow(self.windowHandle())
+
+    
+    def is_snap_mode_enabled(self) -> bool:
+        ''' Returns True if snap-modes can be used on the current mime type. '''
+        mime = self.mime_type
+        if mime == 'audio': return image_player.pixmap() and settings.checkSnapArt.isChecked()
+        elif mime == 'video': return settings.checkSnapVideos.isChecked()
+        elif self.is_gif: return settings.checkSnapGifs.isChecked()
+        else: return settings.checkSnapImages.isChecked()
+
+
+    def snap_to_player_size(self, shrink: bool = False, force_instant_resize: bool = False):
+        ''' Resizes the window to match what the internal player is actually
+            showing, without black bars. If `shrink` is False, the window will
+            find the average between the current size and the player's size.
+            If `force_instant_resize` is True, the resize will happen instantly,
+            regardless of settings. Clamps to screen afterwards if desired. '''
+        if self.video and not self.isMaximized() and not self.isFullScreen():
+            vlc_size = self.vlc.size()
+            expected_vlc_size = self.vsize.scaled(vlc_size, Qt.KeepAspectRatio)
+            void_width = vlc_size.width() - expected_vlc_size.width()
+            void_height = vlc_size.height() - expected_vlc_size.height()
+
+            # default instant snap. normally this shrinks the window, but to mitigate this and have a more balanced...
+            # ...resize, we snap twice - once to resize it bigger than needed, then again to shrink it back down
+            if force_instant_resize or settings.checkSnapOnResize.checkState() == 2:
+                if not shrink:      # to shrink the window, just skip this -> shrinking is the default behavior
+                    ratio = self.vwidth / self.vheight
+                    void = round((void_width if void_width else void_height) / 2)
+
+                    # TODO +28 here or window gets smaller when switching between videos with different ratios
+                    expected_vlc_size.scale(expected_vlc_size.width() + round(void * ratio), expected_vlc_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
+                    true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
+                    if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
+                    return self.snap_to_player_size(shrink=True)    # snap again, but shrink this time
+
+            # experimental animated snap (discovered by accident)
+            else:
+                expected_vlc_size.setWidth(expected_vlc_size.width() + round(void_width / 2))
+                expected_vlc_size.setHeight(expected_vlc_size.height() + round(void_height / 2))
+
+            # resize window if player size does not match the expected size (expected size = w/o black bars)
+            true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
+            if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
+
+            # move and resize to fit within screen if necessary
+            if settings.checkClampOnResize.isChecked():
+                frame_size = self.frameGeometry().size()
+                screen = qthelpers.getScreenForRect(self.geometry())
+                screen_size = screen.availableSize()
+                if frame_size.height() > screen_size.height() or frame_size.width() > screen_size.width():
+                    self.resize(self.frameGeometry().size().boundedTo(screen_size))
+                    self.snap_to_player_size(shrink=True)
+                qthelpers.clampToScreen(self, screen=screen, resize=False)
+
+
+    def snap_to_native_size(self):
+        ''' Resizes the window to the current media's native resolution, unless
+            it's an audio file without cover art. Clamps to screen afterwards. '''
+        if not self.video or (self.mime_type == 'audio' and not image_player.pixmap()): return
+        excess_height = self.height() - self.vlc.height()
+        self.resize(self.vwidth, self.vheight + excess_height)
+        qthelpers.clampToScreen(self)
 
 
     def page_step_slider(self, action):

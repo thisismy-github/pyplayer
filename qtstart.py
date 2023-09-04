@@ -214,6 +214,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minusvolumeboost':   lambda: self.set_volume_boost(-0.5, increment=True),
         'mute':               self.toggle_mute,
         'fullscreen':         self.actionFullscreen.trigger,
+        'maximize':           self.toggle_maximized,
         'crop':               self.actionCrop.trigger,
         'loop':               toggle_loop,
         'nextmedia':          self.cycle_media,
