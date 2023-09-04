@@ -412,6 +412,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.close_cancel_selected = False
         self.checking_for_updates = False
         self.frame_override: int = -1
+        self.ignore_imminent_restart = False
         self.open_queued = False
         self.swap_slider_styles_queued = False
         self.lock_progress_updates = False
@@ -2528,13 +2529,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             manager in a similar manner to signals/slots in `widgets.py`. '''
         try:
             logging.info('Restarting VLC media (Restart V)')
-            self.frame_override = -1                # reset frame_override in case it's set
             video = self.video
 
+            # HACK: sometimes VLC will double-restart -> replay/restore position ASAP
+            if self.restarted:
+                logging.info('Double-restart detected. Ignoring...')
+                self.restarted = False              # set this so we don't get trapped in an infinite restart-loop
+                frame = get_progess_slider()
+                play(video)
+                return set_and_update_progress(frame)
+            self.frame_override = -1                # reset frame_override in case it's set
+
+            # ensure media still exists, otherwise warn user
             if not exists(video):
                 log_on_statusbar('Current media no longer exists. You likely renamed, moved, or deleted it from outside PyPlayer.')
                 self.stop(icon='stop')
                 return -1
+
+            # HACK: skip this restart if needed and restore actual progress
+            if self.ignore_imminent_restart:
+                self.ignore_imminent_restart = False
+                frame = get_progess_slider()
+                play(video)
+                set_player_position((frame - 2) / frame)
+                self.restarted = True
+                return update_progress(frame)
 
             # if we want to loop, reload video, reset UI, and return immediately
             if self.actionLoop.isChecked():
@@ -2703,9 +2722,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # set progress to new frame while doing necessary adjustments/corrections/overrides
         set_and_adjust_and_update_progress(new_frame, 0.1)
 
+        # HACK: if navigating away from end of media while unpaused and we...
+        # ...HAVEN'T restarted yet -> ignore the restart we're about to do
+        self.ignore_imminent_restart = old_frame == self.frame_count and not self.is_paused and not self.restarted
+
         # auto-unpause after restart
         if self.restarted and settings.checkNavigationUnpause.isChecked():
             self.force_pause(False)
+        self.restarted = False
 
         # show new position as a marquee if desired
         if self.isFullScreen() and settings.checkTextOnFullScreenPosition.isChecked():
