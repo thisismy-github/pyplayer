@@ -3170,10 +3170,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         extension = self.extension
         is_gif = self.is_gif
         is_static_image = self.is_static_image
-        minimum, maximum, frame_count, frame_rate, duration = self.minimum, self.maximum, self.frame_count, self.frame_rate, self.duration
+        frame_count, frame_rate, duration = self.frame_count, self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
         audio_tracks = player.audio_get_track_count()
         replacing_original = video == dest
+
+        # min/max are usually offset in ffmpeg for some reason, so adjust if necessary
+        # min -> 2 frames ahead, max -> at least 1, sometimes 2-3 frames behind
+        minimum = max(0, self.minimum - 2)
+        maximum = self.maximum if self.maximum == frame_count else (self.maximum - 1)
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
         new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
@@ -3286,13 +3291,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.set_save_progress_max_signal.emit(maximum - minimum)       # set progress bar to actual number of frames in final trim
                     trim_duration = (maximum - minimum) / frame_rate
 
-                    cmd = '-i %in '
-                    if minimum > 0:           cmd += f'-ss {minimum / frame_rate} '
-                    if maximum < frame_count: cmd += f'-to {maximum / frame_rate} '
+                    # animated GIFs and audio don't need a lot of the extra bits
+                    # NOTE: in the future we should probably offer audio re-encoding as an option
+                    if is_gif or mime == 'audio':
+                        cmd = '-i %in '
+                        if minimum > 0:           cmd += f'-ss {minimum / frame_rate} '
+                        if maximum < frame_count: cmd += f'-to {maximum / frame_rate} '
+                        if mime == 'audio':       cmd += ' -c:a copy -avoid_negative_ts make_zero'
 
-                    if is_gif:
-                        log_on_statusbar('GIF trim requested.')
-                        precise = False
                     else:
                         # see if we should use auto-precise mode regardless of user's preference
                         # (always use precise trimming for very short media or short clips on semi-short media)
@@ -3312,15 +3318,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     return log_on_statusbar('Trim canceled.')
 
                             start_time = get_time()                                 # reset start_time to undo time spent waiting for dialog
-                            precise = self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise or self.extension in constants.SPECIAL_TRIM_EXTENSIONS
-                            log_on_statusbar(f'{"Precise" if precise else "Imprecise"} trim requested{" (this is a time-consuming task)" if precise else ""}.')
+                            requires_precision = self.extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
+                            precise = requires_precision or self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise
+                            if not precise: log_on_statusbar('Imprecise trim requested.')
+                            else: log_on_statusbar('Precise trim requested (this is a time-consuming task).')
 
-                        cmd += ' -c:v ' + ('libx264 -c:a aac' if precise else 'copy -c:a copy -avoid_negative_ts make_zero -async 1')
-                        #else: cmd_parameters = ' -c:v copy -c:a copy -avoid_negative_ts make_zero -af \'aresample=async=1\''
-                        #cmd_parameters = f' -c:v {"libx264" if precise else "copy"} -c:a {"aac" if precise else "copy -avoid_negative_ts make_zero"} '
+                        # construct FFmpeg command based on starting/ending frame + precision mode
+                        cmd = ''
+                        if minimum:
+                            trim_start = minimum / frame_rate
+                            cmd = f'-ss {trim_start} -i %in '
+                        if maximum < frame_count:
+                            if not precise: maximum -= 1
+                            if minimum: cmd += f' -to {(trim_duration)} '
+                            else:       cmd += f' -i %in -to {(maximum / frame_rate)} '
 
-                    if not precise: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest)
-                    else: intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, start_text='Seeking to start of trim...')
+                        if precise: cmd += ' -c:v libx264 -c:a aac'
+                        else:       cmd += ' -c:v copy -c:a copy -avoid_negative_ts make_zero'
+
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, start_text='Seeking to start of trim...')
                     duration = trim_duration                                        # update duration
                     frame_count = maximum - minimum                                 # update frame count
 
