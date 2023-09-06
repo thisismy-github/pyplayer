@@ -432,6 +432,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_move_time = 0.0
         self.last_cycle_was_forward = True
         self.last_cycle_index: int = None
+        self.last_amplify_audio_value = 100
         self.invert_next_move_event = False
         self.invert_next_resize_event = False
         self.ignore_next_fullscreen_move_event = False
@@ -473,7 +474,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.size_label = '0.00mb'              # NOTE: do NOT use `self.size` - this is reserved for Qt
         self.stat: os.stat_result = None
 
-        self.last_amplify_audio_value = 100
         self.current_file_is_autoplay = False
         self.shuffle_folder = ''
         self.shuffle_ignore_order = []
@@ -481,8 +481,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.marked_for_deletion = set()
         self.shortcuts: dict = None
         self.operations = {}
-        self.volume_boost = 1
         self.playback_speed = 1.0
+        self.volume_boost = 1
+        self.volume_startup_correction_needed = True
 
         # misc setup
         self.player = self.vlc.player                                        # NOTE: this is a secondary alias for other files to use
@@ -2478,15 +2479,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not settings.checkAutoEnableSubtitles.isChecked():
                 player.video_set_spu(-1)
 
-            # force volume/mute-state to quickly correct gain issues
+            # force volume/mute-state to quickly correct gain issues (ONLY if audio is present!)
             # player doesn't always want to update immediately after first file is opened - keep trying
-            if self.videos_opened == 0:
+            if self.volume_startup_correction_needed and player.audio_get_track_count() > 0:
                 muted = not self.sliderVolume.isEnabled()
                 volume = get_volume_slider()
                 while self.set_volume(volume, verbose=False) != player.audio_get_volume():
                     sleep(0.002)
                 while self.set_mute(muted, verbose=False) == -1:
                     sleep(0.002)
+                self.volume_startup_correction_needed = False
 
             self.videos_opened += 1                     # can't reset
             self.first_video_fully_loaded = True        # can reset
