@@ -1137,6 +1137,7 @@ class QVideoSlider(QtW.QSlider):
         self.colors: list[Color] = None
         self.color_index = 0
         self.color_order = (Color('red'), Color('blue'), Color('lime'))
+        self.last_color_change_time = 0
 
 
     # pass keystrokes through to parent
@@ -1179,14 +1180,22 @@ class QVideoSlider(QtW.QSlider):
         p = QtGui.QPainter()
         p.begin(self)
         try:
-            # trim start/end markers
-            if self.clamp_minimum or self.clamp_maximum:        # draw trim-boundaries
+            # trim start/end markers -> draw trim-boundaries
+            if self.clamp_minimum or self.clamp_maximum:
+
+                # pick current color to use for animated trim-boundaries
                 if not self.colors:
                     next_index = self.color_index + 1
-                    if next_index > len(self.color_order) - 1: next_index = 0
+                    if next_index > len(self.color_order) - 1:
+                        next_index = 0
                     self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
                     self.color_index = next_index
-                color = QtGui.QColor(self.colors.pop().get_hex())
+                if now > self.last_color_change_time + 0.05:              # only update color at 20fps
+                    color = QtGui.QColor(self.colors.pop().get_hex())
+                    self.last_color_change_time = now
+                else:
+                    color = QtGui.QColor(self.colors[-1].get_hex())
+
                 color.setAlpha(100)
                 pen_thick = QtGui.QPen(color, 2)
                 pen_thin = QtGui.QPen(QtGui.QColor(255, 255, 255), 1)
@@ -1222,41 +1231,42 @@ class QVideoSlider(QtW.QSlider):
             #    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 0), QtCore.QPoint(x, self.height()), QtCore.QPoint(x + 4, self.height() / 2)]))
 
             # hover timestamps
-            if not settings.groupHover.isChecked(): return                          # hover-timestamps are disabled -> return
-            fade_time = max(settings.spinHoverFadeDuration.value(), 0.05)           # 0.05 looks instant but avoids flickers
-            if now <= self.last_mouseover_time + fade_time:
-                if self.underMouse():                                               # reset fade timer if we're still hovering
-                    pos = self.mapFromGlobal(QtGui.QCursor().pos())                 # get position relative to widget
-                    self.last_mouseover_time = now
-                    self.last_mouseover_pos = pos                                   # save last mouse position within slider
-                else: pos = self.last_mouseover_pos                                 # use last position if mouse is outside the slider
+            if settings.groupHover.isChecked():
+                fade_time = max(0.05, settings.spinHoverFadeDuration.value())           # 0.05 looks instant but avoids flickers
+                if now <= self.last_mouseover_time + fade_time:
+                    if self.underMouse():                                               # reset fade timer if we're still hovering
+                        pos = self.mapFromGlobal(QtGui.QCursor().pos())                 # get position relative to widget
+                        self.last_mouseover_time = now
+                        self.last_mouseover_pos = pos                                   # save last mouse position within slider
+                    else:
+                        pos = self.last_mouseover_pos                                   # use last position if mouse is outside the slider
 
-                frame = self.pixelPosToRangeValue(pos)
-                h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
-                text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
+                    frame = self.pixelPosToRangeValue(pos)
+                    h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
+                    text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
 
-                size = settings.spinHoverFontSize.value()
-                font = settings.comboHoverFont.currentFont()    # TODO use currentFontChanged signals + more for performance? not needed?
-                font.setPointSize(size)
-                #font.setPixelSize(size)
-                p.setFont(font)
-                pos.setY(self.height() - (self.height() - size) / 2)
+                    size = settings.spinHoverFontSize.value()
+                    font = settings.comboHoverFont.currentFont()        # TODO use currentFontChanged signals + more for performance? not needed?
+                    font.setPointSize(size)
+                    #font.setPixelSize(size)
+                    p.setFont(font)
+                    pos.setY(self.height() - (self.height() - size) / 2)
 
-                # calculate fade-alpha from 0-255 based on time since we stopped hovering. default to 255 if fading is disabled
-                # TODO: I sure used a lot of different methods for fading things. should these be more unified?
-                alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
+                    # calculate fade-alpha from 0-255 based on time since we stopped hovering. default to 255 if fading is disabled
+                    # TODO: I sure used a lot of different methods for fading things. should these be more unified?
+                    alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
 
-                if settings.checkHoverShadow.isChecked():
-                    p.setPen(QtGui.QColor(0, 0, 0, alpha))      # set color to black
-                    p.drawText(pos.x() + 1, pos.y() + 1, text)  # draw shadow first
-                self.hover_font_color.setAlpha(alpha)
-                p.setPen(self.hover_font_color)                 # set color to white
-                p.drawText(pos, text)                           # draw actual text over shadow
+                    if settings.checkHoverShadow.isChecked():
+                        p.setPen(QtGui.QColor(0, 0, 0, alpha))          # set color to black
+                        p.drawText(pos.x() + 1, pos.y() + 1, text)      # draw shadow first
+                    self.hover_font_color.setAlpha(alpha)
+                    p.setPen(self.hover_font_color)                     # set color to white
+                    p.drawText(pos, text)                               # draw actual text over shadow
 
-                # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
-                #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
-                #if gui.duration_rounded < 3600: self.setToolTip(f'{m}:{s:02}')
-                #else: self.setToolTip(f'{h}:{m:02}:{s:02}')    # use cleaner format for time-strings on videos > 1 hour
+                    # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
+                    #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
+                    #if gui.duration_rounded < 3600: self.setToolTip(f'{m}:{s:02}')
+                    #else: self.setToolTip(f'{h}:{m:02}:{s:02}')        # use cleaner format for time-strings on videos > 1 hour
         finally: p.end()
 
 

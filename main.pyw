@@ -759,9 +759,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         _get_time = get_time
 
         while not self.closed:
-            # stay relatively idle while window is minimized OR nothing is actively playing
-            while not self.isVisible() and not self.closed: _sleep(0.25)
-            while self.isVisible() and not is_playing() and not self.closed: _sleep(0.025)
+            # window is NOT visible, stay relatively idle and do not update
+            while not self.isVisible() and not self.closed:
+                _sleep(0.25)
+
+            # window is visible, but nothing is actively playing
+            while self.isVisible() and not is_playing() and not self.closed:
+                self.sliderProgress.update()            # force QVideoSlider to keep painting
+                _sleep(0.025)                           # update at 40fps
 
             # reset queued slider-swap (or the slider won't update anymore after a swap)
             self.swap_slider_styles_queued = False
