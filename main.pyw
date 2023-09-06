@@ -3176,9 +3176,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         replacing_original = video == dest
 
         # min/max are usually offset in ffmpeg for some reason, so adjust if necessary
-        # min -> 2 frames ahead, max -> at least 1, sometimes 2-3 frames behind
-        minimum = max(0, self.minimum - 2)
-        maximum = self.maximum if self.maximum == frame_count else (self.maximum - 1)
+        # NOTE: the audio will never be truly correct. might require audio re-encoding
+        minimum = self.minimum
+        maximum = self.maximum
+        if mime == 'audio':
+            maximum = min(frame_count, maximum + 3)
+        else:
+            minimum = max(0, minimum - 2)
+            maximum = maximum if maximum == frame_count else (maximum - 1)
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
         new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
@@ -3291,39 +3296,42 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.set_save_progress_max_signal.emit(maximum - minimum)       # set progress bar to actual number of frames in final trim
                     trim_duration = (maximum - minimum) / frame_rate
 
-                    # animated GIFs and audio don't need a lot of the extra bits
-                    # NOTE: in the future we should probably offer audio re-encoding as an option
-                    if is_gif or mime == 'audio':
+                    # animated GIFs don't need a lot of the extra bits
+                    if is_gif:
                         cmd = '-i %in '
                         if minimum > 0:           cmd += f'-ss {minimum / frame_rate} '
                         if maximum < frame_count: cmd += f'-to {maximum / frame_rate} '
-                        if mime == 'audio':       cmd += ' -c:a copy -avoid_negative_ts make_zero'
 
                     else:
-                        # see if we should use auto-precise mode regardless of user's preference
-                        # (always use precise trimming for very short media or short clips on semi-short media)
-                        if duration <= 10 or (duration <= 30 and trim_duration <= 5):
-                            log_on_statusbar('Precise trim auto-detected (short trims on short media always use precise trimming).')
-                            precise = True
+                        if mime == 'audio':                                         # audio re-encoding should probably be an option in the future
+                            precise = False
+                            #minimum = max(0, minimum - 2)
 
-                        # don't use auto-precise mode. either use preferred mode or show dialog for user to pick mode
                         else:
-                            if self.actionTrimPickEveryTime.isChecked() or not cfg.trimmodeselected:
-                                self.trim_mode_selection_canceled = False
-                                cfg.trimmodeselected = False
-                                self.show_trim_dialog_signal.emit()
-                                while not cfg.trimmodeselected:
-                                    sleep(0.1)
-                                if self.trim_mode_selection_canceled:               # user hit X on the trim dialog
-                                    return log_on_statusbar('Trim canceled.')
+                            # see if we should use auto-precise mode regardless of user's preference
+                            # (always use precise trimming for very short media or short clips on semi-short media)
+                            if duration <= 10 or (duration <= 30 and trim_duration <= 5):
+                                log_on_statusbar('Precise trim auto-detected (short trims on short media always use precise trimming).')
+                                precise = True
 
-                            start_time = get_time()                                 # reset start_time to undo time spent waiting for dialog
-                            requires_precision = self.extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
-                            precise = requires_precision or self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise
-                            if not precise: log_on_statusbar('Imprecise trim requested.')
-                            else: log_on_statusbar('Precise trim requested (this is a time-consuming task).')
+                            # don't use auto-precise mode. either use preferred mode or show dialog for user to pick mode
+                            else:
+                                if self.actionTrimPickEveryTime.isChecked() or not cfg.trimmodeselected:
+                                    self.trim_mode_selection_canceled = False
+                                    cfg.trimmodeselected = False
+                                    self.show_trim_dialog_signal.emit()
+                                    while not cfg.trimmodeselected:
+                                        sleep(0.1)
+                                    if self.trim_mode_selection_canceled:           # user hit X on the trim dialog
+                                        return log_on_statusbar('Trim canceled.')
 
-                        # construct FFmpeg command based on starting/ending frame + precision mode
+                                start_time = get_time()                             # reset start_time to undo time spent waiting for dialog
+                                requires_precision = self.extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
+                                precise = requires_precision or self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise
+                                if not precise: log_on_statusbar('Imprecise trim requested.')
+                                else: log_on_statusbar('Precise trim requested (this is a time-consuming task).')
+
+                        # construct FFmpeg command based on starting/ending frame, precision mode, and mime type
                         cmd = ''
                         if minimum:
                             trim_start = minimum / frame_rate
@@ -3332,9 +3340,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             if not precise: maximum -= 1
                             if minimum: cmd += f' -to {(trim_duration)} '
                             else:       cmd += f' -i %in -to {(maximum / frame_rate)} '
-
-                        if precise: cmd += ' -c:v libx264 -c:a aac'
-                        else:       cmd += ' -c:v copy -c:a copy -avoid_negative_ts make_zero'
+                        if mime != 'audio':
+                            if precise: cmd += ' -c:v libx264 -c:a aac'
+                            else:       cmd += ' -c:v copy -c:a copy -avoid_negative_ts make_zero'
+                        else:           cmd += ' -map 0 -codec copy -avoid_negative_ts make_zero'
 
                     intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, start_text='Seeking to start of trim...')
                     duration = trim_duration                                        # update duration
