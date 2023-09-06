@@ -447,8 +447,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.extension = '?'
         self.is_gif = False
         self.is_static_image = True
-        self.is_pitch_sensitive_audio = False
         self.is_bad_with_vlc = False
+        self.is_pitch_sensitive_audio = False
+        self.is_audio_with_cover_art = False
+        self.is_audio_without_cover_art = False
         self.clipboard_image_buffer = None
         #self.PIL_image = None                  # TODO: store images in memory for quick copying?
 
@@ -1171,7 +1173,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # main shortcut actions (only show copy image action if there's something to copy)
         context.addAction(self.actionStop)
-        if self.mime_type != 'audio' or image_player.pixmap():
+        if self.mime_type != 'audio' or self.is_audio_with_cover_art:
             self.refresh_copy_image_action()
             context.addAction(self.actionCopyImage)
         context.addAction(self.actionSettings)
@@ -1278,14 +1280,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def openMediaLocationButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the open media location button. '''
-        if not self.video: return       # do not render context menu if no media is playing
+        if not self.video: return                           # do not render context menu if no media is playing
         context = QtW.QMenu(self)
         context.addAction(self.actionExploreMediaPath)
         context.addAction(self.actionCopyMediaPath)
         context.addAction(self.actionCopyFile)
         context.addAction(self.actionCutFile)
-        if image_player.pixmap():       # add "Copy image" action if we're viewing an image
-            self.refresh_copy_image_action()
+        if self.mime_type != 'audio' or self.is_audio_with_cover_art:
+            self.refresh_copy_image_action()                # add "Copy image" action if there's something to copy
             context.addAction(self.actionCopyImage)
 
         self.add_info_actions(context)
@@ -1311,8 +1313,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             argument to sipBadCatcherResult()`. And it's uncatchable. '''
         context = QtW.QMenu(self)
         for index, action in enumerate(self.menuSnapshots.actions()):
-            if index == 2 and image_player.pixmap():
-                self.refresh_copy_image_action()
+            if index == 2 and self.mime_type != 'audio' or self.is_audio_with_cover_art:
+                self.refresh_copy_image_action()            # add "Copy image" action if there's something to copy
                 context.addAction(self.actionCopyImage)
             context.addAction(action)
         context.exec(event.globalPos())
@@ -1863,7 +1865,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 path = self.video
             if not exists(path) and not (mime == 'image' and path == self.video):
                 return log_on_statusbar(f'Image "{path}" no longer exists.')
-            if mime == 'audio' and not image_player.pixmap():
+            if self.is_audio_without_cover_art:
                 return log_on_statusbar('You can only snapshot audio with cover art.')
 
             # I don't know how to jpeg-ify image data without saving/reopening so we need this to delete the excess file
@@ -2194,6 +2196,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 self.is_bad_with_vlc = False
                 self.is_pitch_sensitive_audio = mime == 'audio'
+            if mime == 'audio':
+                has_cover_art = bool(image_player.pixmap())
+                self.is_audio_with_cover_art = has_cover_art
+                self.is_audio_without_cover_art = not has_cover_art
         self.extension = extension
         #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
 
@@ -2894,7 +2900,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 except: return log_on_statusbar(f'(!) Failed to delete last snapshot at "{cfg.last_snapshot_path}": {format_exc()}')
 
             elif not video: return show_on_statusbar('No media is playing.', 10000)
-            elif mime == 'audio' and not image_player.pixmap(): return show_on_statusbar('You can only snapshot audio with cover art.', 10000)
+            elif self.is_audio_without_cover_art: return show_on_statusbar('You can only snapshot audio with cover art.', 10000)
 
         # >>> take new snapshot <<<
             is_gif = self.is_gif
@@ -5520,7 +5526,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             mime = self.mime_type
             is_gif = self.is_gif
-            if not self.video or (self.mime_type == 'audio' and not image_player.pixmap()):         # reset crop mode if there's nothing to crop
+            if not self.video or self.is_audio_without_cover_art:                                   # reset crop mode if there's nothing to crop
                 return self.actionCrop.trigger() if on else None
 
             if not on:
@@ -5802,7 +5808,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if mime != 'Audio':                                 # remember, we just capitalized this
                 fps = str(self.frame_rate_rounded)
                 resolution = f'{self.vwidth:.0f}x{self.vheight:.0f}'
-            elif image_player.pixmap():                         # show resolution of cover art
+            elif self.is_audio_with_cover_art:                  # show resolution of cover art
                 fps = '0'
                 resolution = f'{self.vwidth:.0f}x{self.vheight:.0f}'
             else:
@@ -6047,11 +6053,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if checked and constants.IS_WINDOWS:
             self.taskbar_toolbar.setWindow(self.windowHandle())
 
-    
+
     def is_snap_mode_enabled(self) -> bool:
         ''' Returns True if snap-modes can be used on the current mime type. '''
         mime = self.mime_type
-        if mime == 'audio': return image_player.pixmap() and settings.checkSnapArt.isChecked()
+        if mime == 'audio': return self.is_audio_with_cover_art and settings.checkSnapArt.isChecked()
         elif mime == 'video': return settings.checkSnapVideos.isChecked()
         elif self.is_gif: return settings.checkSnapGifs.isChecked()
         else: return settings.checkSnapImages.isChecked()
@@ -6105,7 +6111,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def snap_to_native_size(self):
         ''' Resizes the window to the current media's native resolution, unless
             it's an audio file without cover art. Clamps to screen afterwards. '''
-        if not self.video or (self.mime_type == 'audio' and not image_player.pixmap()): return
+        if not self.video or self.is_audio_without_cover_art: return
         excess_height = self.height() - self.vlc.height()
         self.resize(self.vwidth, self.vheight + excess_height)
         qthelpers.clampToScreen(self)
