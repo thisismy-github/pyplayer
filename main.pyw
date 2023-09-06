@@ -759,14 +759,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         _get_time = get_time
 
         while not self.closed:
-            # window is NOT visible, stay relatively idle and do not update
-            while not self.isVisible() and not self.closed:
-                _sleep(0.25)
-
-            # window is visible, but nothing is actively playing
-            while self.isVisible() and not is_playing() and not self.closed:
-                self.sliderProgress.update()            # force QVideoSlider to keep painting (this refreshes the hover-timestamp)
-                _sleep(0.025)                           # update at 40fps
+            # stay relatively idle while window is minimized OR nothing is actively playing
+            while not self.isVisible() and not self.closed: _sleep(0.25)
+            while self.isVisible() and not is_playing() and not self.closed: _sleep(0.025)
 
             # reset queued slider-swap (or the slider won't update anymore after a swap)
             self.swap_slider_styles_queued = False
@@ -825,15 +820,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
                         #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
                         #    _emit_update_progress_signal(interpolated_frame)                       # TODO can this snowball and keep jumping forward forever?
-
-                        # update actual slider position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
-                        # repaint slider (to refresh the hover-timestamp) three times per update (30FPS)
-                        self.sliderProgress.update()
-                        if not is_playing(): break
-                        _sleep(0.033)
-                        self.sliderProgress.update()
-                        if not is_playing(): break
-                        _sleep(0.033)
+                        _sleep(0.066)                   # update position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
         return logging.info('Program closed. Ending update_slider thread.')
 
 

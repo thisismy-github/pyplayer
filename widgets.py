@@ -1123,6 +1123,7 @@ class QVideoSlider(QtW.QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAcceptDrops(True)           # TODO is having stuff like this here better than in the .ui file?
+        self.setMouseTracking(True)
 
         self.last_mouseover_time = 0
         self.last_mouseover_pos = None
@@ -1309,20 +1310,24 @@ class QVideoSlider(QtW.QSlider):
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
-        ''' If dragging, this re-implements scrubbing by grabbing the
-            handle, pausing the player, and updating the player position.
-            Does not emit the sliderMoved signal. Does not require
-            setMouseTracking(True), as mouse-tracking only applies
-            to firing mouseMoveEvent without holding a button. '''
-        frame = self.pixelPosToRangeValue(event.pos())          # get frame
-        if app.mouseButtons() == Qt.LeftButton:                 # abnormal mousePressEvent implementation, so event.button() is incorrect
+        ''' If not dragging, this manually repaints the timestamp-hover effect
+            while mousing over the progress bar. Otherwise, this re-implements
+            scrubbing by grabbing the handle, pausing the player, and updating
+            the player position. Does not emit the `sliderMoved` signal. '''
+
+        # abnormal mousePressEvent implementation, so event.button() is incorrect
+        if app.mouseButtons() != Qt.LeftButton:                 # NOTE: requires `self.setMouseTracking(True)`
+            self.update()
+
+        # handle dragging
+        else:
+            frame = self.pixelPosToRangeValue(event.pos())      # get frame
             gui.set_and_update_progress(frame)                  # "grab" handle
             gui.player.set_pause(True)                          # pause player while scrubbing
             self.last_mouseover_time = 0                        # reset last mouseover time to stop drawing timestamp immediately
             if self.grabbing_clamp_minimum: gui.set_trim_start()
             elif self.grabbing_clamp_maximum: gui.set_trim_end()
             self.scrubbing = True                               # mark that we're scrubbing
-        #self.update()                                          # TODO <- why doesn't this make the animations smooth?
 
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
