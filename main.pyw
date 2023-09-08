@@ -2431,7 +2431,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: prefix = f'{self.frame_rate_rounded} FPS: '
             self.spinFrame.setPrefix(prefix)
             self.spinFrame.setMaximum(self.frame_count)
-            self.spinFrame.setToolTip(str(self.frame_rate))
+            self.spinFrame.setToolTip(f'Frame rate:\t{self.frame_rate}\nFrame count:\t{self.frame_count_raw}')
 
             # refresh title (we have to refresh here instead of `_open_cleanup_slot`, I don't remember why lol)
             refresh_title()
@@ -3600,7 +3600,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         current_time = round(self.duration_rounded * (frame / self.frame_count), 2)
         self.current_time = current_time
-        h, m, s, ms = get_hms(current_time)
+
+        # this is `util.get_hms` but inlined, for optimization
+        h_remainder = current_time % 3600
+        h = int(current_time // 3600)
+        m = int(h_remainder // 60)
+        s = int(h_remainder % 60)
+        ms = int(round((current_time - int(current_time)) * 100, 4))
 
         set_progress_slider(frame)
         if not current_time_lineedit_has_focus():       # use cleaner format for time-strings on videos > 1 hour

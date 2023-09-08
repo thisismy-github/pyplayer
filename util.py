@@ -115,9 +115,10 @@ def get_from_PATH(filename: str) -> str:
 
 def get_hms(seconds: float) -> tuple:
     ''' Converts seconds to the hours, minutes, seconds, and milliseconds it represents. '''
+    h_remainder = seconds % 3600
     h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int((seconds % 3600) % 60)
+    m = int(h_remainder // 60)
+    s = int(h_remainder % 60)
     ms = int(round((seconds - int(seconds)) * 100, 4))  # round to account for floating point imprecision
     return h, m, s, ms
 
