@@ -2176,12 +2176,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.error(f'(!) Parsing failure: {format_exc()}')
             return -1
 
-        # extra setup. frame_rate_rounded, ratio, and delay could all be set here, but it would be slower overall
+        # extra setup. frame_rate_rounded, ratio, delay, etc. could be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_cleanup_signal
         self.mime_type = mime
 
         if base_mime == 'image':
             self._open_cleanup_signal.emit()        # manually emit _open_cleanup_signal for images/gifs (slider thread will be idle)
+            update_progress(0)                      # since frame_override can't be set, manually update UI to frame 0
+
+            # see if this is an animated or static image
             is_gif = extension == 'gif' and self.frame_count_raw > 1
             self.is_gif = is_gif                    # do not treat single-frame GIFs as actual GIFs (static images have more features)
             self.is_static_image = not is_gif
@@ -2193,6 +2196,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_gif = False
             self.is_static_image = False
 
+            # see if this is a special type of audio file, if it's audio at all
             # TODO: we should really be tracking the codec instead of the container here
             # TODO: can this be fixed with a different demuxer or something? (what we COULD have done to fix pitch-shifting)
             if extension == 'ogg':                  # TODO: flesh out a list of unresponsive media types
@@ -2325,9 +2329,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.info('--- OPENING FILE ---')
             log_on_statusbar(f'Opening file ({mime}/{extension}): {file}')
 
-            # misc cleanup/setup for new media
+            # misc cleanup/setup for new media that we can safely do before fully parsing
             self.operations = {}
-            self.sliderProgress.setEnabled(mime != 'image' or (extension == 'gif' and image_player.gif.frameCount() > 1))
             self.buttonTrimStart.setChecked(False)                      # ^ static images/GIFs have odd but harmless behavior
             self.buttonTrimEnd.setChecked(False)
 
@@ -2445,29 +2448,33 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def _open_cleanup_slot(self):
         ''' A slot for `_open_cleanup_signal` that handles updating the progress
             slider's properties, as well as various non-essential actions. This
-            is done through a signal so that `update_slider_thread` itself could
+            is done through a signal so that `update_slider_thread` itself can
             initiate the cleanup, avoiding numerous timing issues (playback
             starting at the frame the last media was playing on, etc.).
 
             NOTE: Putting all of `open()` in this slot results in a noticable
             delay while opening media. '''
         try:
+            # NOTE: `sliderProgress.setMaximum` expects the raw count (i.e. 9000 for a 9000-frame...
+            #       ...video instead of 8999) and will adjust and enable/disable accordingly
             sliderProgress = self.sliderProgress
+            sliderProgress.setMaximum(self.frame_count_raw)
+            self.minimum = 0
+            self.maximum = sliderProgress.maximum()     # this may be different than what we just put in
 
-            sliderProgress.setMaximum(self.frame_count)
-            update_progress(0)
-            self.minimum = sliderProgress.minimum()
-            self.maximum = sliderProgress.maximum()
-            sliderProgress.setTickInterval(self.frame_rate_rounded * (1 if self.duration_rounded < 3600 else 60))       # place one tick per second/minute (cosmetic, default theme only)
+            # set the number of frames to jump when scrolling over the slider
             sliderProgress.setPageStep(int(self.frame_count_raw / 10))
+
+            # place one tick per second/minute (cosmetic, default theme only)
+            sliderProgress.setTickInterval(self.frame_rate_rounded * (1 if self.duration_rounded < 3600 else 60))
 
             self.vsize.setWidth(self.vwidth)
             self.vsize.setHeight(self.vheight)
             if self.is_snap_mode_enabled():
                 resize_on_open_state = settings.checkResizeOnOpen.checkState()
                 snap_on_open_state = settings.checkSnapOnOpen.checkState()
-                if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):  # 1 -> only resize first video opened
-                    self.snap_to_native_size()
+                if resize_on_open_state and not (resize_on_open_state == 1 and self.first_video_fully_loaded):
+                    self.snap_to_native_size()          # ^ 1 -> only resize first video opened
                 elif snap_on_open_state and not (snap_on_open_state == 1 and self.first_video_fully_loaded):
                     self.snap_to_player_size(force_instant_resize=True)
                 elif settings.checkClampOnOpen.isChecked():

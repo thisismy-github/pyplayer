@@ -1145,37 +1145,46 @@ class QVideoSlider(QtW.QSlider):
     def keyReleaseEvent(self, event: QtGui.QKeyEvent): return gui.keyReleaseEvent(event)
 
 
+    def setMaximum(self, maximum: int):
+        ''' Sets the maximum slider value to `maximum - 1`.
+            If 1 or less, the slider is automatically disabled. '''
+        super().setMaximum(maximum - 1)
+        self.setEnabled(maximum > 1)
+
+
     def paintEvent(self, event: QtGui.QPaintEvent):
         ''' Paints timestamps under the mouse cursor corresponding with its
             position while hovering over the slider. Due to the need for the
             cursor's up-to-date position regardless '''
         super().paintEvent(event)           # perform built-in paint immediately so we can paint on top
-        now = time.time()
+        if not self.isEnabled(): return     # if not enabled, do not bother with trim-boundaries or hover-timestamps
 
-        # handle QVideoPlayer's idle cursor/fullscreen controls timeout
+        # handle QVideoPlayer's fullscreen controls/idle cursor timeout
         try:
+            now = time.time()
             vlc = gui.vlc
             fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 seconds looks instant while avoiding 0-division (no flicker issues)
             current_opacity = gui.dockControls.windowOpacity()
             min_opacity = settings.spinFullScreenMinOpacity.value() / 100
             max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
-        except: return
-        try:
-            # we keep track of lock_fullscreen_ui manually instead of repeatedly calling gui.dockControls.underMouse()
-            # TODO ^^^ is this actually faster, or is underMouse() always kept track of internally?
-            if vlc.last_move_time and not gui.lock_fullscreen_ui and vlc.last_move_time + settings.spinHideIdleCursorDuration.value() <= now:
-                vlc.setCursor(Qt.BlankCursor)
-                if current_opacity > min_opacity:
-                    opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
-                    gui.dockControls.setWindowOpacity(max(current_opacity - opacity_increment, min_opacity))
-            else:
-                vlc.unsetCursor()
-                if current_opacity < max_opacity:
-                    opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
-                    gui.dockControls.setWindowOpacity(min(current_opacity + opacity_increment, max_opacity))
+            try:
+                # we keep track of lock_fullscreen_ui manually instead of repeatedly calling gui.dockControls.underMouse()
+                # TODO ^^^ is this actually faster, or is underMouse() always kept track of internally?
+                if vlc.last_move_time and not gui.lock_fullscreen_ui and vlc.last_move_time + settings.spinHideIdleCursorDuration.value() <= now:
+                    vlc.setCursor(Qt.BlankCursor)
+                    if current_opacity > min_opacity:
+                        opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
+                        gui.dockControls.setWindowOpacity(max(current_opacity - opacity_increment, min_opacity))
+                else:
+                    vlc.unsetCursor()
+                    if current_opacity < max_opacity:
+                        opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
+                        gui.dockControls.setWindowOpacity(min(current_opacity + opacity_increment, max_opacity))
+            except:
+                string = f'fade_time={fade_time} current_opacity={current_opacity} min_opacity={min_opacity} max_opacity={max_opacity} frame_rate_rounded={gui.frame_rate_rounded}'
+                logger.warning(f'(!) Unexpected error while handling idle-timeout - {string} - {format_exc()}')
         except:
-            variables = f'fade_time={fade_time} current_opacity={current_opacity} min_opacity={min_opacity} max_opacity={max_opacity} frame_rate_rounded={gui.frame_rate_rounded}'
-            logger.warning(f'(!) Unexpected error while handling idle-timeout - {variables} - {format_exc()}')
+            return
 
         p = QtGui.QPainter()
         p.begin(self)
