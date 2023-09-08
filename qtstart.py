@@ -324,6 +324,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionViewLog.triggered.connect(lambda: qthelpers.openPath(constants.LOG_PATH))
     self.actionViewLastDirectory.triggered.connect(self.open_lastdir)
     self.actionViewInstallFolder.triggered.connect(lambda: qthelpers.openPath(constants.CWD))
+    self.actionViewProbeFile.triggered.connect(self.open_probe_file)
+    self.actionDeleteProbeFile.triggered.connect(lambda: self.open_probe_file(delete=True))
     self.actionAboutQt.triggered.connect(lambda: QtW.QMessageBox.aboutQt(None, 'About Qt'))
     self.actionAbout.triggered.connect(self.show_about_dialog)
     #self.check_clamp.stateChanged.connect(self.clamp)

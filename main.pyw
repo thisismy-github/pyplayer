@@ -1786,6 +1786,35 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         qthelpers.openPath(cfg.lastdir)
 
 
+    def open_probe_file(self, *args, file: str = None, delete: bool = False):
+        ''' Opens `file`'s probe file, if it exists and FFprobe is enabled.
+            If `file` is not provided, `self.video` is used. If `delete` is
+            True, the probe file is deleted if possible. '''
+        if not FFPROBE:
+            return show_on_statusbar('You don\'t have FFprobe enabled.')
+
+        try:
+            if file:
+                stat = os.stat(file)
+            elif self.video:
+                file = self.video
+                stat = self.stat
+            else:
+                return show_on_statusbar('No media is playing.')
+
+            basename = f'{os.path.basename(self.video)}_{stat.st_ctime}_{stat.st_size}.txt'
+            path = f'{constants.PROBE_DIR}{sep}{basename}'
+            if not exists(path):
+                return show_on_statusbar('This media\'s probe file no longer exists.')
+            if delete:
+                try: os.remove(path)
+                except: log_on_statusbar(f'Failed to delete probe file at {path}: {format_exc()}')
+            else:
+                qthelpers.openPath(path)
+        except:
+            log_on_statusbar(f'(!) Probe file opening/deletion failed: {format_exc()}')
+
+
     def explore(self, path: str = None, noun: str = 'Recent file'):
         ''' Opens `path` (or self.video if not provided) in the default file
             explorer, with `path` pre-selected if possible. `noun` controls

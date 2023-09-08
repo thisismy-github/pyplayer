@@ -625,6 +625,10 @@ class Ui_MainWindow(object):
         self.actionCatBeforeLast.setObjectName("actionCatBeforeLast")
         self.actionEditFileTimestamps = QtWidgets.QAction(MainWindow)
         self.actionEditFileTimestamps.setObjectName("actionEditFileTimestamps")
+        self.actionViewProbeFile = QtWidgets.QAction(MainWindow)
+        self.actionViewProbeFile.setObjectName("actionViewProbeFile")
+        self.actionDeleteProbeFile = QtWidgets.QAction(MainWindow)
+        self.actionDeleteProbeFile.setObjectName("actionDeleteProbeFile")
         self.menuRecent.addAction(self.actionClearRecent)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
@@ -678,6 +682,9 @@ class Ui_MainWindow(object):
         self.menuHelp.addAction(self.actionViewLog)
         self.menuHelp.addAction(self.actionViewInstallFolder)
         self.menuHelp.addAction(self.actionViewLastDirectory)
+        self.menuHelp.addSeparator()
+        self.menuHelp.addAction(self.actionViewProbeFile)
+        self.menuHelp.addAction(self.actionDeleteProbeFile)
         self.menuHelp.addSeparator()
         self.menuHelp.addAction(self.actionAboutQt)
         self.menuHelp.addAction(self.actionAbout)
@@ -911,6 +918,8 @@ class Ui_MainWindow(object):
         self.actionCatAfterLast.setText(_translate("MainWindow", "This clip after last clip"))
         self.actionCatBeforeLast.setText(_translate("MainWindow", "This clip before last clip"))
         self.actionEditFileTimestamps.setText(_translate("MainWindow", "Edit timestamps"))
+        self.actionViewProbeFile.setText(_translate("MainWindow", "View probe file"))
+        self.actionDeleteProbeFile.setText(_translate("MainWindow", "Delete probe file"))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoPlayerLabel, QVideoSlider
 
 

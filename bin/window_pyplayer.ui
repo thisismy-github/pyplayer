@@ -169,6 +169,9 @@
     <addaction name="actionViewInstallFolder"/>
     <addaction name="actionViewLastDirectory"/>
     <addaction name="separator"/>
+    <addaction name="actionViewProbeFile"/>
+    <addaction name="actionDeleteProbeFile"/>
+    <addaction name="separator"/>
     <addaction name="actionAboutQt"/>
     <addaction name="actionAbout"/>
    </widget>
@@ -1798,6 +1801,16 @@ for deletion, without actually deleting them.</string>
   <action name="actionEditFileTimestamps">
    <property name="text">
     <string>Edit timestamps</string>
+   </property>
+  </action>
+  <action name="actionViewProbeFile">
+   <property name="text">
+    <string>View probe file</string>
+   </property>
+  </action>
+  <action name="actionDeleteProbeFile">
+   <property name="text">
+    <string>Delete probe file</string>
    </property>
   </action>
  </widget>
