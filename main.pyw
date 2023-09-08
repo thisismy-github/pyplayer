@@ -458,7 +458,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.fractional_frame = 0.0
         self.delay = 0.0
         self.ui_delay = 0.0
-        self.frame_count = 1
+        self.frame_count = 1                    # NOTE: the frame count from 0, i.e. 8999 frames (never actually 0 though)
+        self.frame_count_raw = 1                # NOTE: the actual frame count, i.e. 9000 frames (DON'T use for calculations)
         self.frame_rate = 1
         self.frame_rate_rounded = 1
         self.duration = 0.0
@@ -1976,7 +1977,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 - `self.video`                (the current media's path)
                 - `self.duration`             (media duration in seconds)
                 - `self.duration_rounded`     (duration rounded to 2 places)
-                - `self.frame_count`          (number of frames)
+                - `self.frame_count`          (number of frames starting from 0)
+                - `self.frame_count_raw`      (number of frames starting from 1)
                 - `self.frame_rate`           (frames per second)
                 - `self.frame_rate_rounded`   (fps rounded to nearest int)
                 - `self.delay`                (delay between frames in seconds)
@@ -2011,10 +2013,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     fps_parts = stream['avg_frame_rate'].split('/')
                                     fps = int(fps_parts[0]) / int(fps_parts[1])
                                     duration = float(data['format']['duration'])
+                                    frame_count = math.ceil(duration * fps)     # NOTE: nb_frames is unreliable for partially corrupt videos
 
                                     self.duration = duration
                                     self.duration_rounded = round(duration, 2)
-                                    self.frame_count = math.ceil(duration * fps)    # NOTE: nb_frames is unreliable for partially corrupt videos
+                                    self.frame_count_raw = frame_count
+                                    self.frame_count = max(1, frame_count - 1)
                                     self.frame_rate = fps
                                     self.frame_rate_rounded = round(fps)
                                     self.delay = 1 / fps
@@ -2038,9 +2042,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif probe_file: logging.info('VLC did not need additional time to parse.')
                     fps = round(player.get_fps(), 1)                # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
                     duration = round(player.get_length() / 1000, 4)
+                    frame_count = int(duration * fps)
                     self.duration = duration
                     self.duration_rounded = round(duration, 2)
-                    self.frame_count = int(duration * fps)
+                    self.frame_count_raw = frame_count
+                    self.frame_count = max(1, frame_count - 1)
                     self.frame_rate = fps
                     self.frame_rate_rounded = round(fps)
                     self.delay = 1 / fps
@@ -2056,7 +2062,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             break                   # set data back to None and break so we can extract the cover art
                     else:                           # the rare for-else-loop (else only happens if we don't break)
                         duration = float(data['format']['duration'])
-                    self.vwidth, self.vheight = 16, 9
+                    self.vwidth = 16
+                    self.vheight = 9
 
                 # no data provided OR art detected (see above), use TinyTag (fallback to music_tag if necessary)
                 if data is None:
@@ -2085,6 +2092,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 self.vwidth = 16
                                 self.vheight = 9
                             duration = tag['#length'].value
+                        frame_count = round(duration * 20)
                         # TODO worth saving the cover art to a temp file for future use?
                         #image_player.art.save(os.path.join(constants.TEMP_DIR, f'{os.path.basename(file)}_{getctime(file)}.png'))
                     except:                                         # this is to handle things that wrongly report as audio, like .ogv files
@@ -2102,7 +2110,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         return self.parse_media_file(file, probe_file, mime='video', extension=extension, data=data)
                 self.duration = duration
                 self.duration_rounded = round(duration, 2)
-                self.frame_count = round(duration * 20)
+                self.frame_count_raw = frame_count
+                self.frame_count = max(1, frame_count - 1)
                 self.frame_rate = 20                # TODO we only set to 20 to not deal with laggy hover-fades
                 self.frame_rate_rounded = 20
                 self.delay = 0.05
@@ -2110,7 +2119,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             elif mime == 'image':
                 if extension == 'gif' and image_player.gif.frameCount() > 1:
-                    self.frame_count = image_player.gif.frameCount()
+                    self.frame_count_raw = image_player.gif.frameCount()
+                    self.frame_count = image_player.gif.frameCount() - 1
                     if data:                        # use probe data if available but it's not necessary
                         for stream in data['streams']:
                             if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
@@ -2126,7 +2136,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.vheight = int(stream['height'])
                     else:
                         delay = image_player.gif.nextFrameDelay() / 1000
-                        duration = self.frame_count * delay
+                        duration = self.frame_count_raw * delay
                         self.delay = delay
                         self.duration = duration
                         self.duration_rounded = round(duration, 2)
@@ -2154,6 +2164,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.vheight = image_player.art.height()
                     self.duration = 0.0000001       # low duration to avoid errors but still show up as 0 on the UI
                     self.duration_rounded = 0.0
+                    self.frame_count_raw = 1            # NOTE: these CANNOT be 0
                     self.frame_count = 1
                     self.frame_rate = 1
                     self.frame_rate_rounded = 1
@@ -2168,9 +2179,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # extra setup. frame_rate_rounded, ratio, and delay could all be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_cleanup_signal
         self.mime_type = mime
+
         if base_mime == 'image':
             self._open_cleanup_signal.emit()        # manually emit _open_cleanup_signal for images/gifs (slider thread will be idle)
-            is_gif = extension == 'gif' and self.frame_count > 1
+            is_gif = extension == 'gif' and self.frame_count_raw > 1
             self.is_gif = is_gif                    # do not treat single-frame GIFs as actual GIFs (static images have more features)
             self.is_static_image = not is_gif
             self.is_pitch_sensitive_audio = False
@@ -2193,6 +2205,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 has_cover_art = bool(image_player.pixmap())
                 self.is_audio_with_cover_art = has_cover_art
                 self.is_audio_without_cover_art = not has_cover_art
+
         self.extension = extension
         #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
 
@@ -2446,7 +2459,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.minimum = sliderProgress.minimum()
             self.maximum = sliderProgress.maximum()
             sliderProgress.setTickInterval(self.frame_rate_rounded * (1 if self.duration_rounded < 3600 else 60))       # place one tick per second/minute (cosmetic, default theme only)
-            sliderProgress.setPageStep(int(self.frame_count / 10))
+            sliderProgress.setPageStep(int(self.frame_count_raw / 10))
 
             self.vsize.setWidth(self.vwidth)
             self.vsize.setHeight(self.vheight)
@@ -2494,7 +2507,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar(f'Note: Files of this mime type/encoding ({self.mime_type}/{self.extension}) may be laggy or unresponsive while scrubbing/navigating on some systems (libVLC issue).')
 
             logging.info(f'Media info:\nmime={self.mime_type}, extension={self.extension}\n'
-                         f'duration={self.duration}, frames={self.frame_count}, fps={self.frame_rate}, delay={self.delay:.4f}\n'
+                         f'duration={self.duration}, frames={self.frame_count_raw}, fps={self.frame_rate}, delay={self.delay:.4f}\n'
                          f'size={self.vwidth}x{self.vheight}, ratio={self.ratio}')
             logging.info('--- OPENING COMPLETE ---\n')
             gc.collect(generation=2)                    # do manual garbage collection after opening (NOTE: this MIGHT be risky)
@@ -2899,7 +2912,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # >>> take new snapshot <<<
             is_gif = self.is_gif
             is_art = mime == 'audio'                            # if it's audio, we already know that it has cover art
-            frame_count_str = str(self.frame_count)
+            frame_count_str = str(self.frame_count_raw)
             if mime == 'image' and settings.checkSnapshotGifPNG.isChecked(): format = 'PNG'
             else: format = settings.comboSnapshotFormat.currentText()
 
@@ -3170,7 +3183,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         extension = self.extension
         is_gif = self.is_gif
         is_static_image = self.is_static_image
-        frame_count, frame_rate, duration = self.frame_count, self.frame_rate, self.duration
+        frame_count, frame_count_raw = self.frame_count, self.frame_count_raw
+        frame_rate, duration = self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
         audio_tracks = player.audio_get_track_count()
         replacing_original = video == dest
@@ -3267,7 +3281,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if replacing_original: delete_after_save = NO_DELETE
 
         # display indeterminant progress bar, set busy cursor, and update UI to frame 0
-        self.set_save_progress_max_signal.emit(frame_count)             # set progress bar max to max possible frames
+        self.set_save_progress_max_signal.emit(frame_count_raw)         # set progress bar max to max possible (raw) frames
         self.setCursor(Qt.BusyCursor)
         emit_update_progress_signal(0)
 
@@ -3652,6 +3666,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             UI is reset to its previous state. '''
         if self.lock_spin_updates or self.lock_progress_updates: return                             # return if user is not manually setting the time spins
         self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
+
         try:
             seconds = self.spinHour.value() * 3600
             seconds += self.spinMinute.value() * 60
