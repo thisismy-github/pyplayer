@@ -475,6 +475,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.size_label = '0.00mb'              # NOTE: do NOT use `self.size` - this is reserved for Qt
         self.stat: os.stat_result = None
 
+        self.open_in_progress = False
+        self._open_main_in_progress = False
+        self._open_cleanup_in_progress = False
+
         self.current_file_is_autoplay = False
         self.shuffle_folder = ''
         self.shuffle_ignore_order = []
@@ -690,6 +694,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # stay relatively idle while window is minimized OR nothing is actively playing
             while not self.isVisible() and not self.closed: _sleep(0.25)
             while self.isVisible() and not is_playing() and not self.closed: _sleep(0.025)
+            while self.open_in_progress: _sleep(0.025)
 
             start = _get_time()
             play_started = start + self.add_to_progress_offset
@@ -699,7 +704,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             vlc_desync_limit = self.frame_rate * 2
             vlc_desync_counter = 0
 
-            while is_playing() and not self.reset_progress_offset:
+            while is_playing() and not self.reset_progress_offset and not self.open_in_progress:
                 seconds_elapsed = (_get_time() - play_started) * get_rate()
                 frames_elapsed = seconds_elapsed * self.frame_rate
                 current_frame = get_ui_frame()
@@ -715,11 +720,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if vlc_is_desynced: vlc_desync_counter += 1
                 else: vlc_desync_counter = 0
                 if abs(time_desync) >= 1 or vlc_desync_counter >= vlc_desync_counter_limit:
-                    if not self.reset_progress_offset:
-                        self.ui_delay = self.delay
-                        true_frame = (player.get_position() * self.frame_count) + (self.frame_rate * 0.2)
-                        self.frame_override = true_frame
-                        logging.info(f'(?) High-precision progress desync: {time_desync:.2f} real seconds, {vlc_desync:.2f} VLC frames. Changing frame from {current_frame} to {true_frame}.')
+                    self.ui_delay = self.delay
+                    true_frame = (player.get_position() * self.frame_count) + (self.frame_rate * 0.2)
+                    logging.info(f'(?) High-precision progress desync: {time_desync:.2f} real seconds, {vlc_desync:.2f} VLC frames. Changing frame from {current_frame} to {true_frame}.')
+
+                    # double-check our conditions in case of extremely unlucky timing
+                    if not is_playing() or self.reset_progress_offset or self.open_in_progress:
+                        break
+
+                    # if frame_override is already set, it will be resetting for us anyways
+                    # don't break - just let things run their course
+                    if self.frame_override == -1:
+                        self.frame_override = int(true_frame)
 
                 # otherwise, adjust delay accordingly to stay on track
                 else: self.ui_delay = self.delay * (1 + time_desync)
@@ -731,7 +743,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # wait for next check, but account for the time it took to actually run through the loop
                 time_elapsed = 0.0
                 while time_elapsed < check_interval:
-                    if not is_playing() or self.reset_progress_offset:
+                    if not is_playing() or self.reset_progress_offset or self.open_in_progress:
                         break
                     _sleep(delay_per_intercheck)
                     time_elapsed = _get_time() - start
@@ -2340,7 +2352,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: was_minimzed_to_tray = False
 
         # --- Playing media ---
-            # attempt to play media
+            self.open_in_progress = True                    # mark that we're now officially opening something
+            self._open_main_in_progress = True
+            self._open_cleanup_in_progress = True
+
             player.stop()                                   # player must be stopped for images/gifs and to reduce delays on almost-finished media
             if mime == 'image': play_image(file, gif=extension == 'gif')
             elif not play(file): return -1                  # immediately attempt to play media once we know it might be valid
@@ -2472,6 +2487,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except:
             log_on_statusbar(f'(!) OPEN FAILED: {format_exc()}')
             return -1
+        finally:
+            self._open_main_in_progress = False
+            self.open_in_progress = self._open_cleanup_in_progress
 
 
     def _open_cleanup_slot(self):
@@ -2547,7 +2565,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                          f'size={self.vwidth}x{self.vheight}, ratio={self.ratio}')
             logging.info('--- OPENING COMPLETE ---\n')
             gc.collect(generation=2)                    # do manual garbage collection after opening (NOTE: this MIGHT be risky)
-        except: logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
+
+        except:
+            logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
+        finally:
+            self._open_cleanup_in_progress = False
+            self.open_in_progress = self._open_main_in_progress
 
 
     def open_from_thread(self, **kwargs):
