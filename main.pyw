@@ -788,6 +788,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # TODO: for now, lets just force the VLC-progress for non-standard speeds
             if is_high_precision() and get_rate() == 1.0:
                 start = _get_time()
+                now = start
+                min_delay = 0.05                        # check our conditions at least 20 times per second
+                min_delay_threshold_factor = 2          # if we're too close to min_delay, split up sleep calls this many times
+                min_delay_threshold = min_delay * min_delay_threshold_factor
 
                 # playing, not locked, and not about to swap styles
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
@@ -807,10 +811,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif (next_frame := get_ui_frame() + get_rate()) <= self.frame_count:           # do NOT update progress if we're at the end
                         _emit_update_progress_signal(next_frame)                                    # update_progress_signal -> _update_progress_slot
 
-                    _sleep(0.0001)                      # sleep to force-update get_time()
-                    try: _sleep(self.ui_delay - (_get_time() - start))
-                    except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
-                    finally: start = _get_time()
+                    # low FPS media confuses the accuracy thread when switching media
+                    # -> always update high-precision at atleast 20fps
+                    if self.frame_rate < 20:
+                        try:
+                            _sleep(0.0001)              # sleep to force-update get_time()
+                            now = _get_time()
+                            execution_time = now - start
+                            time_elapsed = execution_time
+                            while time_elapsed < self.ui_delay:
+                                to_sleep = self.ui_delay - time_elapsed
+                                if min_delay < to_sleep < min_delay_threshold:
+                                    _sleep(to_sleep / min_delay_threshold_factor)
+                                else:
+                                    _sleep(to_sleep)
+                                if not is_playing() or self.lock_progress_updates or self.swap_slider_styles_queued or self.frame_override != -1:
+                                    break
+                                now = _get_time()
+                                time_elapsed = now - start
+                        except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
+                        finally: start = now
+
+                    # for normal FPS media, just sleep normally, accounting for the loop's execution time
+                    else:
+                        try:
+                            _sleep(0.0001)              # sleep to force-update get_time()
+                            _sleep(self.ui_delay - (_get_time() - start))
+                        except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
+                        finally: start = _get_time()
 
             # high-precision option disabled -> use libvlc's native progress and manually paint QVideoSlider
             else:
