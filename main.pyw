@@ -693,8 +693,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         while not self.closed:
             # stay relatively idle while window is minimized OR nothing is actively playing
             while not self.isVisible() and not self.closed: _sleep(0.25)
-            while self.isVisible() and not is_playing() and not self.closed: _sleep(0.025)
-            while self.open_in_progress: _sleep(0.025)
+            while self.isVisible() and not is_playing() and not self.closed: _sleep(0.02)
+            while self.open_in_progress: _sleep(0.02)
 
             start = _get_time()
             play_started = start + self.add_to_progress_offset
@@ -711,6 +711,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 vlc_frame = player.get_position() * self.frame_count
                 frame_desync = current_frame - frames_elapsed - frame_started
                 time_desync = frame_desync / self.frame_rate
+                absolute_time_desync = abs(time_desync)
                 vlc_desync = current_frame - vlc_frame
 
                 # if we're greater than 1 second off our expected time or 2 seconds off VLC's time...
@@ -719,7 +720,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 vlc_is_desynced = vlc_frame > 0 and abs(vlc_desync) > vlc_desync_limit
                 if vlc_is_desynced: vlc_desync_counter += 1
                 else: vlc_desync_counter = 0
-                if abs(time_desync) >= 1 or vlc_desync_counter >= vlc_desync_counter_limit:
+                if absolute_time_desync >= 1 or vlc_desync_counter >= vlc_desync_counter_limit:
                     self.ui_delay = self.delay
                     true_frame = (player.get_position() * self.frame_count) + (self.frame_rate * 0.2)
                     logging.info(f'(?) High-precision progress desync: {time_desync:.2f} real seconds, {vlc_desync:.2f} VLC frames. Changing frame from {current_frame} to {true_frame}.')
@@ -734,7 +735,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.frame_override = int(true_frame)
 
                 # otherwise, adjust delay accordingly to stay on track
-                else: self.ui_delay = self.delay * (1 + time_desync)
+                else:
+                    if time_desync >= 0: self.ui_delay = self.delay * (1 + absolute_time_desync)    # we're ahead (need to slow down)
+                    else:                self.ui_delay = self.delay / (1 + absolute_time_desync)    # we're behind (need to speed up)
 
                 # TODO: have setting or debug command line argument that actually logs these every second?
                 #logging.debug(f'VLC\'s frame: {vlc_frame:.1f}, Our frame: {current_frame} (difference of {vlc_desync:.1f} frames, or {vlc_desync / self.frame_rate:.2f} seconds)')
@@ -765,7 +768,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         is_playing = player.is_playing
         is_high_precision = self.dialog_settings.checkHighPrecisionProgress.isChecked
         get_rate = player.get_rate                      # TODO: get_rate() vs. self.playback_speed <- which is faster?
-        set_progress_slider = self.sliderProgress.setValue
         emit_open_cleanup_signal = self._open_cleanup_signal.emit
         _emit_update_progress_signal = self.update_progress_signal.emit
         _sleep = sleep
@@ -799,13 +801,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if self.frame_override != -1:
                         if self.open_queued:
                             emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
-                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
                         else:
                             _emit_update_progress_signal(self.frame_override)
                         self.frame_override = -1        # reset frame_override
-                        self.open_queued = False        # reset open_queued
                         self.add_to_progress_offset = 0.1
                         self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
+                        self.open_queued = False        # reset open_queued
 
                     # no frame override -> increment `get_rate()` frames forward (i.e. at 1x speed -> 1 frame)
                     elif (next_frame := get_ui_frame() + get_rate()) <= self.frame_count:           # do NOT update progress if we're at the end
@@ -850,13 +851,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if self.frame_override != -1:
                         if self.open_queued:
                             emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
-                            set_progress_slider(0)      # risky -> force sliderProgress to 0 to fix very rare timing issue (not thread safe, might "freeze" GUI)
                         else:
                             _emit_update_progress_signal(self.frame_override)
                         self.frame_override = -1        # reset frame_override
-                        self.open_queued = False        # reset open_queued
                         self.add_to_progress_offset = 0.1       # TODO: need a better solution than this for getting around VLC buffering
                         self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
+                        self.open_queued = False        # reset open_queued
 
                     # no frame override -> set slider to VLC's progress if VLC has actually updated
                     else:
@@ -2251,7 +2251,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         if base_mime == 'image':
             self._open_cleanup_signal.emit()        # manually emit _open_cleanup_signal for images/gifs (slider thread will be idle)
-            update_progress(0)                      # since frame_override can't be set, manually update UI to frame 0
 
             # see if this is an animated or static image
             is_gif = extension == 'gif' and self.frame_count_raw > 1
@@ -2530,6 +2529,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             NOTE: Putting all of `open()` in this slot results in a noticable
             delay while opening media. '''
         try:
+            # reset UI to frame 0 while `self._open_cleanup_in_progress` is True
+            update_progress(0)
+
             # NOTE: `sliderProgress.setMaximum` expects the raw count (i.e. 9000 for a 9000-frame...
             #       ...video instead of 8999) and will adjust and enable/disable accordingly
             sliderProgress = self.sliderProgress
@@ -3746,9 +3748,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         #       ...causes the high-precision progress bar to desync by a few frames. not worth it
         if is_pitch_sensitive_audio or not is_high_precision_slider():
             self.frame_override = frame
-        elif offset != 0:
-            self.add_to_progress_offset = 0 if is_paused else offset
-        self.reset_progress_offset = True
+        else:
+            if offset != 0:
+                self.add_to_progress_offset = 0 if is_paused else offset
+            self.reset_progress_offset = True
 
 
     def update_time_spins(self):
