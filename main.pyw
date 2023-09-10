@@ -449,7 +449,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_files = []                  # NOTE: the user-friendly list of recent files
         self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
-        self.extension = '?'
+        self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
+        self.extension_label = '?'
         self.is_gif = False
         self.is_static_image = True
         self.is_bad_with_vlc = False
@@ -2339,38 +2340,107 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.stat = stat = os.stat(file)
             filesize = stat.st_size
             basename = file[file.rfind(sep) + 1:]           # shorthand for os.path.basename NOTE: safe when `file` is provided automatically
+            extension_label = ''
 
         # --- Probing file and determining mime type ---
             # probe file with FFprobe if possible. if file has already been probed, reuse old probe. otherwise, save output to txt file
             # probing calls Popen through a Thread (faster than calling Popen itself or using Thread on a middle-ground function)
-            probe_data = None
             if FFPROBE:                                     # generate probe file's path and check if it already exists
                 probe_file = f'{constants.PROBE_DIR}{sep}{basename}_{stat.st_ctime}_{filesize}.txt'
-                if exists(probe_file):                      # probe file already exists
+                probe_exists = exists(probe_file)
+                if probe_exists:                            # probe file already exists
                     with open(probe_file, 'r') as f:
-                        try: probe_data = json.loads(f.read())
+                        try:
+                            probe_data = json.loads(f.read())
+                            probe_process = None
                         except:
                             f.close()
                             logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
                             try: os.remove(probe_file)
                             except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
-                            Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
-                else: Thread(target=subprocess.Popen, args=(f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',), kwargs=dict(shell=True)).start()
-            else: probe_file = None                         # no FFprobe -> no probe file (even if one exists already)
+                            probe_exists = False
+
+                if not probe_exists:
+                    probe_data = None
+                    probe_process = subprocess.Popen(
+                        f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        text=True
+                    )
+            else:
+                probe_file = None                           # no FFprobe -> no probe file (even if one exists already)
+                probe_data = None
+                probe_process = None
 
             # get mime type of file (if called from cycle, then this part was worked out beforehand)
             if mime is None:
                 try:
                     filetype_data = filetype.match(file)    # 'EXTENSION', 'MIME', 'extension', 'mime'
                     mime, extension = filetype_data.mime.split('/')
+                    extension_label = extension.upper()
                     if mime not in ('video', 'image', 'audio'):
                         log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid mime type).')
                         return -1
+
+                # failed to determine mime type -> our library isn't 100% perfect, so...
+                # ...wait for probe file to be created and attempt to parse it anyway
                 except:
-                    if not exists(file): log_on_statusbar(f'File \'{file}\' does not exist.')
-                    else: log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (failed to determine mime type).')
-                    logging.warning(format_exc())
-                    return -1                               # ^^^ .match() errors out in rare circumstances ^^^
+                    try:
+                        if not FFPROBE:
+                            raise
+                        log_on_statusbar('The current file\'s mime type cannot be determined, checking FFprobe...')
+
+                        # if FFprobe process is still running, wait for it. we could parse its...
+                        # ...output directly, but it doesn't really matter for such a rare situation
+                        if probe_process is not None:
+                            while True:
+                                if probe_process.poll() is not None:
+                                    break
+
+                        # wait for probe file to be created
+                        while not exists(probe_file):
+                            sleep(0.02)
+
+                        # attempt to parse probe file. if successful, this might be actual media
+                        with open(probe_file) as probe:
+                            while probe_data is None:
+                                if probe.read():
+                                    sleep(0.1)
+                                    probe.seek(0)
+                                    probe_data = json.loads(probe.read())
+
+                        # for some asinine reason, FFprobe "recognizes" text as a form of video
+                        if probe_data['format']['format_name'] == 'tty':
+                            raise
+
+                        # if there are no valid video streams, assume it's an audio file
+                        for stream in probe_data['streams']:
+                            if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
+                                mime = 'video'
+                                break
+                        else:
+                            mime = 'audio'                  # for-loop goes to "else" if the loop did not break
+
+                        # check known problem-formats to assign extension
+                        # fallback to current extension if it's at least valid for this mime type
+                        # resort to '???' if we genuinely have no idea what this is
+                        if probe_data['format']['format_name'] == 'mpegts':
+                            extension = 'mp4'
+                            extension_label = 'MPEG-TS'
+                        else:
+                            if mime == 'video': valid_extensions = constants.VIDEO_EXTENSIONS
+                            else: valid_extensions = constants.AUDIO_EXTENSIONS
+                            _, extension = splitext_media(file, valid_extensions, period=False)
+                            if not extension:
+                                extension = 'mp4' if mime == 'video' else 'mp3'
+                                extension_label = '???'
+
+                    except:
+                        if not exists(file): log_on_statusbar(f'File \'{file}\' does not exist.')
+                        else: log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (failed to determine mime type).')
+                        logging.warning(format_exc())
+                        return -1                           # ^^^ .match() errors out in rare circumstances ^^^
 
         # --- Restoring window ---
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
@@ -2432,11 +2502,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.size_label = f'{filesize / 1073741824:.2f}gb'
 
             # extra setup before we absolutely must wait for the media to finish parsing
+            # NOTE: this (and some of the above) is a disaster if we fail to parse, but...
+            #      ...it's very rare for a file to get this far if it can't be parsed
             self.is_paused = False                          # slightly more efficient than using `force_pause`
             self.buttonPause.setIcon(self.icons['pause'])
             self.restarted = False
             self.lineOutput.clearFocus()                    # clear focus from output line so it doesn't interfere with keyboard shortcuts
             self.current_file_is_autoplay = _from_autoplay
+            self.extension_label = extension_label or extension.upper()
 
             # focus window if desired, depending on window state and autoplay/audio settings
             # NOTE: it is very rare but possible for "video" mime types to be mutated into "audio"...
@@ -5943,7 +6016,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             ratio = '0:0'
 
         title = settings.lineWindowTitleFormat.text()
-        replace = {'?base': base, '?name': name, '?parent': parent, '?path': path, '?ext': self.extension.upper(), '?mime': mime,
+        replace = {'?base': base, '?name': name, '?parent': parent, '?path': path, '?ext': self.extension_label, '?mime': mime,
                    '?paused': paused, '?fps': fps, '?duration': duration, '?resolution': resolution, '?ratio': ratio,
                    '?volume': str(get_volume_slider()), '?speed': f'{player.get_rate():.2f}', '?size': self.size_label}
         for var, val in replace.items(): title = title.replace(var, val)
