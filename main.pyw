@@ -284,11 +284,14 @@ def splitext_media(
     valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
     invalid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
     *,
-    strict: bool = True
+    strict: bool = True,
+    period: bool = True
 ) -> tuple:
-    ''' Split the extension from a `path`, as long as the extension is within a
-        list of `valid_extensions`. If not, the extension is returned empty. If
-        `strict` is False, an unknown extension can still be returned intact if:
+    ''' Split the extension from a `path` if the extension is within a
+        list of `valid_extensions`. If not, the basename is returned with an
+        empty extension. The extension will be lowercase. If `period` is True,
+        the preceding period will be included (i.e. ".mp4"). If `strict` is
+        False, an unknown extension can still be returned intact if:
 
         1. It is not within a list of `invalid_extensions`
         2. It is 6 characters or shorter
@@ -298,7 +301,7 @@ def splitext_media(
         NOTE: `strict` must be provided as a keyword argument.
 
         NOTE: `valid_extensions` is evaluated first. `invalid_extensions` should
-        rarely be changed, but may be passed as None/False/'' if desired. '''
+        rarely be changed, but may be passed as None/False/"" if desired. '''
 
     base, ext = os.path.splitext(path)
     ext = ext.lower()
@@ -322,7 +325,8 @@ def splitext_media(
         if not has_letters:
             return base, ''
 
-    return base, ext
+    if period: return base, ext
+    return base, ext[1:]
 
 
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
