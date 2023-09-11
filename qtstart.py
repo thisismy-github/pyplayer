@@ -33,6 +33,22 @@ if args.exit: sys.exit(100)
 # ---------------------
 # Logging
 # ---------------------
+if os.path.exists(constants.LOG_PATH):                  # save existing log and delete outdated logs
+    sep = os.sep
+    log_path = constants.LOG_PATH
+    temp_dir = f'{constants.TEMP_DIR}{sep}logs'
+    prefix, suffix = os.path.splitext(os.path.basename(log_path))
+    p_len = len(prefix)
+    s_len = len(suffix)
+    if os.path.isdir(temp_dir):
+        logs = [f for f in os.listdir(temp_dir) if f[:p_len] == prefix and f[-s_len:] == suffix]
+        for outdated_log in logs[:-9]:
+            try: os.remove(f'{temp_dir}{sep}{outdated_log}')
+            except: pass
+    new_name = f'{prefix}.{os.stat(log_path).st_mtime_ns}{suffix}'
+    try: os.renames(log_path, f'{temp_dir}{sep}{new_name}')
+    except: pass
+
 file_handler = logging.FileHandler(constants.LOG_PATH, 'w', delay=False)
 if not args.debug: file_handler.setLevel(logging.INFO)
 logging.basicConfig(
