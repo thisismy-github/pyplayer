@@ -141,8 +141,9 @@ def after_show_setup(self: QtW.QMainWindow):
     if recent_files_count <= 25:
         recent_files = self.recent_files
         append = recent_files.append
+        abspath = os.path.abspath
         for file in files:
-            if os.path.isfile(file) and file not in recent_files: append(file)
+            if os.path.isfile(file) and file not in recent_files: append(abspath(file))
             if len(recent_files) == recent_files_count: break
     else: self.recent_files += files[-recent_files_count:]
 
