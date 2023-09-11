@@ -395,6 +395,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             'pause':             QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}pause.png'),
             'stop':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}stop.png'),
             'restart':           QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}restart.png'),
+            'x':                 QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}x.png'),
             'loop':              QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}loop.png'),
             'autoplay':          QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay.png'),
             'autoplay_backward': QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}autoplay_backward.png'),
@@ -2728,7 +2729,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # ensure media still exists, otherwise warn user
             if not exists(video):
                 log_on_statusbar('Current media no longer exists. You likely renamed, moved, or deleted it from outside PyPlayer.')
-                self.stop(icon='stop')
+                self.stop(icon='x')                 # use X-icon as visual clue that something is preventing playback
                 return -1
 
             # HACK: skip this restart if needed and restore actual progress
@@ -2863,7 +2864,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return paused
 
 
-    def stop(self, *args, icon: str = 'play'):      # *args to capture unused signal args
+    def stop(self, *args, icon: str = 'stop'):      # *args to capture unused signal args
         ''' A more robust way of stopping - stop the player while also force-
             pausing. `icon` specifies what icon to use on the pause button. '''
         player.stop()
@@ -5992,9 +5993,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             base, _ = splitext_media(name, strict=False)        # don't actually need ext, just the accurate basename
 
             mime = self.mime_type.capitalize()                  # capitalize first letter of mime type
-            paused = '■' if get_ui_frame() == self.frame_count else '▷' if not self.is_paused else '𝗜𝗜'   # ▶
             h, m, s, _ = get_hms(self.duration_rounded)         # no milliseconds in window title
             duration = f'{m}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
+
+            # set pause icon
+            if player.get_state() == State.Stopped or get_ui_frame() == self.frame_count:
+                paused = '■'
+            elif self.is_paused:
+                paused = '𝗜𝗜'
+            else:
+                paused = '▷'                                    # ▶ ↻
+
             if mime != 'Audio':                                 # remember, we just capitalized this
                 fps = str(self.frame_rate_rounded)
                 resolution = f'{self.vwidth:.0f}x{self.vheight:.0f}'
