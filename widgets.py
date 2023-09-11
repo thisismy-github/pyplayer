@@ -386,9 +386,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         lfp[3] = factor_point(selection[3])
 
         # set crop info panel's strings
-        size_string = f'{lfp[1].x() - lfp[0].x():.0f}x{lfp[2].y() - lfp[0].y():.0f}'
-        self.setToolTip(size_string)
-        gui.labelCropSize.setText(size_string)
+        gui.labelCropSize.setText(f'{lfp[1].x() - lfp[0].x():.0f}x{lfp[2].y() - lfp[0].y():.0f}')
         gui.labelCropTop.setText(f'T: {lfp[0].y():.0f}')
         gui.labelCropLeft.setText(f'L: {lfp[0].x():.0f}')
         gui.labelCropRight.setText(f'R: {lfp[3].x():.0f}')

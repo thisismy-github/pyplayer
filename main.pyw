@@ -2166,7 +2166,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 self.vwidth = 16
                                 self.vheight = 9
                             duration = tag['#length'].value
-                        frame_count = round(duration * 20)
                         # TODO worth saving the cover art to a temp file for future use?
                         #image_player.art.save(os.path.join(constants.TEMP_DIR, f'{os.path.basename(file)}_{getctime(file)}.png'))
                     except:                                         # this is to handle things that wrongly report as audio, like .ogv files
@@ -2182,10 +2181,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                         logging.error('Media probe did not finish after 5 seconds.')
                                         return -1
                         return self.parse_media_file(file, probe_file, mime='video', extension=extension, data=data)
+                frame_count_raw = round(duration * 20)
                 self.duration = duration
                 self.duration_rounded = round(duration, 2)
-                self.frame_count_raw = frame_count
-                self.frame_count = max(1, frame_count - 1)
+                self.frame_count_raw = frame_count_raw
+                self.frame_count = max(1, frame_count_raw - 1)
                 self.frame_rate = 20                # TODO we only set to 20 to not deal with laggy hover-fades
                 self.frame_rate_rounded = 20
                 self.delay = 0.05
@@ -5822,7 +5822,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             view.setVisible(False)
             view.setMouseTracking(False)
         image_player.update()                                                       # repaint gifPlayer to fix background
-        self.vlc.setToolTip('')                                                     # clear crop-size tooltip
         self.vlc.dragging = None                                                    # clear crop-drag
         self.vlc.panning = False                                                    # clear crop-pan
         self.frameCropInfo.setVisible(False)                                        # hide crop info panel
