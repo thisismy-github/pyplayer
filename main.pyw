@@ -3582,8 +3582,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if op_resize is not None:       # audio -> https://stackoverflow.com/questions/25635941/ffmpeg-modify-audio-length-size-stretch-or-shrink
                 log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (Note: this should be a VERY quick operation)' if mime == 'audio' else ''
                 log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
-                width, height = op_resize   # for audio, width is the percentage and height is None
+                width, height = op_resize   # for audio, width is a value from 0-1 (as a string) and height is None
                 if mime == 'audio':
+                    self.set_save_progress_max_signal.emit((duration / float(width)) * frame_rate)
                     intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
                 else:   # Pillow can't handle 0/-1 as a dimension -> scale right away
                     vwidth, vheight = scale(vwidth, vheight, width, height)         # update dimensions
@@ -3971,6 +3972,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         frame_rate = max(1, frame_rate_hint or self.frame_rate)             # used when ffmpeg provides `out_time_ms` instead of `frame`
         use_backup_lines = True
         lines_read = 0
+        last_frame = 0
         while True:
             if process.poll() is not None:
                 break
@@ -3988,13 +3990,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # normal videos will have a "frame" progress string
                 if progress_text[:6] == 'frame=':
-                    use_backup_lines = False                                # if we're using frames, DON'T use "out_time_ms" (less accurate)
                     max_frames = self.save_progress_bar.maximum()           # this might change late, so always check it
                     frame = min(int(progress_text[6:].strip()), max_frames)
-                    emit_progress_value(frame)
-                    emit_progress_text(active_text)                         # reset format in case we changed it temporarily
-                    if use_taskbar_progress:
-                        self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                    if last_frame == frame and frame == 1:                  # specific edits will constantly spit out "frame=1"...
+                        use_backup_lines = True                             # ...for these scenarios, we should ignore frame output
+                    else:
+                        use_backup_lines = False                            # if we ARE using frames, don't use "out_time_ms" (less accurate)
+                        emit_progress_value(frame)
+                        emit_progress_text(active_text)                     # reset format in case we changed it temporarily
+                        if use_taskbar_progress:
+                            self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                    last_frame = frame
                     break
 
                 # ffmpeg usually uses "out_time_ms" for audio files
