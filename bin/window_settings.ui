@@ -75,7 +75,7 @@
         <x>0</x>
         <y>0</y>
         <width>344</width>
-        <height>2713</height>
+        <height>2691</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1726,18 +1726,6 @@ have the &quot;media opened&quot; marquee enabled below.</string>
                </widget>
               </item>
               <item row="2" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkAutoplaySameMime">
-                <property name="toolTip">
-                 <string>If checked, Autoplay will only play media with
-the same mime type (video, audio, or image)
-as the file you started with.</string>
-                </property>
-                <property name="text">
-                 <string>Ignore other mime types while Autoplay is on</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0" colspan="2">
                <widget class="QCheckBox" name="checkAutoplayAddToRecents">
                 <property name="toolTip">
                  <string>If checked, Autoplay (with shuffle mode disabled) will
@@ -1751,7 +1739,7 @@ add each file played to the recent files list like normal.</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="0" colspan="2">
+              <item row="3" column="0" colspan="2">
                <widget class="QCheckBox" name="checkAutoplayShuffleAddToRecents">
                 <property name="toolTip">
                  <string>If checked, Autoplay (with shuffle mode enabled) will
@@ -2607,24 +2595,24 @@ anything.</string>
                     </widget>
                    </item>
                    <item row="1" column="0">
-                    <widget class="QLabel" name="label_72">
+                    <widget class="QLabel" name="label_75">
                      <property name="toolTip">
                       <string>The action to perform when clicking the
-snapshot toolbar button while holding Shift.</string>
+snapshot toolbar button while holding Ctrl.</string>
                      </property>
                      <property name="text">
-                      <string>Shift</string>
+                      <string>Ctrl</string>
                      </property>
                     </widget>
                    </item>
                    <item row="1" column="1">
-                    <widget class="QComboBox" name="comboSnapshotShift">
+                    <widget class="QComboBox" name="comboSnapshotCtrl">
                      <property name="toolTip">
                       <string>The action to perform when clicking the
-snapshot toolbar button while holding Shift.</string>
+snapshot toolbar button while holding Ctrl.</string>
                      </property>
                      <property name="currentIndex">
-                      <number>5</number>
+                      <number>1</number>
                      </property>
                      <item>
                       <property name="text">
@@ -2689,24 +2677,24 @@ snapshot toolbar button while holding Shift.</string>
                     </widget>
                    </item>
                    <item row="2" column="0">
-                    <widget class="QLabel" name="label_75">
+                    <widget class="QLabel" name="label_72">
                      <property name="toolTip">
                       <string>The action to perform when clicking the
-snapshot toolbar button while holding Ctrl.</string>
+snapshot toolbar button while holding Shift.</string>
                      </property>
                      <property name="text">
-                      <string>Ctrl</string>
+                      <string>Shift</string>
                      </property>
                     </widget>
                    </item>
                    <item row="2" column="1">
-                    <widget class="QComboBox" name="comboSnapshotCtrl">
+                    <widget class="QComboBox" name="comboSnapshotShift">
                      <property name="toolTip">
                       <string>The action to perform when clicking the
-snapshot toolbar button while holding Ctrl.</string>
+snapshot toolbar button while holding Shift.</string>
                      </property>
                      <property name="currentIndex">
-                      <number>1</number>
+                      <number>5</number>
                      </property>
                      <item>
                       <property name="text">
@@ -4883,6 +4871,128 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>Stop player</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_44">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="stop">
+                 <property name="keySequence">
+                  <string>Shift+Space</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="stop_">
+                 <property name="keySequence">
+                  <string>Shift+S</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="0">
+              <widget class="QSpinBox" name="spinNavigation1">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> second</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_43">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plus1">
+                 <property name="keySequence">
+                  <string>Shift+Right</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="plus1_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="labelNavigation1">
+               <property name="text">
+                <string>-1 second</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_42">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minus1">
+                 <property name="keySequence">
+                  <string>Shift+Left</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="minus1_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="4" column="0">
+              <widget class="QSpinBox" name="spinNavigation2">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> seconds</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+               <property name="value">
+                <number>5</number>
+               </property>
+              </widget>
+             </item>
              <item row="4" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_10">
                <property name="spacing">
@@ -4924,6 +5034,34 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
+             <item row="6" column="0">
+              <widget class="QSpinBox" name="spinNavigation3">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> seconds</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+               <property name="value">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
              <item row="6" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_12">
                <property name="spacing">
@@ -4964,6 +5102,34 @@ simply be replayed as it is the most recent file.</string>
                 <widget class="QKeySequenceFlexibleEdit" name="minus3_"/>
                </item>
               </layout>
+             </item>
+             <item row="8" column="0">
+              <widget class="QSpinBox" name="spinNavigation4">
+               <property name="minimumSize">
+                <size>
+                 <width>90</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="suffix">
+                <string> seconds</string>
+               </property>
+               <property name="prefix">
+                <string>+</string>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>600</number>
+               </property>
+               <property name="value">
+                <number>30</number>
+               </property>
+              </widget>
              </item>
              <item row="8" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_16">
@@ -5161,7 +5327,7 @@ simply be replayed as it is the most recent file.</string>
              <item row="16" column="0">
               <widget class="QLabel" name="label_22">
                <property name="text">
-                <string>+0.5 volume boost</string>
+                <string>+0.5x volume boost</string>
                </property>
               </widget>
              </item>
@@ -5185,7 +5351,7 @@ simply be replayed as it is the most recent file.</string>
              <item row="17" column="0">
               <widget class="QLabel" name="label_23">
                <property name="text">
-                <string>-0.5 volume boost</string>
+                <string>-0.5x volume boost</string>
                </property>
               </widget>
              </item>
@@ -5254,6 +5420,30 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
+             <item row="20" column="0">
+              <widget class="QLabel" name="label_73">
+               <property name="text">
+                <string>Maximize</string>
+               </property>
+              </widget>
+             </item>
+             <item row="20" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_46">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="maximize">
+                 <property name="keySequence">
+                  <string>Shift+F</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="maximize_"/>
+               </item>
+              </layout>
+             </item>
              <item row="21" column="0">
               <widget class="QLabel" name="label_24">
                <property name="text">
@@ -5305,7 +5495,7 @@ simply be replayed as it is the most recent file.</string>
              <item row="23" column="0">
               <widget class="QLabel" name="label_20">
                <property name="text">
-                <string>Next media</string>
+                <string>Next file (any)</string>
                </property>
               </widget>
              </item>
@@ -5327,13 +5517,41 @@ simply be replayed as it is the most recent file.</string>
               </layout>
              </item>
              <item row="24" column="0">
-              <widget class="QLabel" name="label_21">
+              <widget class="QLabel" name="label_78">
+               <property name="toolTip">
+                <string>Play the next valid media file in this folder with the same
+mime type as the current media (video, audio, or image).</string>
+               </property>
                <property name="text">
-                <string>Previous media</string>
+                <string>Next file (mime)</string>
                </property>
               </widget>
              </item>
              <item row="24" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_51">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="nextmediamime">
+                 <property name="keySequence">
+                  <string>Ctrl+Shift+Right</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="nextmediamime_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="25" column="0">
+              <widget class="QLabel" name="label_21">
+               <property name="text">
+                <string>Previous file (any)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="25" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_25">
                <property name="spacing">
                 <number>4</number>
@@ -5350,14 +5568,97 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="25" column="0">
-              <widget class="QLabel" name="label_59">
+             <item row="26" column="0">
+              <widget class="QLabel" name="label_80">
+               <property name="toolTip">
+                <string>Play the previous valid media file in this folder with the same
+mime type as the current media (video, audio, or image).</string>
+               </property>
                <property name="text">
-                <string>Forward (recent files)</string>
+                <string>Previous file (mime)</string>
                </property>
               </widget>
              </item>
-             <item row="25" column="1">
+             <item row="26" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_50">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="previousmediamime">
+                 <property name="keySequence">
+                  <string>Ctrl+Shift+Left</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="previousmediamime_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="27" column="0">
+              <widget class="QLabel" name="label_74">
+               <property name="toolTip">
+                <string/>
+               </property>
+               <property name="text">
+                <string>Random file (any)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="27" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_48">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="randommedia">
+                 <property name="keySequence">
+                  <string>Ctrl+R</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="randommedia_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="28" column="0">
+              <widget class="QLabel" name="label_77">
+               <property name="toolTip">
+                <string>Play a random media file in this folder with the same
+mime type as the current media (video, audio, or image).</string>
+               </property>
+               <property name="text">
+                <string>Random file (mime)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="28" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_49">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="randommediamime">
+                 <property name="keySequence">
+                  <string>Ctrl+Shift+R</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="randommediamime_"/>
+               </item>
+              </layout>
+             </item>
+             <item row="29" column="0">
+              <widget class="QLabel" name="label_59">
+               <property name="text">
+                <string>Newer recent file</string>
+               </property>
+              </widget>
+             </item>
+             <item row="29" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_30">
                <property name="spacing">
                 <number>4</number>
@@ -5374,14 +5675,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="26" column="0">
+             <item row="30" column="0">
               <widget class="QLabel" name="label_60">
                <property name="text">
-                <string>Back (recent files)</string>
+                <string>Older recent file</string>
                </property>
               </widget>
              </item>
-             <item row="26" column="1">
+             <item row="30" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_38">
                <property name="spacing">
                 <number>4</number>
@@ -5398,14 +5699,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="27" column="0">
+             <item row="31" column="0">
               <widget class="QLabel" name="label_25">
                <property name="text">
                 <string>+50ms subtitle delay</string>
                </property>
               </widget>
              </item>
-             <item row="27" column="1">
+             <item row="31" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_29">
                <property name="spacing">
                 <number>4</number>
@@ -5426,14 +5727,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="28" column="0">
+             <item row="32" column="0">
               <widget class="QLabel" name="label_26">
                <property name="text">
                 <string>-50ms subtitle delay</string>
                </property>
               </widget>
              </item>
-             <item row="28" column="1">
+             <item row="32" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_31">
                <property name="spacing">
                 <number>4</number>
@@ -5454,14 +5755,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="29" column="0">
+             <item row="33" column="0">
               <widget class="QLabel" name="label_27">
                <property name="text">
                 <string>Cycle subtitle tracks</string>
                </property>
               </widget>
              </item>
-             <item row="29" column="1">
+             <item row="33" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_32">
                <property name="spacing">
                 <number>4</number>
@@ -5482,14 +5783,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="30" column="0">
+             <item row="34" column="0">
               <widget class="QLabel" name="label_66">
                <property name="text">
                 <string>Cycle audio tracks</string>
                </property>
               </widget>
              </item>
-             <item row="30" column="1">
+             <item row="34" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_39">
                <property name="spacing">
                 <number>4</number>
@@ -5510,14 +5811,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="31" column="0">
+             <item row="35" column="0">
               <widget class="QLabel" name="label_67">
                <property name="text">
                 <string>Cycle video tracks</string>
                </property>
               </widget>
              </item>
-             <item row="31" column="1">
+             <item row="35" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_40">
                <property name="spacing">
                 <number>4</number>
@@ -5538,14 +5839,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="32" column="0">
+             <item row="36" column="0">
               <widget class="QLabel" name="label_28">
                <property name="text">
                 <string>Mark for deletion</string>
                </property>
               </widget>
              </item>
-             <item row="32" column="1">
+             <item row="36" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_33">
                <property name="spacing">
                 <number>4</number>
@@ -5562,14 +5863,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="33" column="0">
+             <item row="37" column="0">
               <widget class="QLabel" name="label_29">
                <property name="text">
                 <string>Delete immediately</string>
                </property>
               </widget>
              </item>
-             <item row="33" column="1">
+             <item row="37" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_34">
                <property name="spacing">
                 <number>4</number>
@@ -5586,14 +5887,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="34" column="0">
+             <item row="38" column="0">
               <widget class="QLabel" name="label_30">
                <property name="text">
                 <string>Snapshot</string>
                </property>
               </widget>
              </item>
-             <item row="34" column="1">
+             <item row="38" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_35">
                <property name="spacing">
                 <number>4</number>
@@ -5610,14 +5911,14 @@ simply be replayed as it is the most recent file.</string>
                </item>
               </layout>
              </item>
-             <item row="35" column="0">
+             <item row="39" column="0">
               <widget class="QLabel" name="label_31">
                <property name="text">
                 <string>Quick snapshot</string>
                </property>
               </widget>
              </item>
-             <item row="35" column="1">
+             <item row="39" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_36">
                <property name="spacing">
                 <number>4</number>
@@ -5631,208 +5932,6 @@ simply be replayed as it is the most recent file.</string>
                </item>
                <item>
                 <widget class="QKeySequenceFlexibleEdit" name="quicksnapshot_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="3" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_42">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minus1">
-                 <property name="keySequence">
-                  <string>Shift+Left</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="minus1_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="labelNavigation1">
-               <property name="text">
-                <string>-1 second</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_43">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plus1">
-                 <property name="keySequence">
-                  <string>Shift+Right</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="plus1_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="2" column="0">
-              <widget class="QSpinBox" name="spinNavigation1">
-               <property name="minimumSize">
-                <size>
-                 <width>90</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="suffix">
-                <string> second</string>
-               </property>
-               <property name="prefix">
-                <string>+</string>
-               </property>
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>600</number>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QSpinBox" name="spinNavigation2">
-               <property name="minimumSize">
-                <size>
-                 <width>90</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="suffix">
-                <string> seconds</string>
-               </property>
-               <property name="prefix">
-                <string>+</string>
-               </property>
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>600</number>
-               </property>
-               <property name="value">
-                <number>5</number>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="0">
-              <widget class="QSpinBox" name="spinNavigation3">
-               <property name="minimumSize">
-                <size>
-                 <width>90</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="suffix">
-                <string> seconds</string>
-               </property>
-               <property name="prefix">
-                <string>+</string>
-               </property>
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>600</number>
-               </property>
-               <property name="value">
-                <number>10</number>
-               </property>
-              </widget>
-             </item>
-             <item row="8" column="0">
-              <widget class="QSpinBox" name="spinNavigation4">
-               <property name="minimumSize">
-                <size>
-                 <width>90</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="suffix">
-                <string> seconds</string>
-               </property>
-               <property name="prefix">
-                <string>+</string>
-               </property>
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>600</number>
-               </property>
-               <property name="value">
-                <number>30</number>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_8">
-               <property name="text">
-                <string>Stop player</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_44">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="stop">
-                 <property name="keySequence">
-                  <string>Shift+Space</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="stop_">
-                 <property name="keySequence">
-                  <string>Shift+S</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="20" column="0">
-              <widget class="QLabel" name="label_73">
-               <property name="text">
-                <string>Maximize</string>
-               </property>
-              </widget>
-             </item>
-             <item row="20" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_46">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="maximize">
-                 <property name="keySequence">
-                  <string>Shift+F</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="maximize_"/>
                </item>
               </layout>
              </item>

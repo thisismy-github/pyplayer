@@ -133,12 +133,17 @@
      <property name="title">
       <string>&amp;Autoplay</string>
      </property>
+     <property name="toolTipsVisible">
+      <bool>true</bool>
+     </property>
      <addaction name="actionAutoplay"/>
      <addaction name="actionAutoplayShuffle"/>
      <addaction name="separator"/>
      <addaction name="actionAutoplayDirectionForwards"/>
      <addaction name="actionAutoplayDirectionBackwards"/>
      <addaction name="actionAutoplayDirectionDynamic"/>
+     <addaction name="separator"/>
+     <addaction name="actionAutoplaySameMime"/>
     </widget>
     <widget class="QMenu" name="menuDelete">
      <property name="title">
@@ -863,7 +868,14 @@ automatically play upon completion of the current media.</string>
                <enum>Qt::NoFocus</enum>
               </property>
               <property name="toolTip">
-               <string>Plays the previous valid media file in the current folder.</string>
+               <string>Plays the previous media file in the current folder.
+
+Click: Plays previous valid file.
+Ctrl + click: Plays a random file.
+Shift + click: Plays previous valid file that matches the current mime type (video, audio, or image).
+Alt + click: Plays a random file that matches the current mime type (video, audio, or image).
+
+Right-click for more options.</string>
               </property>
               <property name="text">
                <string notr="true"/>
@@ -893,7 +905,14 @@ automatically play upon completion of the current media.</string>
                <enum>Qt::NoFocus</enum>
               </property>
               <property name="toolTip">
-               <string>Plays the next valid media file in the current folder.</string>
+               <string>Plays the next media file in the current folder.
+
+Click: Plays next valid file.
+Ctrl + click: Plays a random file.
+Shift + click: Plays next valid file that matches the current mime type (video, audio, or image).
+Alt + click: Plays a random file that matches the current mime type (video, audio, or image).
+
+Right-click for more options.</string>
               </property>
               <property name="text">
                <string notr="true"/>
@@ -1811,6 +1830,18 @@ for deletion, without actually deleting them.</string>
   <action name="actionDeleteProbeFile">
    <property name="text">
     <string>Delete probe file</string>
+   </property>
+  </action>
+  <action name="actionAutoplaySameMime">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Same mime only</string>
+   </property>
+   <property name="toolTip">
+    <string>If checked, Autoplay will only play media with the same mime
+type (video, audio, or image) as the file you started with.</string>
    </property>
   </action>
  </widget>

@@ -251,7 +251,11 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'crop':               self.actionCrop.trigger,
         'loop':               toggle_loop,
         'nextmedia':          self.cycle_media,
+        'nextmediamime':      lambda: self.cycle_media(valid_mime_types=(self.mime_type,)),
         'previousmedia':      lambda: self.cycle_media(next=False),
+        'previousmediamime':  lambda: self.cycle_media(next=False, valid_mime_types=(self.mime_type,)),
+        'randommedia':        self.shuffle_media,
+        'randommediamime':    lambda: self.shuffle_media(valid_mime_types=(self.mime_type,)),
         'forward':            lambda: self.cycle_recent_files(forward=True),
         'back':               lambda: self.cycle_recent_files(forward=False),
         'plussubtitledelay':  increment_subtitle_delay,
@@ -372,8 +376,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
 
     self.buttonTrimStart.toggled.connect(self.set_trim_start)
     self.buttonTrimEnd.toggled.connect(self.set_trim_end)
-    self.buttonNext.clicked.connect(self.cycle_media)
-    self.buttonPrevious.clicked.connect(lambda: self.cycle_media(next=False))
+    self.buttonNext.clicked.connect(self.handle_cycle_buttons)
+    self.buttonPrevious.clicked.connect(lambda: self.handle_cycle_buttons(next=False))
     self.buttonExploreMediaPath.clicked.connect(self.actionExploreMediaPath.trigger)
     self.buttonMarkDeleted.clicked.connect(self.actionMarkDeleted.trigger)
     self.buttonSnapshot.clicked.connect(self.handle_snapshot_button)

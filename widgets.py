@@ -660,16 +660,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         if os.path.isdir(files[0]):
             mod = event.keyboardModifiers()
-            if mod != self.dragdrop_last_modifiers:
-                if mod & Qt.ControlModifier:            # ctrl (play first file in folder without autoplay)
-                    msg = 'Drop to select first media file in folder without autoplay'
-                elif mod & Qt.AltModifier:              # alt (use shuffle mode to play video but disable autoplay)
-                    msg = 'Drop to select random media from folder without autoplay'
-                elif mod & Qt.ShiftModifier:            # shift (play folder with autoplay in shuffle mode)
-                    msg = 'Drop to autoplay folder contents with'
-                    if gui.actionAutoplayShuffle.isChecked(): msg += 'out shuffle mode'
-                    else: msg += ' shuffle mode'
-                else:                                   # no modifiers (play first file in folder with autoplay)
+            if mod != self.dragdrop_last_modifiers:     # VVV alt OR ctrl+shift (play random file without autoplay)
+                if mod & Qt.AltModifier or (mod & Qt.ControlModifier and mod & Qt.ShiftModifier):
+                    msg = 'Drop to select random media from folder (without shuffle mode)'
+                elif mod & Qt.ControlModifier:          # ctrl only (play random file with autoplay (in shuffle mode))
+                    msg = 'Drop to select random media from folder (with shuffle mode)'
+                elif mod & Qt.ShiftModifier:            # shift only (play first file without autoplay)
+                    msg = 'Drop to select first media file in folder (without autoplay)'
+                else:                                   # no modifiers (play first file with autoplay)
                     msg = 'Drop to autoplay folder contents, or hold ctrl/alt/shift for more options'
             gui.statusbar.showMessage(msg, 0)
             self.show_text(msg, timeout=0, position=0)

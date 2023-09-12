@@ -536,6 +536,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.buttonAutoplay.contextMenuEvent = self.buttonAutoplayContextMenuEvent
+        self.buttonNext.contextMenuEvent = self.cycleButtonContextMenuEvent
+        self.buttonPrevious.contextMenuEvent = self.cycleButtonContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.frameVolume.contextMenuEvent = self.frameVolumeContextMenuEvent
@@ -1375,7 +1377,36 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def buttonAutoplayContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the autoplay button. '''
         context = QtW.QMenu(self)
+        context.setToolTipsVisible(True)
         context.addActions(self.menuAutoplay.actions()[1:])
+        context.exec(event.globalPos())
+
+
+    def cycleButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles the context (right-click) menu for the cycle buttons. '''
+        mime = self.mime_type
+
+        next_any_action = QtW.QAction('Open next file')
+        next_any_action.triggered.connect(self.cycle_media)
+        next_mime_action = QtW.QAction(f'Open next {mime} file')
+        next_mime_action.triggered.connect(lambda: self.cycle_media(valid_mime_types=(mime,)))
+        prev_any_action = QtW.QAction('Open previous file')
+        prev_any_action.triggered.connect(lambda: self.cycle_media(next=False))
+        prev_mime_action = QtW.QAction(f'Open previous {mime} file')
+        prev_mime_action.triggered.connect(lambda: self.cycle_media(next=False, valid_mime_types=(mime,)))
+        random_any_action = QtW.QAction('Open random file')
+        random_any_action.triggered.connect(self.shuffle_media)
+        random_mime_action = QtW.QAction(f'Open random {mime} file')
+        random_mime_action.triggered.connect(lambda: self.shuffle_media(valid_mime_types=(mime,)))
+
+        context = QtW.QMenu(self)
+        context.addAction(random_any_action)
+        context.addAction(next_any_action)
+        context.addAction(prev_any_action)
+        context.addSeparator()
+        context.addAction(random_mime_action)
+        context.addAction(next_mime_action)
+        context.addAction(prev_mime_action)
         context.exec(event.globalPos())
 
 
@@ -1572,8 +1603,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # -------------------------------
     # >>> BASIC VIDEO OPERATIONS <<<
     # -------------------------------
-    def shuffle_media(self, folder: str = None) -> str:
-        if folder is None:                                  # no folder provided, shuffle within current folder
+    def shuffle_media(
+        self,
+        folder: str = None,
+        autoplay: bool = False,                     # NOTE: this doesn't change the current autoplay state
+        valid_mime_types: tuple = None
+    ) -> str:
+        if folder is None:                          # no folder provided, shuffle within current folder
+            if not self.video:                      # return if no folder provided and no media playing
+                return show_on_statusbar('No media is playing.', 10000)
             base_file = self.video
             current_dir, current_basename = os.path.split(base_file)
         else:
@@ -1595,11 +1633,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ignore = self.shuffle_ignore_unique
         ignore_order = self.shuffle_ignore_order
 
-        # define valid mime types (no autoplay for images or gifs (yet?))
-        if settings.checkAutoplaySameMime.isChecked() and self.mime_type != 'image':
-            valid_mime_types = (self.mime_type,)
-        else:
-            valid_mime_types = ('video', 'audio')
+        # determine valid mime types. any mime goes if we're shuffling...
+        # ...manually, but no autoplay-shuffling for images/gifs (yet?)
+        if not valid_mime_types:
+            if autoplay:
+                same_mime = self.actionAutoplaySameMime.isChecked()
+                if same_mime: valid_mime_types = (self.mime_type,)
+                else:         valid_mime_types = ('video', 'audio')
+            else:             valid_mime_types = ('video', 'audio', 'image')
 
         # if we've switched folders, update shuffle folder and clear ignore list
         if self.shuffle_folder != current_dir:
@@ -1637,7 +1678,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if file == locked_video_path: continue
 
             # if file gets opened, check the size of our ignore list and return the file
-            if open(file, _from_cycle=True, _from_autoplay=True,
+            if open(file, _from_cycle=True, _from_autoplay=autoplay,
                     update_recent_list=update_recent_list, mime=mime, extension=extension) != -1:
                 logging.info(f'Shuffled to new file after {get_time() - start:.3f} seconds.')
                 max_ignore_length = settings.spinAutoplayMaxFiles.value()
@@ -1649,18 +1690,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.shuffle_ignore_order = ignore_order[difference:]                   # don't assign to alias here!!
                 return file
 
-        # nothing played - unmark autoplay flag
-        self.current_file_is_autoplay = False
+        # nothing played - unmark autoplay flag if we were trying to autoplay
+        if autoplay:
+            self.current_file_is_autoplay = False
 
         # ignore list has multiple files - we ran out of files to play. clear it and shuffle again
         if len(ignore) > 1:
             logging.info('All files played. Clearing shuffle ignore list and reshuffling...')
             ignore.clear()
             ignore_order.clear()
-            return self.shuffle_media(folder)
+            return self.shuffle_media(
+                folder=folder,
+                autoplay=autoplay,
+                valid_mime_types=valid_mime_types
+            )
 
         # nothing could be or has been played - show appropriate log message on statusbar
-        return log_on_statusbar('This is the only playable video in this folder.')
+        if len(valid_mime_types) == 3: log_on_statusbar('This is the only playable media file in this folder.')
+        else: log_on_statusbar(f'This is the only playable {"/".join(valid_mime_types)} file in this folder.')
 
 
     def cycle_media(
@@ -1670,6 +1717,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ignore: tuple = tuple(),
         update_recent_list: bool = True,
         autoplay: bool = False,
+        valid_mime_types: tuple = None,
         index_override: int = 0
     ) -> str:                                       # *args to capture unused signal args
         ''' Cycles through the current media's folder and looks for the `next`
@@ -1733,10 +1781,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         locked_video_path = self.locked_video
         open = self.open
 
-        if autoplay:                                # no autoplay for images or gifs (yet?)
-            if settings.checkAutoplaySameMime.isChecked(): valid_mime_types = (self.mime_type,)
-            else: valid_mime_types = ('video', 'audio')
-        else:     valid_mime_types = ('video', 'image', 'audio')
+        # determine valid mime types. any mime goes if we're cycling...
+        # ...manually, but no autoplay-cycling for images/gifs (yet?)
+        if not valid_mime_types:
+            if autoplay:
+                same_mime = self.actionAutoplaySameMime.isChecked()
+                if same_mime: valid_mime_types = (self.mime_type,)
+                else:         valid_mime_types = ('video', 'audio')
+            else:             valid_mime_types = ('video', 'audio', 'image')
 
         skipped_old_video = False
         start = get_time()
@@ -1773,10 +1825,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return file
 
         # nothing played - unmark autoplay flag and show appropriate log message on statusbar
-        if autoplay: self.current_file_is_autoplay = False
-        if not skipped_old_video: log = 'This is the only playable media file in this folder.'
-        else: log = 'This and the file you just edited are the only playable media files in this folder.'
-        return log_on_statusbar(log)
+        if autoplay:
+            self.current_file_is_autoplay = False
+        if not skipped_old_video:
+            if len(valid_mime_types) == 3: log_on_statusbar('This is the only playable media file in this folder.')
+            else: log_on_statusbar(f'This is the only playable {"/".join(valid_mime_types)} file in this folder.')
+        else: log_on_statusbar('This and the file you just edited are the only playable media files in this folder.')
 
 
     def cycle_recent_files(self, forward: bool = True):
@@ -1822,17 +1876,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: self.refresh_recent_menu()
 
 
-    def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True) -> int:
+    def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True) -> str:
         try:
             folder = abspath(folder)                # ensure `folder` uses a standardized format
-            if mod & Qt.AltModifier:                # alt (use shuffle mode to play video but disable autoplay)
-                self.actionAutoplay.setChecked(False)
-                self.shuffle_media(folder)
-            elif mod & Qt.ShiftModifier:            # shift (play folder with autoplay in shuffle mode)
-                self.actionAutoplay.setChecked(True)
-                self.actionAutoplayShuffle.setChecked(not self.actionAutoplayShuffle.isChecked())
-                self.shuffle_media(folder)
-            else:                                   # no modifiers -> play first valid file
+
+            # no modifiers or (ONLY) shift held down (play first file with or without Autoplay)
+            if not mod or (mod & Qt.ShiftModifier and not mod & Qt.ControlModifier):
                 #skip_marked = self.checkSkipMarked.isChecked()
                 #marked = self.marked_for_deletion  # TODO see below
                 locked_video_path = self.locked_video
@@ -1853,18 +1902,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if open(file, _from_cycle=True, mime=mime,
                             extension=extension, focus_window=focus_window) != -1:
                         logging.info(f'Found playable file in folder after {get_time() - start:.3f} seconds.')
-                        enabled = not (mod & Qt.ControlModifier)
+                        enabled = not (mod & Qt.ShiftModifier)
                         verb = 'enabled' if enabled else 'disabled'
                         self.actionAutoplay.setChecked(enabled)
+                        self.actionAutoplayShuffle.setChecked(False)
                         self.refresh_autoplay_button()
-                        log_on_statusbar(f'Opened {filename} from folder {file} and {verb} Autoplay.')
-                        return -1
-
+                        log_on_statusbar(f'Opened {filename} from folder {folder} and {verb} Autoplay.')
+                        return file
                 log_on_statusbar(f'No files in {folder} were playable.')
-                return -1
+
+            # ctrl or alt/ctrl+shift held down (play random file with or without Autoplay (in shuffle mode))
+            else:
+                enabled = not (mod & Qt.ShiftModifier or mod & Qt.AltModifier)
+                verb = 'enabled' if enabled else 'disabled'
+                self.actionAutoplay.setChecked(enabled)
+                self.actionAutoplayShuffle.setChecked(enabled)
+                file = self.shuffle_media(folder, autoplay=enabled)
+                if file is not None:
+                    log_on_statusbar(f'Randomly opened {os.path.basename(file)} from folder {folder} and {verb} Autoplay/shuffle mode.')
+                    return file
+
         except: log_on_statusbar(f'(!) Failed while checking folder "{folder}" for openable media: {format_exc()}')
         finally: self.refresh_autoplay_button()
-        return 1
 
 
     def open_probe_file(self, *args, file: str = None, delete: bool = False):
@@ -2389,7 +2448,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 file = abspath(file)                        # ensure `file` uses a standardized format
 
                 if os.path.isdir(file):
-                    return self.open_folder(file, focus_window=focus_window)
+                    file = self.open_folder(file, focus_window=focus_window)
+                    return -1 if file is None else 1
                 if file == self.locked_video:               # if file is locked and we didn't cycle here, show a warning message
                     show_on_statusbar(f'File {file} is currently being worked on.')
                     return -1
@@ -2820,7 +2880,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # if we want autoplay/shuffle, don't reload -> switch immediately
             if self.actionAutoplay.isChecked():
                 update_progress(0)                  # required due to audio issue side-effect? (1st video after audio file ends instantly)
-                if self.actionAutoplayShuffle.isChecked(): return self.shuffle_media()
+                if self.actionAutoplayShuffle.isChecked(): return self.shuffle_media(autoplay=True)
                 if self.actionAutoplayDirectionDynamic.isChecked(): next = self.last_cycle_was_forward
                 else: next = self.actionAutoplayDirectionForwards.isChecked()
                 return self.cycle_media(

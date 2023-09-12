@@ -60,6 +60,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
         for action in group.actions():
             action.setChecked(load(action.objectName(), action.isChecked()))
     gui.actionAutoplayShuffle.setChecked(load('actionautoplayshuffle', False))
+    gui.actionAutoplaySameMime.setChecked(load('actionautoplaysamemime', False))
     hoverfontcolor = load('hoverfontcolor', '255,255,255', ',', int, tuple, fill_with_defaults=True, default=255)
     gui.sliderProgress.hover_font_color = QtGui.QColor(*hoverfontcolor)
     settings.buttonHoverFontColor.setToolTip(str(hoverfontcolor))
@@ -112,6 +113,7 @@ def saveConfig(gui, filename: str = None):
         for action in group.actions():
             save(action.objectName(), action.isChecked())
     save('actionautoplayshuffle', gui.actionAutoplayShuffle.isChecked())
+    save('actionautoplaysamemime', gui.actionAutoplaySameMime.isChecked())
     save('hoverfontcolor', gui.sliderProgress.hover_font_color.getRgb(), delimiter=',')
 
     cfg.setSection('keys')

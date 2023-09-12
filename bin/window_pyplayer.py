@@ -52,6 +52,7 @@ class Ui_MainWindow(object):
         self.menuSnapshots = QtWidgets.QMenu(self.menuEdit)
         self.menuSnapshots.setObjectName("menuSnapshots")
         self.menuAutoplay = QtWidgets.QMenu(self.menuEdit)
+        self.menuAutoplay.setToolTipsVisible(True)
         self.menuAutoplay.setObjectName("menuAutoplay")
         self.menuDelete = QtWidgets.QMenu(self.menuEdit)
         self.menuDelete.setObjectName("menuDelete")
@@ -629,6 +630,9 @@ class Ui_MainWindow(object):
         self.actionViewProbeFile.setObjectName("actionViewProbeFile")
         self.actionDeleteProbeFile = QtWidgets.QAction(MainWindow)
         self.actionDeleteProbeFile.setObjectName("actionDeleteProbeFile")
+        self.actionAutoplaySameMime = QtWidgets.QAction(MainWindow)
+        self.actionAutoplaySameMime.setCheckable(True)
+        self.actionAutoplaySameMime.setObjectName("actionAutoplaySameMime")
         self.menuRecent.addAction(self.actionClearRecent)
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.menuRecent.menuAction())
@@ -664,6 +668,8 @@ class Ui_MainWindow(object):
         self.menuAutoplay.addAction(self.actionAutoplayDirectionForwards)
         self.menuAutoplay.addAction(self.actionAutoplayDirectionBackwards)
         self.menuAutoplay.addAction(self.actionAutoplayDirectionDynamic)
+        self.menuAutoplay.addSeparator()
+        self.menuAutoplay.addAction(self.actionAutoplaySameMime)
         self.menuDelete.addAction(self.actionMarkDeleted)
         self.menuDelete.addAction(self.actionClearMarked)
         self.menuDelete.addAction(self.actionShowDeletePrompt)
@@ -798,8 +804,22 @@ class Ui_MainWindow(object):
         self.buttonLoop.setToolTip(_translate("MainWindow", "If checked, media loops upon completion — even with autoplay enabled."))
         self.buttonAutoplay.setToolTip(_translate("MainWindow", "If checked, the next valid media file in the current folder will\n"
 "automatically play upon completion of the current media."))
-        self.buttonPrevious.setToolTip(_translate("MainWindow", "Plays the previous valid media file in the current folder."))
-        self.buttonNext.setToolTip(_translate("MainWindow", "Plays the next valid media file in the current folder."))
+        self.buttonPrevious.setToolTip(_translate("MainWindow", "Plays the previous media file in the current folder.\n"
+"\n"
+"Click: Plays previous valid file.\n"
+"Ctrl + click: Plays a random file.\n"
+"Shift + click: Plays previous valid file that matches the current mime type (video, audio, or image).\n"
+"Alt + click: Plays a random file that matches the current mime type (video, audio, or image).\n"
+"\n"
+"Right-click for more options."))
+        self.buttonNext.setToolTip(_translate("MainWindow", "Plays the next media file in the current folder.\n"
+"\n"
+"Click: Plays next valid file.\n"
+"Ctrl + click: Plays a random file.\n"
+"Shift + click: Plays next valid file that matches the current mime type (video, audio, or image).\n"
+"Alt + click: Plays a random file that matches the current mime type (video, audio, or image).\n"
+"\n"
+"Right-click for more options."))
         self.labelCropRight.setText(_translate("MainWindow", "R: 0"))
         self.labelCropLeft.setText(_translate("MainWindow", "L: 0"))
         self.labelCropBottom.setText(_translate("MainWindow", "B: 0"))
@@ -920,6 +940,9 @@ class Ui_MainWindow(object):
         self.actionEditFileTimestamps.setText(_translate("MainWindow", "Edit &timestamps"))
         self.actionViewProbeFile.setText(_translate("MainWindow", "View probe &file"))
         self.actionDeleteProbeFile.setText(_translate("MainWindow", "Delete probe file"))
+        self.actionAutoplaySameMime.setText(_translate("MainWindow", "Same mime only"))
+        self.actionAutoplaySameMime.setToolTip(_translate("MainWindow", "If checked, Autoplay will only play media with the same mime\n"
+"type (video, audio, or image) as the file you started with."))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoPlayerLabel, QVideoSlider
 
 
