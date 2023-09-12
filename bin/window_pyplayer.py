@@ -758,7 +758,7 @@ class Ui_MainWindow(object):
         self.menuEdit.setTitle(_translate("MainWindow", "&Edit"))
         self.menuSnapshots.setTitle(_translate("MainWindow", "S&napshot"))
         self.menuAutoplay.setTitle(_translate("MainWindow", "&Autoplay"))
-        self.menuDelete.setTitle(_translate("MainWindow", "Delete"))
+        self.menuDelete.setTitle(_translate("MainWindow", "&Delete"))
         self.menuHelp.setTitle(_translate("MainWindow", "&Help"))
         self.menuAudio.setTitle(_translate("MainWindow", "&Audio"))
         self.menuAudioTracks.setTitle(_translate("MainWindow", "Audio &Tracks"))
@@ -839,11 +839,11 @@ class Ui_MainWindow(object):
 "all currently marked files. You may cancel this\n"
 "prompt, or hand-pick which files you do or\n"
 "do not want to actually delete."))
-        self.actionViewLog.setText(_translate("MainWindow", "&View log"))
+        self.actionViewLog.setText(_translate("MainWindow", "View &log"))
         self.actionShowStatusBar.setText(_translate("MainWindow", "S&tatus Bar"))
         self.actionShowMenuBar.setText(_translate("MainWindow", "Men&u Bar"))
         self.actionShowAdvancedControls.setText(_translate("MainWindow", "Advanced &Controls"))
-        self.actionFullscreen.setText(_translate("MainWindow", "Fullscreen"))
+        self.actionFullscreen.setText(_translate("MainWindow", "&Fullscreen"))
         self.actionShowProgressBar.setText(_translate("MainWindow", "Pro&gress Bar"))
         self.actionSnapshot.setText(_translate("MainWindow", "&Snapshot"))
         self.actionQuickSnapshot.setText(_translate("MainWindow", "&Quick snapshot"))
@@ -902,7 +902,7 @@ class Ui_MainWindow(object):
         self.actionCopyFile.setText(_translate("MainWindow", "Copy media &file"))
         self.actionCutFile.setText(_translate("MainWindow", "C&ut media file"))
         self.actionTrimPickEveryTime.setText(_translate("MainWindow", "Pick &every time"))
-        self.actionViewLastDirectory.setText(_translate("MainWindow", "View last directory"))
+        self.actionViewLastDirectory.setText(_translate("MainWindow", "View last &directory"))
         self.actionSnapshotCopyLastFile.setText(_translate("MainWindow", "Copy last snapshot &file"))
         self.actionSnapshotCutLastFile.setText(_translate("MainWindow", "C&ut last snapshot file"))
         self.actionSnapshotCopyLastImage.setText(_translate("MainWindow", "&Copy last snapshot image"))
@@ -917,8 +917,8 @@ class Ui_MainWindow(object):
         self.actionAutoplayDisabled.setText(_translate("MainWindow", "Disabled"))
         self.actionCatAfterLast.setText(_translate("MainWindow", "This clip after last clip"))
         self.actionCatBeforeLast.setText(_translate("MainWindow", "This clip before last clip"))
-        self.actionEditFileTimestamps.setText(_translate("MainWindow", "Edit timestamps"))
-        self.actionViewProbeFile.setText(_translate("MainWindow", "View probe file"))
+        self.actionEditFileTimestamps.setText(_translate("MainWindow", "Edit &timestamps"))
+        self.actionViewProbeFile.setText(_translate("MainWindow", "View probe &file"))
         self.actionDeleteProbeFile.setText(_translate("MainWindow", "Delete probe file"))
 from widgets import QDockWidgetPassthrough, QDraggableWindowFrame, QLineEditPassthrough, QSpinBoxPassthrough, QVideoPlayer, QVideoPlayerLabel, QVideoSlider
 

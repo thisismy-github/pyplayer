@@ -142,7 +142,7 @@
     </widget>
     <widget class="QMenu" name="menuDelete">
      <property name="title">
-      <string>Delete</string>
+      <string>&amp;Delete</string>
      </property>
      <addaction name="actionMarkDeleted"/>
      <addaction name="actionClearMarked"/>
@@ -1405,7 +1405,7 @@ do not want to actually delete.</string>
   </action>
   <action name="actionViewLog">
    <property name="text">
-    <string>&amp;View log</string>
+    <string>View &amp;log</string>
    </property>
   </action>
   <action name="actionShowStatusBar">
@@ -1446,7 +1446,7 @@ do not want to actually delete.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Fullscreen</string>
+    <string>&amp;Fullscreen</string>
    </property>
   </action>
   <action name="actionShowProgressBar">
@@ -1701,7 +1701,7 @@ for deletion, without actually deleting them.</string>
   </action>
   <action name="actionViewLastDirectory">
    <property name="text">
-    <string>View last directory</string>
+    <string>View last &amp;directory</string>
    </property>
   </action>
   <action name="actionSnapshotCopyLastFile">
@@ -1800,12 +1800,12 @@ for deletion, without actually deleting them.</string>
   </action>
   <action name="actionEditFileTimestamps">
    <property name="text">
-    <string>Edit timestamps</string>
+    <string>Edit &amp;timestamps</string>
    </property>
   </action>
   <action name="actionViewProbeFile">
    <property name="text">
-    <string>View probe file</string>
+    <string>View probe &amp;file</string>
    </property>
   </action>
   <action name="actionDeleteProbeFile">

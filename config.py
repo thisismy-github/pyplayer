@@ -1,3 +1,8 @@
+''' Handles loading and saving the config file using
+    my own (unfinished) library, ConfigParseBetter.
+
+    thisismy-github '''
+
 from PyQt5 import QtGui, QtCore
 from PyQt5 import QtWidgets as QtW
 from bin.configparsebetter import ConfigParseBetterQt
@@ -7,10 +12,12 @@ import qthelpers
 import time
 import logging
 
+# ---------------------
 
 logger = logging.getLogger('config.py')
 cfg = ConfigParseBetterQt(autoread=False, autosave=True, autosaveCallback=False, encoding='utf-16')
 
+# ---------------------
 
 def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQt:
     start = time.time()

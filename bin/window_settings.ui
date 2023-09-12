@@ -75,7 +75,7 @@
         <x>0</x>
         <y>0</y>
         <width>344</width>
-        <height>2742</height>
+        <height>2713</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -617,7 +617,7 @@ disabling it will have no effect until PyPlayer restarts.</string>
                       <number>0</number>
                      </property>
                      <property name="bottomMargin">
-                      <number>3</number>
+                      <number>4</number>
                      </property>
                      <item>
                       <widget class="QCheckBox" name="checkFocusOnNormal">
@@ -778,7 +778,7 @@ allows you to use keyboard shortcuts right away.</string>
                       <number>0</number>
                      </property>
                      <property name="bottomMargin">
-                      <number>3</number>
+                      <number>4</number>
                      </property>
                      <item>
                       <widget class="QCheckBox" name="checkFocusIgnoreFullscreen">
@@ -830,13 +830,13 @@ the current foreground window is fullscreen (i.e. a game).</string>
                       <number>1</number>
                      </property>
                      <property name="topMargin">
-                      <number>5</number>
+                      <number>2</number>
                      </property>
                      <property name="rightMargin">
                       <number>0</number>
                      </property>
                      <property name="bottomMargin">
-                      <number>6</number>
+                      <number>4</number>
                      </property>
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,0,0,0">
@@ -1002,13 +1002,13 @@ accident, but I couldn't let it go to waste.</string>
                       <number>6</number>
                      </property>
                      <property name="topMargin">
-                      <number>3</number>
+                      <number>2</number>
                      </property>
                      <property name="rightMargin">
                       <number>6</number>
                      </property>
                      <property name="bottomMargin">
-                      <number>3</number>
+                      <number>4</number>
                      </property>
                      <item row="0" column="0">
                       <widget class="QLabel" name="label_53">
@@ -1240,6 +1240,9 @@ but only if the media had not been paused prior to minimizing.</string>
              <layout class="QFormLayout" name="formLayout_8">
               <property name="verticalSpacing">
                <number>1</number>
+              </property>
+              <property name="leftMargin">
+               <number>7</number>
               </property>
               <property name="topMargin">
                <number>4</number>
@@ -1491,16 +1494,16 @@ on &quot;the first media file you open.&quot;</string>
              </property>
              <layout class="QFormLayout" name="formLayout_2">
               <property name="verticalSpacing">
-               <number>5</number>
+               <number>4</number>
               </property>
               <property name="leftMargin">
-               <number>5</number>
+               <number>8</number>
               </property>
               <property name="topMargin">
                <number>6</number>
               </property>
               <property name="rightMargin">
-               <number>5</number>
+               <number>8</number>
               </property>
               <property name="bottomMargin">
                <number>5</number>
@@ -1664,7 +1667,7 @@ away after removing your mouse from the progress bar.</string>
                <number>5</number>
               </property>
               <property name="verticalSpacing">
-               <number>3</number>
+               <number>2</number>
               </property>
               <property name="topMargin">
                <number>6</number>
@@ -2037,7 +2040,7 @@ min. zoom cannot be reached</string>
                <number>5</number>
               </property>
               <property name="verticalSpacing">
-               <number>5</number>
+               <number>3</number>
               </property>
               <property name="topMargin">
                <number>5</number>
@@ -2186,6 +2189,9 @@ visible as a visual cue once the current media finishes.</string>
               <string>Snapshots</string>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_2">
+              <property name="leftMargin">
+               <number>7</number>
+              </property>
               <property name="topMargin">
                <number>3</number>
               </property>
@@ -2193,7 +2199,7 @@ visible as a visual cue once the current media finishes.</string>
                <number>7</number>
               </property>
               <property name="bottomMargin">
-               <number>6</number>
+               <number>7</number>
               </property>
               <item>
                <layout class="QFormLayout" name="formLayout_4">
@@ -2201,7 +2207,7 @@ visible as a visual cue once the current media finishes.</string>
                  <number>5</number>
                 </property>
                 <property name="verticalSpacing">
-                 <number>4</number>
+                 <number>3</number>
                 </property>
                 <item row="0" column="0">
                  <widget class="QLabel" name="label_4">
@@ -2508,7 +2514,7 @@ on which, if any, modifiers you're holding while clicking.</string>
                   </property>
                   <layout class="QFormLayout" name="formLayout_12">
                    <property name="verticalSpacing">
-                    <number>2</number>
+                    <number>3</number>
                    </property>
                    <property name="topMargin">
                     <number>5</number>
@@ -2618,7 +2624,7 @@ snapshot toolbar button while holding Shift.</string>
 snapshot toolbar button while holding Shift.</string>
                      </property>
                      <property name="currentIndex">
-                      <number>0</number>
+                      <number>5</number>
                      </property>
                      <item>
                       <property name="text">
@@ -2700,7 +2706,7 @@ snapshot toolbar button while holding Ctrl.</string>
 snapshot toolbar button while holding Ctrl.</string>
                      </property>
                      <property name="currentIndex">
-                      <number>0</number>
+                      <number>1</number>
                      </property>
                      <item>
                       <property name="text">
@@ -2782,7 +2788,7 @@ snapshot toolbar button while holding Alt.</string>
 snapshot toolbar button while holding Alt.</string>
                      </property>
                      <property name="currentIndex">
-                      <number>0</number>
+                      <number>7</number>
                      </property>
                      <item>
                       <property name="text">
@@ -2930,7 +2936,7 @@ more robust fading settings.</string>
                  <number>5</number>
                 </property>
                 <property name="verticalSpacing">
-                 <number>4</number>
+                 <number>3</number>
                 </property>
                 <item row="0" column="0">
                  <widget class="QLabel" name="label_37">
@@ -3023,6 +3029,9 @@ before it begins to fade.</string>
                 </item>
                 <item row="5" column="0" colspan="2">
                  <layout class="QGridLayout" name="gridLayout_2">
+                  <property name="topMargin">
+                   <number>4</number>
+                  </property>
                   <item row="6" column="1" colspan="2">
                    <widget class="QCheckBox" name="checkTextOnFullScreenPosition">
                     <property name="text">
@@ -4625,11 +4634,11 @@ has finished will automatically unpause the media and resume playback.</string>
               <property name="labelAlignment">
                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
               </property>
+              <property name="verticalSpacing">
+               <number>3</number>
+              </property>
               <property name="topMargin">
                <number>5</number>
-              </property>
-              <property name="bottomMargin">
-               <number>7</number>
               </property>
               <item row="0" column="0">
                <widget class="QLabel" name="label_56">
@@ -4737,7 +4746,7 @@ the 5th most recently played file.</string>
                 </item>
                </widget>
               </item>
-              <item row="2" column="0" colspan="2">
+              <item row="3" column="0" colspan="2">
                <widget class="QGroupBox" name="groupBox_6">
                 <property name="title">
                  <string>Playing recent files with number keys</string>
@@ -4812,6 +4821,22 @@ simply be replayed as it is the most recent file.</string>
                  </item>
                 </layout>
                </widget>
+              </item>
+              <item row="2" column="0" colspan="2">
+               <spacer name="verticalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeType">
+                 <enum>QSizePolicy::Fixed</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>3</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
              </layout>
             </widget>

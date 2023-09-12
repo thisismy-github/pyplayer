@@ -1,3 +1,8 @@
+''' Various utility functions for checking, downloading,
+    migrating to, and validating updates.
+
+    thisismy-github '''
+
 import qtstart
 import constants
 import qthelpers
@@ -10,10 +15,12 @@ import logging
 import subprocess
 from traceback import format_exc
 
+# ---------------------
 
 logger = logging.getLogger('update.py')
 HYPERLINK = f'<a href="{constants.REPOSITORY_URL}/releases/latest">latest release on GitHub here</a>.'
 
+# ---------------------
 
 def get_later_version(version_a: str, version_b: str) -> str:
     ''' Returns the greater of two version strings, with mild future-proofing. Allows for an
@@ -83,11 +90,13 @@ def check_for_update(self, log: bool = True, _launch: bool = False) -> None:
                          text=f'An update is available on GitHub ({current_version} -> {latest_version}).',
                          textInformative=f'{reason}You can view the {HYPERLINK}')
                 )
-        elif log: self.log_on_statusbar_signal.emit('You\'re up to date!')
+        elif log:
+            self.log_on_statusbar_signal.emit('You\'re up to date!')
     except requests.exceptions.ConnectionError:
         if _launch: logger.warning('Update check was unable to reach GitHub (no internet connection?).')
         else: self.log_on_statusbar_signal.emit('Update check was unable to reach GitHub (no internet connection?).')
-    except: self.log_on_statusbar_signal.emit(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
+    except:
+        self.log_on_statusbar_signal.emit(f'(!) UPDATE-CHECK FAILED: {format_exc()}')
     self._handle_updates_signal.emit({}, {})                            # call empty signal to perform cleanup
 
 
@@ -129,8 +138,9 @@ def download_update(self, latest_version: str, download_url: str, download_path:
         pid_files = []
         for file in os.listdir(constants.TEMP_DIR):
             if file[-4:] == '.pid':
-                pid_file = os.path.join(constants.TEMP_DIR, file)
-                try: os.remove(pid_file)                    # try to delete PID file to confirm whether it's active or not
+                try:
+                    pid_file = os.path.join(constants.TEMP_DIR, file)
+                    os.remove(pid_file)                     # try to delete PID file to confirm whether it's active or not
                 except:                                     # couldn't delete PID file -> send exit-signal to its instance
                     logger.info(f'Active PyPlayer instance detected through PID file {pid_file}')
                     pid_files.append(f'"{pid_file}"')
@@ -172,6 +182,7 @@ def download_update(self, latest_version: str, download_url: str, download_path:
         logger.info(updater_cmd)
         subprocess.Popen(updater_cmd)
         return qtstart.exit(self)
+
     except:
         logger.warning(f'(!) Could not download latest version. New naming format? Missing updater? {format_exc()}')
 
@@ -268,4 +279,5 @@ def update_migration(self, old_version: str) -> None:
         try:
             screen = self.app.primaryScreen().size()
             self.move(*config.cfg.load('pos', f'{screen.width() / 2 - (self.width() / 2):.0f},{screen.height() / 2 - (self.height() / 2):.0f}', ',', int, tuple))
-        except: pass
+        except:
+            pass

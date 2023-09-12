@@ -29,7 +29,6 @@ TODO: cropping finally finished. potential improvements:
         - https://stackoverflow.com/questions/24831484/how-to-align-qpainter-drawtext-around-a-point-not-a-rectangle
         - use QDockWidgets instead of frames
 TODO: find interesting use for QtWidgets.QGraphicsScene()? (used in old widgets/main.py files for early crop tests)
-TODO: 47.58fps video NOT behaving well (progress bar is too fast -> 1.25 seconds ahead per minute)
 TODO: improved or improvised status bar? -> half-width and/or custom widgets for things like playback speed, etc.
 TODO: centralwidget's layout column stretch should be a customizable option
 TODO: streamlined way to trim and concat multiple sections of a single video (or just a timeline)
@@ -267,14 +266,14 @@ def get_PIL_safe_path(original_path: str, final_path: str):
         temp_path = ''
         if splitext_media(final_path, constants.IMAGE_EXTENSIONS)[-1] == '':
             good_ext = splitext_media(original_path, constants.IMAGE_EXTENSIONS)[-1]
-            if good_ext == '': good_ext = '.png'
+            if good_ext == '':
+                good_ext = '.png'
             temp_path = final_path + good_ext
             yield temp_path
         else:
             yield final_path
     finally:
         if temp_path != '':
-            print('\n\nDO THEY EXIST? (literally impossible for them not to):', exists(temp_path), exists(final_path))
             try: os.replace(temp_path, final_path)
             except: logging.warning('(!) FAILED TO RENAME TEMPORARY IMAGE PATH' + format_exc())
 
@@ -325,7 +324,9 @@ def splitext_media(
         if not has_letters:
             return base, ''
 
-    if period: return base, ext
+    # return extension with or without preceding period (".mp4" vs "mp4")
+    if period:
+        return base, ext
     return base, ext[1:]
 
 
@@ -528,17 +529,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.dockControls.keyPressEvent = self.keyPressEvent                 # pass dockControls key presses directly to GUI_Instance
         self.dockControls.keyReleaseEvent = self.keyReleaseEvent
 
-        self.buttonPause.contextMenuEvent = self.pauseButtonContextMenuEvent
+        self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
-        self.buttonExploreMediaPath.contextMenuEvent = self.openMediaLocationButtonContextMenuEvent
+        self.buttonExploreMediaPath.contextMenuEvent = self.buttonMediaLocationContextMenuEvent
         self.buttonMarkDeleted.contextMenuEvent = self.buttonMarkDeletedContextMenuEvent
         self.buttonSnapshot.contextMenuEvent = self.buttonSnapshotContextMenuEvent
         self.buttonAutoplay.contextMenuEvent = self.buttonAutoplayContextMenuEvent
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.frameVolume.contextMenuEvent = self.frameVolumeContextMenuEvent
-        self.buttonPause.mousePressEvent = self.pauseButtonMousePressEvent
+        self.buttonPause.mousePressEvent = self.buttonPauseMousePressEvent
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
 
         # set default icons for various buttons
@@ -698,9 +699,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         while not self.closed:
             # stay relatively idle while window is minimized OR nothing is actively playing
-            while not self.isVisible() and not self.closed: _sleep(0.25)
+            while not self.isVisible() and not self.closed:                  _sleep(0.25)
             while self.isVisible() and not is_playing() and not self.closed: _sleep(0.02)
-            while self.open_in_progress: _sleep(0.02)
+            while self.open_in_progress:                                     _sleep(0.02)
 
             start = _get_time()
             play_started = start + self.add_to_progress_offset
@@ -873,6 +874,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
                         #    _emit_update_progress_signal(interpolated_frame)                       # TODO can this snowball and keep jumping forward forever?
                         _sleep(0.066)                   # update position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
+
+        # all loops broken, `self.closed` is False
         return logging.info('Program closed. Ending update_slider thread.')
 
 
@@ -880,7 +883,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # >>> EVENTS <<<
     # ---------------------
     def event(self, event: QtCore.QEvent) -> bool:
-        ''' A global event callback. Used to detect windowStateChange events,
+        ''' A global event callback. Used to detect `windowStateChange` events,
             so we can save/remember the maximized state when necessary. '''
         if event.type() == WindowStateChange:           # alias used for speed
             if not (self.windowState() & Qt.WindowMinimized or self.windowState() & Qt.WindowFullScreen):
@@ -1010,7 +1013,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
-        ''' Refer to `self.moveEvent` for why this is such a disaster. '''
+        ''' Refer to `moveEvent` for why this is such a disaster. '''
         if not self.isMaximized() and not self.isFullScreen():          # don't save size if we're currently maximized/fullscreen
             if self.invert_next_resize_event:
                 self.invert_next_resize_event = False
@@ -1025,37 +1028,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.last_window_pos = self.last_window_pos_non_zero
 
 
-    def dockControlsResizeEvent(self, event: QtGui.QResizeEvent):
-        ''' Makes UI controls more compact as the size of the controls shrinks. '''
-        width = event.size().width()
-        self.frameQuickChecks.setVisible((not self.actionCrop.isChecked() and width >= 568) or width >= 800)
-        self.frameCropInfo.setVisible(self.actionCrop.isChecked() and width >= 621)
-        self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)    # reduce output lineEdit (but retain usability)
-        self.advancedControlsLine.setVisible(width >= 357)              # hide aesthetic line-separator
-        self.hlayoutQuickButtons.setSpacing(2 if width <= 394 else 6)   # reduce spacing between buttons
-        self.buttonTrimStart.setMinimumWidth(32 if width <= 347 else 44)
-
-        # hide or restore trim/toolbar buttons
-        primary_visible = width > 335
-        seconary_visible = width > 394
-        self.buttonTrimStart.setVisible(primary_visible)
-        self.buttonTrimEnd.setVisible(primary_visible)
-        self.buttonMarkDeleted.setVisible(seconary_visible)
-        self.buttonSnapshot.setVisible(seconary_visible)
-        self.buttonExploreMediaPath.setVisible(seconary_visible)
-        self.spinHour.setVisible(primary_visible)
-
-        if primary_visible:
-            self.spinFrame.setPrefix(f'{self.frame_rate_rounded} FPS: ')
-            self.spinFrame.setMinimumSize(98, 0)
-        else:
-            self.spinFrame.setPrefix('')
-            self.spinFrame.setMinimumSize(0, 0)
-
-
     def timerEvent(self, event: QtCore.QTimerEvent):
         ''' The base timeout event, used for adjusting the window's aspect
-            ratio after a resize. Started by QVideoPlayer.resizeEvent(). '''
+            ratio after a resize. Started by `QVideoPlayer.resizeEvent()`. '''
         if self.timer_id_resize_snap is not None and app.mouseButtons() != Qt.LeftButton:
             self.timer_id_resize_snap = self.killTimer(self.timer_id_resize_snap)
             if get_time() - self.last_move_time < 1: return super().timerEvent(event)
@@ -1071,16 +1046,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             force_instant_resize = checked == 0
             self.snap_to_player_size(shrink=shrink, force_instant_resize=force_instant_resize)
-        if event: return super().timerEvent(event)
 
-
-    def timerFullScreenMediaEndedEvent(self):
-        ''' A timeout event separate from timerEvent as integrating it there caused timing-related
-            crashes. Checks every 500 milliseconds if we've left fullscreen mode, resumed playback,
-            or lost the fullscreen UI-lock already before allowing the fullscreen UI to fade again. '''
-        if not self.restarted or not self.isFullScreen() or not self.lock_fullscreen_ui:
-            self.lock_fullscreen_ui = False
-            self.timer_fullscreen_media_ended.stop()    # kill timer
+        if event:
+            return super().timerEvent(event)
 
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
@@ -1146,7 +1114,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     else: index = -10
                 elif key == 49 and settings.checkNumKeys1SkipsActiveFiles.isChecked() and self.recent_files[-1] == self.video:
                     index = -2
-                else: index = -(key - 48)
+                else:
+                    index = -(key - 48)
                 path = self.recent_files[max(index, -len(self.recent_files))]
                 self.open_recent_file(path, update=settings.checkNumKeysUpdateRecentFiles.isChecked())
 
@@ -1157,12 +1126,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # emulate menubar shortcuts when menubar is not visible (which disables shortcuts for some reason)
         elif not self.menubar.isVisible():
             if mod & Qt.ControlModifier:
-                if key == 79: self.actionOpen.trigger()                     # ctrl + o (open)
+                if key == 79:                                               # ctrl + o (open)
+                    self.actionOpen.trigger()
                 elif key == 83:
                     if mod & Qt.ShiftModifier: self.actionSaveAs.trigger()  # ctrl + shift + s (save as)
-                    else: self.actionSave.trigger()                         # ctrl + s (save)
+                    else:                      self.actionSave.trigger()    # ctrl + s (save)
             elif mod & Qt.AltModifier:
-                if key == 81: self.actionExit.trigger()                     # alt + q (exit)
+                if key == 81:                                               # alt + q (exit)
+                    self.actionExit.trigger()
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{event.text()}"')
 
 
@@ -1183,7 +1154,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles creating the context menu (right-click) for the main window. '''
+        ''' Handles the context (right-click) menu for the main window. '''
         context = QtW.QMenu(self)
 
         # add crop/zoom toggle if in crop mode or we're zoomed in
@@ -1236,6 +1207,44 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> CUSTOM EVENTS <<<
     # ---------------------
+    def dockControlsResizeEvent(self, event: QtGui.QResizeEvent):
+        ''' Makes UI controls more compact as their size shrinks. '''
+        width = event.size().width()
+        self.frameQuickChecks.setVisible((not self.actionCrop.isChecked() and width >= 568) or width >= 800)
+        self.frameCropInfo.setVisible(self.actionCrop.isChecked() and width >= 621)
+        self.lineOutput.setMinimumWidth(10 if width <= 380 else 120)    # reduce output lineEdit (but retain usability)
+        self.advancedControlsLine.setVisible(width >= 357)              # hide aesthetic line-separator
+        self.hlayoutQuickButtons.setSpacing(2 if width <= 394 else 6)   # reduce spacing between buttons
+        self.buttonTrimStart.setMinimumWidth(32 if width <= 347 else 44)
+
+        # hide or restore trim/toolbar buttons
+        primary_visible = width > 335
+        seconary_visible = width > 394
+        self.buttonTrimStart.setVisible(primary_visible)
+        self.buttonTrimEnd.setVisible(primary_visible)
+        self.buttonMarkDeleted.setVisible(seconary_visible)
+        self.buttonSnapshot.setVisible(seconary_visible)
+        self.buttonExploreMediaPath.setVisible(seconary_visible)
+        self.spinHour.setVisible(primary_visible)
+
+        if primary_visible:
+            self.spinFrame.setPrefix(f'{self.frame_rate_rounded} FPS: ')
+            self.spinFrame.setMinimumSize(98, 0)
+        else:
+            self.spinFrame.setPrefix('')
+            self.spinFrame.setMinimumSize(0, 0)
+
+
+    def timerFullScreenMediaEndedEvent(self):
+        ''' A timeout event separate from `timerEvent` as integrating it there
+            caused timing-related crashes. Checks every 500 milliseconds if
+            we've left fullscreen mode, resumed playback, or lost the fullscreen
+            UI-lock already before allowing the fullscreen UI to fade again. '''
+        if not self.restarted or not self.isFullScreen() or not self.lock_fullscreen_ui:
+            self.lock_fullscreen_ui = False
+            self.timer_fullscreen_media_ended.stop()    # kill timer
+
+
     def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the progress slider. '''
         precision_action = QtW.QAction(settings.checkHighPrecisionProgress.text())
@@ -1250,7 +1259,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
-    def pauseButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
+    def buttonPauseContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
         ''' Handles the context (right-click) menu for the pause button. '''
         context = QtW.QMenu(self)
         context.addAction(self.actionStop)
@@ -1271,8 +1280,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.minimum:
             h, m, s, ms = get_hms(self.minimum / self.frame_rate)
             if self.duration_rounded < 3600: start_label = f'{verb} {m}:{s:02}.{ms:02} (frame {self.minimum})'
-            else: start_label = f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})'
-        else: start_label = f'{verb}: Disabled'
+            else:                            start_label = f'{verb} {h}:{m:02}:{s:02} (frame {self.minimum})'
+        else:                                start_label = f'{verb}: Disabled'
         start_label_action = QtW.QAction(start_label)
         start_label_action.setEnabled(False)
 
@@ -1281,8 +1290,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if self.maximum != self.frame_count:
             h, m, s, ms = get_hms(self.maximum / self.frame_rate)
             if self.duration_rounded < 3600: end_label = f'{verb}: {m}:{s:02}.{ms:02} (frame {self.maximum})'
-            else: end_label = f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})'
-        else: end_label = f'{verb}: Disabled'
+            else:                            end_label = f'{verb}: {h}:{m:02}:{s:02} (frame {self.maximum})'
+        else:                                end_label = f'{verb}: Disabled'
         end_label_action = QtW.QAction(end_label)
         end_label_action.setEnabled(False)
 
@@ -1291,8 +1300,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             frames = self.maximum - self.minimum
             seconds = frames / self.frame_rate
             h, m, s, ms = get_hms(seconds)
-            if seconds < 3600: length_label = f'Length: {m}:{s:02}.{ms:02} ({frames} frames)'
-            else: length_label = f'Length: {h}:{m:02}:{s:02} ({frames} frames)'
+            if h: length_label = f'Length: {h}:{m:02}:{s:02} ({frames} frames)'
+            else: length_label = f'Length: {m}:{s:02}.{ms:02} ({frames} frames)'
             length_label_action = QtW.QAction(length_label)
             length_label_action.setEnabled(False)
 
@@ -1314,13 +1323,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addSeparator()
         context.addAction(start_label_action)
         context.addAction(end_label_action)
-        if show_length_label: context.addAction(length_label_action)
+        if show_length_label:
+            context.addAction(length_label_action)
         context.exec(event.globalPos())
 
 
-    def openMediaLocationButtonContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles the context (right-click) menu for the open media location button. '''
+    def buttonMediaLocationContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles the context (right-click)
+            menu for the media location button. '''
         if not self.video: return                           # do not render context menu if no media is playing
+
         context = QtW.QMenu(self)
         context.addAction(self.actionExploreMediaPath)
         context.addAction(self.actionCopyMediaPath)
@@ -1335,7 +1347,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def buttonMarkDeletedContextMenuEvent(self, event: QtGui.QContextMenuEvent):    # should these use QWidget.actions() instead of contextMenuEvent?
-        ''' Handles the context (right-click) menu for buttonMarkDeleted. '''
+        ''' Handles the context (right-click) menu for the deletion button. '''
         context = QtW.QMenu(self)
         context.setToolTipsVisible(True)
         context.addAction(self.actionMarkDeleted)
@@ -1348,7 +1360,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def buttonSnapshotContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the snapshot button.
-            Side note: PyQt does NOT like it if you do QMenu.exec() in a
+            Side note: PyQt does NOT like it if you do `QMenu.exec()` in a
             lambda. As soon as it returns, you get: `TypeError: invalid
             argument to sipBadCatcherResult()`. And it's uncatchable. '''
         context = QtW.QMenu(self)
@@ -1361,6 +1373,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def buttonAutoplayContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles the context (right-click) menu for the autoplay button. '''
         context = QtW.QMenu(self)
         context.addActions(self.menuAutoplay.actions()[1:])
         context.exec(event.globalPos())
@@ -1371,7 +1384,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         action = self.menuRecent.actionAt(event.pos())
         if action is self.actionClearRecent or not action: return
         path = action.toolTip()
-        context = QtW.QMenu(self)
 
         explore_action = QtW.QAction('M&edia location')
         explore_action.triggered.connect(lambda: self.explore(path))
@@ -1386,6 +1398,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         open_no_update_action = QtW.QAction('&Open without moving to top')
         open_no_update_action.triggered.connect(lambda: self.open_recent_file(path, update=False))
 
+        context = QtW.QMenu(self)
         context.addAction(remove_action)
         context.addSeparator()
         context.addAction(explore_action)
@@ -1423,18 +1436,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
-    def pauseButtonMousePressEvent(self, event: QtGui.QMouseEvent):
-        ''' Handles clicking on the volume slider's frame. A frame is used
-            since the slider can be disabled. Unmutes on left-click. '''
-        if event.button() == Qt.MiddleButton: self.stop()
-        else: QtW.QPushButton.mousePressEvent(self.buttonPause, event)
-
-
     def frameVolumeMousePressEvent(self, event: QtGui.QMouseEvent):
         ''' Handles clicking on the volume slider's frame. A frame is used
             since the slider can be disabled. Unmutes on left-click. '''
         if event.button() == Qt.LeftButton:
             self.set_mute(False)
+
+
+    def buttonPauseMousePressEvent(self, event: QtGui.QMouseEvent):
+        ''' Handles clicking on the volume slider's frame. A frame is used
+            since the slider can be disabled. Unmutes on left-click. '''
+        if event.button() == Qt.MiddleButton: self.stop()
+        else: QtW.QPushButton.mousePressEvent(self.buttonPause, event)
 
 
     # ---------------------
@@ -1484,11 +1497,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         for theme in self.themes:
             try:
                 name = theme.get('name', None)
-                if name: comboThemes.addItem(name)
+                if name:
+                    comboThemes.addItem(name)
             except:
                 logging.warning(f'Could not add theme {name} to theme combo: {format_exc()}')
 
-        if set_theme: comboThemes.setCurrentText(set_theme)
+        if set_theme:       comboThemes.setCurrentText(set_theme)
         elif restore_theme: comboThemes.setCurrentText(old_theme)               # attempt to restore theme based on previous theme's name
         return old_theme
 
@@ -1501,7 +1515,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try:
                     if theme_name.lower() == theme['name'].lower():
                         return theme
-                except: pass
+                except:
+                    pass
 
 
     def set_theme(self, theme_name: str):
@@ -1541,8 +1556,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         widget.setStyleSheet(f'QToolTip {tooltip_stylesheet}')
                         special_widgets.append(widget)
                     qtooltip_index = stylesheet.find('QToolTip#', qtooltip_index + 1)
-                if special_widgets: theme['special_widgets'] = special_widgets
-            except Exception as error: logging.warning(f'Theme \'{theme["name"]}\' failed to load with the following error - {type(error)}: {error}.')
+                if special_widgets:
+                    theme['special_widgets'] = special_widgets
+            except Exception as error:
+                logging.warning(f'Theme \'{theme["name"]}\' failed to load with the following error - {type(error)}: {error}.')
 
         # adjust UI spacing to match theme
         opt = QtW.QStyleOptionSlider()
@@ -1606,8 +1623,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # get mime type of file to verify this is actually playable and skip the extra setup done in open()
             try:
                 mime, extension = filetype.match(file).mime.split('/')
-                if mime not in valid_mime_types: continue
-            except: continue
+                if mime not in valid_mime_types:
+                    continue
+            except:
+                continue
 
             # check for reasons we might skip a playable file (from most to least likely)
             # NOTE: we don't skip just-edited clips like in `cycle_media` (for performance)
@@ -1663,15 +1682,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 - is there a faster (safe) way of getting our current index in a folder?
                 - when `current_media` is missing, we should insert into `files`, resort, and get index that way
                 - is there EVER a scenario where an `index_offset` of 1 results in a wrongly skipped video? '''
+
+        # save copies of critical properties that could potentially change while we're saving
         original_video_path = self.video_original_path
         current_video_path = self.video
         base_file = original_video_path if settings.checkCycleRememberOriginalPath.checkState() else current_video_path
+
+        # save the direction we're going
         self.last_cycle_was_forward = next
 
         # update autoplay icon if needed
         if self.actionAutoplayDirectionDynamic.isChecked() and not self.actionAutoplayShuffle.isChecked():
             if next: self.buttonAutoplay.setIcon(self.icons['autoplay'])
-            else: self.buttonAutoplay.setIcon(self.icons['autoplay_backward'])
+            else:    self.buttonAutoplay.setIcon(self.icons['autoplay_backward'])
 
         if not current_video_path: return show_on_statusbar('No media is playing.', 10000)  # TODO remember last media's folder between sessions?
         logging.info(f'Getting {"next" if next else "previous"} media file...')
@@ -1681,8 +1704,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if len(files) == 1: return log_on_statusbar('This is the only file in this folder.')
 
         # get current position in folder so we know where to start from
-        if current_basename in files: current_index = files.index(current_basename)         # original path might not exist anymore
-        elif self.last_cycle_index is not None: current_index = self.last_cycle_index
+        if current_basename in files:               # original path might not exist anymore
+            current_index = files.index(current_basename)
+        elif self.last_cycle_index is not None:
+            current_index = self.last_cycle_index
         else:           # video was moved/renamed and never cycled, use human sorting to roughly determine where to start from
             import re   # https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
             test = lambda char: int(char) if char.isdigit() else char                       # NOTE: Most OS's do not actually use pure human sorting
@@ -1700,7 +1725,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         #else: file_range = range(current_index - index_offset, current_index - len(files) - 1, -1)
         # TODO i give up. just eat the performance hit from the extra file/checks we have to go through
         if next: file_range = range(current_index, len(files) + current_index + 1)
-        else: file_range = range(current_index, current_index - len(files) - 1, -1)
+        else:    file_range = range(current_index, current_index - len(files) - 1, -1)
 
         # aliases for the loop
         skip_marked = self.checkSkipMarked.isChecked()
@@ -1711,21 +1736,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if autoplay:                                # no autoplay for images or gifs (yet?)
             if settings.checkAutoplaySameMime.isChecked(): valid_mime_types = (self.mime_type,)
             else: valid_mime_types = ('video', 'audio')
-        else: valid_mime_types = ('video', 'image', 'audio')
+        else:     valid_mime_types = ('video', 'image', 'audio')
 
         skipped_old_video = False
         start = get_time()
         for new_index in file_range:
             new_index = new_index % len(files)
-
             file = f'{current_dir}{sep}{files[new_index]}'
             #logging.debug(f'Checking {file} at index #{new_index}')
 
             # get mime type of file to verify this is actually playable and skip the extra setup done in open()
             try:
                 mime, extension = filetype.match(file).mime.split('/')
-                if mime not in valid_mime_types: continue
-            except: continue
+                if mime not in valid_mime_types:
+                    continue
+            except:
+                continue
 
             # check for reasons we might skip a playable file (from most to least likely)
             if file_is_hidden(file): continue
@@ -1754,10 +1780,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def cycle_recent_files(self, forward: bool = True):
+        ''' Plays the next (older) recent file in `self.recent_files` if
+            `forward`, else the last (newer) recent file. Position is relative
+            to `self.video`'s spot within the recent files list. If not within
+            the list, the most recent file is used. '''
+        # default to latest (most recent) file if no valid file is loaded
         # NOTE: recent_files is least recent to most recent -> index 0 is the LEAST recent
-        if self.video not in self.recent_files:     # default to latest file if no valid file is loaded
-            current_index = len(self.recent_files)
+        if self.video not in self.recent_files: current_index = len(self.recent_files)
         else: current_index = self.recent_files.index(self.video)
+
         new_index = current_index + (1 if forward else -1)
         if 0 <= new_index <= len(self.recent_files) - 1:
             path = self.recent_files[new_index]
@@ -1765,6 +1796,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def open_recent_file(self, path: str, update: bool, open: bool = True):
+        ''' Opens `path` from `self.recent_files` if possible. If `open` and
+            `update` are both True, `path` is opened and moved to the top of the
+            recent list, otherwise it retains its current position. If `open` is
+            False, `path` is moved to the top of the recent list without opening,
+            regardless of `update`. If `path` doesn't exist, it is removed from
+            the recent list, regardless of `update`. '''
         try:
             recent_files = self.recent_files
             if path == self.locked_video:           # recent file is locked (it's actively being edited)
@@ -1787,6 +1824,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True) -> int:
         try:
+            folder = abspath(folder)                # ensure `folder` uses a standardized format
             if mod & Qt.AltModifier:                # alt (use shuffle mode to play video but disable autoplay)
                 self.actionAutoplay.setChecked(False)
                 self.shuffle_media(folder)
@@ -1794,7 +1832,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.actionAutoplay.setChecked(True)
                 self.actionAutoplayShuffle.setChecked(not self.actionAutoplayShuffle.isChecked())
                 self.shuffle_media(folder)
-            else:
+            else:                                   # no modifiers -> play first valid file
                 #skip_marked = self.checkSkipMarked.isChecked()
                 #marked = self.marked_for_deletion  # TODO see below
                 locked_video_path = self.locked_video
@@ -1812,7 +1850,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if file == locked_video_path: continue
                     #if skip_marked and file in marked: continue    # TODO should we do this here?
 
-                    if open(file, _from_cycle=True, mime=mime, extension=extension) != -1:
+                    if open(file, _from_cycle=True, mime=mime,
+                            extension=extension, focus_window=focus_window) != -1:
                         logging.info(f'Found playable file in folder after {get_time() - start:.3f} seconds.')
                         enabled = not (mod & Qt.ControlModifier)
                         verb = 'enabled' if enabled else 'disabled'
@@ -1826,10 +1865,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except: log_on_statusbar(f'(!) Failed while checking folder "{folder}" for openable media: {format_exc()}')
         finally: self.refresh_autoplay_button()
         return 1
-
-
-    def open_lastdir(self):
-        qthelpers.openPath(cfg.lastdir)
 
 
     def open_probe_file(self, *args, file: str = None, delete: bool = False):
@@ -1865,19 +1900,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Opens `path` (or self.video if not provided) in the default file
             explorer, with `path` pre-selected if possible. `noun` controls
             how `path` is described in any log messages.'''
-        if not path: path = self.video if self.video else cfg.lastdir
+        if not path:
+            path = self.video if self.video else cfg.lastdir
         if not exists(path):
             if path in self.recent_files:
                 self.recent_files.remove(path)
             return log_on_statusbar(f'{noun} "{path}" no longer exists.')
-        else: qthelpers.openPath(path, explore=True)
+        qthelpers.openPath(path, explore=True)
 
 
     def copy(self, path: str = None, noun: str = 'Recent file'):
         ''' Copies `path` (or self.video if not provided) to the clipboard,
             with backslashes escaped (if desired) and surrounded by quotes.
             `noun` controls how `path` is described in any log messages. '''
-        if not path: path = self.video if self.video else cfg.lastdir
+        if not path:
+            path = self.video or cfg.lastdir
         if not exists(path):
             if path in self.recent_files:
                 self.recent_files.remove(path)
@@ -1887,14 +1924,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 sep = '\\'
                 escaped_sep = r'\\'
                 app.clipboard().setText(f'"{path.replace(sep, escaped_sep)}"')
-            else: app.clipboard().setText(f'"{path}"')
+            else:
+                app.clipboard().setText(f'"{path}"')
 
 
     def copy_file(self, path: str = None, cut: bool = False):
+        ''' Copies the file at `path` to the clipboard. If `path` is not
+            specified, `self.video` is used if possible. If `cut` is True, the
+            file will be moved to its new destination rather than copied once
+            pasted (currently Windows-only). '''
         if not path:
-            if not self.video: return
+            if not self.video:
+                return show_on_statusbar('No media is playing.')
             path = self.video
-        if not exists(path): return log_on_statusbar(f'File "{path}" no longer exists.')
+        if not exists(path):
+            return log_on_statusbar(f'File "{path}" no longer exists.')
+
         mime = QtCore.QMimeData()
         mime.setUrls((QtCore.QUrl.fromLocalFile(path),))
 
@@ -2028,7 +2073,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 logging.info(f'Deleting temporary snapshot at path {path}')
                 try: os.remove(path)
                 except: logging.warning('(!) FAILED TO DELETE TEMPORARY SNAPSHOT')
-        except: log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
         finally:                                    # restore pause-state before leaving
             if self.is_gif: image_player.gif.setPaused(self.is_paused)
             else: player.set_pause(self.is_paused)
@@ -2040,8 +2086,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         probe_file: str = None,
         mime: str = 'video',
         extension: str = None,
-        data: dict = None
-    ):
+        probe_data: dict = None
+    ) -> int:
         ''' Parses a media `file` for relevant metadata and updates properties
             accordingly. Emits `self._open_cleanup_signal`. Returns -1 if
             unsuccessful. This could be simpler, but it still needs to be fast.
@@ -2060,18 +2106,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 - `self.vwidth`               (media width)
                 - `self.vheight`              (media height)
                 - `self.ratio`                (aspect ratio, as a string) '''
+
+        # remember our original mime in case we need to change it later
+        base_mime = mime
+
+        # >>> videos <<<
         try:
-            base_mime = mime
             if mime == 'video':
-                if probe_file or data:
-                    if data or self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
+                if probe_file or probe_data:
+                    if probe_data or self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
                         start = get_time()
-                        if data is None:            # VLC not finished, no data provided, but probe file is being generated
-                            while not exists(probe_file): pass
+                        if probe_data is None:      # VLC not finished, no data provided, but probe file is being generated
+                            while not exists(probe_file):
+                                sleep(0.01)
                             with open(probe_file) as probe:
-                                while data is None:
+                                while probe_data is None:
                                     try:
-                                        data = json.loads(probe.read())
+                                        probe_data = json.loads(probe.read())
                                     except:
                                         if self.vlc.media.get_parsed_status() == 4 and player.get_fps() != 0 and player.get_length() != 0 and player.video_get_size() != (0, 0):
                                             logging.info(f'VLC finished parsing while waiting for FFprobe ({get_time() - start:.4f} seconds).')
@@ -2081,13 +2132,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                             return -1
                                         probe.seek(0)
 
-                        if data:                    # double check if data was actually acquired
+                        if probe_data:              # double check if data was actually acquired
                             logging.info(f'FFprobe needed an additional {get_time() - start:.4f} seconds to parse.')
-                            for stream in data['streams']:
+                            for stream in probe_data['streams']:
                                 if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
                                     fps_parts = stream['avg_frame_rate'].split('/')
                                     fps = int(fps_parts[0]) / int(fps_parts[1])
-                                    duration = float(data['format']['duration'])
+                                    duration = float(probe_data['format']['duration'])
                                     frame_count = math.ceil(duration * fps)     # NOTE: nb_frames is unreliable for partially corrupt videos
 
                                     self.duration = duration
@@ -2102,11 +2153,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     self.vheight = int(stream['height'])
                                     self.ratio = stream.get('display_aspect_ratio', get_aspect_ratio(self.vwidth, self.vheight))
                                     break
-                            else: mime = 'audio'    # the rare for-else-loop ("else" only happens if we don't break). audio streams usually report 0/0
+                            else:                   # the rare for-else-loop ("else" only happens if we don't break)
+                                mime = 'audio'      # audio streams usually report 0/0
                             logging.info('FFprobe parsed faster than VLC.')
 
                 # still no FFprobe probe data, we MUST wait for VLC to finish (if it ever does)
-                if data is None:
+                if probe_data is None:
                     if self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
                         start = get_time()          # get_parsed_status() == 4 means parsing is apparently done, but values are often not accessible immediately
                         while self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
@@ -2114,7 +2166,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 logging.error('FFprobe is disabled and VLC did not finish parsing after 15 seconds.')
                                 return -1
                         logging.info(f'VLC needed an additional {get_time() - start:.4f} seconds to parse.')
-                    elif probe_file: logging.info('VLC did not need additional time to parse.')
+                    elif probe_file:
+                        logging.info('VLC did not need additional time to parse.')
+
                     fps = round(player.get_fps(), 1)                # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
                     duration = round(player.get_length() / 1000, 4)
                     frame_count = int(duration * fps)
@@ -2129,19 +2183,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
                     logging.info('VLC parsed faster than FFprobe.')
 
+        # >>> audio <<<
             if mime == 'audio':
-                if data:
-                    for stream in data['streams']:
+                if probe_data:
+                    for stream in probe_data['streams']:
                         if stream['codec_type'] == 'video' and stream['avg_frame_rate'] == '0/0':
-                            data = None             # audio file has 0fps video stream -> most likely cover art
+                            probe_data = None       # audio file has 0fps video stream -> most likely cover art
                             break                   # set data back to None and break so we can extract the cover art
                     else:                           # the rare for-else-loop (else only happens if we don't break)
-                        duration = float(data['format']['duration'])
+                        duration = float(probe_data['format']['duration'])
                     self.vwidth = 16
                     self.vheight = 9
 
                 # no data provided OR art detected (see above), use TinyTag (fallback to music_tag if necessary)
-                if data is None:
+                if probe_data is None:
                     try:                            # we need to avoid parsing probe file anyway, since we need to check for cover art
                         try:
                             tag = TinyTag.get(file, image=True)     # https://pypi.org/project/tinytag/0.18.0/
@@ -2173,15 +2228,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         logging.info(f'Invalid audio file detected, parsing as a video file... {format_exc()}')
                         if probe_file:
                             start = get_time()
-                            while not exists(probe_file): pass
+                            while not exists(probe_file):
+                                sleep(0.01)
                             with open(probe_file) as probe:
-                                while data is None:
-                                    try: data = json.loads(probe.read())
-                                    except: probe.seek(0)
-                                    if get_time() - start > 5:
-                                        logging.error('Media probe did not finish after 5 seconds.')
-                                        return -1
-                        return self.parse_media_file(file, probe_file, mime='video', extension=extension, data=data)
+                                while probe_data is None:
+                                    try:
+                                        probe_data = json.loads(probe.read())
+                                    except:
+                                        if get_time() - start > 5:
+                                            logging.error('Media probe did not finish after 5 seconds.')
+                                            return -1
+                                        probe.seek(0)
+                        return self.parse_media_file(file, probe_file, mime='video', extension=extension, probe_data=probe_data)
+
                 frame_count_raw = round(duration * 20)
                 self.duration = duration
                 self.duration_rounded = round(duration, 2)
@@ -2192,16 +2251,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.delay = 0.05
                 self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
 
+        # >>> images <<<
             elif mime == 'image':
                 if extension == 'gif' and image_player.gif.frameCount() > 1:
                     self.frame_count_raw = image_player.gif.frameCount()
                     self.frame_count = image_player.gif.frameCount() - 1
-                    if data:                        # use probe data if available but it's not necessary
-                        for stream in data['streams']:
+                    if probe_data:                  # use probe data if available but it's not necessary
+                        for stream in probe_data['streams']:
                             if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
                                 fps_parts = stream['avg_frame_rate'].split('/')
                                 fps = int(fps_parts[0]) / int(fps_parts[1])
-                                duration = float(data['format']['duration'])
+                                duration = float(probe_data['format']['duration'])
                         self.duration = duration
                         self.duration_rounded = round(duration, 2)
                         self.frame_rate = fps
@@ -2239,7 +2299,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.vheight = image_player.art.height()
                     self.duration = 0.0000001       # low duration to avoid errors but still show up as 0 on the UI
                     self.duration_rounded = 0.0
-                    self.frame_count_raw = 1            # NOTE: these CANNOT be 0
+                    self.frame_count_raw = 1        # NOTE: these CANNOT be 0
                     self.frame_count = 1
                     self.frame_rate = 1
                     self.frame_rate_rounded = 1
@@ -2265,7 +2325,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_pitch_sensitive_audio = False
             self.is_bad_with_vlc = False
         else:
-            self.open_queued = True
+            self.open_queued = True                 # NOTE: this does nothing until frame_override is set, so set this first
             self.frame_override = 0                 # set frame_override to trigger open_queue in update_slider_thread
             self.is_gif = False
             self.is_static_image = False
@@ -2286,6 +2346,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.extension = extension
         #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
+        return 1
 
 
     def open(
@@ -2325,8 +2386,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     )
                 if not file:
                     return -1
+                file = abspath(file)                        # ensure `file` uses a standardized format
 
-                file = abspath(file)
                 if os.path.isdir(file):
                     return self.open_folder(file, focus_window=focus_window)
                 if file == self.locked_video:               # if file is locked and we didn't cycle here, show a warning message
@@ -2337,11 +2398,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # get stats and size of media
             start = get_time()
-            old_file = self.video
-            self.stat = stat = os.stat(file)
+            stat = os.stat(file)
             filesize = stat.st_size
             basename = file[file.rfind(sep) + 1:]           # shorthand for os.path.basename NOTE: safe when `file` is provided automatically
-            extension_label = ''
 
         # --- Probing file and determining mime type ---
             # probe file with FFprobe if possible. if file has already been probed, reuse old probe. otherwise, save output to txt file
@@ -2366,13 +2425,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     probe_process = subprocess.Popen(
                         f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',
                         shell=True,
-                        stdout=subprocess.PIPE,
-                        text=True
                     )
             else:
                 probe_file = None                           # no FFprobe -> no probe file (even if one exists already)
                 probe_data = None
                 probe_process = None
+
+            # misc variables we can setup after probe has started
+            old_file = self.video
+            extension_label = ''
+            mime_fallback_was_needed = False
 
             # get mime type of file (if called from cycle, then this part was worked out beforehand)
             if mime is None:
@@ -2390,6 +2452,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     try:
                         if not FFPROBE:
                             raise
+
+                        mime_fallback_was_needed = True
                         log_on_statusbar('The current file\'s mime type cannot be determined, checking FFprobe...')
 
                         # if FFprobe process is still running, wait for it. we could parse its...
@@ -2445,13 +2509,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # --- Restoring window ---
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
-            if not self.isVisible():                        # we need to do this even if focus_window is True
+            if self.isVisible():
+                was_minimzed_to_tray = False
+            else:                                           # we need to do this even if focus_window is True
                 was_minimzed_to_tray = True
                 if self.isMaximized():
                     self.resize(self.last_window_size)      # restore size/pos or maximized windows will forget...
                     self.move(self.last_window_pos)         # ...their original geometry when you unmaximize them
                 self.showMinimized()                        # minimize for now, we'll check if we need to focus later
-            else: was_minimzed_to_tray = False
 
         # --- Playing media ---
             self.open_in_progress = True                    # mark that we're now officially opening something
@@ -2473,11 +2538,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 parsed = True
 
             logging.info('--- OPENING FILE ---')
-            log_on_statusbar(f'Opening file ({mime}/{extension}): {file}')
+            if not mime_fallback_was_needed: log_on_statusbar(f'Opening file ({mime}/{extension}): {file}')
+            else: log_on_statusbar(f'This file is seemingly playable, but PyPlayer is unsure of its true mime-type/extension: {file}')
 
             # misc cleanup/setup for new media that we can safely do before fully parsing
             self.operations = {}
-            self.buttonTrimStart.setChecked(False)                      # ^ static images/GIFs have odd but harmless behavior
+            self.buttonTrimStart.setChecked(False)
             self.buttonTrimEnd.setChecked(False)
 
             # set basename (w/o extension) as default output text,...
@@ -2511,6 +2577,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.clearFocus()                    # clear focus from output line so it doesn't interfere with keyboard shortcuts
             self.current_file_is_autoplay = _from_autoplay
             self.extension_label = extension_label or extension.upper()
+            self.stat = stat
 
             # focus window if desired, depending on window state and autoplay/audio settings
             # NOTE: it is very rare but possible for "video" mime types to be mutated into "audio"...
@@ -2541,9 +2608,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif flash_count == -1: qthelpers.flashWindow(self, flash_count)
                     else: qthelpers.flashWindow(self, flash_count, interval=500, duration=1250 * flash_count)
 
-            # if presumed to be a video -> finish VLC's parsing (done as late as possible to minimize downtime)
+            # if presumed to be a video -> finish parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
-                if self.parse_media_file(file, probe_file, mime, extension, probe_data) == -1:  # parse metadata from VLC
+                if self.parse_media_file(file, probe_file, mime, extension, probe_data) == -1:
                     log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (video parsing failed).')
                     return -1
 
@@ -2752,11 +2819,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # if we want autoplay/shuffle, don't reload -> switch immediately
             if self.actionAutoplay.isChecked():
-                update_progress(0)                  # required due to the audio issue side-effect? (1st video file after audio file ends instantly)
+                update_progress(0)                  # required due to audio issue side-effect? (1st video after audio file ends instantly)
                 if self.actionAutoplayShuffle.isChecked(): return self.shuffle_media()
                 if self.actionAutoplayDirectionDynamic.isChecked(): next = self.last_cycle_was_forward
                 else: next = self.actionAutoplayDirectionForwards.isChecked()
-                return self.cycle_media(next=next, update_recent_list=settings.checkAutoplayAddToRecents.isChecked(), autoplay=True)
+                return self.cycle_media(
+                    next=next,
+                    update_recent_list=settings.checkAutoplayAddToRecents.isChecked(),
+                    autoplay=True
+                )
 
             # if we want to stop, don't reload -> stop the player and return immediately
             want_to_stop = self.mime_type == 'audio' or settings.checkStopOnFinish.isChecked()
@@ -2777,7 +2848,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return qtstart.exit(self)
 
             # wait for VLC to update the player's state
-            while player.get_state() == State.Ended: sleep(0.005)
+            while player.get_state() == State.Ended:
+                sleep(0.005)
 
             # forcibly re-pause VLC (slightly more efficient than using `force_pause`)
             player.set_pause(True)
@@ -2791,9 +2863,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.lock_fullscreen_ui = True      # show UI to indicate we've restarted in fullscreen (marquee doesn't work -> player is stopped)
                 self.timer_fullscreen_media_ended = QtCore.QTimer(self, interval=500, timeout=self.timerFullScreenMediaEndedEvent)
                 self.timer_fullscreen_media_ended.start()
-            else: show_on_player('')                                    # VLC will auto-show last marq text everytime it restarts
-            self.first_video_fully_loaded = True                        # ensure this is True (it resets depending on settings)
-        except: logging.error(f'(!) RESTART FAILED: {format_exc()}')
+            else:                                   # VLC will auto-show last marq text everytime...
+                show_on_player('')                  # ...it restarts -> this trick hides it
+
+            # ensure this is True (it resets depending on settings)
+            self.first_video_fully_loaded = True
+        except:
+            logging.error(f'(!) RESTART FAILED: {format_exc()}')
 
 
     def pause(self):
@@ -2947,11 +3023,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if self.mime_type == 'image' and settings.checkRenameMissingImages.isChecked():
                     image_player.art.save(new_name)
                     log_on_statusbar(f'Original file no longer exists, so a copy was created at {new_name}.')
-                else: return log_on_statusbar(f'Current file no longer exists at {old_name}.')
+                else:
+                    return log_on_statusbar(f'Current file no longer exists at {old_name}.')
             except PermissionError:
                 return log_on_statusbar(f'(!) Permission error while renaming: file is in use by another program ({old_name}).')
             except OSError as error:                # show specific message for OSError 17
-                if 'disk drive' in str(error): return log_on_statusbar('Renaming across drives is not supported yet.')
+                if 'disk drive' in str(error):
+                    return log_on_statusbar('Renaming across drives is not supported yet.')
                 return log_on_statusbar(f'(!) OSError while renaming: {format_exc()}')
             except:
                 return log_on_statusbar(f'(!) Failed to rename: {format_exc()}')
@@ -2964,19 +3042,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             self.video = new_name
             refresh_title()                                         # update titlebar
-        except: log_on_statusbar(f'RENAME FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'RENAME FAILED: {format_exc()}')
 
         # replay the media, then restore position and pause state (no need for full-scale open())
         frame = get_ui_frame()
         if self.is_gif:                                             # gifs
             image_player.gif.setFileName(new_name)                  # don't need to play new path - just update filename
             set_gif_position(frame)
-            if not was_paused: self.force_pause_signal.emit(False)  # unpause gif if it wasn't paused before
+            if not was_paused:                                      # unpause gif if it wasn't paused before
+                self.force_pause_signal.emit(False)
             image_player.filename = new_name
+
         elif self.mime_type != 'image':                             # video/audio (static images don't need extra cleanup)
             play(self.video)                                        # use self.video in case the rename failed
             self.force_pause_signal.emit(was_paused)                # rename can be called from a thread -> use signal
-            if not was_paused: self.frame_override = frame          # progress thread might get confused and reset to 0
+            if not was_paused:                                      # progress thread might get confused and reset to 0
+                self.frame_override = frame
             set_player_position(frame / self.frame_count)
 
         # update recent files's list with new name, if possible
@@ -2985,7 +3067,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             recent_files = self.recent_files
             index = recent_files.index(old_name)
             recent_files[index] = self.video                        # don't use `new_name` here in case we failed to rename
-        except: pass
+        except:
+            pass
 
 
     def delete(self, files=None, cycle: bool = True):
@@ -2995,11 +3078,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             and the media is cycled if possible before deleting. '''
         if not files: files = (self.video,)
         elif isinstance(files, str): files = (files,)
+
         if self.video in files:
             if not cycle:
                 self.stop()
             else:                                   # cycle media before deleting if current video is about to be deleted
-                if self.is_gif: self.stop()         # image_player's QMovie must have its filename changed to unlock it
+                if self.is_gif:                     # image_player's QMovie must have its filename changed to unlock it
+                    self.stop()
                 old_file = self.video               # self.video will likely change after media is cycled
                 new_file = self.cycle_media(next=self.last_cycle_was_forward, ignore=files)
                 if new_file is None or new_file == old_file:
@@ -3010,16 +3095,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         recycle = settings.checkRecycleBin.isChecked()
         verb = 'recycl' if recycle else 'delet'     # we're appending "ing" to these words
-        if recycle: import send2trash
         logging.info(f'{verb.capitalize()}ing {len(files)} files...')
+        if recycle:
+            import send2trash
 
         for file in files:
             try:
                 send2trash.send2trash(file) if recycle else os.remove(file)
                 logging.info(f'File {file} {verb}ed successfully.')
-            except Exception as error: log_on_statusbar(f'File could not be deleted: {file} - {error}')
+            except Exception as error:
+                log_on_statusbar(f'File could not be deleted: {file} - {error}')
             if not exists(file):                    # if file doesn't exist, unmark file (even if error occurred)
-                if file in self.recent_files: self.recent_files.remove(file)
+                if file in self.recent_files:        self.recent_files.remove(file)
                 if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
 
 
@@ -3071,25 +3158,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try:
                     os.remove(cfg.last_snapshot_path)
                     return log_on_statusbar(f'Deleted last snapshot at {cfg.last_snapshot_path}.')
-                except: return log_on_statusbar(f'(!) Failed to delete last snapshot at "{cfg.last_snapshot_path}": {format_exc()}')
+                except:
+                    return log_on_statusbar(f'(!) Failed to delete last snapshot at "{cfg.last_snapshot_path}": {format_exc()}')
 
             elif not video: return show_on_statusbar('No media is playing.', 10000)
             elif self.is_audio_without_cover_art: return show_on_statusbar('You can only snapshot audio with cover art.', 10000)
 
         # >>> take new snapshot <<<
             is_gif = self.is_gif
-            is_art = mime == 'audio'                            # if it's audio, we already know that it has cover art
+            is_art = self.is_audio_with_cover_art
             frame_count_str = str(self.frame_count_raw)
             if mime == 'image' and settings.checkSnapshotGifPNG.isChecked(): format = 'PNG'
             else: format = settings.comboSnapshotFormat.currentText()
 
-            # NOTE: art and gif snapshots use the default name format's placeholder text
             if is_art:
                 frame = 1
-                frame_count_str = '1'
-                name_format = settings.lineSnapshotArtFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+                frame_count_str = '1'                           # NOTE: art/gif snapshots use the default name format's placeholder text
+                name_format          = settings.lineSnapshotArtFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
             elif is_gif: name_format = settings.lineSnapshotGifFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
-            else: name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
+            else:        name_format = settings.lineSnapshotNameFormat.text().strip() or settings.lineSnapshotNameFormat.placeholderText()
 
             video_basename_no_ext = splitext_media(os.path.basename(video), strict=False)[0]
             date_format = settings.lineSnapshotDateFormat.text().strip() or settings.lineSnapshotDateFormat.placeholderText()
@@ -3101,7 +3188,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # get width, height, and jpeg quality of snapshot
             if mode == 'full':
                 width, height, quality = self.show_size_dialog(snapshot=True)
-                if width is None: return                        # dialog canceled (finally-statement ensures we unpause if needed)
+                if width is None:                               # dialog canceled (finally-statement ensures we unpause if needed)
+                    return
             else:
                 width = 0
                 height = 0
@@ -3159,15 +3247,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     w = width if width else -1                  # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
                     h = height if height else -1
                     ffmpeg(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
-                else: ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
-            elif mime == 'video':
-                player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
-            else:
+                else:
+                    ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
+            elif is_art:
                 if width or height:
                     w = width if width else height * (self.vwidth / self.vheight)
                     h = height if height else width * (self.vheight / self.vwidth)
                     image_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
-                else: image_player.art.save(path, quality=quality)
+                else:
+                    image_player.art.save(path, quality=quality)
+            else:
+                player.video_take_snapshot(num=0, psz_filepath=path, i_width=width, i_height=height)
 
             # update config and log progress if it's not a temporary snapshot
             if not is_temp:
@@ -3210,7 +3300,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
                     if use_jpeg: self.convert_snapshot_to_jpeg(path, image, quality)
                     else: image.save(path)
-            elif use_jpeg: self.convert_snapshot_to_jpeg(path, quality=quality)
+            elif use_jpeg:
+                self.convert_snapshot_to_jpeg(path, quality=quality)
 
             # return snapshot path
             return path
@@ -3344,7 +3435,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Do not call this directly. Use `save()` instead. Iteration: V '''
         start_time = get_time()
 
-        # save copies of all critical properties that could potentially change while we're saving
+        # save copies of critical properties that could potentially change while we're saving
         video = self.video.strip()
         mime = self.mime_type
         extension = self.extension
@@ -3420,7 +3511,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 op_trim_end = False
 
         # check if we still have work to do after the above checks
-        if not operations: return logging.info('(?) Pre-operation checks failed, nothing left to do.')
+        if not operations:
+            return logging.info('(?) Pre-operation checks failed, nothing left to do.')
 
         # ffmpeg is required after this point, so check that it's actually present, and because...
         # ...we're in a thread, we skip the warning and display it separately through a signal
@@ -3445,7 +3537,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.info(f'Video locked during edits: {video}')
 
             # ignore deletion setting if we're replacing the original file
-            if replacing_original: delete_after_save = NO_DELETE
+            if replacing_original:
+                delete_after_save = NO_DELETE
 
         # display indeterminant progress bar, set busy cursor, and update UI to frame 0
         self.set_save_progress_max_signal.emit(frame_count_raw)         # set progress bar max to max possible (raw) frames
@@ -3507,7 +3600,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                         return log_on_statusbar('Trim canceled.')
 
                                 start_time = get_time()                             # reset start_time to undo time spent waiting for dialog
-                                requires_precision = self.extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
+                                requires_precision = extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
                                 precise = requires_precision or self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise
                                 if not precise: log_on_statusbar('Imprecise trim requested.')
                                 else: log_on_statusbar('Precise trim requested (this is a time-consuming task).')
@@ -3988,7 +4081,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
                     break
 
-                # normal videos will have a "frame" progress string
+                # normal videos will have a "frame=" progress string
                 if progress_text[:6] == 'frame=':
                     max_frames = self.save_progress_bar.maximum()           # this might change late, so always check it
                     frame = min(int(progress_text[6:].strip()), max_frames)
@@ -4014,7 +4107,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if use_taskbar_progress:
                             self.taskbar_progress.setValue(int((frame / max_frames) * 100))
                         break
-                    except ValueError: pass
+                    except ValueError:
+                        pass
 
         # terminate process just in case ffmpeg got locked up
         try: process.terminate()
@@ -4436,7 +4530,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # TODO: doing this on an audio file is somewhat unstable
     # TODO: add option to toggle "shortest" setting?
     def add_audio(self, *args, path: str = None, save: bool = True):
-        if not self.video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.video:
+            return show_on_statusbar('No media is playing.', 10000)
         try:
             if not path:
                 path, cfg.lastdir = qthelpers.browseForFile(
@@ -4445,6 +4540,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 )
                 if not path:                                                # cancel selected
                     return
+
             self.operations['add audio'] = path
             if self.mime_type == 'image':
                 filter = 'MP4 files (*.mp4);;All files (*)'
@@ -4462,7 +4558,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     ext_hint='.mp4',
                     valid_extensions=valid_extensions
                 )
-        except: log_on_statusbar(f'(!) ADD_AUDIO FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) ADD_AUDIO FAILED: {format_exc()}')
 
 
     # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
@@ -4524,7 +4621,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 ext_hint='.mp4',
                 valid_extensions=constants.VIDEO_EXTENSIONS
             )
-        except: log_on_statusbar(f'(!) REPLACE_AUDIO FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) REPLACE_AUDIO FAILED: {format_exc()}')
 
 
     # https://superuser.com/questions/268985/remove-audio-from-video-file-with-ffmpeg
@@ -4636,7 +4734,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if fallback:
                 if settings.checkSaveAsUseMediaFolder.isChecked(): default_path = fallback
                 else: default_path = os.path.join(cfg.lastdir, os.path.basename(fallback))
-            else: default_path = cfg.lastdir
+            else:
+                default_path = cfg.lastdir
 
             # evaluate possible relative paths (see docstring)
             if dirname:
@@ -5145,7 +5244,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             logging.info(f'Deletion dialog choice: {dialog.choice}')
             return dialog.choice
-        except: log_on_statusbar(f'(!) DELETION PROMPT FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) DELETION PROMPT FAILED: {format_exc()}')
 
 
     def show_color_picker(self):
@@ -5163,7 +5263,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             color_string = str(color.getRgb())
             settings.buttonHoverFontColor.setToolTip(color_string)
             settings.buttonHoverFontColor.setStyleSheet('QPushButton {background-color: rgb' + color_string + ';border: 1px solid black;}')
-        except: log_on_statusbar(f'OPEN_COLOR_PICKER FAILED: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) OPEN_COLOR_PICKER FAILED: {format_exc()}')
 
 
     # -------------------------------
@@ -5249,7 +5350,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             logging.info(f'Cleaning up after update check. results={results}')
             settings_were_open = settings.isVisible()   # hide the always-on-top settings while we show popups
-            if settings_were_open: settings.hide()
+            if settings_were_open:
+                settings.hide()
+
             if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
                 if 'failed' in results: return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
 
@@ -5271,7 +5374,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally:
             self.checking_for_updates = False
             settings.buttonCheckForUpdates.setText('Check for updates')
-            if settings_were_open: settings.show()      # restore settings if they were originally open
+            if settings_were_open:                      # restore settings if they were originally open
+                settings.show()
 
 
     def add_info_actions(self, context: QtW.QMenu):
@@ -5319,9 +5423,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 context.setToolTipsVisible(True)
 
 
+    # TODO: we have like THREE variations of this exact method for handling vague input,...
+    #       ...all of which do *almost* the same thing. this should all be ONE method
     def get_renamed_output(
         self,
-        new_name: str = None,
+        text: str = None,
         valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS
     ) -> tuple:
         ''' Returns `new_name` or `self.lineOutput.text()` as a unique, valid,
@@ -5329,9 +5435,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             extension (as determined by `valid_extensions`). If `new_name` ends
             up the same as `self.video`, `new_name`/`self.lineOutput` are both
             blank, or no media is playing, then three None's are returned. '''
-        output_text = self.lineOutput.text().strip()
+        output = text or self.lineOutput.text().strip()
         video = self.video
-        if not video or (not new_name and not output_text):
+        if not video or not output:                     # no media playing or no text provided/accessible
             return None, None, None
 
         try:
@@ -5339,24 +5445,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             os.chdir(os.path.dirname(video))            # set os module's CWD to self.video's folder -> allows things like abspath, '.', and '..'
 
             # get absolute path, sanitize basename, then check for a valid extension
-            path = abspath(new_name or output_text)
-            dirname, basename = os.path.split(path)
+            dirname, basename = os.path.split(abspath(output))
             basename = sanitize(basename)
-            new_name = abspath(os.path.join(dirname, basename))
+            output = abspath(os.path.join(dirname, basename))
             basename_no_ext, ext = splitext_media(basename, valid_extensions)
 
             # append valid extension if needed
             if not ext:
                 ext = splitext_media(video)[-1]
                 if not ext: ext = '.' + self.extension
-                new_name = f'{new_name}{ext}'
+                output = f'{output}{ext}'
 
             # make sure new name isn't the same as the old name
-            if new_name == video:
+            if output == video:
                 return None, None, None
 
             # TODO make the usage of `get_unique_path` a setting (use os.replace instead of renames)
-            return get_unique_path(new_name), basename_no_ext, ext
+            return get_unique_path(output), basename_no_ext, ext
+
         except:
             log_on_statusbar(f'(!) Could not get valid string from output textbox: {format_exc()}')
             return None, None, None
@@ -5368,14 +5474,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Returns keyword arguments as a dictionary for
             the center-parameters of popups and dialogs. '''
         index = settings.comboDialogPosition.currentIndex()
-        if index: widget = None
+        if index:
+            widget = None
         elif not constants.APP_RUNNING:                 # index is 0 but geometry isn't set yet, use cfg to get center of window
             x, y = cfg.pos
             w, h = cfg.size
             x += w / 2
             y += h / 2
             widget = (x, y)
-        else: widget = self.vlc if self.vlc.height() >= 20 else self.frameGeometry()    # use VLC window if it's big enough
+        else:                                           # use VLC window if it's big enough
+            widget = self.vlc if self.vlc.height() >= 20 else self.frameGeometry()
         return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2}
 
 
@@ -5584,7 +5692,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.refresh_volume_tooltip()
             return boosted_volume
         except:
-            logging.error(format_exc())
+            if constants.APP_RUNNING:                   # `show_on_player` errors out when the config triggers this on launch
+                logging.error(f'(!) Failed to set volume: {format_exc()}')
             return -1
 
 
@@ -5620,7 +5729,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if settings.checkTextOnMute.isChecked() and verbose:
                 show_on_player(marq)
             self.refresh_volume_tooltip()
-        except: logging.error(format_exc())
+        except: logging.error(f'(!) Failed to set mute state: {format_exc()}')
         finally: return player.audio_get_mute()
 
 
@@ -5820,20 +5929,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 vlc.update_crop_frames()                                            # update crop frames and factored points
                 self.frameCropInfo.setVisible(width >= 621)                         # show crop info panel if there's space
                 self.frameQuickChecks.setVisible(width >= 800)                      # hide checkmarks if there's no space
-                while app.overrideCursor(): app.restoreOverrideCursor()             # reset cursor
-        except: log_on_statusbar(f'(!) Failed to toggle crop mode: {format_exc()}')
+                while app.overrideCursor():                                         # reset cursor
+                    app.restoreOverrideCursor()
+        except:
+            log_on_statusbar(f'(!) Failed to toggle crop mode: {format_exc()}')
 
 
     def disable_crop_mode(self, log: bool = True):
         for view in self.vlc.crop_frames:
             view.setVisible(False)
             view.setMouseTracking(False)
+
         image_player.update()                                                       # repaint gifPlayer to fix background
         self.vlc.dragging = None                                                    # clear crop-drag
         self.vlc.panning = False                                                    # clear crop-pan
         self.frameCropInfo.setVisible(False)                                        # hide crop info panel
         self.frameQuickChecks.setVisible(self.width() >= 568)                       # show checkmarks if there's space
-        while app.overrideCursor(): app.restoreOverrideCursor()                     # reset cursor
+        while app.overrideCursor():                                                 # reset cursor
+            app.restoreOverrideCursor()
 
         # uncheck action and restore menubar/scale state. NOTE: if you do this part...
         # ...first, there's a chance of seeing a flicker after a crop edit is saved
@@ -5992,6 +6105,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Updates the window's titlebar using various variables,
             based on `lineWindowTitleFormat`. This can be called
             directly, but you probably shouldn't. '''
+
         if self.video:
             path = self.video
             basepath, name = os.path.split(path)
@@ -6001,6 +6115,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             mime = self.mime_type.capitalize()                  # capitalize first letter of mime type
             h, m, s, _ = get_hms(self.duration_rounded)         # no milliseconds in window title
             duration = f'{m}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
+            ratio = self.ratio
 
             # set pause icon
             if player.get_state() == State.Stopped or get_ui_frame() == self.frame_count:
@@ -6010,6 +6125,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 paused = '▷'                                    # ▶ ↻
 
+            # set fps and resolution labels
             if mime != 'Audio':                                 # remember, we just capitalized this
                 fps = str(self.frame_rate_rounded)
                 resolution = f'{self.vwidth:.0f}x{self.vheight:.0f}'
@@ -6019,7 +6135,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 fps = '0'
                 resolution = '0x0'
-            ratio = self.ratio
+
         else:
             path = name = base = parent = 'No media is playing'
             mime = 'Unknown'
@@ -6033,7 +6149,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         replace = {'?base': base, '?name': name, '?parent': parent, '?path': path, '?ext': self.extension_label, '?mime': mime,
                    '?paused': paused, '?fps': fps, '?duration': duration, '?resolution': resolution, '?ratio': ratio,
                    '?volume': str(get_volume_slider()), '?speed': f'{player.get_rate():.2f}', '?size': self.size_label}
-        for var, val in replace.items(): title = title.replace(var, val)
+        for var, val in replace.items():
+            title = title.replace(var, val)
         self.setWindowTitle(title.strip())
 
 
@@ -6120,10 +6237,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if muted:
             hotkey_string = self.get_hotkey_full_string('mute')
             if boost == 1.0: tooltip = f'{boosted_volume:.0f}%\nMuted{hotkey_string}'
-            else: tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)\nMuted{hotkey_string}'
-        elif boost == 1.0: tooltip = f'{boosted_volume:.0f}%'
-        else: tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)'
-
+            else:            tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)\nMuted{hotkey_string}'
+        elif boost == 1.0:   tooltip = f'{boosted_volume:.0f}%'
+        else:                tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)'
         self.sliderVolume.setToolTip(tooltip)
 
 
@@ -6142,13 +6258,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         )
 
 
+    def handle_cycle_buttons(self, *args, next: bool = True):
+        ''' Handles what to do when a cycle button is clicked, depending on what
+            keyboard modifiers are held down and whether `next` is True. '''
+        mod = app.keyboardModifiers()
+        if not mod:                    self.cycle_media(next=next)
+        elif mod & Qt.ShiftModifier:   self.cycle_media(next=next, valid_mime_types=(self.mime_type,))
+        elif mod & Qt.ControlModifier: self.shuffle_media()
+        elif mod & Qt.AltModifier:     self.shuffle_media(valid_mime_types=(self.mime_type,))
+
+
     def handle_snapshot_button(self):
+        ''' Handles what to do when the snapshot button is clicked,
+            depending on what keyboard modifiers are currently held
+            down and what snapshot actions the user has enabled. '''
         mod = app.keyboardModifiers()
         if not mod:                    self.snapshot_actions[settings.comboSnapshotDefault.currentIndex()][0]()
         elif mod & Qt.ShiftModifier:   self.snapshot_actions[settings.comboSnapshotShift.currentIndex()][0]()
         elif mod & Qt.ControlModifier: self.snapshot_actions[settings.comboSnapshotCtrl.currentIndex()][0]()
         elif mod & Qt.AltModifier:     self.snapshot_actions[settings.comboSnapshotAlt.currentIndex()][0]()
-        else:                          self.snapshot_actions[settings.comboSnapshotAlt.currentIndex()][0]()
 
 
     def refresh_taskbar(self):
@@ -6300,7 +6428,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # resize window if player size does not match the expected size (expected size = w/o black bars)
             true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
-            if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
+            if expected_vlc_size != vlc_size:
+                self.resize(expected_vlc_size.width(), true_height)
 
             # move and resize to fit within screen if necessary
             if settings.checkClampOnResize.isChecked():
@@ -6352,7 +6481,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             check-state first in its signals. '''
 
         if not self.video:
-            if checked: self.actionMarkDeleted.trigger()
+            if checked:
+                self.actionMarkDeleted.trigger()
             return show_on_statusbar('No media is playing.', 10000)
         file = file or self.video
 
@@ -6361,7 +6491,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if mod:
                 if mod & Qt.ControlModifier: mode = 'delete'    # ctrl pressed -> immediately delete video
                 elif mod & Qt.ShiftModifier: mode = 'prompt'    # shift pressed -> show deletion prompt
-        else: mode = mode.lower()
+        else:
+            mode = mode.lower()
         logging.info(f'Marking file {file} for deletion: {checked}. Mode: {mode}')
 
         if mode == 'delete': self.delete(file)

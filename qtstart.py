@@ -1,8 +1,9 @@
 ''' Contains several single-use bits of startup code that were originally in main.pyw.
     This file might be removed in the future, since it slightly overcomplicates things.
+
     thisismy-github 3/14/22 '''
 
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui
 from PyQt5 import QtWidgets as QtW
 import config
 import constants
@@ -33,7 +34,7 @@ if args.exit: sys.exit(100)
 # ---------------------
 # Logging
 # ---------------------
-if os.path.exists(constants.LOG_PATH):                  # save existing log and delete outdated logs
+if os.path.exists(constants.LOG_PATH):                  # backup existing log and delete outdated logs
     sep = os.sep
     log_path = constants.LOG_PATH
     temp_dir = f'{constants.TEMP_DIR}{sep}logs'
@@ -50,7 +51,9 @@ if os.path.exists(constants.LOG_PATH):                  # save existing log and 
     except: pass
 
 file_handler = logging.FileHandler(constants.LOG_PATH, 'w', delay=False)
-if not args.debug: file_handler.setLevel(logging.INFO)
+if not args.debug:                                      # don't save debug messages to file (if desired)
+    file_handler.setLevel(logging.INFO)
+
 logging.basicConfig(
     level=logging.DEBUG,
     force=True,
@@ -59,6 +62,7 @@ logging.basicConfig(
     style='{',
     handlers=(file_handler, logging.StreamHandler())
 )
+
 logging.info(f'Logger initalized at {constants.LOG_PATH}.')
 logging.info(f'Arguments: {args}')
 
@@ -74,7 +78,8 @@ def exit(self: QtW.QMainWindow):
         if self.tray_icon is not None:
             if self.dialog_settings.groupTray.isChecked() and not self.isHidden():
                 self.close()
-                if self.close_cancel_selected: return   # in case we show a file-deletion dialog and the user clicks cancel/X
+                if self.close_cancel_selected:          # in case we show a file-deletion dialog and the user clicks cancel/X
+                    return
             self.tray_icon.setVisible(False)
             logging.info('System tray icon stopped.')
 
@@ -84,18 +89,23 @@ def exit(self: QtW.QMainWindow):
         try: config.saveConfig(self, constants.CONFIG_PATH)
         except: logging.warning(f'Error saving configuration: {format_exc()}')
         logging.info('Configuration has been saved. Goodbye.')
+
     except: logging.critical(f'\n\n(!)QTSTART.EXIT FAILED: {format_exc()}')
     finally: self.closed = True                         # absolutely must be True or else daemon threads will never close
 
 
 def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
-    ''' Generates the system tray icon. For a while I was using pystray because I genuinely forgot QSystemTrayIcon existed.
-        QSystemTrayIcon has some issues, one being the fact that if placed in the "hidden icons" area on Windows, that area will
-        close while the tray icon's context menu is open. That's not much of an issue with this very barebones tray icon, but it
-        may become an issue if the tray icon is expanded upon. Pystray is still a decent (albeit heavy) fallback if necessary. '''
+    ''' Generates a system tray icon. Uses `QSystemTrayIcon`, which has issues:
+        - If the icon is in the overflow menu on Windows, the overflow menu will
+          close itself while the icon's context menu is open.
+        - Some Linux distros seem to not show this icon at all. Cause unknown.
+
+        Originally the `pystray` library was used (I forgot `QSystemTrayIcon`
+        existed) and may work as a decent (albeit heavy) fallback if the above
+        issues cannot be resolved or we expand upon our barebones icon. '''
 
     def handle_click(reason: QtW.QSystemTrayIcon.ActivationReason):
-        if reason == QtW.QSystemTrayIcon.Context:
+        if reason == QtW.QSystemTrayIcon.Context:       # right-click
             action_show = QtW.QAction('&PyPlayer')
             action_show.triggered.connect(lambda: qthelpers.showWindow(self))
             menu = QtW.QMenu()
@@ -110,9 +120,9 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
             menu.addAction(self.actionStop)
             menu.addAction(self.actionExit)
             return menu.exec(QtGui.QCursor.pos())
-        if reason == QtW.QSystemTrayIcon.Trigger:
+        if reason == QtW.QSystemTrayIcon.Trigger:       # left-click
             return qthelpers.showWindow(self)
-        if reason == QtW.QSystemTrayIcon.MiddleClick:
+        if reason == QtW.QSystemTrayIcon.MiddleClick:   # middle-click
             index = self.dialog_settings.comboTrayMiddleClick.currentIndex()
             return self.middle_click_tray_actions[index]()
 
@@ -127,6 +137,9 @@ def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
 # GUI Setup
 # ---------------------
 def after_show_setup(self: QtW.QMainWindow):
+    ''' Additional setup for `self` (our main window/GUI class)
+        that is most appropriate to do after the window is shown. '''
+
     # check for/download/validate pending updates
     self.handle_updates_signal.emit(True)
 
@@ -154,14 +167,17 @@ def after_show_setup(self: QtW.QMainWindow):
     # populate recent files list
     recent_files_count = self.dialog_settings.spinRecentFiles.value()
     files = config.cfg.load('recent_files', '', '<|>', section='general')
-    if recent_files_count <= 25:
+    if recent_files_count > 25:
+        self.recent_files += files[-recent_files_count:]
+    else:
         recent_files = self.recent_files
         append = recent_files.append
         abspath = os.path.abspath
         for file in files:
-            if os.path.isfile(file) and file not in recent_files: append(abspath(file))
-            if len(recent_files) == recent_files_count: break
-    else: self.recent_files += files[-recent_files_count:]
+            if os.path.isfile(file) and file not in recent_files:
+                append(abspath(file))
+            if len(recent_files) == recent_files_count:
+                break
 
     # start system tray icon
     if config.cfg.grouptray:
@@ -251,14 +267,14 @@ def connect_shortcuts(self: QtW.QMainWindow):
     self.shortcuts = {action_name: (QtW.QShortcut(self, context=3), QtW.QShortcut(self, context=3)) for action_name in shortcut_actions}
     #self.shortcuts = {action_name: (Qtself.QKeySequence(), Qtself.QKeySequence()) for action_name in shortcut_actions}
 
-    get_refresh_shortcuts_lambda = lambda widget: lambda: self.refresh_shortcuts(widget)
+    get_refresh_shortcuts_lambda = lambda widget: lambda: self.refresh_shortcuts(widget)    # lambda-in-iterable workaround
     for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.formKeys, 1):
         for keySequenceEdit in qthelpers.layoutGetItems(layout):
             name = keySequenceEdit.objectName()
             index = 0 if name[-1] != '_' else 1
             name = name.rstrip('_')
             self.shortcuts[name][index].activated.connect(shortcut_actions[name])
-            keySequenceEdit.editingFinished.connect(get_refresh_shortcuts_lambda(keySequenceEdit))  # lambda-in-iterable workaround
+            keySequenceEdit.editingFinished.connect(get_refresh_shortcuts_lambda(keySequenceEdit))
 
 
 def connect_widget_signals(self: QtW.QMainWindow):
@@ -339,7 +355,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionSnapRatioShrink.triggered.connect(lambda: self.snap_to_player_size(shrink=True))
     self.actionCheckForUpdates.triggered.connect(self.handle_updates)
     self.actionViewLog.triggered.connect(lambda: qthelpers.openPath(constants.LOG_PATH))
-    self.actionViewLastDirectory.triggered.connect(self.open_lastdir)
+    self.actionViewLastDirectory.triggered.connect(lambda: qthelpers.openPath(config.cfg.lastdir))
     self.actionViewInstallFolder.triggered.connect(lambda: qthelpers.openPath(constants.CWD))
     self.actionViewProbeFile.triggered.connect(self.open_probe_file)
     self.actionDeleteProbeFile.triggered.connect(lambda: self.open_probe_file(delete=True))
@@ -365,9 +381,11 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.buttonAutoplay.clicked.connect(self.actionAutoplay.trigger)
 
     self.trim_mode_action_group = QtW.QActionGroup(self.menuTrimMode)
-    for fade_action in (self.actionTrimAuto, self.actionTrimPrecise,
-                        self.actionFadeBoth, self.actionFadeVideo, self.actionFadeAudio):
-        self.trim_mode_action_group.addAction(fade_action)
+    self.trim_mode_action_group.addAction(self.actionTrimAuto)
+    self.trim_mode_action_group.addAction(self.actionTrimPrecise)
+    self.trim_mode_action_group.addAction(self.actionFadeBoth)
+    self.trim_mode_action_group.addAction(self.actionFadeVideo)
+    self.trim_mode_action_group.addAction(self.actionFadeAudio)
     self.trim_mode_action_group.triggered.connect(self.set_trim_mode)
 
     self.autoplay_direction_group = QtW.QActionGroup(self)

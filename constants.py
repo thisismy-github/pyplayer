@@ -1,5 +1,6 @@
 ''' Contains a number of constants used throughout the project
     that were originally spread across the tops of several files.
+
     thisismy-github 3/14/22 '''
 
 import qthelpers
@@ -30,14 +31,14 @@ _sep = os.sep
 BIN_DIR = f'{CWD}{_sep}{"PyQt5" if IS_COMPILED else "bin"}'
 TEMP_DIR = f'{BIN_DIR}{_sep}temp'
 PROBE_DIR = f'{TEMP_DIR}{_sep}probed'
+THUMBNAIL_DIR = f'{TEMP_DIR}{_sep}thumbnails'
 THEME_DIR = f'{CWD}{_sep}themes'
 RESOURCE_DIR = f'{THEME_DIR}{_sep}resources'
 LOG_PATH = f'{CWD}{_sep}pyplayer.log'
 CONFIG_PATH = f'{CWD}{_sep}config.ini'
 PID_PATH = f'{TEMP_DIR}{_sep}{os.getpid()}.pid'
-THUMBNAIL_DIR = f'{TEMP_DIR}{_sep}thumbnails'
 
-for _dir in (THEME_DIR, TEMP_DIR, PROBE_DIR, THUMBNAIL_DIR):
+for _dir in (TEMP_DIR, PROBE_DIR, THUMBNAIL_DIR, THEME_DIR):
     try: os.makedirs(_dir)
     except: continue
 
@@ -91,8 +92,8 @@ MARK_DELETED_TOOLTIP_BASE = '''Mark media for future deletion.
 ?count are currently marked for deletion.
 
 Shortcuts:
-Shift + click: Show deletion-confirmation prompt.
 Ctrl + click: Immediately delete current media.
+Shift + click: Show deletion-confirmation prompt.
 
 Right-click for more options. Deletion-confirmation
 prompt is shown on exit if any files are marked.'''
@@ -100,8 +101,8 @@ prompt is shown on exit if any files are marked.'''
 SNAPSHOT_TOOLTIP_BASE = '''Takes a snapshot of the current media at its current position.
 
 Click: ?click
-Shift + click: ?shiftclick
 Ctrl + click: ?ctrlclick
+Shift + click: ?shiftclick
 Alt + click: ?altclick
 
 Right-click for more options.'''
@@ -196,12 +197,13 @@ Without it, editing features will not function. For Windows
 users, it should have been included with your download.
 If it wasn't, download the FFmpeg essentials below{warning_text}'''
     popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
-    choice = qthelpers.getPopupOkCancel(title='FFmpeg not detected',
-                                        text=popup_text,
-                                        textInformative=popup_text_informative,
-                                        icon=QMessageBox.Warning,
-                                        **self.get_popup_location()).exec()
-    if not forced and choice == QMessageBox.Cancel:
+    if not forced and qthelpers.getPopupOkCancel(
+        title='FFmpeg not detected',
+        text=popup_text,
+        textInformative=popup_text_informative,
+        icon=QMessageBox.Warning,
+        **self.get_popup_location()
+    ).exec() == QMessageBox.Cancel:
         import config
         config.cfg.ffmpegwarningignored = True
     logging.getLogger('constants.py').warning('FFmpeg not detected. Current FFMPEG constant: ' + FFMPEG)
@@ -221,10 +223,12 @@ disable FFprobe, or "OK" to leave FFprobe enabled. For Windows
 users, FFprobe should have been included with your download.
 If it wasn't, download the FFmpeg essentials below.'''
     popup_text_informative = '<a href=https://ffmpeg.org/download.html>https://ffmpeg.org/download.html</a>'
-    choice = qthelpers.getPopupOkCancel(title='FFprobe not detected',
-                                        text=popup_text,
-                                        textInformative=popup_text_informative,
-                                        icon=QMessageBox.Warning,
-                                        **self.get_popup_location()).exec()
-    if choice == QMessageBox.Cancel: self.dialog_settings.checkFFprobe.setChecked(False)
+    if qthelpers.getPopupOkCancel(
+        title='FFprobe not detected',
+        text=popup_text,
+        textInformative=popup_text_informative,
+        icon=QMessageBox.Warning,
+        **self.get_popup_location()
+    ).exec() == QMessageBox.Cancel:
+        self.dialog_settings.checkFFprobe.setChecked(False)
     logging.getLogger('constants.py').warning('FFprobe not detected. Current FFPROBE constant: ' + FFPROBE)
