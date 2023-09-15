@@ -427,7 +427,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.close_was_spontaneous = False
         self.was_maximized = False
         self.was_paused = False
-        self.lock_fullscreen_ui = False
         self.crop_restore_state = {}
         self.reset_progress_offset = False
         self.add_to_progress_offset = 0.0
@@ -987,15 +986,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         gc.collect(generation=2)
 
 
-    def enterEvent(self, event: QtGui.QEnterEvent):
-        self.lock_fullscreen_ui = False or (not player.is_playing() and not self.is_paused)
-        return super().enterEvent(event)
-
-
     def leaveEvent(self, event: QtCore.QEvent):
-        pos = self.mapFromGlobal(QtGui.QCursor().pos())
-        self.lock_fullscreen_ui = self.rect().contains(pos) or (not player.is_playing() and not self.is_paused)
-        if not self.lock_fullscreen_ui: self.vlc.last_move_time = 1
+        ''' Handles moving the cursor off the window. In fullscreen, mousing
+            over the controls while they're docked counts as leaving the window.
+            If we've ACTUALLY left the window, we trigger the idle timeout so
+            the docked controls fade out. '''
+        if settings.checkHideIdleCursor.isChecked():
+            pos = self.mapFromGlobal(QtGui.QCursor().pos())
+            if not (self.rect().contains(pos) or (not player.is_playing() and not self.is_paused)):
+                self.vlc.idle_timeout_time = 1.0        # 0 locks the UI, so set it to 1
         return super().leaveEvent(event)
 
 
@@ -1259,15 +1258,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.spinFrame.setPrefix('')
             self.spinFrame.setMinimumSize(0, 0)
 
-
-    def timerFullScreenMediaEndedEvent(self):
-        ''' A timeout event separate from `timerEvent` as integrating it there
-            caused timing-related crashes. Checks every 500 milliseconds if
-            we've left fullscreen mode, resumed playback, or lost the fullscreen
-            UI-lock already before allowing the fullscreen UI to fade again. '''
-        if not self.restarted or not self.isFullScreen() or not self.lock_fullscreen_ui:
-            self.lock_fullscreen_ui = False
-            self.timer_fullscreen_media_ended.stop()    # kill timer
 
 
     def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
@@ -2940,14 +2930,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.buttonPause.setIcon(self.icons['restart'])
             refresh_title()
             self.refresh_taskbar()
-
-            # misc cleanup
-            if self.isFullScreen() and settings.checkFullScreenMediaFinishedLock.isChecked():
-                self.lock_fullscreen_ui = True      # show UI to indicate we've restarted in fullscreen (marquee doesn't work -> player is stopped)
-                self.timer_fullscreen_media_ended = QtCore.QTimer(self, interval=500, timeout=self.timerFullScreenMediaEndedEvent)
-                self.timer_fullscreen_media_ended.start()
-            else:                                   # VLC will auto-show last marq text everytime...
-                show_on_player('')                  # ...it restarts -> this trick hides it
+            show_on_player('')                      # VLC auto-shows last marq on restart -> this trick hides it
 
             # ensure this is True (it resets depending on settings)
             self.first_video_fully_loaded = True
@@ -5844,13 +5827,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.dockControls.move(x, y)
             self.dockControls.setWindowOpacity(settings.spinFullScreenMaxOpacity.value() / 100)     # opacity only applies while floating
 
-            # if we're already hovering over the pending dockControls rect OR the video already ended (and we're not paused) -> lock fullscreen controls
-            self.lock_fullscreen_ui = (not player.is_playing() and not self.is_paused) or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos())
-
             self.statusbar.setVisible(False)
             self.menubar.setVisible(False)              # TODO should this be like set_crop_mode's version? this requires up to 2 alt-presses to open
             self.was_maximized = self.isMaximized()     # remember if we're maximized or not
-            self.vlc.last_move_time = get_time()        # reset last_move_time, just in case we literally haven't moved the mouse yet
+
+            # if we're already hovering over the pending dockControls rect OR media already ended (and we're not paused) -> don't fade UI
+            if settings.checkHideIdleCursor.isChecked():
+                if (not player.is_playing() and not self.is_paused) or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos()):
+                    self.vlc.idle_timeout_time = 0.0
+                else:                                   # otherwise, set timer to act like we JUST stopped moving the mouse
+                    self.vlc.idle_timeout_time = get_time() + settings.spinHideIdleCursorDuration.value()
+
             self.ignore_next_fullscreen_move_event = True
             return self.showFullScreen()                # FullScreen with a capital S
         else:
@@ -5983,8 +5970,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     }
                     vlc.text_y_offsets = {P.TOP_LEFT: -8, P.TOP_RIGHT: -8, P.BOTTOM_LEFT: 14, P.BOTTOM_RIGHT: 14}
 
+                # create & setup crop frames for the first time. this is done here... because...
                 if not vlc.crop_frames:
-                    vlc.crop_frames = (     # can't reuse crop_frames alias here since it is None
+                    vlc.crop_frames = (
                         QtW.QFrame(self),   # 0 top
                         QtW.QFrame(self),   # 1 left
                         QtW.QFrame(self),   # 2 right
@@ -5999,8 +5987,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         view.setVisible(True)
                         view.setMouseTracking(True)
                         view.setStyleSheet('background: rgba(0, 0, 0, 135)')        # TODO add setting here?
+
+                # crop frames already exist -> enable/restore them
                 else:
                     for view in vlc.crop_frames:
+                        view.setEnabled(True)
                         view.setVisible(True)
 
                 width = self.width()
@@ -6008,22 +5999,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 vlc.refresh_crop_cursor(vlc.mapFromGlobal(QtGui.QCursor.pos()))     # set appropriate cropping cursor
                 self.frameCropInfo.setVisible(width >= 621)                         # show crop info panel if there's space
                 self.frameQuickChecks.setVisible(width >= 800)                      # hide checkmarks if there's no space
+                if self.underMouse():                                               # unhide/lock ui if we're over the window
+                    self.vlc.idle_timeout_time = 0.0
         except:
             log_on_statusbar(f'(!) Failed to toggle crop mode: {format_exc()}')
 
 
     def disable_crop_mode(self, log: bool = True):
-        for view in self.vlc.crop_frames:
+        for view in self.vlc.crop_frames:                       # hide/disable crop frames
             view.setVisible(False)
-            view.setMouseTracking(False)
+            view.setEnabled(False)
 
         image_player.update()                                   # repaint gifPlayer to fix background
         self.vlc.dragging = None                                # clear crop-drag
         self.vlc.panning = False                                # clear crop-pan
         self.frameCropInfo.setVisible(False)                    # hide crop info panel
         self.frameQuickChecks.setVisible(self.width() >= 568)   # show checkmarks if there's space
-        while app.overrideCursor():                             # reset cursor
-            app.restoreOverrideCursor()
+        if settings.checkHideIdleCursor.isChecked():            # start hiding the cursor/UI right away if possible
+            self.vlc.idle_timeout_time = 1.0                    # 0 locks the UI, so set it to 1
 
         # uncheck action and restore menubar/scale state. NOTE: if you do this part...
         # ...first, there's a chance of seeing a flicker after a crop edit is saved
@@ -6034,6 +6027,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             current_value = restore_state['scale_setting'].currentIndex()
             restore_state['scale_updater'](current_value, force=True)
         restore_state.clear()
+
+        # `log` may be False when we're forcing crop mode to disable, such as while saving
         if log:
             log_on_statusbar('Crop mode disabled.')
 

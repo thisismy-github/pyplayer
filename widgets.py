@@ -87,8 +87,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.text_y_percent = 0.016
         self.text_opacity = 255
 
-        self.last_move_time = 0
-        self.idle_cursor_timeout = 2.5
+        self.idle_timeout_time = 0.0
         self.last_invalid_snap_state_time = 0.0
         self.dragdrop_in_progress = False
         self.dragdrop_last_modifiers = None
@@ -548,13 +547,13 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             entire region) to be dragged around if crop mode is enabled. '''
         if not gui.actionCrop.isChecked():              # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
             if settings.checkHideIdleCursor.isChecked() and gui.video:
-                self.last_move_time = time.time()       # update move time if a video is playing and idle timeouts are enabled
+                self.idle_timeout_time = time.time() + settings.spinHideIdleCursorDuration.value()
             else:
-                self.last_move_time = 0                 # otherwise, keep move time at 0
+                self.idle_timeout_time = 0.0            # 0 locks the cursor/UI
             return event.ignore()                       # only handle idle timeouts if we're not cropping
 
         # crop mode enabled -> lock UI and handle dragging and/or crop-cursor
-        self.last_move_time = 0
+        self.idle_timeout_time = 0.0
         try:
             pos = self.mapFromGlobal(event.globalPos())  # event.pos() does not work. I have no explanation.
             if self.dragging is None:
@@ -647,10 +646,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def leaveEvent(self, event: QtCore.QEvent):
-        ''' Automatically stop dragging and reset the
-            cursor when the mouse leaves the player. '''
-        while app.overrideCursor():                     # reset cursor to default
-            app.restoreOverrideCursor()
+        ''' Automatically stop dragging and lock the
+            cursor/UI when the mouse leaves the player. '''
+        self.idle_timeout_time = 0.0                    # 0 locks the cursor/UI
         self.dragging = None                            # release crop-drag
         #print('setting panning to true', event.buttons())
         #self.panning = True  # TODO this is a bandaid fix. dragging/panning sometimes wrongly report as None and False, causing unexpected pauses in mouseReleaseEvent
@@ -1221,33 +1219,58 @@ class QVideoSlider(QtW.QSlider):
             its position over the slider relative to the current media, and
             paints a rainbow effect around trim-boundaries, if present. '''
         super().paintEvent(event)           # perform built-in paint immediately so we can paint on top
-        if not self.isEnabled(): return     # if not enabled, do not bother with trim-boundaries or hover-timestamps
 
         # handle QVideoPlayer's fullscreen controls/idle cursor timeout
         try:
             now = time.time()
             vlc = gui.vlc
-            fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 looks instant (+ has no flicker) and avoids 0-division
-            current_opacity = gui.dockControls.windowOpacity()
-            min_opacity = settings.spinFullScreenMinOpacity.value() / 100
-            max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
-            try:
-                # we keep track of lock_fullscreen_ui manually instead of repeatedly calling gui.dockControls.underMouse()
-                # TODO ^^^ is this actually faster, or is underMouse() always kept track of internally?
-                if vlc.last_move_time and not gui.lock_fullscreen_ui and vlc.last_move_time + settings.spinHideIdleCursorDuration.value() <= now:
-                    vlc.setCursor(Qt.BlankCursor)
-                    if current_opacity > min_opacity:
-                        opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
-                        gui.dockControls.setWindowOpacity(max(current_opacity - opacity_increment, min_opacity))
-                else:
-                    vlc.unsetCursor()
+            idle_time = vlc.idle_timeout_time
+            if not idle_time or idle_time > now or gui.restarted or gui.player.get_state() == 5:
+                if vlc.underMouse() and not gui.actionCrop.isChecked():
+                    cursor = app.overrideCursor()               # these if's may seem excessive, but it's literally...
+                    if not cursor:                              # ...12x faster than actually setting the cursor
+                        app.setOverrideCursor(QtCore.Qt.ArrowCursor)
+                    elif cursor.shape() != QtCore.Qt.ArrowCursor:
+                        app.changeOverrideCursor(QtCore.Qt.ArrowCursor)
+
+                if gui.isFullScreen():
+                    current_opacity = gui.dockControls.windowOpacity()
+                    max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
                     if current_opacity < max_opacity:
-                        opacity_increment = max_opacity / (fade_time * gui.frame_rate_rounded)
+                        fps = 20
+                        if gui.player.is_playing() and settings.checkHighPrecisionProgress.isChecked():
+                            fps = max(fps, gui.frame_rate_rounded)
+
+                        fade_time = settings.spinFullScreenFadeDuration.value() or 0.01
+                        opacity_increment = max_opacity / (fade_time * fps)
                         gui.dockControls.setWindowOpacity(min(current_opacity + opacity_increment, max_opacity))
-            except:
-                string = f'fade_time={fade_time} current_opacity={current_opacity} min_opacity={min_opacity} max_opacity={max_opacity} frame_rate_rounded={gui.frame_rate_rounded}'
-                logger.warning(f'(!) Unexpected error while handling idle-timeout - {string} - {format_exc()}')
+
+            else:
+                if vlc.underMouse() and not gui.actionCrop.isChecked():
+                    cursor = app.overrideCursor()
+                    if not cursor:
+                        app.setOverrideCursor(QtCore.Qt.BlankCursor)
+                    elif cursor.shape() != QtCore.Qt.BlankCursor:
+                        app.changeOverrideCursor(QtCore.Qt.BlankCursor)
+
+                if gui.isFullScreen():
+                    current_opacity = gui.dockControls.windowOpacity()
+                    min_opacity = settings.spinFullScreenMinOpacity.value() / 100
+                    if current_opacity > min_opacity:
+                        fps = 20
+                        if gui.player.is_playing() and settings.checkHighPrecisionProgress.isChecked():
+                            fps = max(fps, gui.frame_rate_rounded)
+
+                        max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
+                        fade_time = settings.spinFullScreenFadeDuration.value() or 0.01
+                        opacity_increment = max_opacity / (fade_time * fps)
+                        gui.dockControls.setWindowOpacity(max(current_opacity - opacity_increment, min_opacity))
         except:
+            return
+
+        # if slider isn't enabled, don't bother with trim-boundaries or hover-timestamps
+        # NOTE: do this after the idle-timeout is handled or our cursor/UI will be stuck
+        if not self.isEnabled():
             return
 
         p = QtGui.QPainter()

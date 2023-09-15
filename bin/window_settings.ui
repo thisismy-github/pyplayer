@@ -75,7 +75,7 @@
         <x>0</x>
         <y>0</y>
         <width>344</width>
-        <height>2691</height>
+        <height>2670</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -381,7 +381,7 @@ of time. While fullscreen, the UI will also disappear.</string>
                 <number>1</number>
                </property>
                <property name="minimum">
-                <double>0.000000000000000</double>
+                <double>0.100000000000000</double>
                </property>
                <property name="maximum">
                 <double>9999999.000000000000000</double>
@@ -2151,20 +2151,6 @@ will not appear at all.</string>
                 </property>
                 <property name="value">
                  <number>80</number>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0" colspan="2">
-               <widget class="QCheckBox" name="checkFullScreenMediaFinishedLock">
-                <property name="toolTip">
-                 <string>If checked, the fullscreen controls will fade in and remain
-visible as a visual cue once the current media finishes.</string>
-                </property>
-                <property name="text">
-                 <string>Show fullscreen controls after media finishes</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -6106,7 +6092,6 @@ mime type as the current media (video, audio, or image).</string>
   <tabstop>spinFullScreenWidth</tabstop>
   <tabstop>spinFullScreenMinOpacity</tabstop>
   <tabstop>spinFullScreenMaxOpacity</tabstop>
-  <tabstop>checkFullScreenMediaFinishedLock</tabstop>
   <tabstop>lineDefaultSnapshotPath</tabstop>
   <tabstop>buttonBrowseDefaultSnapshotPath</tabstop>
   <tabstop>lineSnapshotNameFormat</tabstop>
