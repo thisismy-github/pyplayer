@@ -93,7 +93,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.dragdrop_in_progress = False
         self.dragdrop_last_modifiers = None
 
-        self.dragging: int = None
+        self.dragging: int = None                           # NOTE: 0 is valid -> always check against None
         self.dragging_offset: QtCore.QPoint = None
         self.drag_axis_lock: int = None
         self.panning = False
@@ -109,6 +109,12 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.crop_rect: QtCore.QRect = None
         self.reference_example: dict = None
         self.text_y_offsets: dict = None
+        self.cursors = {
+            0: QtGui.QCursor(Qt.SizeFDiagCursor),
+            1: QtGui.QCursor(Qt.SizeBDiagCursor),
+            2: QtGui.QCursor(Qt.SizeBDiagCursor),
+            3: QtGui.QCursor(Qt.SizeFDiagCursor)
+        }
 
 
     def play(self, file: str, _error: bool = False) -> bool:
@@ -407,6 +413,31 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         gui.labelCropBottom.setText(f'B: {lfp[3].y():.0f}')
 
 
+    def refresh_crop_cursor(self, pos: QtCore.QPoint):
+        ''' Updates the cursor to an appropriate resize/grab cursor
+            based on its `pos` relative to the current crop region. '''
+        cursor = app.overrideCursor()
+        crop_point_index = self.get_crop_point_index_in_range(pos)
+        edge_index = self.get_crop_edge_index_in_range(pos)
+        if crop_point_index is not None:        # https://doc.qt.io/qt-5/qguiapplication.html#overrideCursor
+            if cursor: app.changeOverrideCursor(self.cursors[crop_point_index])
+            else:      app.setOverrideCursor(self.cursors[crop_point_index])
+        elif edge_index is not None:
+            if edge_index % 2 == 0:
+                if cursor: app.changeOverrideCursor(Qt.SizeHorCursor)
+                else:      app.setOverrideCursor(Qt.SizeHorCursor)
+            else:
+                if cursor: app.changeOverrideCursor(Qt.SizeVerCursor)
+                else:      app.setOverrideCursor(Qt.SizeVerCursor)
+        elif self.crop_rect.contains(pos):
+            if cursor: app.changeOverrideCursor(Qt.SizeAllCursor)
+            else:      app.setOverrideCursor(Qt.SizeAllCursor)
+        elif cursor:
+            app.restoreOverrideCursor()
+            while app.overrideCursor():
+                app.restoreOverrideCursor()
+
+
     # ---------------------
     # Events
     # ---------------------
@@ -464,9 +495,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.last_invalid_snap_state_time = time.time()
 
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
-        elif all((not gui.timer_id_resize_snap,
-                  time.time() - self.last_invalid_snap_state_time > 0.35,
-                  gui.first_video_fully_loaded)):
+        elif (
+            not gui.timer_id_resize_snap
+            and time.time() - self.last_invalid_snap_state_time > 0.35
+            and gui.first_video_fully_loaded
+        ):
             gui.timer_id_resize_snap = gui.startTimer(200, Qt.CoarseTimer)
 
 
@@ -475,9 +508,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             recent files list if the forwards/backwards buttons are pressed. '''
         try:
             if not gui.actionCrop.isChecked():                          # no crop -> check for back/forward buttons
-                if event.button() == Qt.BackButton: gui.cycle_recent_files(forward=False)
+                if event.button() == Qt.BackButton:      gui.cycle_recent_files(forward=False)
                 elif event.button() == Qt.ForwardButton: gui.cycle_recent_files(forward=True)
-                elif event.button() == Qt.MiddleButton: gui.middle_click_player_actions[settings.comboPlayerMiddleClick.currentIndex()]()
+                elif event.button() == Qt.MiddleButton:  gui.middle_click_player_actions[settings.comboPlayerMiddleClick.currentIndex()]()
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
 
             self.panning = False
@@ -500,8 +533,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                     self.dragging = -1
                     self.drag_axis_lock = None          # reset axis lock before panning
                     self.dragging_offset = pos - self.selection[0]
-                    if app.overrideCursor() is None: app.setOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
-                    else: app.changeOverrideCursor(QtGui.QCursor(Qt.ClosedHandCursor))
+                    if app.overrideCursor(): app.changeOverrideCursor(Qt.ClosedHandCursor)
+                    else: app.setOverrideCursor(Qt.ClosedHandCursor)
             event.accept()
             self.update()
         except:
@@ -510,7 +543,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
-        ''' Allows users to drag crop borders by their corners. '''
+        ''' Handles mouse movement over the player by resetting the idle timer
+            if crop mode is disabled, or by allowing crop edges/corners (or the
+            entire region) to be dragged around if crop mode is enabled. '''
         if not gui.actionCrop.isChecked():              # idle timeout is handled in QVideoSlider's paintEvent since it constantly updates
             if settings.checkHideIdleCursor.isChecked() and gui.video:
                 self.last_move_time = time.time()       # update move time if a video is playing and idle timeouts are enabled
@@ -518,29 +553,12 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 self.last_move_time = 0                 # otherwise, keep move time at 0
             return event.ignore()                       # only handle idle timeouts if we're not cropping
 
+        # crop mode enabled -> lock UI and handle dragging and/or crop-cursor
         self.last_move_time = 0
         try:
             pos = self.mapFromGlobal(event.globalPos())  # event.pos() does not work. I have no explanation.
             if self.dragging is None:
-                cursor = app.overrideCursor()
-                crop_point_index = self.get_crop_point_index_in_range(pos)
-                edge_index = self.get_crop_edge_index_in_range(pos)
-                if crop_point_index is not None:        # https://doc.qt.io/qt-5/qguiapplication.html#overrideCursor
-                    if cursor is None: app.setOverrideCursor(QtGui.QCursor(self.cursors[crop_point_index]))
-                    else: app.changeOverrideCursor(QtGui.QCursor(self.cursors[crop_point_index]))
-                elif edge_index is not None:
-                    if edge_index % 2 == 0:
-                        if cursor is None: app.setOverrideCursor(QtGui.QCursor(Qt.SizeHorCursor))
-                        else: app.changeOverrideCursor(QtGui.QCursor(Qt.SizeHorCursor))
-                    else:
-                        if cursor is None: app.setOverrideCursor(QtGui.QCursor(Qt.SizeVerCursor))
-                        else: app.changeOverrideCursor(QtGui.QCursor(Qt.SizeVerCursor))
-                elif self.crop_rect.contains(pos):
-                    if cursor is None: app.setOverrideCursor(QtGui.QCursor(Qt.SizeAllCursor))
-                    else: app.changeOverrideCursor(QtGui.QCursor(Qt.SizeAllCursor))
-                elif cursor is not None:
-                    while app.overrideCursor():
-                        app.restoreOverrideCursor()
+                self.refresh_crop_cursor(pos)
 
             elif app.mouseButtons() == Qt.LeftButton:
                 s = self.selection
@@ -597,6 +615,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
                 self.update_crop_frames()               # update crop frames and factored points
                 self.repaint()                          # repaint QVideoPlayer (TODO: update() vs repaint() here)
+
         except TypeError: pass                          # self.dragging is None
         except: logger.warning(f'(!) Unexpected error while dragging crop points: {format_exc()}')
         #return super().mouseMoveEvent(event)           # TODO: required for mouseReleaseEvent to work properly?
@@ -607,15 +626,16 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             ignoring clicks that were dragged outside player. Releases dragged
             crop points/edges if needed, and resets cursor. '''
         #print('release', self.dragging, self.panning)  # TODO: sometimes this STILL pauses
+
         # left click released and we're either not dragging crop points or we clicked the middle but did not start panning
         if event.button() == Qt.LeftButton and (self.dragging is None or self.dragging == -1) and not self.panning:
             if self.underMouse():                       # mouse wasn't dragged off player
                 gui.pause()
-        if self.dragging is not None:
-            while app.overrideCursor():                 # reset cursor to default
-                app.restoreOverrideCursor()
+        if self.dragging is not None:                   # refresh crop cursor if we were just dragging
+            self.refresh_crop_cursor(self.mapFromGlobal(event.globalPos()))
+
         #self.panning = False
-        self.dragging = None                            # release drag
+        self.dragging = None                            # release crop-drag
 
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
@@ -627,16 +647,16 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def leaveEvent(self, event: QtCore.QEvent):
-        ''' Automatically stop dragging and reset
-            cursor when the mouse leaves the window. '''
+        ''' Automatically stop dragging and reset the
+            cursor when the mouse leaves the player. '''
         while app.overrideCursor():                     # reset cursor to default
             app.restoreOverrideCursor()
-        self.dragging = None
+        self.dragging = None                            # release crop-drag
         #print('setting panning to true', event.buttons())
         #self.panning = True  # TODO this is a bandaid fix. dragging/panning sometimes wrongly report as None and False, causing unexpected pauses in mouseReleaseEvent
 
 
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):             # accept drag if dragging files (requires setAcceptDrops(True))
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         ''' Accepts a cursor-drag if files are being dragged.
             Requires `self.setAcceptDrops(True)`. '''
         if event.mimeData().hasUrls(): event.accept()
@@ -1122,14 +1142,14 @@ class QVideoPlayerLabel(QtW.QLabel):
                 try:
                     if zoom >= 1:
                         if settings.checkZoomPrecise.isChecked():
-                            if scale != ZOOM_FILL: size = QtCore.QSizeF(pixmap.size())    # TODO V does this deform the image while zooming?
+                            if scale != ZOOM_FILL: size = QtCore.QSizeF(pixmap.size())  # TODO V does this deform the image while zooming?
                             else: size = QtCore.QSizeF(self.size().scaled(pixmap.size(), Qt.KeepAspectRatio))
                             painter.drawPixmap(QtCore.QRectF(self.pixmapPos, size * zoom).toRect(), pixmap)
                         else:
-                            if scale != ZOOM_FILL: size = pixmap.size()                   # TODO V ditto?
+                            if scale != ZOOM_FILL: size = pixmap.size()                 # TODO V ditto?
                             else: size = self.size().scaled(pixmap.size(), Qt.KeepAspectRatio)
                             painter.drawPixmap(QtCore.QRect(self.pixmapPos, size * zoom), pixmap)
-                        #painter.scale(zoom, zoom)                                          # TODO painter.scale() vs. QRect() -> which is faster?
+                        #painter.scale(zoom, zoom)                                      # TODO painter.scale() vs. QRect() -> which is faster?
                         #painter.drawPixmap(self.pixmapPos / zoom, pixmap)
 
                     # at <1 zoom, art.scaled() looks MUCH better and the performance drop is negligible
@@ -1207,7 +1227,7 @@ class QVideoSlider(QtW.QSlider):
         try:
             now = time.time()
             vlc = gui.vlc
-            fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 seconds looks instant while avoiding 0-division (no flicker issues)
+            fade_time = max(settings.spinFullScreenFadeDuration.value(), 0.01)  # 0.01 looks instant (+ has no flicker) and avoids 0-division
             current_opacity = gui.dockControls.windowOpacity()
             min_opacity = settings.spinFullScreenMinOpacity.value() / 100
             max_opacity = settings.spinFullScreenMaxOpacity.value() / 100
@@ -1243,7 +1263,7 @@ class QVideoSlider(QtW.QSlider):
                         next_index = 0
                     self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
                     self.color_index = next_index
-                if now > self.last_color_change_time + 0.05:              # only update color at 20fps
+                if now > self.last_color_change_time + 0.05:                    # update color at a MAX of 20fps
                     color = QtGui.QColor(self.colors.pop().get_hex())
                     self.last_color_change_time = now
                 else:
@@ -1285,21 +1305,21 @@ class QVideoSlider(QtW.QSlider):
 
             # hover timestamps
             if settings.groupHover.isChecked():
-                fade_time = max(0.05, settings.spinHoverFadeDuration.value())           # 0.05 looks instant but avoids flickers
+                fade_time = max(0.05, settings.spinHoverFadeDuration.value())   # 0.05 looks instant but avoids flickers
                 if now <= self.last_mouseover_time + fade_time:
-                    if self.underMouse():                                               # reset fade timer if we're still hovering
-                        pos = self.mapFromGlobal(QtGui.QCursor().pos())                 # get position relative to widget
+                    if self.underMouse():                                       # reset fade timer if we're still hovering
+                        pos = self.mapFromGlobal(QtGui.QCursor().pos())         # get position relative to widget
                         self.last_mouseover_time = now
-                        self.last_mouseover_pos = pos                                   # save last mouse position within slider
+                        self.last_mouseover_pos = pos                           # save last mouse position within slider
                     else:
-                        pos = self.last_mouseover_pos                                   # use last position if mouse is outside the slider
+                        pos = self.last_mouseover_pos                           # use last position if mouse is outside the slider
 
                     frame = self.pixelPosToRangeValue(pos)
                     h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
                     text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
 
                     size = settings.spinHoverFontSize.value()
-                    font = settings.comboHoverFont.currentFont()        # TODO use currentFontChanged signals + more for performance? not needed?
+                    font = settings.comboHoverFont.currentFont()                # TODO use currentFontChanged signals + more for performance? not needed?
                     font.setPointSize(size)
                     #font.setPixelSize(size)
                     p.setFont(font)
@@ -1309,17 +1329,16 @@ class QVideoSlider(QtW.QSlider):
                     # TODO: I sure used a lot of different methods for fading things. should these be more unified?
                     alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
 
-                    if settings.checkHoverShadow.isChecked():
-                        p.setPen(QtGui.QColor(0, 0, 0, alpha))          # set color to black
-                        p.drawText(pos.x() + 1, pos.y() + 1, text)      # draw shadow first
+                    if settings.checkHoverShadow.isChecked():   # draw shadow first (as black, slightly offset text)
+                        p.setPen(QtGui.QColor(0, 0, 0, alpha))  # set color to black
+                        p.drawText(pos.x() + 1, pos.y() + 1, text)
                     self.hover_font_color.setAlpha(alpha)
-                    p.setPen(self.hover_font_color)                     # set color to white
-                    p.drawText(pos, text)                               # draw actual text over shadow
+                    p.setPen(self.hover_font_color)             # set color to white
+                    p.drawText(pos, text)                       # draw actual text over shadow
 
                     # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
                     #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
-                    #if gui.duration_rounded < 3600: self.setToolTip(f'{m}:{s:02}')
-                    #else: self.setToolTip(f'{h}:{m:02}:{s:02}')        # use cleaner format for time-strings on videos > 1 hour
+                    #self.setToolTip(f'{h}:{m:02}:{s:02}' if h else f'{m}:{s:02}')
         finally:
             p.end()
 
@@ -1400,7 +1419,7 @@ class QVideoSlider(QtW.QSlider):
             originally. Does not emit the `sliderReleased` signal. '''
 
         just_restarted = False
-        frame = self.pixelPosToRangeValue(event.pos())                  # get frame
+        frame = self.pixelPosToRangeValue(event.pos())          # get frame
         if frame < gui.minimum: gui.set_and_adjust_and_update_progress(gui.minimum, 0.1)
         elif frame > gui.maximum: gui.set_and_adjust_and_update_progress(gui.maximum, 0.1)
 
@@ -1417,18 +1436,18 @@ class QVideoSlider(QtW.QSlider):
             else:
                 gui.frame_override = frame
 
-        if not just_restarted:                                          # do not touch pause state if we manually restarted
+        if not just_restarted:                                  # do not touch pause state if we manually restarted
             if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
-            else: gui.player.set_pause(False or gui.is_paused)                              # stay paused if we were paused
+            else: gui.player.set_pause(False or gui.is_paused)  # stay paused if we were paused
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
-        if self.underMouse():                                           # resume drawing timestamp after release
+        if self.underMouse():                                   # resume drawing timestamp after release
             self.last_mouseover_time = time.time()
 
         self.scrubbing = False
 
 
-    def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:          # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
+    def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:  # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
         ''' Auto-magically detects the correct value to set the handle
             to based on a given `pos`. Works with horizontal and vertical
             sliders, with or without stylesheets. '''

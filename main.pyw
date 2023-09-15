@@ -889,7 +889,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # no frame override -> set slider to VLC's progress if VLC has actually updated
                     else:
                         new_frame = (player.get_position() * self.frame_count) + vlc_offset         # convert VLC position to frame
-                        if new_frame >= get_ui_frame():
+                        if new_frame >= get_ui_frame():         # if progress is updated (and didn't go backwards), update UI
                             _emit_update_progress_signal(new_frame)
                         #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
                         #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
@@ -2858,10 +2858,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def restart(self) -> int:
         ''' "Restarts" media to circumvent strange libVLC behavior which renders
-            finished media unusable. Returns -1 if unsuccessful. This took a lot
-            more effort and experimentation to figure out than you'd think. If
-            `--play-and-exit` was specified in the command line arguments, this
-            function closes PyPlayer. This is connected to libVLC's event
+            finished media unusable. Returns -1 if unsuccessful, else None. This
+            took far more effort/experimentation to figure out than you'd think.
+            If `--play-and-exit` was specified in the command line arguments,
+            this function closes PyPlayer. This is connected to libVLC's event
             manager in a similar manner to signals/slots in `widgets.py`. '''
         try:
             logging.info('Restarting VLC media (Restart V)')
@@ -2955,7 +2955,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.error(f'(!) RESTART FAILED: {format_exc()}')
 
 
-    def pause(self):
+    def pause(self) -> bool:
         ''' Pauses/unpauses the media. Handles updating GUI, cleaning
             up/restarting, clamping progress to current trim, displaying
             the pause state on-screen, wrapping around the progress bar. '''
@@ -2972,7 +2972,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 image_player.gif.setPaused(not was_paused)
                 will_pause = not was_paused
                 frame = image_player.gif.currentFrameNumber()
-            else: return                                                # just return if it's a static image
+            else:                                                       # just return if it's a static image
+                return True
 
         # videos/audio
         else:
@@ -5981,12 +5982,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                          P.BOTTOM_RIGHT: lambda x, y: (s[3].setX(max(x, s[0].x() + 10)), s[3].setY(max(y, s[0].y() + 10)))}
                     }
                     vlc.text_y_offsets = {P.TOP_LEFT: -8, P.TOP_RIGHT: -8, P.BOTTOM_LEFT: 14, P.BOTTOM_RIGHT: 14}
-                    vlc.cursors = {
-                        0: Qt.SizeFDiagCursor,
-                        1: Qt.SizeBDiagCursor,
-                        2: Qt.SizeBDiagCursor,
-                        3: Qt.SizeFDiagCursor
-                    }
 
                 if not vlc.crop_frames:
                     vlc.crop_frames = (     # can't reuse crop_frames alias here since it is None
@@ -6010,10 +6005,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 width = self.width()
                 vlc.update_crop_frames()                                            # update crop frames and factored points
+                vlc.refresh_crop_cursor(vlc.mapFromGlobal(QtGui.QCursor.pos()))     # set appropriate cropping cursor
                 self.frameCropInfo.setVisible(width >= 621)                         # show crop info panel if there's space
                 self.frameQuickChecks.setVisible(width >= 800)                      # hide checkmarks if there's no space
-                while app.overrideCursor():                                         # reset cursor
-                    app.restoreOverrideCursor()
         except:
             log_on_statusbar(f'(!) Failed to toggle crop mode: {format_exc()}')
 
@@ -6023,12 +6017,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             view.setVisible(False)
             view.setMouseTracking(False)
 
-        image_player.update()                                                       # repaint gifPlayer to fix background
-        self.vlc.dragging = None                                                    # clear crop-drag
-        self.vlc.panning = False                                                    # clear crop-pan
-        self.frameCropInfo.setVisible(False)                                        # hide crop info panel
-        self.frameQuickChecks.setVisible(self.width() >= 568)                       # show checkmarks if there's space
-        while app.overrideCursor():                                                 # reset cursor
+        image_player.update()                                   # repaint gifPlayer to fix background
+        self.vlc.dragging = None                                # clear crop-drag
+        self.vlc.panning = False                                # clear crop-pan
+        self.frameCropInfo.setVisible(False)                    # hide crop info panel
+        self.frameQuickChecks.setVisible(self.width() >= 568)   # show checkmarks if there's space
+        while app.overrideCursor():                             # reset cursor
             app.restoreOverrideCursor()
 
         # uncheck action and restore menubar/scale state. NOTE: if you do this part...
@@ -6040,7 +6034,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             current_value = restore_state['scale_setting'].currentIndex()
             restore_state['scale_updater'](current_value, force=True)
         restore_state.clear()
-        if log: log_on_statusbar('Crop mode disabled.')
+        if log:
+            log_on_statusbar('Crop mode disabled.')
 
 
     def set_track(self, track_type: str, track: int = -1, index_hint: int = None, title: str = None):
