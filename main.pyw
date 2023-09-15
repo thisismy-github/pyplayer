@@ -773,6 +773,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # re-define global aliases -> having them as locals is even faster
         get_ui_frame = self.sliderProgress.value
+        repaint_slider = self.sliderProgress.update
         player = self.vlc.player
         is_playing = player.is_playing
         is_high_precision = self.dialog_settings.checkHighPrecisionProgress.isChecked
@@ -782,6 +783,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         _sleep = sleep
         _get_time = get_time
 
+        # set the minimum fps the slider MUST update at to ensure...
+        # ...animations tied to the slider continue to work (smoothly)
+        # NOTE: this number must match the `fps` variable that...
+        #       ...appears twice in `QVideoSlider.paintEvent()`
+        min_fps = 20
+        min_fps_delay = 1 / min_fps
+
         while not self.closed:
             # window is NOT visible, stay relatively idle and do not update
             while not self.isVisible() and not self.closed:
@@ -789,8 +797,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # window is visible, but nothing is actively playing
             while self.isVisible() and not is_playing() and not self.closed:
-                self.sliderProgress.update()            # force QVideoSlider to keep painting
-                _sleep(0.025)                           # update at 40fps
+                repaint_slider()                        # force `QVideoSlider` to keep painting
+                _sleep(min_fps_delay)                   # update at `min_fps`
 
             # reset queued slider-swap (or the slider won't update anymore after a swap)
             self.swap_slider_styles_queued = False
@@ -800,9 +808,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if is_high_precision() and get_rate() == 1.0:
                 start = _get_time()
                 now = start
-                min_delay = 0.05                        # check our conditions at least 20 times per second
-                min_delay_threshold_factor = 2          # if we're too close to min_delay, split up sleep calls this many times
-                min_delay_threshold = min_delay * min_delay_threshold_factor
+                min_fps_delay_threshold_factor = 2      # if we're too close to `min_fps_delay`, split up sleep this many times
+                min_fps_delay_threshold = min_fps_delay * min_fps_delay_threshold_factor
 
                 # playing, not locked, and not about to swap styles
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
@@ -822,8 +829,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         _emit_update_progress_signal(next_frame)                                    # update_progress_signal -> _update_progress_slot
 
                     # low FPS media confuses the accuracy thread when switching media
-                    # -> always update high-precision at atleast 20fps
-                    if self.frame_rate < 20:
+                    # -> always update/repaint high-precision slider at >= `min_fps`
+                    if self.frame_rate < min_fps:
                         try:
                             _sleep(0.0001)              # sleep to force-update get_time()
                             now = _get_time()
@@ -831,12 +838,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             time_elapsed = execution_time
                             while time_elapsed < self.ui_delay:
                                 to_sleep = self.ui_delay - time_elapsed
-                                if min_delay < to_sleep < min_delay_threshold:
-                                    _sleep(to_sleep / min_delay_threshold_factor)
+
+                                # if we're too close to `min_delay`, split up sleep calls
+                                # otherwise, sleep for whichever delay is smaller
+                                if to_sleep > min_fps_delay:
+                                    if to_sleep < min_fps_delay_threshold:
+                                        _sleep(to_sleep / min_fps_delay_threshold_factor)
+                                    else:
+                                        _sleep(min_fps_delay)
                                 else:
                                     _sleep(to_sleep)
+
+                                # manually repaint slider to keep animations running smoothly
+                                repaint_slider()
+
+                                # check our conditions while we're awaiting the next frame
                                 if not is_playing() or self.lock_progress_updates or self.swap_slider_styles_queued or self.frame_override != -1:
                                     break
+
                                 now = _get_time()
                                 time_elapsed = now - start
                         except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
@@ -875,7 +894,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         #else:                          # if VLC literally went backwards (common) -> simulate a non-backwards update
                         #    interpolated_frame = int(new_frame + (self.frame_rate / 5))
                         #    _emit_update_progress_signal(interpolated_frame)                       # TODO can this snowball and keep jumping forward forever?
-                        _sleep(0.066)                   # update position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
+
+                        # NOTE: for some reason, putting this as an `else` above...
+                        # ...just... doesn't work. it repaints very inconsistently
+                        repaint_slider()                # manually repaint slider for various animations to work
+                        _sleep(min_fps_delay)           # update position at 15FPS (every ~0.0667 seconds -> libvlc updates every ~0.2-0.35 seconds)
 
         # all loops broken, `self.closed` is False
         return logging.info('Program closed. Ending update_slider thread.')
