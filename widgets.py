@@ -559,7 +559,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             if self.dragging is None:
                 self.refresh_crop_cursor(pos)
 
-            elif app.mouseButtons() == Qt.LeftButton:
+            elif event.buttons() == Qt.LeftButton:
                 s = self.selection
                 if self.drag_axis_lock is None: new_pos = pos - self.dragging_offset
                 elif self.drag_axis_lock == 0: new_pos = QtCore.QPoint((pos - self.dragging_offset).x(), s[self.dragging].y())  # x-axis only
@@ -646,9 +646,25 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
 
     def leaveEvent(self, event: QtCore.QEvent):
-        ''' Automatically stop dragging and lock the
-            cursor/UI when the mouse leaves the player. '''
+        ''' Automatically stop dragging, reset the cursor, and
+            lock the cursor/UI when the mouse leaves the player. '''
         self.idle_timeout_time = 0.0                    # 0 locks the cursor/UI
+
+        # if cropping & the mouse is still over the player but NOT the controls (in fullscreen),...
+        # ...don't reset cursor (the player AND each crop frame trigger their own `leaveEvent`'s)
+        should_reset = True
+        if gui.actionCrop.isChecked():
+            mouse_pos = QtGui.QCursor().pos()
+            if self.rect().contains(self.mapFromGlobal(mouse_pos)):
+                control_pos = gui.dockControls.mapFromGlobal(mouse_pos)
+                if not gui.dockControls.rect().contains(control_pos):
+                    should_reset = False
+
+        # we did not meet the specific scenario above
+        if should_reset:
+            while app.overrideCursor():                 # reset cursor to default
+                app.restoreOverrideCursor()
+
         self.dragging = None                            # release crop-drag
         #print('setting panning to true', event.buttons())
         #self.panning = True  # TODO this is a bandaid fix. dragging/panning sometimes wrongly report as None and False, causing unexpected pauses in mouseReleaseEvent
@@ -758,6 +774,7 @@ class QVideoPlayerLabel(QtW.QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.setMouseTracking(True)                     # needed so mouseMoveEvent works w/o clicking (needed for crop cursors)
         self.art = QtGui.QPixmap()
         self.gif = QtGui.QMovie()
 
@@ -1040,16 +1057,22 @@ class QVideoPlayerLabel(QtW.QLabel):
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
-        ''' Drags our `QPixmap` by adjusting its position based on the cursor's
-            position relative to the offset we set in `mousePressEvent`. '''
-        #if not gui.actionCrop.isChecked() and not self.movie():
+        ''' Handles mouse movement over the image player. Drags our `QPixmap` by
+            adjusting its position based on the cursor's position relative to
+            the offset we set in `mousePressEvent`, and resets the idle timer
+            if crop mode is disabled. Otherwise, `QVideoPlayer.mouseMoveEvent()`
+            is called to handle cropping. '''
         if not gui.actionCrop.isChecked():
-            if app.mouseButtons() == Qt.LeftButton:         # TODO normal mousePressEvent implementation, why won't event.button() work?
-                #print('MOVING')
+            if event.buttons() == Qt.LeftButton:            # why doesn't `event.button()` work here?
                 self.pixmapPos = event.pos() - self._draggingOffset
                 self._dragging = True
                 self.update()                               # manually update
-        return super().mouseMoveEvent(event)                # QLabel will pass event to underlying widgets (needed for cropping)
+            if settings.checkHideIdleCursor.isChecked() and gui.video:
+                gui.vlc.idle_timeout_time = time.time() + settings.spinHideIdleCursorDuration.value()
+            else:
+                gui.vlc.idle_timeout_time = 0.0             # 0 locks the cursor/UI
+        else:
+            return super().mouseMoveEvent(event)            # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
@@ -1225,7 +1248,7 @@ class QVideoSlider(QtW.QSlider):
             now = time.time()
             vlc = gui.vlc
             idle_time = vlc.idle_timeout_time
-            if not idle_time or idle_time > now or gui.restarted or gui.player.get_state() == 5:
+            if not idle_time or idle_time > now or gui.restarted or (gui.player.get_state() == 5 and not gui.mime_type == 'image'):
                 if vlc.underMouse() and not gui.actionCrop.isChecked():
                     cursor = app.overrideCursor()               # these if's may seem excessive, but it's literally...
                     if not cursor:                              # ...12x faster than actually setting the cursor
@@ -1422,8 +1445,8 @@ class QVideoSlider(QtW.QSlider):
             scrubbing by grabbing the handle, pausing the player, and updating
             the player position. Does not emit the `sliderMoved` signal. '''
 
-        # abnormal mousePressEvent implementation, so event.button() is incorrect
-        if app.mouseButtons() != Qt.LeftButton:                 # NOTE: requires `self.setMouseTracking(True)`
+        # event.button() is always 0 for move events. yes, it's very stupid.
+        if event.buttons() != Qt.LeftButton:                    # NOTE: requires `self.setMouseTracking(True)`
             self.update()
 
         # handle dragging

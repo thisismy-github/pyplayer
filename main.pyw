@@ -992,8 +992,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             If we've ACTUALLY left the window, we trigger the idle timeout so
             the docked controls fade out. '''
         if settings.checkHideIdleCursor.isChecked():
-            pos = self.mapFromGlobal(QtGui.QCursor().pos())
-            if not (self.rect().contains(pos) or (not player.is_playing() and not self.is_paused)):
+            pos = self.dockControls.mapFromGlobal(QtGui.QCursor().pos())
+            if not self.dockControls.rect().contains(pos):
                 self.vlc.idle_timeout_time = 1.0        # 0 locks the UI, so set it to 1
         return super().leaveEvent(event)
 
@@ -3881,7 +3881,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
                     )
                     if is_gif:                                  # gifs will often just... pause themselves after an edit
-                        self.force_pause_signal.emit(False)     # this is the only way i've found to fix it
+                        self.force_pause_signal.emit(False)     # -> this is the only way i've found to fix it
                 elif settings.checkTextOnSave.isChecked():
                     show_on_player(f'Changes saved to {final_dest}.')
                 log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
@@ -3902,8 +3902,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Updates animated GIF progress by manually looping
             the GIF when outside the designated trim markers. '''
         if self.is_gif:
-            if self.minimum <= frame <= self.maximum: update_progress(frame)
-            else: set_and_update_progress(self.minimum)
+            if self.minimum <= frame <= self.maximum:
+                update_progress(frame)                          # HACK: literally, forcibly repaint to stop slider from...
+                if frame != self.minimum:                       # ...eventually freezing on animated GIFs in fullscreen...
+                    self.sliderProgress.repaint()               # ...(no idea why it happens)
+            else:
+                set_and_update_progress(self.minimum)
 
 
     def update_progress(self, frame: int):
@@ -5831,11 +5835,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.menubar.setVisible(False)              # TODO should this be like set_crop_mode's version? this requires up to 2 alt-presses to open
             self.was_maximized = self.isMaximized()     # remember if we're maximized or not
 
-            # if we're already hovering over the pending dockControls rect OR media already ended (and we're not paused) -> don't fade UI
+            # don't fade UI if we're hovering over the pending dockControls rect, the media...
+            # ...is not playing (but not because we're paused), or the media is an image/GIF
             if settings.checkHideIdleCursor.isChecked():
-                if (not player.is_playing() and not self.is_paused) or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos()):
+                always_lock_ui = not player.is_playing() and not self.is_paused and not self.mime_type == 'image'
+                if always_lock_ui or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos()):
                     self.vlc.idle_timeout_time = 0.0
-                else:                                   # otherwise, set timer to act like we JUST stopped moving the mouse
+                else:                                   # set timer to act like we JUST stopped moving the mouse
                     self.vlc.idle_timeout_time = get_time() + settings.spinHideIdleCursorDuration.value()
 
             self.ignore_next_fullscreen_move_event = True
@@ -5984,6 +5990,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         view.mouseMoveEvent = vlc.mouseMoveEvent
                         view.mouseReleaseEvent = vlc.mouseReleaseEvent
                         view.mouseDoubleClickEvent = vlc.mouseDoubleClickEvent
+                        view.leaveEvent = vlc.leaveEvent
                         view.setVisible(True)
                         view.setMouseTracking(True)
                         view.setStyleSheet('background: rgba(0, 0, 0, 135)')        # TODO add setting here?
