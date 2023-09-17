@@ -419,7 +419,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.checking_for_updates = False
         self.frame_override: int = -1
         self.ignore_imminent_restart = False
-        self.open_queued = False
+        self.open_cleanup_queued = False
         self.swap_slider_styles_queued = False
         self.lock_progress_updates = False
         self.lock_spin_updates = False
@@ -699,10 +699,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         vlc_desync_counter_limit = 2                    # how many times in a row VLC must be desynced before caring
 
         while not self.closed:
-            # stay relatively idle while window is minimized OR nothing is actively playing
+            # stay relatively idle while minimized, nothing is active, or we're waiting for something
             while not self.isVisible() and not self.closed:                  _sleep(0.25)
             while self.isVisible() and not is_playing() and not self.closed: _sleep(0.02)
-            while self.open_in_progress:                                     _sleep(0.02)
+            while self.open_in_progress or self.frame_override != -1:        _sleep(0.01)
 
             start = _get_time()
             play_started = start + self.add_to_progress_offset
@@ -763,11 +763,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def update_slider_thread(self):
         ''' Handles updating the progress bar. This includes both slider-types
-            and swapping between them. `self.frame_override` can be set to
-            override the next pending frame (circumventing timing-related
-            bugs), and if used with open_queued, the file-opening process
-            is completed and cleaned up. While not playing and/or not
-            visible, resource-usage is kept to a minimum. '''
+            and swapping between them. Set `self.frame_override` to override the
+            next pending frame (preventing timing-related bugs). If set while
+            `self.open_in_progress` is True, this thread halts before signalling
+            `self._open_cleanup_slot()` once `self.open_cleanup_queued` is True,
+            then halts again until the opening process is fully complete. While
+            not playing, the slider is manually updated at 20fps to keep
+            animations working smoothly without draining resources.
+            While minimized, resource-usage is kept to a minimum. '''
+
         logging.info('Slider-updating thread started.')
 
         # re-define global aliases -> having them as locals is even faster
@@ -812,16 +816,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # playing, not locked, and not about to swap styles
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
-                    # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override != -1:
-                        if self.open_queued:
+                        if self.open_in_progress:       # opening -> wait for signal to start cleanup
+                            while not self.open_cleanup_queued:
+                                sleep(0.01)
                             emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
+                            self.open_cleanup_queued = False
+                            while self.open_in_progress:
+                                sleep(0.01)             # wait for media opening to finish
                         else:
                             _emit_update_progress_signal(self.frame_override)
                         self.frame_override = -1        # reset frame_override
-                        self.add_to_progress_offset = 0.1
-                        self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
-                        self.open_queued = False        # reset open_queued
+
+                        # force high-precision progress bar to reset its starting offset
+                        if not self.add_to_progress_offset:
+                            self.add_to_progress_offset = 0.1
+                        self.reset_progress_offset = True
 
                     # no frame override -> increment `get_rate()` frames forward (i.e. at 1x speed -> 1 frame)
                     elif (next_frame := get_ui_frame() + get_rate()) <= self.frame_count:           # do NOT update progress if we're at the end
@@ -874,16 +884,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # not playing, not locked, and not about to swap styles
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
-                    # lock_progress_updates is not always reached fast enough, so we use open_queued to force this thread to override the current frame
                     if self.frame_override != -1:
-                        if self.open_queued:
+                        if self.open_in_progress:       # opening -> wait for signal to start cleanup
+                            while not self.open_cleanup_queued:
+                                sleep(0.01)
                             emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
+                            self.open_cleanup_queued = False
+                            while self.open_in_progress:
+                                sleep(0.01)             # wait for media opening to finish
                         else:
                             _emit_update_progress_signal(self.frame_override)
                         self.frame_override = -1        # reset frame_override
-                        self.add_to_progress_offset = 0.1       # TODO: need a better solution than this for getting around VLC buffering
-                        self.reset_progress_offset = True       # force high-precision progress bar to reset its starting offset
-                        self.open_queued = False        # reset open_queued
+
+                        # force high-precision progress bar to reset its starting offset
+                        if not self.add_to_progress_offset:
+                            self.add_to_progress_offset = 0.1
+                        self.reset_progress_offset = True
 
                     # no frame override -> set slider to VLC's progress if VLC has actually updated
                     else:
@@ -2397,8 +2413,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_pitch_sensitive_audio = False
             self.is_bad_with_vlc = False
         else:
-            self.open_queued = True                 # NOTE: this does nothing until frame_override is set, so set this first
-            self.frame_override = 0                 # set frame_override to trigger open_queue in update_slider_thread
+            self.open_cleanup_queued = True         # `open_cleanup_queued` + `open_in_progress` and `frame_override` work...
+            self.frame_override = 0                 # ...together to halt `update_slider_thread` and trigger cleanup safely
             self.is_gif = False
             self.is_static_image = False
 
@@ -3971,6 +3987,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             pitch-shift-bug for unpaused audio, and adjusts the high-precision
             progress offset by `offset` seconds (if provided) to account for
             VLC buffering. `offset` is ignored if `self.is_paused` is True. '''
+
+        # don't touch progress if we're currently opening a file
+        if self.open_in_progress: return
         is_paused = self.is_paused
         is_pitch_sensitive_audio = self.is_pitch_sensitive_audio
 
@@ -3983,18 +4002,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         #self.set_player_time(round(frame * (1000 / self.frame_rate)))
         set_player_position(frame / self.frame_count)
-        update_progress(frame)
+        update_progress(frame)                          # necessary while paused and for a snappier visual update
         set_gif_position(frame)
 
-        # use `frame_override` to correct issues with replaying audio and using VLC-progress mode
-        # NOTE: while it's safe to set `frame_override` here on videos (and somewhat useful), it...
-        #       ...causes the high-precision progress bar to desync by a few frames. not worth it
-        if is_pitch_sensitive_audio or not is_high_precision_slider():
-            self.frame_override = frame
-        else:
-            if offset != 0:
-                self.add_to_progress_offset = 0 if is_paused else offset
-            self.reset_progress_offset = True
+        # NOTE: setting `frame_override` here on videos can cause high-precision progress...
+        # ...to desync by a few frames, but prevents extremely rare timing issues that...
+        # ...stop the slider from updating to its new position. is this trade-off worth it?
+        # NOTE: `frame_override` sets `add_to_progress_offset` to 0.1 if it's 0
+        #       -> add 0.001 to `offset` to ensure it doesn't get ignored
+        if is_high_precision_slider() and not is_pitch_sensitive_audio:
+            self.add_to_progress_offset = -0.075 if is_paused else offset + 0.001
+        self.frame_override = frame                     # ^ set offset BEHIND current time while paused. i don't understand why, but it helps
 
 
     def update_time_spins(self):
@@ -4029,16 +4047,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def update_frame_spin(self, frame: int):                    # TODO this probably should be renamed
         ''' Sets progress to `frame` if media is paused. This is meant as a
             slot for `self.spinFrame` - Do not use this for frame seeking. '''
+        if not self.is_paused or self.lock_spin_updates or self.lock_progress_updates: return
         try:
-            if self.is_paused and not self.lock_progress_updates:
-                try:
-                    self.lock_progress_updates = True           # lock progress updates to prevent recursion errors from multiple elements updating at once
-                    set_and_update_progress(frame)
-                    #player.next_frame()                        # NOTE: this unfortunately does not fix the issues with frame-seeking at the end of a file
-                except: logging.warning(f'Abnormal error while locking/setting/updating progress: {format_exc()}')
-                finally: self.lock_progress_updates = False     # always release lock on progress updates
-        except:
-            logging.warning(f'Abnormal error while updating frame-spins: {format_exc()}')
+            self.lock_progress_updates = True           # lock progress updates to prevent recursion errors from multiple elements updating at once
+            set_and_update_progress(frame)
+            #player.next_frame()                        # NOTE: this unfortunately does not fix the issues with frame-seeking at the end of a file
+        except: logging.warning(f'Abnormal error while updating frame-spins: {format_exc()}')
+        finally: self.lock_progress_updates = False     # always release lock on progress updates
 
 
     def manually_update_current_time(self):
