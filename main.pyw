@@ -417,19 +417,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.is_paused = False
         self.close_cancel_selected = False
         self.checking_for_updates = False
-        self.frame_override: int = -1
-        self.ignore_imminent_restart = False
-        self.open_cleanup_queued = False
-        self.swap_slider_styles_queued = False
-        self.lock_progress_updates = False
-        self.lock_spin_updates = False
         self.timer_id_resize_snap: int = None
         self.close_was_spontaneous = False
         self.was_maximized = False
         self.was_paused = False
         self.crop_restore_state = {}
-        self.reset_progress_offset = False
-        self.add_to_progress_offset = 0.0
 
         self.last_window_size: QtCore.QSize = None
         self.last_window_pos: QtCore.QPoint = None
@@ -442,6 +434,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.invert_next_resize_event = False
         self.ignore_next_fullscreen_move_event = False
         self.ignore_next_alt = False
+        self.ignore_imminent_restart = False
 
         self.video = ''
         self.video_original_path = ''
@@ -481,6 +474,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.size_label = '0.00mb'              # NOTE: do NOT use `self.size` - this is reserved for Qt
         self.stat: os.stat_result = None
 
+        self.frame_override: int = -1
+        self.reset_progress_offset = False
+        self.add_to_progress_offset = 0.0
+        self.lock_progress_updates = False
+        self.lock_spin_updates = False
+
+        self.swap_slider_styles_queued = False
+        self.open_cleanup_queued = False
         self.open_in_progress = False
         self._open_main_in_progress = False
         self._open_cleanup_in_progress = False
@@ -1073,7 +1074,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             ratio after a resize. Started by `QVideoPlayer.resizeEvent()`. '''
         if self.timer_id_resize_snap is not None and app.mouseButtons() != Qt.LeftButton:
             self.timer_id_resize_snap = self.killTimer(self.timer_id_resize_snap)
-            if get_time() - self.last_move_time < 1: return super().timerEvent(event)
+            if get_time() - self.last_move_time < 1:
+                return super().timerEvent(event)
 
             # get keyboard modifiers -> shift shinks, ctrl inverts current media type's behavior
             mod = app.queryKeyboardModifiers()
@@ -1082,7 +1084,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # determine desired behavior for current media type, then invert if necessary
             checked = settings.checkSnapOnResize.checkState() and self.is_snap_mode_enabled()
-            if (checked and reverse_behavior) or (not checked and not reverse_behavior): return
+            if (checked and reverse_behavior) or (not checked and not reverse_behavior):
+                return
 
             force_instant_resize = checked == 0
             self.snap_to_player_size(shrink=shrink, force_instant_resize=force_instant_resize)
@@ -1107,13 +1110,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         key = event.key()
         mod = event.modifiers()
 
-        # if a lineEdit has focus, ignore keypresses except for esc, which can be used to clear focus. spinboxes use QSpinBoxPassthrough
-        editable = (self.lineOutput, self.lineCurrentTime)
-        if any(w.hasFocus() for w in editable):
-            if key == 16777216:                         # esc (clear focus)
-                for widget in editable:                 # TODO there is a faster way to do this (by getting the current focus)
+        # ignore keypresses if a lineEdit has focus (except for esc). NOTE: spinboxes use QSpinBoxPassthrough
+        for widget in (self.lineOutput, self.lineCurrentTime):
+            if widget.hasFocus():
+                if key == 16777216:                     # esc (clear focus)
                     widget.clearFocus()
-            return
+                return
 
         # https://stackoverflow.com/questions/10383418/qkeysequence-to-qkeyevent
         sequence = QtGui.QKeySequence(event.modifiers() | event.key())
@@ -2040,7 +2042,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 magic = QtCore.QByteArray()         # you HAVE to do these two lines
                 stream << magic                     # we are bitshifting literally nothing into the data stream
                 mime.setData('Preferred DropEffect', data)
-                if path == self.video: self.stop()  # stop player if necessary so we can actually paste the file somewhere
+                if path == self.video:              # stop player if necessary so we can actually paste the file somewhere
+                    self.stop()
             else:                                   # TODO crossplatform linux/mac support
                 return show_on_statusbar('Cutting files is limited to Windows for now.')
             log_on_statusbar(f'File "{os.path.basename(path)}" cut to clipboard.')
@@ -2063,7 +2066,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             mime = self.mime_type
             if not path:
-                if not self.video: return
+                if not self.video:
+                    return
                 path = self.video
             if not exists(path) and not (mime == 'image' and path == self.video):
                 return log_on_statusbar(f'Image "{path}" no longer exists.')
@@ -2087,21 +2091,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # if we're watching a video or audio with cover art, snapshot the frame/cover art first
             if snapshot_needed:
                 path = self.snapshot(mode='full' if extended else 'quick', is_temp=True)
-                if path is None: return             # dialog canceled (finally-statement ensures we unpause if needed)
+                if path is None:                    # dialog canceled (finally-statement ensures we unpause if needed)
+                    return
                 temp_string = ' Temporary snapshot file has been deleted.'
             elif extended:
                 if self.is_gif: image_player.gif.setPaused(True)
                 else: player.set_pause(True)
                 width, height, quality = self.show_size_dialog(snapshot=True)
-                if width is None: return            # dialog canceled (finally-statement ensures we unpause if needed)
+                if width is None:                   # dialog canceled (finally-statement ensures we unpause if needed)
+                    return
 
             log_on_statusbar('Copying image data to clipboard...')
             if not self.actionCrop.isChecked():     # no crop - copy entire image/frame
                 if extended:
                     try:    # if path still equals self.video, that means it wasn't snapshotted -> must be image
                         if path == self.video: image = get_PIL_Image().fromqpixmap(image_player.pixmap())
-                        else: image = get_PIL_Image().open(path)
-                        if width or height: image = image.resize((width, height))
+                        else:                  image = get_PIL_Image().open(path)
+                        if width or height:
+                            image = image.resize((width, height))
                         if quality < 100:
                             delete_path_anyway = True
                             path = self.convert_snapshot_to_jpeg(None, image, quality)
@@ -2116,23 +2123,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:
                     if path == self.video:          # if a snapshot was needed earlier, this will never be True
                         if self.is_gif: app.clipboard().setImage(image_player.gif.currentImage())         # setImage is faster
-                        else: app.clipboard().setPixmap(image_player.pixmap())
-                    else: app.clipboard().setImage(QtGui.QImage(path))
+                        else:           app.clipboard().setPixmap(image_player.pixmap())
+                    else:               app.clipboard().setImage(QtGui.QImage(path))
                 log_on_statusbar(f'Image data for "{os.path.basename(path)}" copied to clipboard.{temp_string}')
             else:                                   # crop image/frame and copy crop region
                 try:    # no with-statement here just in case Pillow doesn't close `image` when it gets reassigned
                     if path == self.video: image = get_PIL_Image().fromqpixmap(image_player.pixmap())
-                    else: image = get_PIL_Image().open(path)
+                    else:                  image = get_PIL_Image().open(path)
 
                     # calculate factors between media's native resolution and actual desired snapshot resolution
                     if not snapshot_needed:                         # snapshot() already cropped the snapshot for us
                         if width or height:                         # custom width and/or height is set
                             if width:
                                 x_factor = self.vwidth / width
-                                if not height: y_factor = x_factor  # width is set but height isn't -> match factors
+                                if not height:                      # width is set but height isn't -> match factors
+                                    y_factor = x_factor
                             if height:
                                 y_factor = self.vheight / height
-                                if not width: x_factor = y_factor   # height is set but width isn't -> match factors
+                                if not width:                       # height is set but width isn't -> match factors
+                                    x_factor = y_factor
                             image = image.resize((width, height))   # resize image
                         else:                                       # neither is set -> use 1 to avoid division by 0
                             x_factor = 1
@@ -2647,15 +2656,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.buttonMarkDeleted.setChecked(is_marked)
 
             # reset cropped mode if needed
-            if self.actionCrop.isChecked(): self.disable_crop_mode()    # set_crop_mode auto-returns if mime_type is 'audio'
+            if self.actionCrop.isChecked():                 # `self.set_crop_mode` auto-returns if `self.mime_type` is 'audio'
+                self.disable_crop_mode()
 
             # set size label for context menus and titlebar
-            if filesize < 1048576:
-                self.size_label = f'{filesize / 1024:.0f}kb'
-            elif filesize < 1073741824:
-                self.size_label = f'{filesize / 1048576:.2f}mb'
-            else:
-                self.size_label = f'{filesize / 1073741824:.2f}gb'
+            if filesize < 1048576:      self.size_label = f'{filesize / 1024:.0f}kb'
+            elif filesize < 1073741824: self.size_label = f'{filesize / 1048576:.2f}mb'
+            else:                       self.size_label = f'{filesize / 1073741824:.2f}gb'
 
             # extra setup before we absolutely must wait for the media to finish parsing
             # NOTE: this (and some of the above) is a disaster if we fail to parse, but...
@@ -2693,9 +2700,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     )
                 elif flash_window and constants.IS_WINDOWS:
                     flash_count = (0, 1, 2, -1)[settings.comboTaskbarFlash.currentIndex()]
-                    if flash_count == 1: qthelpers.flashWindow(self, duration=1100, hold=True)
+                    if flash_count == 1:    qthelpers.flashWindow(self, duration=1100, hold=True)
                     elif flash_count == -1: qthelpers.flashWindow(self, flash_count)
-                    else: qthelpers.flashWindow(self, flash_count, interval=500, duration=1250 * flash_count)
+                    else:                   qthelpers.flashWindow(self, flash_count, interval=500, duration=1250 * flash_count)
 
             # if presumed to be a video -> finish parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
@@ -2732,8 +2739,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if h == 0 else f'{h}:{m:02}:{s:02}')
             self.spinHour.setEnabled(h != 0)                            # always leave spinSecond enabled
             self.spinMinute.setEnabled(m != 0)
-            if self.width() <= 335: prefix = ''
-            else: prefix = f'{self.frame_rate_rounded} FPS: '
+            if self.width() > 335: prefix = f'{self.frame_rate_rounded} FPS: '
+            else:                  prefix = ''
             self.spinFrame.setPrefix(prefix)
             self.spinFrame.setMaximum(self.frame_count)
             self.spinFrame.setToolTip(f'Frame rate:\t{self.frame_rate}\nFrame count:\t{self.frame_count_raw}')
@@ -3050,9 +3057,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             since the former was never explicitly used. '''
 
         # cycle images with basic navigation keys
-        if self.is_static_image:
-            return self.cycle_media(next=forward)
-
+        if self.is_static_image: return self.cycle_media(next=forward)
         old_frame = get_ui_frame()
         seconds = seconds_spinbox.value()
 
@@ -3318,7 +3323,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 )
                 if use_snapshot_lastdir: cfg.last_snapshot_folder = lastdir
                 else: cfg.lastdir = lastdir
-                if path is None: return
+                if path is None:
+                    return
                 path = abspath(path)
                 # 'BMP (*.bmp; *.dib, *.rle);;TIFF (*.tiff; *.tif);;GIF (*.gif);;TGA (*.tga);;WebP (*.webp)'
 
@@ -3366,10 +3372,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if width or height:                         # custom width and/or height is set
                         if width:
                             x_factor = self.vwidth / width
-                            if not height: y_factor = x_factor  # width is set but height isn't -> match factors
+                            if not height:                      # width is set but height isn't -> match factors
+                                y_factor = x_factor
                         if height:
                             y_factor = self.vheight / height
-                            if not width: x_factor = y_factor   # height is set but width isn't -> match factors
+                            if not width:                       # height is set but width isn't -> match factors
+                                x_factor = y_factor
                     else:                                       # neither is set -> use 1 to avoid division by 0
                         x_factor = 1
                         y_factor = 1
@@ -3422,7 +3430,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 unique_default=unique_default
             )
 
-            if file is None: return
+            if file is None:
+                return
             logging.info(f'Saving as \'{file}\'')
             self.save(dest=file)
         except:
@@ -3452,13 +3461,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not video: return show_on_statusbar('No media is playing.', 10000)
 
         operations = self.operations.copy()
-        if self.actionCrop.isChecked(): operations['crop'] = True
+        if self.actionCrop.isChecked():      operations['crop'] = True
         if self.buttonTrimStart.isChecked(): operations['trim start'] = True
-        if self.buttonTrimEnd.isChecked(): operations['trim end'] = True
+        if self.buttonTrimEnd.isChecked():   operations['trim end'] = True
 
-        old_base, old_ext = splitext_media(video)
-        if not old_ext: old_ext = '.' + self.extension
         ext = ''
+        old_base, old_ext = splitext_media(video)
+        if not old_ext:
+            old_ext = '.' + self.extension
 
         # see if we haven't sufficiently edited the destination (no abspath specified, same basename (excluding the extension))
         if not dest:
@@ -3485,10 +3495,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 dest = output_text
                 if not os.path.dirname(dest):                   # output text is just a name w/ no directory
-                    default_dir = settings.lineDefaultOutputPath.text().strip()
-                    if not default_dir: default_dir = os.path.dirname(video)    # if no default path, use source video's path
-                    dest = abspath(os.path.expandvars(os.path.join(default_dir, dest)))
-                if not splitext_media(dest, valid_extensions)[-1]:              # append extension if needed
+                    default_dir = settings.lineDefaultOutputPath.text().strip() or os.path.dirname(video)
+                    dest = abspath(os.path.expandvars(os.path.join(default_dir, dest)))     # ^ if no default dir, use source media's dir
+                if not splitext_media(dest, valid_extensions)[-1]:                          # append extension if needed
                     ext = ext_hint or old_ext
                     dest += ext                                 # use extension hint if specified, otherwise just use source file's extension
             dirname, basename = os.path.split(dest)             # sanitize our custom destination (`sanitize` does not account for full paths)
@@ -3662,7 +3671,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     else:
                         if mime == 'audio':                                         # audio re-encoding should probably be an option in the future
                             precise = False
-                            #minimum = max(0, minimum - 2)
 
                         else:
                             # see if we should use auto-precise mode regardless of user's preference
@@ -3686,7 +3694,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 requires_precision = extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
                                 precise = requires_precision or self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise
                                 if not precise: log_on_statusbar('Imprecise trim requested.')
-                                else: log_on_statusbar('Precise trim requested (this is a time-consuming task).')
+                                else:           log_on_statusbar('Precise trim requested (this is a time-consuming task).')
 
                         # construct FFmpeg command based on starting/ending frame, precision mode, and mime type
                         cmd = ''
@@ -3694,7 +3702,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             trim_start = minimum / frame_rate
                             cmd = f'-ss {trim_start} -i %in '
                         if maximum < frame_count:
-                            if not precise: maximum -= 1
+                            if not precise:
+                                maximum -= 1
                             if minimum: cmd += f' -to {(trim_duration)} '
                             else:       cmd += f' -i %in -to {(maximum / frame_rate)} '
                         if mime != 'audio':
@@ -3707,31 +3716,35 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     frame_count = maximum - minimum                                 # update frame count
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
+                # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
                 else:
-                    log_on_statusbar('Fade requested (this is a time-consuming task).')     # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
+                    log_on_statusbar('Fade requested (this is a time-consuming task).')
                     mode = {self.actionFadeBoth: 'both', self.actionFadeVideo: 'video', self.actionFadeAudio: 'audio'}[self.trim_mode_action_group.checkedAction()]
                     fade_cmd_parts = []
-                    if mode == 'video' or mode == 'both':
+                    if mode == 'video' or mode == 'both':                           # fade video to/from black
                         fade_parts = []
                         if minimum > 0:
                             seconds = minimum / frame_rate
-                            fade_parts.append(f'fade=t=in:st=0:d={seconds}')        # d defaults to ~1 second
+                            fade_parts.append(f'fade=t=in:st=0:d={seconds}')        # `d` defaults to ~1 second
                         if maximum < frame_count:
                             seconds = maximum / frame_rate
-                            delta = duration - seconds - 0.1                        # TODO: 0.1 offset since sometimes fade out doesn't finish on time
+                            delta = duration - seconds - 0.1                        # TODO: 0.1 offset since fade out sometimes doesn't finish on time
                             fade_parts.append(f'fade=t=out:st={seconds}:d={delta}')
-                        if fade_parts: fade_cmd_parts.append(f'-vf "{",".join(fade_parts)}{" -c:a copy" if mode != "both" else ""}"')
-                    if mode == 'audio' or mode == 'both':
+                        if fade_parts:
+                            fade_cmd_parts.append(f'-vf "{",".join(fade_parts)}{" -c:a copy" if mode != "both" else ""}"')
+                    if mode == 'audio' or mode == 'both':                           # fade audio in/out
                         fade_parts = []
                         if minimum > 0:
                             seconds = minimum / frame_rate
-                            fade_parts.append(f'afade=t=in:st=0:d={seconds}')       # d defaults to ~1 second
+                            fade_parts.append(f'afade=t=in:st=0:d={seconds}')       # `d` defaults to ~1 second
                         if maximum < frame_count:
                             seconds = maximum / frame_rate
-                            delta = duration - seconds - 0.1                        # TODO: ditto. make sure these work
+                            delta = duration - seconds - 0.1                        # TODO: 0.1 offset since fade out sometimes doesn't finish on time
                             fade_parts.append(f'afade=t=out:st={seconds}:d={delta}')
-                        if fade_parts: fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
-                    if fade_cmd_parts: intermediate_file = self.ffmpeg(intermediate_file, f'-i %in {" ".join(fade_cmd_parts)}', dest)
+                        if fade_parts:
+                            fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
+                    if fade_cmd_parts:
+                        intermediate_file = self.ffmpeg(intermediate_file, f'-i %in {" ".join(fade_cmd_parts)}', dest)
 
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
             if op_crop:     # ffmpeg cropping is not 100% accurate, final dimensions may be off by ~1 pixel
@@ -3762,9 +3775,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if mime == 'audio':
                     self.set_save_progress_max_signal.emit((duration / float(width)) * frame_rate)
                     intermediate_file = self.ffmpeg(intermediate_file, f'-i %in -filter:a atempo="{width}"', dest)
-                else:   # Pillow can't handle 0/-1 as a dimension -> scale right away
-                    vwidth, vheight = scale(vwidth, vheight, width, height)         # update dimensions
-                    if is_static_image:
+                else:
+                    vwidth, vheight = scale(vwidth, vheight, width, height)
+                    if is_static_image:     # ^ pillow can't handle 0/-1 and ffmpeg is stupid (see below) -> scale right away
                         with get_image_data(intermediate_file, extension) as image:
                             image = image.resize((vwidth, vheight))                 # resize image
                             image.save(dest, format=extension)
@@ -4021,7 +4034,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             UI accordingly. If the new frame is outside the bounds of the
             media, it's replaced with the current frame and the progress
             UI is reset to its previous state. '''
-        if self.lock_spin_updates or self.lock_progress_updates: return                             # return if user is not manually setting the time spins
+
+        # return if user is not manually setting the time spins
+        if self.lock_spin_updates or self.lock_progress_updates: return
         self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
 
         try:
@@ -4041,15 +4056,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.debug(f'Manually updating time-spins: seconds={seconds} frame {old_frame} -> {new_frame} ({excess_frames} excess frame(s))')
 
         except: logging.error(f'(!) UPDATE_TIME_SPINS FAILED: {format_exc()}')
-        finally: self.lock_progress_updates = False             # always release lock on progress updates
+        finally: self.lock_progress_updates = False     # always release lock on progress updates
 
 
-    def update_frame_spin(self, frame: int):                    # TODO this probably should be renamed
+    def update_frame_spin(self, frame: int):
         ''' Sets progress to `frame` if media is paused. This is meant as a
             slot for `self.spinFrame` - Do not use this for frame seeking. '''
         if not self.is_paused or self.lock_spin_updates or self.lock_progress_updates: return
+        self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
+
         try:
-            self.lock_progress_updates = True           # lock progress updates to prevent recursion errors from multiple elements updating at once
             set_and_update_progress(frame)
             #player.next_frame()                        # NOTE: this unfortunately does not fix the issues with frame-seeking at the end of a file
         except: logging.warning(f'Abnormal error while updating frame-spins: {format_exc()}')
@@ -4064,8 +4080,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.info(f'Manually updating current time "label" to {text}')
 
         try:
-            if '%' in text:
-                percent = float(text.strip('%').strip()) / 100  # do regular strip() again in case spaces were placed between number and %
+            if '%' in text:                             # do regular strip() again in case spaces were placed between number and %
+                percent = float(text.strip('%').strip()) / 100
                 frame = self.frame_count * percent
             else:
                 seconds = 0
@@ -4073,7 +4089,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if len(parts) == 3:   seconds += (parts[0] * 3600) + (parts[1] * 60) + parts[2]
                 elif len(parts) == 2: seconds += (parts[0] * 60) + parts[1]
                 elif len(parts) == 1: seconds = parts[0]
-                frame = int(seconds * self.frame_rate)          # int() instead of ceil() to ensure we don't go too far
+                frame = int(seconds * self.frame_rate)  # int() instead of ceil() to ensure we don't go too far
 
             if self.minimum <= frame <= self.maximum:
                 try:
@@ -4081,8 +4097,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     set_and_adjust_and_update_progress(frame, 0.1)
                 except: logging.warning(f'Abnormal error while locking/setting/updating progress: {format_exc()}')
                 finally: self.lock_progress_updates = False
-        except: pass                                            # ignore invalid inputs
-        finally: self.lineCurrentTime.clearFocus()              # clear focus after update no matter what
+
+        except: pass                                    # ignore invalid inputs
+        finally: self.lineCurrentTime.clearFocus()      # clear focus after update no matter what
 
 
     # ---------------------
@@ -4121,7 +4138,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         emit_progress_text = self.set_save_progress_format_signal.emit
         emit_progress_value = self.set_save_progress_current_signal.emit
         emit_progress_text(start_text)
-        emit_progress_value(0)                                              # we must call this to actually show the progress bar
+        emit_progress_value(0)                          # we must call this to actually show the progress bar
         self.set_save_progress_visible_signal.emit(True)
 
         use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
@@ -4130,16 +4147,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # ensure an %out variable is in `cmd` so we have a spot to insert `outfile`
         if not outfile: outfile = infile
-        if '%out' not in cmd: cmd += ' %out'                                # ensure %out is present
+        if '%out' not in cmd: cmd += ' %out'            # ensure %out is present
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
         # create temp file if infile and outfile are the same
         if infile == outfile:
             temp_path = add_path_suffix(infile, '_temp', unique=True)
-            if infile == self.locked_video: self.locked_video = temp_path   # update locked video if needed TODO does this make sense...?
-            os.renames(infile, temp_path)                                   # rename `out` to temp name
+            if infile == self.locked_video:
+                self.locked_video = temp_path           # update locked video if needed TODO does this make sense...?
+            os.renames(infile, temp_path)               # rename `out` to temp name
             logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
-        else: temp_path = infile
+        else:
+            temp_path = infile
 
         # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
         try: process = ffmpeg_async(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
@@ -4210,7 +4229,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 try: os.remove(temp_path)
                 except: logging.warning(f'Temporary FFmpeg file {temp_path} could not be deleted')
             else:       # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_video line up there
-                if temp_path == self.locked_video: self.locked_video = infile
+                if temp_path == self.locked_video:
+                    self.locked_video = infile
                 os.renames(temp_path, infile)
                 logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{infile}"')
         log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
@@ -4220,9 +4240,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def set_trim_start(self, *args, force: bool = False):
         ''' Validates a start-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
-        if not self.video: return self.buttonTrimStart.setChecked(False)
+        if not self.video:       return self.buttonTrimStart.setChecked(False)
         if self.is_static_image: return self.buttonTrimStart.setChecked(False)
-        if force: self.buttonTrimStart.setChecked(True)         # force-check trim button, typically used from context menu
+
+        # force-check trim button, typically used from context menu
+        if force:
+            self.buttonTrimStart.setChecked(True)
 
         if self.buttonTrimStart.isChecked():
             desired_minimum = get_ui_frame()
@@ -4231,9 +4254,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return log_on_statusbar('You cannot set the start of your trim after the end of it.')
             self.minimum = desired_minimum
 
-            h, m, s, ms = get_hms(self.current_time)            # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)     # use cleaner format for time-strings on videos > 1 hour
             if self.duration_rounded < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
-            else: self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
+            else:                            self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_minimum = True
         else:
             self.minimum = self.sliderProgress.minimum()
@@ -4244,9 +4267,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def set_trim_end(self, *args, force: bool = False):
         ''' Validates an end-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimEnd` is forcibly checked. '''
-        if not self.video: return self.buttonTrimEnd.setChecked(False)
+        if not self.video:       return self.buttonTrimEnd.setChecked(False)
         if self.is_static_image: return self.buttonTrimEnd.setChecked(False)
-        if force: self.buttonTrimEnd.setChecked(True)           # force-check trim button, typically used from context menu
+
+        # force-check trim button, typically used from context menu
+        if force:
+            self.buttonTrimEnd.setChecked(True)
 
         if self.buttonTrimEnd.isChecked():
             desired_maximum = get_ui_frame()
@@ -4255,9 +4281,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return log_on_statusbar('You cannot set the end of your trim before the start of it.')
             self.maximum = desired_maximum
 
-            h, m, s, ms = get_hms(self.current_time)            # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)     # use cleaner format for time-strings on videos > 1 hour
             if self.duration_rounded < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
-            else: self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
+            else:                            self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
             self.sliderProgress.clamp_maximum = True
         else:
             self.maximum = self.sliderProgress.maximum()
@@ -4395,7 +4421,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if Ctrl is also held down.'''
                     key = event.key()
                     mod = event.modifiers()
-                    if 48 <= key <= 57:                         # numbers 0-9
+                    if 48 <= key <= 57:                 # numbers 0-9
                         if dialog.recent.menu().isVisible() or mod & Qt.ControlModifier:
                             index = -(key - 48)
                             path = self.recent_files[max(index, -len(self.recent_files))]
@@ -4413,11 +4439,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     cat_recent_menu = dialog.recent.menu()
                     cat_recent_menu.clear()
                     get_add_lambda = lambda path: lambda: dialog.videoList.add(files=(path,))
-                    get_basename = os.path.basename
-                    for index, file in enumerate(reversed(self.recent_files)):  # reversed to show most recent first
-                        number = str(index + 1)
+                    get_basename = os.path.basename     # ^ workaround for python bug/oddity involving creating lambdas in iterables
+                    for index, file in enumerate(reversed(self.recent_files)):
+                        number = str(index + 1)         # ^ reversed to show most recent first
                         action = QtW.QAction(f'{number[:-1]}&{number[-1]}. {get_basename(file)}', cat_recent_menu)
-                        action.triggered.connect(get_add_lambda(file))          # workaround for python bug/oddity involving creating lambdas in iterables
+                        action.triggered.connect(get_add_lambda(file))
                         action.setToolTip(file)
                         cat_recent_menu.addAction(action)
 
@@ -4556,9 +4582,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     return log_on_statusbar('(!) Concatenation failed. No files have been altered.')
                 log_on_statusbar(f'Concatenation saved to {output}.')
 
-                if CAT_EXPLORE: qthelpers.openPath(output, explore=True)
-                if CAT_OPEN: self.open(output, focus_window=settings.checkFocusOnEdit.isChecked())
-                if CAT_MARK: self.marked_for_deletion.update(files)
+                if CAT_EXPLORE:  qthelpers.openPath(output, explore=True)
+                if CAT_OPEN:     self.open(output, focus_window=settings.checkFocusOnEdit.isChecked())
+                if CAT_MARK:     self.marked_for_deletion.update(files)
                 elif CAT_DELETE: self.delete(files)
 
             except:
@@ -4583,6 +4609,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Resizes the dimensions of video files,
             and changes the length of audio files. '''
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
+
         width, height = self.show_size_dialog()
         if width is None: return            # dialog canceled
         if width == 0: width = -1           # ffmpeg takes -1 as a default value, not 0
@@ -4600,8 +4627,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def rotate_video(self, action: QtW.QAction):
-        if not self.video: return show_on_statusbar('No video is playing.', 10000)
+        if not self.video:            return show_on_statusbar('No video is playing.', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
+
         rotation_presets = {
             self.actionRotate90:         'transpose=clock',
             self.actionRotate180:        'transpose=clock,transpose=clock',
@@ -4616,8 +4644,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # TODO: doing this on an audio file is somewhat unstable
     # TODO: add option to toggle "shortest" setting?
     def add_audio(self, *args, path: str = None, save: bool = True):
-        if not self.video:
-            return show_on_statusbar('No media is playing.', 10000)
+        if not self.video: return show_on_statusbar('No media is playing.', 10000)
+
         try:
             if not path:
                 path, cfg.lastdir = qthelpers.browseForFile(
@@ -4692,6 +4720,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'image': return self.add_audio(path=path)
+
         try:
             if not path:
                 path, cfg.lastdir = qthelpers.browseForFile(
@@ -4713,12 +4742,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     # https://superuser.com/questions/268985/remove-audio-from-video-file-with-ffmpeg
     def remove_track(self, *args, audio: bool = True):
-        if not self.video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.video:            return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Track removal for audio files is not supported yet.', 10000)
         if player.audio_get_track_count() == 0:
             if audio: return show_on_statusbar('There are no audio tracks left to remove.', 10000)
-            else: return show_on_statusbar('There are no audio tracks. If you want to remove the video too, you might as well just close your eyes.', 10000)
+            else:     return show_on_statusbar('There are no audio tracks. If you want to remove the video too, you might as well just close your eyes.', 10000)
 
         if audio:
             filter = 'MP4 files (*.mp4);;All files (*)'
@@ -4813,9 +4842,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if exists(fallback_override):
                     fallback = fallback_override
                     if os.path.isdir(fallback_override):
-                        fallback += sep
-                else: fallback = cfg.lastdir
-            else: fallback = self.video
+                        fallback += sep         # `fallback_override` exists and is a directory
+                else:   fallback = cfg.lastdir  # `fallback_override` does not exist
+            else:       fallback = self.video   # `fallback_override` was not provided
 
             if fallback:
                 if settings.checkSaveAsUseMediaFolder.isChecked(): default_path = fallback
@@ -4840,7 +4869,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # verify the extension on the filename we're about to use
         if basename:
             base, ext = splitext_media(basename, valid_extensions)
-            if ext_hint and not ext: basename = base + ext_hint
+            if ext_hint and not ext:
+                basename = base + ext_hint
 
         path, cfg.lastdir = qthelpers.saveFile(
             lastdir=cfg.lastdir,
@@ -4869,10 +4899,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             url = url.url()
             if player.add_slave(0, url, settings.checkAutoEnableSubtitles.isChecked()) == 0:    # slaves can be subtitles (0) or audio (1). last arg = auto-select
                 log_on_statusbar(f'Subtitle file {url} added and enabled.')                     # returns 0 on success
-                if settings.checkTextOnSubtitleAdded.isChecked(): show_on_player('Subtitle file added and enabled')
+                if settings.checkTextOnSubtitleAdded.isChecked():
+                    show_on_player('Subtitle file added and enabled')
             else:
                 log_on_statusbar(f'Failed to add subtitle file {url} (VLC does not report specific errors for this).')
-                if settings.checkTextOnSubtitleAdded.isChecked(): show_on_player('Failed to add subtitle file')
+                if settings.checkTextOnSubtitleAdded.isChecked():
+                    show_on_player('Failed to add subtitle file')
 
 
     def show_size_dialog(self, snapshot: bool = False):
@@ -4885,21 +4917,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dialog = qthelpers.getDialog(title='Input desired ' + 'size' if dimensions else 'length',
                                      **self.get_popup_location(), fixedSize=(0, 0), flags=Qt.Tool)
 
-        layout = QtW.QVBoxLayout(dialog)
-        form = QtW.QFormLayout()
-        label = QtW.QLabel(dialog)
-        if dimensions: label.setText(constants.SIZE_DIALOG_DIMENSIONS_LABEL_BASE.replace('?resolution', f'{vwidth}x{vheight}'))
-        else: label.setText('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.')
-        label.setAlignment(Qt.AlignCenter)
-
-        wline = QtW.QLineEdit('0' if dimensions else max_time_string, dialog)
-        wbutton = QtW.QPushButton('Width:' if dimensions else 'Length:', dialog)
-        wbutton.clicked.connect(lambda: wline.setText(str(int(vwidth)) if dimensions else max_time_string))
-        if dimensions: wbutton.setToolTip(f'Reset width to native resolution ({vwidth:.0f} pixels).')
-        else: wbutton.setToolTip(f'Reset length to native length ({max_time_string}).')
-
         if dimensions:
+            label = QtW.QLabel(constants.SIZE_DIALOG_DIMENSIONS_LABEL_BASE.replace('?resolution', f'{vwidth}x{vheight}'), dialog)
+            wline = QtW.QLineEdit('0', dialog)
             hline = QtW.QLineEdit('0', dialog)
+            wbutton = QtW.QPushButton('Width:', dialog)
+            wbutton.clicked.connect(lambda: wline.setText(str(int(vwidth))))
+            wbutton.setToolTip(f'Reset width to native resolution ({vwidth:.0f} pixels).')
             hbutton = QtW.QPushButton('Height:', dialog)
             hbutton.clicked.connect(lambda: hline.setText(str(int(vheight))))
             hbutton.setToolTip(f'Reset height to native resolution ({vheight:.0f} pixels).')
@@ -4913,17 +4937,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 qspin.setValue(settings.spinSnapshotJpegQuality.value())
                 qspin.setMaximum(100)
 
-            for w in (wbutton, hbutton): w.setMaximumWidth(50)
+            for w in (wbutton, hbutton):
+                w.setMaximumWidth(50)
             for w in (wline, hline):
                 w.setMaxLength(6)
                 w.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('\\d*%')))    # https://stackoverflow.com/questions/13422995/set-qlineedit-to-accept-only-numbers
-        else: wbutton.setMaximumWidth(50)
 
+        else:
+            label = QtW.QLabel('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.', dialog)
+            wline = QtW.QLineEdit(max_time_string, dialog)
+            wbutton = QtW.QPushButton('Length:', dialog)
+            wbutton.clicked.connect(max_time_string)
+            wbutton.setToolTip(f'Reset length to native length ({max_time_string}).')
+            wbutton.setMaximumWidth(50)
+
+        label.setAlignment(Qt.AlignCenter)
         wline.selectAll()                       # start with text in width lineEdit selected, for quicker editing
+
+        layout = QtW.QVBoxLayout(dialog)
+        form = QtW.QFormLayout()
         form.addRow(label)
         form.addRow(wbutton, wline)
         if dimensions: form.addRow(hbutton, hline)
-        if snapshot: form.addRow(qlabel, qspin)
+        if snapshot:   form.addRow(qlabel, qspin)
         layout.addLayout(form)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
@@ -4947,7 +4983,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 width = min(2, max(0.5, width))
             dialog.width = width
             dialog.height = height
-            if snapshot: dialog.quality = qspin.value()
+            if snapshot:
+                dialog.quality = qspin.value()
 
         # open resize dialog. if cancel is selected, return None
         dialog.accepted.connect(accept)
@@ -5262,12 +5299,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             def accept():
                 self.actionTrimPickEveryTime.setChecked(check_always_pick.isChecked())
 
-            if not constants.IS_WINDOWS: dialog.adjustSize()
             dialog.accepted.connect(accept)
-            if dialog.exec() == QtW.QDialog.Accepted:
+            if not constants.IS_WINDOWS:
+                dialog.adjustSize()
+
+            if dialog.exec() == QtW.QDialog.Accepted:               # trim mode selected -> set appropriate QAction
                 if dialog.choice == button_auto: self.actionTrimAuto.setChecked(True)
                 else: self.actionTrimPrecise.setChecked(True)
-            else: self.trim_mode_selection_canceled = True
+            else:                                                   # trim mode rejected -> set flag so whatever opened...
+                self.trim_mode_selection_canceled = True            # ...the dialog can cancel whatever work it was doing
+
         except: log_on_statusbar(f'(!) TRIM DIALOG ERROR: {format_exc()}')
         finally: cfg.trimmodeselected = True                        # set this to True no matter what (_save is waiting on this)
 
@@ -5283,6 +5324,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # remove missing files from list and check if any are left
         marked_for_deletion = [f for f in marked_for_deletion if exists(f)]
         if not marked_for_deletion: return log_on_statusbar('No media is marked for deletion.')
+
         logging.info('Opening deletion prompt...')
         try:
             dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_location())
@@ -5343,7 +5385,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             picker = QtW.QColorDialog()
             #for index, default in enumerate(self.defaults): picker.setCustomColor(index, QtGui.QColor(*default))
             color = picker.getColor(initial=self.sliderProgress.hover_font_color, parent=self.dialog_settings, title='Picker? I hardly know her!')
-            if not color.isValid(): return
+            if not color.isValid():
+                return
             self.sliderProgress.hover_font_color = color
 
             color_string = str(color.getRgb())
@@ -5372,8 +5415,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             and statusbar no matter what.
 
             Example: marq_key="Save" -> `checkTextOnSave.isChecked()`? '''
+
         if log: log_on_statusbar(text.replace('%%', '%'))
         else: show_on_statusbar(text.replace('%%', '%'), 10000)
+
         try:
             if not marq_key or settings.__dict__[f'checkTextOn{marq_key}'].isChecked():
                 show_on_player(text, timeout)
@@ -5405,7 +5450,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string into seconds needs %x
             except: last_check_time_seconds = 0
             if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < get_time():
-                if not just_updated: log_on_statusbar('Checking for updates...')
+                if not just_updated:
+                    log_on_statusbar('Checking for updates...')
                 self.checking_for_updates = True
                 settings.buttonCheckForUpdates.setText('Checking for updates...')
 
@@ -5538,8 +5584,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # append valid extension if needed
             if not ext:
-                ext = splitext_media(video)[-1]
-                if not ext: ext = '.' + self.extension
+                ext = splitext_media(video)[-1] or ('.' + self.extension)
                 output = f'{output}{ext}'
 
             # make sure new name isn't the same as the old name
@@ -5788,14 +5833,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if `increment` is True. Refreshs UI and displays marquee. '''
         base_volume = self.sliderVolume.value()
         if increment: boost = max(0.5, min(5, self.volume_boost + value))
-        else: boost = max(0.5, min(5, value))
+        else:         boost = max(0.5, min(5, value))
 
         self.volume_boost = boost
         if not self.player.audio_get_mute(): self.set_volume(base_volume)
         else: self.refresh_volume_tooltip()
 
         if boost == 1.0: marq = f'{boost:.1f}x volume boost ({base_volume}%%)'
-        else: marq = f'{boost:.1f}x volume boost ({base_volume}%% -> {base_volume * boost:.0f}%%)'
+        else:            marq = f'{boost:.1f}x volume boost ({base_volume}%% -> {base_volume * boost:.0f}%%)'
         self.marquee(marq, marq_key='VolumeBoost', log=False)
 
 
@@ -5808,9 +5853,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             base_volume = get_volume_slider()
             boost = self.volume_boost
 
-            if muted: marq = f'Muted{self.get_hotkey_full_string("mute")}'
+            if muted:          marq = f'Muted{self.get_hotkey_full_string("mute")}'
             elif boost == 1.0: marq = f'Unmuted ({base_volume}%%)'
-            else: marq = f'Unmuted ({base_volume}%% -> {base_volume * boost:.0f}%%)\n{boost:.1f}x volume boost'
+            else:              marq = f'Unmuted ({base_volume}%% -> {base_volume * boost:.0f}%%)\n{boost:.1f}x volume boost'
 
             if settings.checkTextOnMute.isChecked() and verbose:
                 show_on_player(marq)
@@ -6089,8 +6134,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # if `title` is (or has become) None, use generic marquee, i.e. "Audio track 2 enabled"
         # otherwise, use something like "Audio track 2 'Microphone' enabled"
         prefix = f'{track_type.capitalize().rstrip("s")} track {track_index}'
-        if not title: title = f'{prefix} enabled'
-        else: title = f'{prefix}  \'{title}\' enabled'
+        if title: title = f'{prefix}  \'{title}\' enabled'
+        else:     title = f'{prefix} enabled'
 
         if track != -1: marquee(title, marq_key='TrackChanged', log=False)
         else: marquee(f'{track_type.capitalize()} disabled', marq_key='TrackChanged', log=False)
@@ -6159,7 +6204,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         new_parts.append('&' + part)
                         new_parts.extend(name_parts[index + 1:])
                         break
-                    else: new_parts.append(part)
+                    else:
+                        new_parts.append(part)
                 track_name = ' '.join(new_parts)
 
                 # create and add action, storing its track index and true index in its `data` and tooltip
@@ -6255,9 +6301,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             video with crop-mode enabled, etc. '''
         mime = self.mime_type
         cropped = self.actionCrop.isChecked()
-        if mime == 'audio': text = 'Copy cover art'
+        if mime == 'audio':                  text = 'Copy cover art'
         elif mime == 'video' or self.is_gif: text = 'Copy cropped frame' if cropped else 'Copy frame'
-        else: text = 'Copy cropped image' if cropped else 'Copy image'
+        else:                                text = 'Copy cropped image' if cropped else 'Copy image'
         self.actionCopyImage.setText('&' + text)
 
 
@@ -6304,11 +6350,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def refresh_autoplay_button(self):
         ''' Updates the autoplay button's icon and check-state. '''
-        if self.actionAutoplayShuffle.isChecked(): icon = 'autoplay_shuffle'
-        elif self.actionAutoplayDirectionForwards.isChecked(): icon = 'autoplay'
+        if self.actionAutoplayShuffle.isChecked():              icon = 'autoplay_shuffle'
+        elif self.actionAutoplayDirectionForwards.isChecked():  icon = 'autoplay'
         elif self.actionAutoplayDirectionBackwards.isChecked(): icon = 'autoplay_backward'
-        elif self.last_cycle_was_forward: icon = 'autoplay'
-        else: icon = 'autoplay_backward'
+        elif self.last_cycle_was_forward:                       icon = 'autoplay'
+        else:                                                   icon = 'autoplay_backward'
         self.buttonAutoplay.setIcon(self.icons[icon])
         self.buttonAutoplay.setChecked(self.actionAutoplay.isChecked())
 
@@ -6485,10 +6531,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def is_snap_mode_enabled(self) -> bool:
         ''' Returns True if snap-modes can be used on the current mime type. '''
         mime = self.mime_type
-        if mime == 'audio': return self.is_audio_with_cover_art and settings.checkSnapArt.isChecked()
+        if mime == 'audio':   return self.is_audio_with_cover_art and settings.checkSnapArt.isChecked()
         elif mime == 'video': return settings.checkSnapVideos.isChecked()
-        elif self.is_gif: return settings.checkSnapGifs.isChecked()
-        else: return settings.checkSnapImages.isChecked()
+        elif self.is_gif:     return settings.checkSnapGifs.isChecked()
+        else:                 return settings.checkSnapImages.isChecked()
 
 
     def snap_to_player_size(self, shrink: bool = False, force_instant_resize: bool = False):
@@ -6513,7 +6559,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # TODO +28 here or window gets smaller when switching between videos with different ratios
                     expected_vlc_size.scale(expected_vlc_size.width() + round(void * ratio), expected_vlc_size.height() + round(void / ratio) + 28, Qt.KeepAspectRatio)
                     true_height = expected_vlc_size.height() + self.height() - self.vlc.height()
-                    if expected_vlc_size != vlc_size: self.resize(expected_vlc_size.width(), true_height)
+                    if expected_vlc_size != vlc_size:
+                        self.resize(expected_vlc_size.width(), true_height)
                     return self.snap_to_player_size(shrink=True)    # snap again, but shrink this time
 
             # experimental animated snap (discovered by accident)
@@ -6566,7 +6613,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.swap_slider_styles_queued = True
 
 
-    def mark_for_deletion(self, checked: bool = False, file=None, mode=None):
+    def mark_for_deletion(self, checked: bool = False, file: str = None, mode: str = None):
         ''' Marks a `file` for deletion if `checked` is True. Alternate
             behavior can be triggered if `mode` is set to "delete" or "prompt".
             If `mode` is None, it will automatically be set to "delete" if
@@ -6590,7 +6637,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             mode = mode.lower()
         logging.info(f'Marking file {file} for deletion: {checked}. Mode: {mode}')
 
-        if mode == 'delete': self.delete(file)
+        if mode == 'delete':   self.delete(file)
         elif mode == 'prompt': self.show_delete_prompt()
         elif checked and file: self.marked_for_deletion.add(file)
         elif not checked:
