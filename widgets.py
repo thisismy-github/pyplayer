@@ -516,10 +516,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 elif event.button() == Qt.ForwardButton: gui.cycle_recent_files(forward=True)
                 elif event.button() == Qt.MiddleButton:  gui.middle_click_player_actions[settings.comboPlayerMiddleClick.currentIndex()]()
                 return  # TODO add back/forward functionality globally (not as easy as it sounds?)
+            elif not event.button() == Qt.LeftButton:                   # ignore non-left-clicks in crop mode
+                pos = self.mapFromGlobal(QtGui.QCursor.pos())
+                return self.refresh_crop_cursor(pos)
 
-            self.panning = False
             pos = self.mapFromGlobal(QtGui.QCursor.pos())               # mousePressEvent's event.pos() appears to return incorrect values...
-            self.dragging = self.get_crop_point_index_in_range(pos)     # ...in certain areas, leading to bad offsets and mismatched selections
+            self.refresh_crop_cursor(pos)                               # ...in certain areas, leading to bad offsets and mismatched selections
+            self.dragging = self.get_crop_point_index_in_range(pos)
+            self.panning = False
             if self.dragging is not None:
                 self.drag_axis_lock = None                              # reset axis lock before dragging corners
                 self.dragging_offset = pos - self.selection[self.dragging]
@@ -634,11 +638,18 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             ignoring clicks that were dragged outside player. Releases dragged
             crop points/edges if needed, and resets cursor. '''
 
-        # left click released and we're either not dragging crop points or we clicked the middle but did not start panning
-        if event.button() == Qt.LeftButton and (self.dragging is None or self.dragging == -1) and not self.panning:
-            if self.underMouse():                       # mouse wasn't dragged off player
+        # ensure we're actually over the player still and we're not panning/dragging a crop region
+        if event.button() == Qt.LeftButton and self.rect().contains(event.pos()) and not self.panning:
+            if (self.dragging is None and not gui.actionCrop.isChecked()) or self.dragging == -1:
                 gui.pause()
-        if self.dragging is not None:                   # refresh crop cursor if we were just dragging
+
+        # right-click released -> reset cursor to default for context menu
+        if event.button() == Qt.RightButton:
+            while app.overrideCursor():
+                app.restoreOverrideCursor()
+
+        # left-click released and we're not dragging the crop region/points/edges
+        elif self.dragging is not None:                 # refresh crop cursor if we were just dragging
             self.refresh_crop_cursor(self.mapFromGlobal(event.globalPos()))
 
         #self.panning = False
