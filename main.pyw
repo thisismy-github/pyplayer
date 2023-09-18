@@ -1145,8 +1145,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     jump_progress = primary == 1
                     play_recent = primary == 2
 
-            if jump_progress:
-                new_frame = int(self.frame_count / 10 * (key - 48))
+            if jump_progress:                           # scale progress to current min/max frames
+                new_frame = self.minimum + int((self.maximum - self.minimum) / 10 * (key - 48))
                 set_and_adjust_and_update_progress(new_frame, 0.075)
                 if self.restarted and settings.checkNavigationUnpause.isChecked():
                     self.force_pause(False)             # auto-unpause after restart if desired
@@ -6597,14 +6597,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def page_step_slider(self, action):
-        ''' Required because Qt genuinely doesn't emit any other signals for page steps. Values
-            are clamped to the progress slider's minimum and maximum values, to prevent wrapping. '''
-        slider = self.sliderProgress
-        if action == 3:     # page step add
-            new_frame = min(slider.maximum(), max(slider.minimum(), slider.value() + slider.pageStep()))
+        ''' Handles page steps for the progress slider. In PyPlayer's case, this
+            refers only to scrolling the mousewheel over the slider. This method
+            is required because Qt genuinely doesn't emit any other signals for
+            page steps. Page steps are scaled (and clamped) to the current
+            `self.minimum`/`self.maximum` frames. '''
+        maximum = self.maximum
+        minimum = self.minimum
+        step = int(self.sliderProgress.pageStep() * ((maximum - minimum) / self.frame_count))
+        if action == 3:                                 # page step add (scroll down)
+            old_frame = get_ui_frame()
+            if old_frame == maximum:
+                return set_progress_slider(old_frame)   # visually clamp slider back to maximum if needed
+            new_frame = min(maximum, old_frame + step)
             set_and_adjust_and_update_progress(new_frame, 0.1)
-        elif action == 4:   # page step sub
-            new_frame = min(slider.maximum(), max(slider.minimum(), slider.value() - slider.pageStep()))
+        elif action == 4:                               # page step sub (scroll up)
+            old_frame = get_ui_frame()
+            new_frame = max(minimum, old_frame - step)
             set_and_adjust_and_update_progress(new_frame, 0.1)
         if self.restarted and settings.checkNavigationUnpause.isChecked():
             self.force_pause(False)                     # auto-unpause after restart if desired
