@@ -1517,13 +1517,17 @@ class QVideoSlider(QtW.QSlider):
                 gui.frame_override = frame
 
         if not just_restarted:                                  # do not touch pause state if we manually restarted
-            if gui.restarted and settings.checkNavigationUnpause.isChecked(): gui.pause()   # auto-unpause after restart
-            else: gui.player.set_pause(False or gui.is_paused)  # stay paused if we were paused
+            if gui.restarted:
+                if settings.checkNavigationUnpause.isChecked():
+                    gui.force_pause(False)                      # auto-unpause after restart
+                    gui.restarted = False
+            else:
+                gui.player.set_pause(False or gui.is_paused)    # stay paused if we were paused
+
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
         if self.underMouse():                                   # resume drawing timestamp after release
             self.last_mouseover_time = time.time()
-
         self.scrubbing = False
 
 

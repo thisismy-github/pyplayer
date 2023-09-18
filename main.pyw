@@ -1148,6 +1148,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if jump_progress:
                 new_frame = int(self.frame_count / 10 * (key - 48))
                 set_and_adjust_and_update_progress(new_frame, 0.075)
+                if self.restarted and settings.checkNavigationUnpause.isChecked():
+                    self.force_pause(False)             # auto-unpause after restart if desired
+                    self.restarted = False
             elif play_recent:
                 if not self.recent_files:
                     return show_on_statusbar('No recent files available.')
@@ -3076,10 +3079,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # ...HAVEN'T restarted yet -> ignore the restart we're about to do
         self.ignore_imminent_restart = old_frame == self.frame_count and not self.is_paused and not self.restarted
 
-        # auto-unpause after restart
+        # auto-unpause after restart if desired
         if self.restarted and settings.checkNavigationUnpause.isChecked():
             self.force_pause(False)
-        self.restarted = False
+            self.restarted = False
 
         # show new position as a marquee if desired
         if self.isFullScreen() and settings.checkTextOnFullScreenPosition.isChecked():
@@ -6585,8 +6588,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def snap_to_native_size(self):
-        ''' Resizes the window to the current media's native resolution, unless
-            it's an audio file without cover art. Clamps to screen afterwards. '''
+        ''' Resizes window to the current media's native resolution, unless it's
+            an audio file without cover art. Clamps to screen afterwards. '''
         if not self.video or self.is_audio_without_cover_art: return
         excess_height = self.height() - self.vlc.height()
         self.resize(self.vwidth, self.vheight + excess_height)
@@ -6604,7 +6607,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             new_frame = min(slider.maximum(), max(slider.minimum(), slider.value() - slider.pageStep()))
             set_and_adjust_and_update_progress(new_frame, 0.1)
         if self.restarted and settings.checkNavigationUnpause.isChecked():
-            self.pause()    # auto-unpause after restart
+            self.force_pause(False)                     # auto-unpause after restart if desired
+            self.restarted = False
 
 
     def swap_slider_styles(self):
