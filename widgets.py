@@ -1423,14 +1423,18 @@ class QVideoSlider(QtW.QSlider):
             p.end()
 
 
-    def wheelEvent(self, event: QtGui.QWheelEvent):             # https://doc.qt.io/qt-5/qabstractslider.html#SliderAction-enum
+    def wheelEvent(self, event: QtGui.QWheelEvent):
         ''' Page-steps along the slider while scrolling. Horizontal sliders
             are increased by scrolling down or right, vertical sliders are
             increased by scrolling up or left. '''
-        add = event.angleDelta().y() > 0 or event.angleDelta().x() > 0
-        if self.orientation() == Qt.Vertical: add = not add
-        self.triggerAction(4 if add else 3)
-        event.accept()
+        up = event.angleDelta().y() > 0 or event.angleDelta().x() > 0
+        if self.orientation() == Qt.Vertical:
+            up = not up
+
+        if up: forward = settings.checkScrollUpForForwards.isChecked()
+        else:  forward = not settings.checkScrollUpForForwards.isChecked()
+        gui.page_step(step=settings.spinScrollProgress.value() / 100, forward=forward)
+        event.accept()                                          # must accept event or it gets passed to the window
 
 
     def enterEvent(self, event: QtGui.QEnterEvent):

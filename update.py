@@ -274,9 +274,10 @@ def update_migration(self, old_version: str) -> None:
         settings.checkFocusIgnoreAutoplay.setChecked(config.cfg.loadFrom('settings', 'checkignorefocuswithautoplay', True))
         settings.checkTrayResetFirstFileOnRestore.setChecked(config.cfg.loadFrom('settings', 'checkfirstfiletrayreset', True))
         settings.checkSaveAsForceOnNoName.setChecked(config.cfg.loadFrom('settings', 'checkalwayssaveas', True))
-        try: self.resize(*config.cfg.load('size', '871,588', ',', int, tuple))
-        except: pass
+        settings.spinScrollVolume.setValue(config.cfg.loadFrom('settings', 'spinvolumescroll', 10))
         try:
+            try: self.resize(*config.cfg.load('size', '871,588', ',', int, tuple))
+            except: pass
             screen = self.app.primaryScreen().size()
             self.move(*config.cfg.load('pos', f'{screen.width() / 2 - (self.width() / 2):.0f},{screen.height() / 2 - (self.height() / 2):.0f}', ',', int, tuple))
         except:

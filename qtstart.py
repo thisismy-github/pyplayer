@@ -372,7 +372,6 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.spinMinute.valueChanged.connect(self.update_time_spins)
     self.spinSecond.valueChanged.connect(self.update_time_spins)
     self.spinFrame.valueChanged.connect(self.update_frame_spin)
-    self.sliderProgress.actionTriggered.connect(self.page_step_slider)
 
     self.buttonTrimStart.toggled.connect(self.set_trim_start)
     self.buttonTrimEnd.toggled.connect(self.set_trim_end)

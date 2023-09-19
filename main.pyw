@@ -2783,9 +2783,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.minimum = 0
             self.maximum = sliderProgress.maximum()     # this may be different than what we just put in
 
-            # set the number of frames to jump when scrolling over the slider
-            sliderProgress.setPageStep(int(self.frame_count_raw / 10))
-
             # place one tick per second/minute (cosmetic, default theme only)
             sliderProgress.setTickInterval(self.frame_rate_rounded * (1 if self.duration_rounded < 3600 else 60))
 
@@ -3050,48 +3047,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.taskbar.clearOverlayIcon()
 
         logging.debug('Player stopped.')
-
-
-    def navigate(self, forward: bool, seconds_spinbox: QtW.QSpinBox):   # slightly longer than it could be, but cleaner/more readable
-        ''' Navigates `forward` or backwards through the current
-            media by the value specified in `seconds_spinbox`.
-
-            NOTE: `seconds` has been replaced by `seconds_spinbox`
-            since the former was never explicitly used. '''
-
-        # cycle images with basic navigation keys
-        if self.is_static_image: return self.cycle_media(next=forward)
-        old_frame = get_ui_frame()
-        seconds = seconds_spinbox.value()
-
-        # calculate and update to new frame as long as it's within our bounds
-        if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
-            if old_frame == self.frame_count and settings.checkNavigationWrap.isChecked(): new_frame = 0
-            else: new_frame = min(self.maximum, old_frame + self.frame_rate_rounded * seconds)
-        else:                                       # NOTE: only wrap start-to-end if we're paused
-            if old_frame == 0 and self.is_paused and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
-
-        # set progress to new frame while doing necessary adjustments/corrections/overrides
-        set_and_adjust_and_update_progress(new_frame, 0.1)
-
-        # HACK: if navigating away from end of media while unpaused and we...
-        # ...HAVEN'T restarted yet -> ignore the restart we're about to do
-        self.ignore_imminent_restart = old_frame == self.frame_count and not self.is_paused and not self.restarted
-
-        # auto-unpause after restart if desired
-        if self.restarted and settings.checkNavigationUnpause.isChecked():
-            self.force_pause(False)
-            self.restarted = False
-
-        # show new position as a marquee if desired
-        if self.isFullScreen() and settings.checkTextOnFullScreenPosition.isChecked():
-            h, m, s, _ = get_hms(self.current_time)
-            current_text = f'{m:02}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
-            max_text = self.labelMaxTime.text()[:-3] if self.duration_rounded < 3600 else self.labelMaxTime.text()
-            show_on_player(f'{current_text}/{max_text}')
-
-        logging.debug(f'Navigated {"forwards" if forward else "backwards"} {seconds} second(s), going from frame {old_frame} to {new_frame}')
 
 
     def rename(self, new_name: str = None):
@@ -4103,6 +4058,74 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except: pass                                    # ignore invalid inputs
         finally: self.lineCurrentTime.clearFocus()      # clear focus after update no matter what
+
+
+    def page_step(self, step: float = 0.1, forward: bool = True, scaled: bool = True):
+        ''' Page-steps through the progress slider by `step`, a percentage from
+            0-1, `forward` or backwards. If `step` is negative, `forward` is
+            inverted. If `scaled` is True, `step` is scaled to `self.minimum`
+            and `self.maximum`, otherwise `self.frame_count`. Page-steps are
+            clamped to `self.minimum`/`self.maximum` regardless. '''
+
+        old_frame = get_ui_frame()
+        maximum = self.maximum
+        minimum = self.minimum
+        if scaled: step = int((maximum - minimum) * step)
+        else:      step = int(self.frame_count * step)
+
+        if forward and step > 0:
+            if old_frame == maximum:
+                return set_progress_slider(old_frame)   # visually clamp slider to maximum if we can't go forward
+            new_frame = min(maximum, old_frame + step)
+        else:
+            new_frame = max(minimum, old_frame - step)
+
+        set_and_adjust_and_update_progress(new_frame, 0.1)
+        if self.restarted and settings.checkNavigationUnpause.isChecked():
+            self.force_pause(False)                     # auto-unpause after restart if desired
+            self.restarted = False
+
+
+    def navigate(self, forward: bool, seconds_spinbox: QtW.QSpinBox):   # slightly longer than it could be, but cleaner/more readable
+        ''' Navigates `forward` or backwards through the current
+            media by the value specified in `seconds_spinbox`.
+
+            NOTE: `seconds` has been replaced by `seconds_spinbox`
+            since the former was never explicitly used. '''
+
+        # cycle images with basic navigation keys
+        if self.is_static_image: return self.cycle_media(next=forward)
+        old_frame = get_ui_frame()
+        seconds = seconds_spinbox.value()
+
+        # calculate and update to new frame as long as it's within our bounds
+        if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
+            if old_frame == self.frame_count and settings.checkNavigationWrap.isChecked(): new_frame = 0
+            else: new_frame = min(self.maximum, old_frame + self.frame_rate_rounded * seconds)
+        else:                                       # NOTE: only wrap start-to-end if we're paused
+            if old_frame == 0 and self.is_paused and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
+            else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
+
+        # set progress to new frame while doing necessary adjustments/corrections/overrides
+        set_and_adjust_and_update_progress(new_frame, 0.1)
+
+        # HACK: if navigating away from end of media while unpaused and we...
+        # ...HAVEN'T restarted yet -> ignore the restart we're about to do
+        self.ignore_imminent_restart = old_frame == self.frame_count and not self.is_paused and not self.restarted
+
+        # auto-unpause after restart if desired
+        if self.restarted and settings.checkNavigationUnpause.isChecked():
+            self.force_pause(False)
+            self.restarted = False
+
+        # show new position as a marquee if desired
+        if self.isFullScreen() and settings.checkTextOnFullScreenPosition.isChecked():
+            h, m, s, _ = get_hms(self.current_time)
+            current_text = f'{m:02}:{s:02}' if h == 0 else f'{h}:{m:02}:{s:02}'
+            max_text = self.labelMaxTime.text()[:-3] if self.duration_rounded < 3600 else self.labelMaxTime.text()
+            show_on_player(f'{current_text}/{max_text}')
+
+        logging.debug(f'Navigated {"forwards" if forward else "backwards"} {seconds} second(s), going from frame {old_frame} to {new_frame}')
 
 
     # ---------------------
@@ -6596,30 +6619,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         qthelpers.clampToScreen(self)
 
 
-    def page_step_slider(self, action):
-        ''' Handles page steps for the progress slider. In PyPlayer's case, this
-            refers only to scrolling the mousewheel over the slider. This method
-            is required because Qt genuinely doesn't emit any other signals for
-            page steps. Page steps are scaled (and clamped) to the current
-            `self.minimum`/`self.maximum` frames. '''
-        maximum = self.maximum
-        minimum = self.minimum
-        step = int(self.sliderProgress.pageStep() * ((maximum - minimum) / self.frame_count))
-        if action == 3:                                 # page step add (scroll down)
-            old_frame = get_ui_frame()
-            if old_frame == maximum:
-                return set_progress_slider(old_frame)   # visually clamp slider back to maximum if needed
-            new_frame = min(maximum, old_frame + step)
-            set_and_adjust_and_update_progress(new_frame, 0.1)
-        elif action == 4:                               # page step sub (scroll up)
-            old_frame = get_ui_frame()
-            new_frame = max(minimum, old_frame - step)
-            set_and_adjust_and_update_progress(new_frame, 0.1)
-        if self.restarted and settings.checkNavigationUnpause.isChecked():
-            self.force_pause(False)                     # auto-unpause after restart if desired
-            self.restarted = False
-
-
     def swap_slider_styles(self):
         ''' Used to switch between high-precision and
             low-precision sliders in update_slider_thread. '''
@@ -6727,7 +6726,7 @@ if __name__ == "__main__":
         emit_update_progress_signal = gui.update_progress_signal.emit
         set_volume_slider = gui.sliderVolume.setValue
         get_volume_slider = gui.sliderVolume.value
-        get_volume_scroll_increment = settings.spinVolumeScroll.value
+        get_volume_scroll_increment = settings.spinScrollVolume.value
         get_ui_frame = gui.sliderProgress.value
         set_progress_slider = gui.sliderProgress.setValue
         set_hour_spin = gui.spinHour.setValue
