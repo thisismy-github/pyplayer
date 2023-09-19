@@ -433,6 +433,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.invert_next_move_event = False
         self.invert_next_resize_event = False
         self.ignore_next_fullscreen_move_event = False
+        self.ignore_next_right_click = False
         self.ignore_next_alt = False
         self.ignore_imminent_restart = False
 
@@ -1095,14 +1096,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
-        add = event.angleDelta().y() > 0
+        ''' Handles scrolling anywhere over the window (unless a child widget
+            handles it first without passing it, like the progress slider).
+            Increments the volume or playback rate, depending on what keyboard
+            modifiers and mouse buttons are currently held down. '''
+        up = event.angleDelta().y() > 0
         mod = event.modifiers()                         # just modifiers instead of keyboardModifiers here for some reason
-        if mod & Qt.ControlModifier:                    # TODO add more scrolling modifiers and show options like drag/drop does
-            self.set_playback_speed(player.get_rate() + (0.1 if add else -0.1))
-            refresh_title()
+
+        if mod & Qt.ControlModifier:
+            inc = 0.05 if mod & Qt.ShiftModifier else 0.2
+            self.set_playback_speed(player.get_rate() + (inc if up else -inc))
         else:
-            inc = get_volume_scroll_increment()
-            set_volume_slider(get_volume_slider() + (inc if add else -inc))
+            if event.buttons() == Qt.RightButton:
+                self.ignore_next_right_click = True     # reset-timer for this starts in `QVideoPlayer.mouseReleaseEvent`
+                small = True
+            else:
+                small = mod & Qt.ShiftModifier
+            inc = 1 if small else get_volume_scroll_increment()
+            set_volume_slider(get_volume_slider() + (inc if up else -inc))
+
+        refresh_title()
         event.accept()
 
 
@@ -1200,6 +1213,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the main window. '''
+        if self.ignore_next_right_click:                # NOTE: this resets on a timer even if we don't catch it here
+            self.ignore_next_right_click = False
+            return
         context = QtW.QMenu(self)
 
         # add crop/zoom toggle if in crop mode or we're zoomed in
@@ -5776,17 +5792,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         new_mtime = 0
 
         # evaluate which ctime/mtime to return
-        if dest in sources:                         # dest is replacing one of the sources
+        if dest in sources:                             # dest is replacing one of the sources
             if settings.checkEditCtimeOnOriginal.isChecked():           new_ctime = old_ctime
             if settings.checkEditMtimeOnOriginal.isChecked():           new_mtime = old_mtime
             if mtime_is_older:
                 if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
-        elif not exists(dest):                      # dest is a new file
+        elif not exists(dest):                          # dest is a new file
             if settings.checkEditCtimeOnNew.isChecked():                new_ctime = old_ctime
             if settings.checkEditMtimeOnNew.isChecked():                new_mtime = old_mtime
             if mtime_is_older:
                 if settings.checkEditOlderMtimeAlwaysReuse.isChecked(): new_mtime = old_mtime
-        else:                                       # dest is replacing a different file
+        else:                                           # dest is replacing a different file
             other_stat = os.stat(dest)
             other_ctime = other_stat.st_ctime
             other_mtime = other_stat.st_mtime
@@ -5806,10 +5822,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Sets a `path`'s creation time and modified time to `ctime`, `mtime`,
             and `atime`, if non-zero. NOTE: "ctime" represents "changed time" on
             non-Windows systems, so `ctime` is ignored outside of Windows. '''
-        if ctime and constants.IS_WINDOWS:          # ctime means something else on other systems
+        if ctime and constants.IS_WINDOWS:              # ctime means something else on other systems
             try: setctime(path=path, ctime=ctime)
             except: log_on_statusbar(f'(!) Failed to update creation time for file: {format_exc()}')
-        if mtime or atime:                          # os.utime takes (atime, mtime)
+        if mtime or atime:                              # os.utime takes (atime, mtime)
             stat = os.stat(path)
             if mtime == 0: mtime = stat.st_mtime
             if atime == 0: atime = stat.st_atime
@@ -5819,6 +5835,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def set_playback_speed(self, rate: float):
         ''' Sets, saves, and displays the playback `rate` for the media. '''
+        rate = round(rate, 4)                           # round `rate` to 4 places to avoid floating point imprecision
         old_rate = player.get_rate()
         player.set_rate(rate)
         image_player.gif.setSpeed(int(rate * 100))

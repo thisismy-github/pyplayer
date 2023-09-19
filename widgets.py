@@ -648,6 +648,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             while app.overrideCursor():
                 app.restoreOverrideCursor()
 
+            # NOTE: this event happens before contextMenuEvent, which might not fire at all.
+            # -> use a timer so contextMenuEvent has a chance to see the flag is set while...
+            # ...guaranteeing the flag gets reset even if contextMenuEvent never fires
+            if gui.ignore_next_right_click:
+                def reset():
+                    gui.ignore_next_right_click = False
+                QtCore.QTimer.singleShot(50, Qt.CoarseTimer, reset)
+
         # left-click released and we're not dragging the crop region/points/edges
         elif self.dragging is not None:                 # refresh crop cursor if we were just dragging
             self.refresh_crop_cursor(self.mapFromGlobal(event.globalPos()))

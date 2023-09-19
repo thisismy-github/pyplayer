@@ -241,8 +241,10 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minusframe':         self.spinFrame.stepDown,
         'plusspeed':          lambda: self.set_playback_speed(self.playback_speed + 0.05),
         'minusspeed':         lambda: self.set_playback_speed(self.playback_speed - 0.05),
-        'plus5volume':        lambda: self.sliderVolume.setValue(self.sliderVolume.value() + 5),
-        'minus5volume':       lambda: self.sliderVolume.setValue(self.sliderVolume.value() - 5),
+        'plusvolume1':        lambda: self.sliderVolume.setValue(self.sliderVolume.value() + settings.spinVolume1.value()),
+        'minusvolume1':       lambda: self.sliderVolume.setValue(self.sliderVolume.value() - settings.spinVolume1.value()),
+        'plusvolume2':        lambda: self.sliderVolume.setValue(self.sliderVolume.value() + settings.spinVolume2.value()),
+        'minusvolume2':       lambda: self.sliderVolume.setValue(self.sliderVolume.value() - settings.spinVolume2.value()),
         'plusvolumeboost':    lambda: self.set_volume_boost(0.5, increment=True),
         'minusvolumeboost':   lambda: self.set_volume_boost(-0.5, increment=True),
         'mute':               self.toggle_mute,
@@ -408,7 +410,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
     settings.buttonCheckForUpdates.clicked.connect(self.handle_updates)
     settings.checkZoomPrecise.toggled.connect(self.gifPlayer._updatePreciseZoom)
-    settings.spinZoomMinimumFactor.valueChanged.connect(lambda: settings.checkZoomAutoDisable1x.setEnabled(settings.spinZoomMinimumFactor.value() == 1))
+    settings.spinZoomMinimumFactor.valueChanged.connect(lambda v: settings.checkZoomAutoDisable1x.setEnabled(v == 1))
     settings.spinZoomSmoothFactor.valueChanged.connect(self.gifPlayer._updateSmoothZoomFactor)
     settings.comboSnapshotDefault.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.comboSnapshotShift.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
@@ -448,6 +450,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.spinNavigation2.valueChanged.connect(refresh_navigation_labels)
     settings.spinNavigation3.valueChanged.connect(refresh_navigation_labels)
     settings.spinNavigation4.valueChanged.connect(refresh_navigation_labels)
+    settings.spinVolume1.valueChanged.connect(lambda v: settings.labelVolume1.setText(f'-{v} volume'))
+    settings.spinVolume2.valueChanged.connect(lambda v: settings.labelVolume2.setText(f'-{v} volume'))
 
     # NOTE: this looks weird if the gif has custom frame-by-frame delays, but it's perfectly fine
     self.gifPlayer.gif.frameChanged.connect(self.update_gif_progress)
