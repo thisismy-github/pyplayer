@@ -55,7 +55,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('minimizedtotraywarningignored', False)
 
     cfg.setSection('settings')
-    cfg.loadQt(settings.tabGeneral, settings.tabUpdates, ignore=('comboThemes',))
+    cfg.loadQt(settings.tabGeneral, settings.tabEditing, settings.tabHotkeys, settings.tabUpdates, ignore=('comboThemes'))
     for group in (gui.trim_mode_action_group, gui.autoplay_direction_group):
         for action in group.actions():
             action.setChecked(load(action.objectName(), action.isChecked()))
