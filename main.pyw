@@ -439,7 +439,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.video = ''
         self.video_original_path = ''
-        self.locked_video: str = None
+        self.locked_files = set()
         self.last_video = ''                    # NOTE: the actual last non-edited file played
         self.recent_files = []                  # NOTE: the user-friendly list of recent files
         self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
@@ -1678,7 +1678,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         update_recent_list = settings.checkAutoplayShuffleAddToRecents.isChecked()
         skip_marked = self.checkSkipMarked.isChecked()
         marked = self.marked_for_deletion
-        locked_video_path = self.locked_video
+        locked_files = self.locked_files
         open = self.open
         ignore = self.shuffle_ignore_unique
         ignore_order = self.shuffle_ignore_order
@@ -1725,7 +1725,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if file_is_hidden(file): continue
             if skip_marked and file in marked: continue
             if filename == current_basename: continue
-            if file == locked_video_path: continue
+            if file in locked_files: continue
 
             # if file gets opened, check the size of our ignore list and return the file
             if open(file, _from_cycle=True, _from_autoplay=autoplay,
@@ -1828,7 +1828,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # aliases for the loop
         skip_marked = self.checkSkipMarked.isChecked()
         marked = self.marked_for_deletion
-        locked_video_path = self.locked_video
+        locked_files = self.locked_files
         open = self.open
 
         # determine valid mime types. any mime goes if we're cycling...
@@ -1864,7 +1864,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 skipped_old_video = original_video_path != current_video_path
                 continue
             if file == current_video_path: continue
-            if file == locked_video_path: continue
+            if file in locked_files: continue
 
             # attempt to play file -> -1 is returned if file can't be opened
             # if the new video opens successfully, stop
@@ -1908,7 +1908,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             the recent list, regardless of `update`. '''
         try:
             recent_files = self.recent_files
-            if path == self.locked_video:           # recent file is locked (it's actively being edited)
+            if path in self.locked_files:           # recent file is locked (it's actively being edited)
                 log_on_statusbar(f'Recent file {path} is currently being worked on.')
             elif os.path.isfile(path):
                 if open:
@@ -1934,7 +1934,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not mod or (mod & Qt.ShiftModifier and not mod & Qt.ControlModifier):
                 #skip_marked = self.checkSkipMarked.isChecked()
                 #marked = self.marked_for_deletion  # TODO see below
-                locked_video_path = self.locked_video
+                locked_files = self.locked_files
                 open = self.open
 
                 start = get_time()
@@ -1946,7 +1946,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except: continue
 
                     if file_is_hidden(file): continue
-                    if file == locked_video_path: continue
+                    if file in locked_files: continue
                     #if skip_marked and file in marked: continue    # TODO should we do this here?
 
                     if open(file, _from_cycle=True, mime=mime,
@@ -2507,11 +2507,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if os.path.isdir(file):
                     file = self.open_folder(file, focus_window=focus_window)
                     return -1 if file is None else 1
-                if file == self.locked_video:               # if file is locked and we didn't cycle here, show a warning message
+                if file in self.locked_files:               # if file is locked and we didn't cycle here, show a warning message
                     show_on_statusbar(f'File {file} is currently being worked on.')
                     return -1
-            elif file == self.locked_video:                 # if file is locked and we're cycling, just return immediately
-                return -1
 
             # get stats and size of media
             start = get_time()
@@ -3597,14 +3595,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # stop player if we've reached this point. it's our last chance to do so safely (without theoretically disrupting the user)
         self.stop()
 
-        # lock video from being played if we're replacing it OR it's being immediately deleted
+        # lock source file from being played if we're replacing it OR it's being immediately deleted
         if replacing_original or delete_after_save == FULL_DELETE:
-            self.locked_video = video
-            logging.info(f'Video locked during edits: {video}')
+            self.locked_files.add(video)
+            logging.info(f'File locked during edits: {video}')
 
             # ignore deletion setting if we're replacing the original file
             if replacing_original:
                 delete_after_save = NO_DELETE
+
+        # ensure destination is also locked
+        self.locked_files.add(dest)
 
         # display indeterminant progress bar, set busy cursor, and update UI to frame 0
         self.set_save_progress_max_signal.emit(frame_count_raw)         # set progress bar max to max possible (raw) frames
@@ -3886,7 +3887,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except:
             log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
         finally:                                                # NOTE: this order is intentional
-            self.locked_video = None                            # unlock video if needed
+            self.locked_files.discard(video)                    # unlock source file
+            self.locked_files.discard(dest)                     # unlock destination
             self.set_save_progress_visible_signal.emit(False)   # hide the progress bar no matter what
             self.unsetCursor()                                  # restore cursor no matter what
             self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
@@ -4149,7 +4151,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         frame_count_hint: int = None,
         start_text: str = 'Saving (%p%)',
         active_text: str = 'Saving (%p%)',
-        cleanup: bool = False
+        cleanup: bool = False,
+        lock: bool = False
     ) -> str:
         ''' Executes an FFmpeg `cmd` on `infile` and outputs to `outfile`,
             showing a progress bar on both the statusbar and the taskbar icon
@@ -4175,11 +4178,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             If `cleanup` is True, `self.save_progress_bar` will be hidden and
             have its maximum value reset upon completion.
 
+            If `lock` is True, both `infile` and `outfile` (as well as any
+            temporary paths that are created) will be automatically added to
+            `self.locked_files` and subsequently removed upon completion.
+            NOTE: Temporary paths will be locked/unlocked regardless if
+            `infile` is already locked when you call this method.
+
             Returns the actual final output path. '''
 
         start = get_time()
 
         # aliases, then show progress bar and set progress bar format text
+        locked_files = self.locked_files
         emit_progress_text = self.set_save_progress_format_signal.emit
         emit_progress_value = self.set_save_progress_current_signal.emit
         emit_progress_text(start_text)
@@ -4198,15 +4208,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: raise TypeError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
-        # create temp file if `infile` and `outfile` are the same
-        if infile_provided and infile == outfile:
-            temp_path = add_path_suffix(infile, '_temp', unique=True)
-            if infile == self.locked_video:
-                self.locked_video = temp_path           # update locked video if needed TODO does this make sense...?
-            os.renames(infile, temp_path)               # rename `out` to temp name
-            logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
-        else:
-            temp_path = infile
+        # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
+        if infile_provided:
+            if infile == outfile:
+                temp_path = add_path_suffix(infile, '_temp', unique=True)
+                if infile in locked_files:              # if `infile` is already locked, lock the temp...
+                    locked_files.add(temp_path)         # ...path too, regardless of our `lock` parameter
+                os.renames(infile, temp_path)           # rename `infile` to our temporary name
+                logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
+            else:
+                temp_path = infile
+        else:                                           # no infile provided at all, so no temp path either
+            temp_path = ''
+
+        # lock files if desired to prevent them from being opened/edited
+        if lock:
+            locked_files.add(infile)
+            locked_files.add(outfile)
+            locked_files.add(temp_path)
 
         # update progress bar's maximum value if desired (through signal to ensure it's not overwritten)
         if frame_count_hint:
@@ -4278,21 +4297,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # cleanup temp file, if needed
         if infile_provided and temp_path != infile:
-            if exists(infile):
-                try: os.remove(temp_path)
-                except: logging.warning(f'Temporary FFmpeg file {temp_path} could not be deleted')
-            else:       # TODO I don't think this can ever actually happen, and it makes as little sense as the locked_video line up there
-                if temp_path == self.locked_video:
-                    self.locked_video = infile
+            if exists(infile):                          # if `infile` was externally replaced while we were working,...
+                try: os.remove(temp_path)               # ...just delete the temp file. TODO does that make sense...?
+                except: logging.warning(f'(!) Temporary FFmpeg file "{temp_path}" could not be deleted.')
+            else:                                       # otherwise, rename `temp_path` back to `infile`
                 os.renames(temp_path, infile)
                 logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{infile}"')
-        log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
+
+        # unlock all files involved, if desired
+        if temp_path != infile:                         # always unlock our temporary path if possible
+            locked_files.discard(temp_path)
+        if lock:
+            locked_files.discard(infile)
+            locked_files.discard(outfile)
 
         if cleanup:
             self.set_save_progress_visible_signal.emit(False)               # hide the progress bar
             self.set_save_progress_max_signal.emit(0)                       # reset progress bar values
             self.set_save_progress_current_signal.emit(0)
 
+        log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
         return outfile
 
 
