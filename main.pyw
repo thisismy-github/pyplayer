@@ -4197,13 +4197,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             Returns the actual final output path. '''
 
         start = get_time()
+        logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
         # aliases, then show progress bar and set progress bar format text
         locked_files = self.locked_files
         emit_progress_text = self.set_save_progress_format_signal.emit
         emit_progress_value = self.set_save_progress_current_signal.emit
         emit_progress_text(start_text)
-        emit_progress_value(0)                          # we must call this to actually show the progress bar
+        emit_progress_value(0)                      # we must call this to actually show the progress bar
         self.set_save_progress_visible_signal.emit(True)
 
         use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
@@ -4214,120 +4215,131 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try: infile_provided = infile and exists(infile)
         except: infile_provided = False
         if not outfile:
-            if infile_provided: outfile = infile
-            else: raise TypeError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
-        logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
-
-        # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
-        if infile_provided:
-            if infile == outfile:
-                temp_path = add_path_suffix(infile, '_temp', unique=True)
-                if infile in locked_files:              # if `infile` is already locked, lock the temp...
-                    locked_files.add(temp_path)         # ...path too, regardless of our `lock` parameter
-                os.renames(infile, temp_path)           # rename `infile` to our temporary name
-                logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
+            if infile_provided:
+                outfile = infile
+                logging.info(f'`outfile` not provided, setting to `infile`: {infile}')
             else:
-                temp_path = infile
-        else:                                           # no infile provided at all, so no temp path either
-            temp_path = ''
+                raise TypeError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
 
-        # lock files if desired to prevent them from being opened/edited
-        if lock:
-            locked_files.add(infile)
-            locked_files.add(outfile)
-            locked_files.add(temp_path)
+        try:
+            # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
+            if infile_provided:
+                if infile == outfile:
+                    temp_path = add_path_suffix(infile, '_temp', unique=True)
+                    if infile in locked_files:          # if `infile` is already locked, lock the temp...
+                        locked_files.add(temp_path)     # ...path too, regardless of our `lock` parameter
+                    os.renames(infile, temp_path)       # rename `infile` to our temporary name
+                    logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
+                else:
+                    temp_path = infile
+            else:                                       # no infile provided at all, so no temp path either
+                temp_path = ''
 
-        # update progress bar's maximum value if desired (through signal to ensure it's not overwritten)
-        if frame_count_hint:
-            self.set_save_progress_max_signal.emit(int(frame_count_hint))
+            # lock files if desired to prevent them from being opened/edited
+            if lock:
+                locked_files.add(infile)
+                locked_files.add(outfile)
+                locked_files.add(temp_path)
 
-        # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
-        if '%out' not in cmd: cmd += ' %out'            # ensure %out is present so we have a spot to insert `outfile`
-        try: process = ffmpeg_async(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
-        except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
+            # update progress bar's maximum value if desired (through signal to ensure it's not overwritten)
+            if frame_count_hint:
+                self.set_save_progress_max_signal.emit(int(frame_count_hint))
 
-        # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
-        # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
-        # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
-        frame_rate = max(1, frame_rate_hint or self.frame_rate)             # used when ffmpeg provides `out_time_ms` instead of `frame`
-        use_backup_lines = True
-        lines_read = 0
-        last_frame = 0
-        while True:
-            if process.poll() is not None:
-                break
+            # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
+            if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
+            try: process = ffmpeg_async(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
+            except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
-            # loop over stdout until we get to the line(s) we want
-            # this us sleep between loops without falling behind, saving a lot of resources
-            sleep(0.2)
+            # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
+            # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
+            # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
+            frame_rate = max(1, frame_rate_hint or self.frame_rate)         # used when ffmpeg provides `out_time_ms` instead of `frame`
+            use_backup_lines = True
+            lines_read = 0
+            last_frame = 0
             while True:
-                progress_text = process.stdout.readline().strip()
-                lines_read += 1
-                logging.debug(f'FFmpeg output line #{lines_read}: {progress_text}')
-                if not progress_text:
-                    logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
+                if process.poll() is not None:
                     break
 
-                # normal videos will have a "frame=" progress string
-                if progress_text[:6] == 'frame=':
-                    max_frames = self.save_progress_bar.maximum()           # this might change late, so always check it
-                    frame = min(int(progress_text[6:].strip()), max_frames)
-                    if last_frame == frame and frame == 1:                  # specific edits will constantly spit out "frame=1"...
-                        use_backup_lines = True                             # ...for these scenarios, we should ignore frame output
-                    else:
-                        use_backup_lines = False                            # if we ARE using frames, don't use "out_time_ms" (less accurate)
-                        emit_progress_value(frame)
-                        emit_progress_text(active_text)                     # reset format in case we changed it temporarily
-                        if use_taskbar_progress:
-                            self.taskbar_progress.setValue(int((frame / max_frames) * 100))
-                    last_frame = frame
-                    break
-
-                # ffmpeg usually uses "out_time_ms" for audio files
-                elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
-                    try:
-                        seconds = int(progress_text.strip()[12:-6])
-                        max_frames = self.save_progress_bar.maximum()       # this might change late, so always check it
-                        frame = min(int(seconds * frame_rate), max_frames)
-                        emit_progress_value(frame)
-                        emit_progress_text(active_text)                     # reset format in case we changed it temporarily
-                        if use_taskbar_progress:
-                            self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                # loop over stdout until we get to the line(s) we want
+                # this us sleep between loops without falling behind, saving a lot of resources
+                sleep(0.2)
+                while True:
+                    progress_text = process.stdout.readline().strip()
+                    lines_read += 1
+                    logging.debug(f'FFmpeg output line #{lines_read}: {progress_text}')
+                    if not progress_text:
+                        logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
                         break
-                    except ValueError:
-                        pass
 
-        # terminate process just in case ffmpeg got locked up
-        try: process.terminate()
-        except: pass
+                    # normal videos will have a "frame=" progress string
+                    if progress_text[:6] == 'frame=':
+                        max_frames = self.save_progress_bar.maximum()       # this might change late, so always check it
+                        frame = min(int(progress_text[6:].strip()), max_frames)
+                        if last_frame == frame and frame == 1:              # specific edits will constantly spit out "frame=1"...
+                            use_backup_lines = True                         # ...for these scenarios, we should ignore frame output
+                        else:
+                            use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
+                            emit_progress_value(frame)
+                            emit_progress_text(active_text)                 # reset format in case we changed it temporarily
+                            if use_taskbar_progress:
+                                self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                        last_frame = frame
+                        break
 
-        # reset taskbar progress (no need to use `setVisible(False)`)
-        if use_taskbar_progress:
-            self.taskbar_progress.reset()
+                    # ffmpeg usually uses "out_time_ms" for audio files
+                    elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
+                        try:
+                            seconds = int(progress_text.strip()[12:-6])
+                            max_frames = self.save_progress_bar.maximum()   # this might change late, so always check it
+                            frame = min(int(seconds * frame_rate), max_frames)
+                            emit_progress_value(frame)
+                            emit_progress_text(active_text)                 # reset format in case we changed it temporarily
+                            if use_taskbar_progress:
+                                self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                            break
+                        except ValueError:
+                            pass
 
-        # cleanup temp file, if needed
-        if infile_provided and temp_path != infile:
-            if exists(infile):                          # if `infile` was externally replaced while we were working,...
-                try: os.remove(temp_path)               # ...just delete the temp file. TODO does that make sense...?
-                except: logging.warning(f'(!) Temporary FFmpeg file "{temp_path}" could not be deleted.')
-            else:                                       # otherwise, rename `temp_path` back to `infile`
-                os.renames(temp_path, infile)
-                logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{infile}"')
+            # terminate process just in case ffmpeg got locked up
+            try: process.terminate()
+            except: pass
 
-        # unlock all files involved, if desired
-        if temp_path != infile:                         # always unlock our temporary path if possible
-            locked_files.discard(temp_path)
-        if lock:
-            locked_files.discard(infile)
-            locked_files.discard(outfile)
+            # reset taskbar progress (no need to use `setVisible(False)`)
+            if use_taskbar_progress:
+                self.taskbar_progress.reset()
 
-        if cleanup:
-            self.set_save_progress_visible_signal.emit(False)               # hide the progress bar
-            self.set_save_progress_max_signal.emit(0)                       # reset progress bar values
-            self.set_save_progress_current_signal.emit(0)
+            # cleanup temp file, if needed
+            if infile_provided and temp_path != infile:
+                if exists(infile):                      # if `infile` was externally replaced while we were working,...
+                    try: os.remove(temp_path)           # ...just delete the temp file. TODO does that make sense...?
+                    except: logging.warning(f'(!) Temporary FFmpeg file "{temp_path}" could not be deleted.')
+                else:                                   # otherwise, rename `temp_path` back to `infile`
+                    os.renames(temp_path, infile)
+                    logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{infile}"')
 
-        log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
-        return outfile
+            log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
+            return outfile
+
+        except:
+            log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
+            raise                                       # raise exception anyway (we'll still go to the finally-statement)
+
+        finally:
+            if lock:                                    # unlock all files involved, if desired
+                locked_files.discard(infile)
+                locked_files.discard(outfile)
+            try:
+                if temp_path != infile:                 # always unlock our temporary path if possible
+                    locked_files.discard(temp_path)
+            except:
+                pass
+
+            if cleanup:
+                self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
+                self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
+                self.set_save_progress_current_signal.emit(0)
+
 
 
     def set_trim_start(self, *args, force: bool = False):
