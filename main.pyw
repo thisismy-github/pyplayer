@@ -4491,14 +4491,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 from bin.window_cat import Ui_catDialog
                 dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_location())
 
+                dialog.setWindowFlags(Qt.WindowStaysOnTopHint)
                 dialog.checkOpen.setChecked(cfg.concatenate.open)
                 dialog.checkExplore.setChecked(cfg.concatenate.explore)
                 dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our current delete setting
-                dialog.output.setText(self.lineOutput.text().strip())                       # set dialog's output text to our current output text
                 dialog.reverse.setIcon(self.icons['reverse_vertical'])
                 dialog.recent.setIcon(self.icons['recent'])
                 dialog.recent.setMenu(QtW.QMenu(dialog))
                 dialog.videoList.add(files=files)
+
+                # set dialog's output to our current output text unless we're putting the current...
+                # ...video AFTER the last watched video AND we haven't touched our current output text
+                current_output_text = self.lineOutput.text().strip()
+                if CAT_APPEND_LAST and CAT_APPEND_AFTER and current_output_text == splitext_media(os.path.basename(self.video))[0]:
+                    dialog.output.setText(splitext_media(os.path.basename(self.last_video))[0])
+                else:
+                    dialog.output.setText(current_output_text)
 
                 # change "Save All" to say "Save as..."
                 # we could just add our own buttons manually but it doesn't really make...

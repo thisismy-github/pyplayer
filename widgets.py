@@ -1678,10 +1678,15 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             actually changing its final position. '''
         old_items = tuple(qthelpers.listGetAllItems(self))
         files = tuple(url.toLocalFile() for url in event.mimeData().urls())
-        if files: self.add(files=files)
-        super().dropEvent(event)            # run QWidget's built-in behavior
-        if not files:                       # if there were no files, assume we did an internal drag/drop
-            event.ignore()                  # ignoring the event somehow prevents original item from getting deleted
+        if files:
+            self.add(files=files)
+
+        # run QWidget's built-in behavior
+        super().dropEvent(event)
+
+        # if no files were dropped, assume we did an internal drag/drop -> fix Qt bug
+        if not files:
+            event.ignore()                  # ignoring the event prevents original item from getting deleted
             for item in qthelpers.listGetAllItems(self):        # cycle through items and
                 if item not in old_items:                       # look for "new" item that appeared
                     garbage = self.takeItem(self.row(item))     # delete corrupted item
@@ -1737,6 +1742,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             if not file or not os.path.exists(file):
                 continue
 
+            file = os.path.abspath(file)
             basename = os.path.basename(file)
             thumbnail_name = get_unique_path(basename.replace('/', '.').replace('\\', '.'))
             thumbnail_path = os.path.join(constants.THUMBNAIL_DIR, f'{thumbnail_name}_thumbnail.jpg')
