@@ -1976,10 +1976,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: self.refresh_autoplay_button()
 
 
-    def open_probe_file(self, *args, file: str = None, delete: bool = False):
+    def open_probe_file(self, *args, file: str = None, delete: bool = False, verbose: bool = True):
         ''' Opens `file`'s probe file, if it exists and FFprobe is enabled.
             If `file` is not provided, `self.video` is used. If `delete` is
-            True, the probe file is deleted if possible. '''
+            True, the probe file is deleted if possible. If `verbose` is True,
+            a warning is shown if no probe file actually exists for `file`. '''
         if not FFPROBE:
             return show_on_statusbar('You don\'t have FFprobe enabled.')
 
@@ -1992,15 +1993,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 return show_on_statusbar('No media is playing.')
 
-            basename = f'{os.path.basename(self.video)}_{stat.st_ctime}_{stat.st_size}.txt'
+            # generate probe file's path and verify that it exists
+            basename = f'{os.path.basename(self.video)}_{stat.st_mtime}_{stat.st_size}.txt'
             path = f'{constants.PROBE_DIR}{sep}{basename}'
             if not exists(path):
-                return show_on_statusbar('This media\'s probe file no longer exists.')
+                if verbose:
+                    show_on_statusbar('This media\'s probe file no longer exists.')
+                return
+
+            # delete or open probe file
             if delete:
                 try: os.remove(path)
                 except: log_on_statusbar(f'Failed to delete probe file at {path}: {format_exc()}')
             else:
                 qthelpers.openPath(path)
+
         except:
             log_on_statusbar(f'(!) Probe file opening/deletion failed: {format_exc()}')
 
@@ -2521,7 +2528,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # probe file with FFprobe if possible. if file has already been probed, reuse old probe. otherwise, save output to txt file
             # probing calls Popen through a Thread (faster than calling Popen itself or using Thread on a middle-ground function)
             if FFPROBE:                                     # generate probe file's path and check if it already exists
-                probe_file = f'{constants.PROBE_DIR}{sep}{basename}_{stat.st_ctime}_{filesize}.txt'
+                probe_file = f'{constants.PROBE_DIR}{sep}{basename}_{stat.st_mtime}_{filesize}.txt'
                 probe_exists = exists(probe_file)
                 if probe_exists:                            # probe file already exists
                     with open(probe_file, 'r') as f:
@@ -3869,6 +3876,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     ctime=new_ctime,
                     mtime=new_mtime
                 )
+
+                # delete `final_dest`'s probe file in rare event it becomes stale (size & mtime/ctime were not altered)
+                self.open_probe_file(file=final_dest, delete=True, verbose=False)
 
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video:
