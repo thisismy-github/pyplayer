@@ -37,7 +37,7 @@ def openPath(path: str, explore: bool = False, fallback_to_parent: bool = None) 
                 return -1
         elif explore:                       # open in explorer with file/directory pre-selected
             system = platform.system()      # couldn't find a way to pre-select files in Linux
-            if system == 'Windows': return subprocess.Popen(f'explorer /select, "{path}"')
+            if system == 'Windows':  return subprocess.Popen(f'explorer /select, "{path}"')
             elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')
     except:
         pass    # error or system wasn't detected (Linux) -> use Qt to open the path normally
@@ -79,7 +79,8 @@ def focusWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
         blocking focus (no effect on other platforms). This implementation
         works, but tends to restore windows and save geometry inconsistently.
         Use `qthelpers.showWindow` for a more complete implementation. '''
-    if not window.isVisible(): window.show()
+    if not window.isVisible():
+        window.show()
     window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
     window.raise_()
     if aggressive and platform.system() == 'Windows':
@@ -112,13 +113,15 @@ def flashWindow(
     import win32con
     hwnd = window.winId()
     win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
-    if count == 0 and not hold: return      # ^ stop flashing to avoid potential conflicts
-    elif hold: win32gui.FlashWindow(hwnd, True)
+    if count == 0 and not hold:             # ^ stop flashing to avoid potential conflicts
+        return
+    elif hold:
+        win32gui.FlashWindow(hwnd, True)
     else:
         flags = win32con.FLASHW_TRAY
         if count == -1:
             if duration: flags |= win32con.FLASHW_TIMER
-            else: flags |= win32con.FLASHW_TIMERNOFG
+            else:        flags |= win32con.FLASHW_TIMERNOFG
         win32gui.FlashWindowEx(hwnd, flags, count, interval)
     if duration and (hold or count != -1):
         QtCore.QTimer.singleShot(
@@ -156,14 +159,14 @@ def clampToScreen(
         occurs even if `window` is maximized or in fullscreen mode. '''
     if not strict and (window.isMaximized() or window.isFullScreen()): return
     isRect = isinstance(window, QtCore.QRect)
-    if isRect: windowRect = window
-    else: windowRect = window.frameGeometry()
-    if screen is None: screen = getScreenForRect(windowRect, mouseFallback=mouseFallback)
-    screenRect = screen.availableGeometry()     # availableGeometry excludes the taskbar
-    if not screenRect.contains(windowRect):     # .contains for entire rect, .intersects for partial rect
+    windowRect = window if isRect else window.frameGeometry()
+    if screen is None:
+        screen = getScreenForRect(windowRect, mouseFallback=mouseFallback)
+    screenRect = screen.availableGeometry()                 # availableGeometry excludes the taskbar
+    if not screenRect.contains(windowRect):                 # .contains for entire rect, .intersects for partial rect
         if resize and not isRect:
             screenSize = screenRect.size()
-            windowSize = windowRect.size()      # only resize if necessary
+            windowSize = windowRect.size()                  # only resize if necessary
             if windowSize.height() > screenSize.height() or windowSize.width() > screenSize.width():
                 window.resize(windowRect.size().boundedTo(screenRect.size()))
                 windowRect = window.frameGeometry()
@@ -172,7 +175,7 @@ def clampToScreen(
         offsetBottomRight = windowRect.bottomRight() - screenRect.bottomRight()
         windowRect.translate(-max(0, offsetBottomRight.x()), -max(0, offsetBottomRight.y()))
         if move and not isRect:
-            window.move(windowRect.topLeft())   # .setGeometry() is sometimes wrong
+            window.move(windowRect.topLeft())               # .setGeometry() is sometimes wrong
     return screen if returnScreen else windowRect
 
 
@@ -197,11 +200,12 @@ def getScreenForRect(
         else: points = (rect.center, rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)
         for point in points:
             qscreen = QtW.QApplication.screenAt(point())
-            if qscreen: break
+            if qscreen:
+                break
         if not qscreen:     # no screen detected -> use mouse. if already used -> use primary screen
-            if strict: raise ValueError(f'Rect {rect} is not on any screen.')
+            if strict:        raise ValueError(f'Rect {rect} is not on any screen.')
             if mouseFallback: qscreen = QtW.QApplication.screenAt(QtGui.QCursor().pos())
-            if not qscreen: qscreen = QtW.QApplication.primaryScreen()
+            if not qscreen:   qscreen = QtW.QApplication.primaryScreen()
     return qscreen
 
 
@@ -231,14 +235,14 @@ def center(
         try: pos = QtCore.QPoint(*target)
         except: raise TypeError('`target` must be a widget, QRect, QPoint, '
                                 f'or an (x, y) tuple, not {type(target)}.')
-    elif not mouse:
-        screen = True                           # only `widget` is set, center on its own screen
+    elif not mouse:                                         # only `widget` is set, center on its own screen
+        screen = True
 
     if targetRect is None:
         targetRect = widget.geometry()
 
     if screen:
-        if mouse: pos = QtGui.QCursor().pos()
+        if mouse:        pos = QtGui.QCursor().pos()
         elif not target: pos = widget.mapToGlobal(widget.rect().center())
         pos = getScreenForRect(targetRect, pos, mouse, strict).availableGeometry().center()
     elif mouse:
@@ -257,6 +261,28 @@ def center(
                 offsetBottomRight = widgetRect.bottomRight() - screenRect.bottomRight()
                 widgetRect.translate(-max(0, offsetBottomRight.x()), -max(0, offsetBottomRight.y()))
                 widget.move(widgetRect.topLeft())           # .setGeometry() is sometimes wrong
+
+
+def resetCursor(app: QtGui.QGuiApplication):
+    ''' Resets `app`'s overridden cursor by clearing its cursor-stack. '''
+    while app.overrideCursor():
+        app.restoreOverrideCursor()
+
+
+def setCursor(app: QtGui.QGuiApplication, cursor: QtCore.Qt.CursorShape = QtCore.Qt.ArrowCursor):
+    ''' Clears `app`'s cursor-stack and sets its top-level cursor to `cursor`,
+        which can be a `QCursor` object or a `Qt.CursorShape` enum. '''
+    while app.overrideCursor():
+        app.restoreOverrideCursor()
+    app.setOverrideCursor(cursor)
+
+
+def hideCursor(app: QtGui.QGuiApplication):
+    ''' Clears `app`'s cursor-stack then sets its
+        top-level cursor to `Qt.BlankCursor`, hiding it. '''
+    while app.overrideCursor():
+        app.restoreOverrideCursor()
+    app.setOverrideCursor(QtCore.Qt.BlankCursor)
 
 
 # ---------------------
@@ -288,7 +314,8 @@ def getPopup(
 
     def showEvent(event):
         ''' Plays default OS sound and centers the popup before showing if desired. '''
-        if sound: QtW.QApplication.beep()
+        if sound:
+            QtW.QApplication.beep()
         if centerWidget or centerScreen or centerMouse:
             target = centerWidget or None
             screen = centerScreen or False
@@ -300,9 +327,9 @@ def getPopup(
     msg.setWindowTitle(title)
     msg.setText(text)
     if textInformative: msg.setInformativeText(textInformative)
-    if textDetailed: msg.setDetailedText(textDetailed)
-    if not modal: msg.setWindowModality(Qt.WindowModal)     # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
-    msg.setStandardButtons(buttons)
+    if textDetailed:    msg.setDetailedText(textDetailed)
+    if not modal:       msg.setWindowModality(Qt.WindowModal)
+    msg.setStandardButtons(buttons)                         # ^ invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     msg.setDefaultButton(defaultButton)
     msg.setWindowOpacity(opacity)
     msg.setTextInteractionFlags(Qt.TextSelectableByMouse)   # allows copy/paste of popup text
@@ -334,19 +361,22 @@ def getDialogFromUiClass(uiClass, parent: QtW.QWidget = None, **kwargs):
     class QPersistentDialog(QtW.QDialog, uiClass):
         def __init__(self, parent, **kwargs):
             super().__init__(parent)
-            if 'delete' in kwargs: kwargs['deleteOnClose'] = kwargs['delete']    # accept both 'delete' and 'deleteOnClose'
+            if 'delete' in kwargs:                          # accept both 'delete' & 'deleteOnClose', 'modal' & 'blocking'
+                kwargs['deleteOnClose'] = kwargs['delete']
+            if not (kwargs.get('modal', False) or kwargs.get('blocking', False)):
+                self.setWindowModality(Qt.WindowModal)      # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
             self.setAttribute(Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
-            modal = kwargs.get('modal', False) or kwargs.get('blocking', False)  # accept both 'modal' and 'blocking'
-            if not modal: self.setWindowModality(Qt.WindowModal)    # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
             self.setParent(parent)
             self.setupUi(self)
 
         def showEvent(self, event):
-            ''' Plays default OS sound and centers dialog before showing if desired. '''
-            if kwargs.get('sound', False): QtW.QApplication.beep()
+            ''' Plays default OS sound and centers
+                dialog before showing (if desired). '''
+            if kwargs.get('sound', False):
+                QtW.QApplication.beep()
             centerWidget = kwargs.get('centerWidget', None)
             centerScreen = kwargs.get('centerScreen', False)
-            centerMouse = kwargs.get('centerMouse', False)
+            centerMouse =  kwargs.get('centerMouse', False)
             if centerWidget or centerScreen or centerMouse:
                 target = centerWidget or None
                 screen = centerScreen or False
@@ -378,7 +408,9 @@ def getDialog(
         returns. `QDialogHyrbid` adds the methods `dialog.select(choice)` and
         `dialog.addButtons(layout, *buttons (comma-separated))`, and stores
         the selected StandardButton in dialog.choice. '''
-    getButtonCallback = lambda this, button: lambda: this.select(button)  # workaround for python bug/oddity involving creating lambdas in iterables
+
+    # workaround for python bug/oddity involving creating lambdas in iterables
+    getButtonCallback = lambda this, button: lambda: this.select(button)
 
     class QDialogHybrid(QtW.QDialog):
         def select(self, choice):
@@ -393,7 +425,7 @@ def getDialog(
                 `QDialogButtonBox` is connected to the `accept()` and
                 `reject()` methods for a more typical QDialog use-case. '''
             buttonBox = QtW.QDialogButtonBox(self)
-            buttonBox.accepted.connect(self.accept)         # connect buttonBox to accept/reject in case we don't care about the buttons themselves
+            buttonBox.accepted.connect(self.accept)         # connect `buttonBox` to accept/reject in case we don't care about the buttons themselves
             buttonBox.rejected.connect(self.reject)
             for button in buttons:                          # connect buttons to a callback so we can access our selected button later
                 buttonBox.addButton(button)
@@ -421,11 +453,11 @@ def getDialog(
         else:   # https://www.pythonguis.com/faq/built-in-qicons-pyqt/ icon is the name of a Qt icon
             try: icon = dialog.style().standardIcon(getattr(QtW.QStyle, icon))
             except AttributeError: icon = None              # invalid Qt icon, replace with nothing
-    if icon: dialog.setWindowIcon(icon)                     # icon is an actual QIcon
-    if size: dialog.resize(*size)
+    if icon:      dialog.setWindowIcon(icon)                # icon is an actual QIcon
+    if size:      dialog.resize(*size)
     if fixedSize: dialog.setFixedSize(*fixedSize)           # TODO use `width`/`height` parameters instead?
-    if not modal: dialog.setWindowModality(Qt.WindowModal)  # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
-    dialog.setWindowOpacity(opacity)
+    if not modal: dialog.setWindowModality(Qt.WindowModal)
+    dialog.setWindowOpacity(opacity)                        # ^ invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     #dialog.setToolTip()
     return dialog
 
@@ -440,19 +472,21 @@ def browseForDirectory(
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
 ) -> tuple:
-    directory = directory if directory else lastdir
-    _dir = (QFileDialog.getExistingDirectoryUrl if url else QFileDialog.getExistingDirectory)(
-        caption=caption,
-        directory=QtCore.QUrl.fromLocalFile(directory) if url else directory
-    )
-    try:
-        path = _dir.url() if url else _dir
-        if not path: return None, lastdir       # cancel selected
-        if lineEdit: lineEdit.setText(path)
-        lastdir = os.path.dirname(_dir.toLocalFile() if url else _dir)
-        return _dir, lastdir
+    try:                                                    # this can be done with one `if url` but it's not worth it
+        directory = directory or lastdir
+        _dir = (QFileDialog.getExistingDirectoryUrl if url else QFileDialog.getExistingDirectory)(
+            caption=caption,
+            directory=QtCore.QUrl.fromLocalFile(directory) if url else directory
+        )
+        localPath = os.path.normpath(_dir.toLocalFile() if url else _dir)
+        if localPath != '.':                                # '.' is only possible to get if cancel was selected
+            lastdir = os.path.dirname(localPath)
+            if lineEdit:                                    # apply text to `lineEdit` if provided
+                lineEdit.setText(_dir.url() if url else localPath)
+            return _dir if url else localPath, lastdir
     except:
-        return None, lastdir
+        pass
+    return None, lastdir
 
 
 def browseForFile(
@@ -466,21 +500,25 @@ def browseForFile(
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
 ) -> tuple:
-    directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
-    file, filter = (QFileDialog.getOpenFileUrl if url else QFileDialog.getOpenFileName)(
-        caption=caption,
-        directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
-        filter=filter,
-        initialFilter=selectedFilter
-    )
-    try:
-        path = file.url() if url else file
-        if not path: return (None, '', lastdir) if returnFilter else (None, lastdir)
-        if lineEdit: lineEdit.setText(path)
-        lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
-        return (file, filter, lastdir) if returnFilter else (file, lastdir)
+    try:                                                    # this can be done with one `if url` but it's not worth it
+        directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
+        file, filter = (QFileDialog.getOpenFileUrl if url else QFileDialog.getOpenFileName)(
+            caption=caption,
+            directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
+            filter=filter,
+            initialFilter=selectedFilter
+        )
+        localPath = os.path.normpath(file.toLocalFile() if url else file)
+        if localPath != '.':                                # '.' is only possible to get if cancel was selected
+            lastdir = os.path.dirname(localPath)
+            if lineEdit:                                    # apply text to `lineEdit` if provided
+                lineEdit.setText(file.url() if url else localPath)
+            if not url:                                     # return raw `QUrl` object if `url` is True
+                file = localPath
+            return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except:
-        return (None, '', lastdir) if returnFilter else (None, lastdir)
+        pass
+    return (None, '', lastdir) if returnFilter else (None, lastdir)
 
 
 def browseForFiles(
@@ -493,19 +531,24 @@ def browseForFiles(
     name: str = None,
     url: bool = False
 ) -> tuple:
-    directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
-    files, filter = (QFileDialog.getOpenFileUrls if url else QFileDialog.getOpenFileNames)(
-        caption=caption,
-        directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
-        filter=filter,
-        initialFilter=selectedFilter
-    )
     try:
-        if not files: return (list(), '', lastdir) if returnFilter else (list(), lastdir)
-        lastdir = (os.sep).join((files[-1].toLocalFile() if url else files[-1]).split('/')[:-1])  # base lastdir on last file's directory
-        return (files, filter, lastdir) if returnFilter else (files, lastdir)
+        directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
+        files, filter = (QFileDialog.getOpenFileUrls if url else QFileDialog.getOpenFileNames)(
+            caption=caption,
+            directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
+            filter=filter,
+            initialFilter=selectedFilter
+        )
+        if files:                                           # no files are returned if cancel is selected
+            if url:
+                lastdir = os.path.normpath(os.path.dirname(files[-1].toLocalFile()))
+            else:                                           # normalize all paths in `files` (DON'T do this on urls)
+                files = [os.path.normpath(f) for f in files]
+                lastdir = os.path.dirname(files[-1])        # set `lastdir` to last file's directory
+            return (files, filter, lastdir) if returnFilter else (files, lastdir)
     except:
-        return (list(), '', lastdir) if returnFilter else (list(), lastdir)
+        pass
+    return (list(), '', lastdir) if returnFilter else (list(), lastdir)
 
 
 def saveFile(
@@ -519,21 +562,25 @@ def saveFile(
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
 ) -> tuple:
-    directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
-    file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(
-        caption=caption,
-        directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
-        filter=filter,
-        initialFilter=selectedFilter
-    )
-    try:
-        path = file.url() if url else file
-        if not path: return (None, '', lastdir) if returnFilter else (None, lastdir)
-        if lineEdit: lineEdit.setText(path)
-        lastdir = (os.sep).join((file.toLocalFile() if url else file).split('/')[:-1])
-        return (file, filter, lastdir) if returnFilter else (file, lastdir)
+    try:                                                    # this can be done with one `if url` but it's not worth it
+        directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
+        file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(
+            caption=caption,
+            directory=QtCore.QUrl.fromLocalFile(directory) if url else directory,
+            filter=filter,
+            initialFilter=selectedFilter
+        )
+        localPath = os.path.normpath(file.toLocalFile() if url else file)
+        if localPath != '.':                                # '.' is only possible to get if cancel was selected
+            lastdir = os.path.dirname(localPath)
+            if lineEdit:                                    # apply text to `lineEdit` if provided
+                lineEdit.setText(file.url() if url else localPath)
+            if not url:                                     # return raw `QUrl` object if `url` is True
+                file = localPath
+            return (file, filter, lastdir) if returnFilter else (file, lastdir)
     except:
-        return (None, '', lastdir) if returnFilter else (None, lastdir)
+        pass
+    return (None, '', lastdir) if returnFilter else (None, lastdir)
 
 
 # ---------------------
@@ -548,26 +595,26 @@ def listGetAllItems(listWidget: QtW.QListWidget):
 def listRemoveSelected(listWidget: QtW.QListWidget, fromShortcut: bool = False) -> None:
     if fromShortcut and not listWidget.hasFocus(): return
     selected = [listWidget.row(item) for item in listWidget.selectedItems()]
-    selected.sort(reverse=True)                 # sort list to delete higher indexes first
+    selected.sort(reverse=True)                             # sort list to delete higher indexes first
     for index in selected:
         garbage = listWidget.takeItem(index)
-        del garbage                             # delete items manually
+        del garbage                                         # delete items manually
 
 
 # ---------------------
 # QComboBox
 # ---------------------
 def comboRenameItem(comboBox: QtW.QComboBox, lineEdit: QtW.QLineEdit) -> None:
-    if not lineEdit.isVisible():                # rename started
-        lineEdit.show()                         # show lineEdit to rename
-        lineEdit.setText(comboBox.currentText())    # start with original name
-        lineEdit.selectAll()                    # start with text selected
-        lineEdit.setFocus(Qt.NoFocusReason)     # grab focus to type immediately
-    else:                                       # rename finished
+    if not lineEdit.isVisible():                            # rename started
+        lineEdit.show()                                     # show `lineEdit` to rename
+        lineEdit.setText(comboBox.currentText())            # start with original name
+        lineEdit.selectAll()                                # start with text selected
+        lineEdit.setFocus(Qt.NoFocusReason)                 # grab focus to type immediately
+    else:                                                   # rename finished
         newName = lineEdit.text()
-        if newName:                             # if the lineEdit is blank, don't change the name
-            comboBox.setItemText(comboBox.currentIndex(), newName)   # change name
-        lineEdit.hide()                         # hide lineEdit
+        if newName:                                         # if the `lineEdit` is blank, don't change the name
+            comboBox.setItemText(comboBox.currentIndex(), newName)
+        lineEdit.hide()                                     # hide `lineEdit`
 
 
 def comboMoveItem(comboBox: QtW.QComboBox, direction: str) -> None:
@@ -646,7 +693,7 @@ def treeGetItemIndex(treeWidget: QtW.QTreeWidget, item: QtW.QTreeWidgetItem = No
 def treeGetTopLevelItem(treeWidget: QtW.QTreeWidget, item: QtW.QTreeWidgetItem = None) -> QtW.QTreeWidgetItem:
     try: item = treeGetSelectedItem(treeWidget) if not item else item
     except: return None
-    while item.parent():    # if parent is None, it's a toplevelitem.
+    while item.parent():        # if parent is None, it's a toplevelitem.
         item = item.parent()
     return item
 
