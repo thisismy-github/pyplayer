@@ -776,9 +776,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         elif gui.video:
             mod = event.keyboardModifiers()
             if mod & Qt.ControlModifier:                # ctrl (concat before current)
-                gui.concatenate(action=gui.actionCatBeforeThis, files=files)
+                gui.concatenate_signal.emit(gui.actionCatBeforeThis, files)
             elif mod & Qt.AltModifier:                  # alt (concat after current)
-                gui.concatenate(action=gui.actionCatAfterThis, files=files)
+                gui.concatenate_signal.emit(gui.actionCatAfterThis, files)
             elif mod & Qt.ShiftModifier:                # shift (add audio track, one file at time currently)
                 file = files[0]
                 if os.path.abspath(file) != gui.video: gui.add_audio(path=file)
@@ -1681,6 +1681,9 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         if files:
             self.add(files=files)
 
+        # reset cursor so it doesn't get erroneously hidden
+        qthelpers.resetCursor(app)
+
         # run QWidget's built-in behavior
         super().dropEvent(event)
 
@@ -1711,15 +1714,38 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             )
             self.refresh_thumbnail_outlines()
 
+        def set_output_part(*args, filename: bool = True):
+            output = self.parent().output
+            old_path = output.text().strip()
+            if filename:                    # replace filename
+                dirname = os.path.dirname(old_path)
+                if dirname:
+                    dirname += '/'
+                output.setText(os.path.normpath(dirname + os.path.basename(path)))
+            else:                           # replace dirname
+                filename = os.path.basename(old_path)
+                new_path = os.path.normpath(f'{os.path.dirname(path)}/{filename}')
+                if not filename:
+                    new_path += os.sep
+                output.setText(new_path)
+
         action1 = QtW.QAction('&Play')
         action1.triggered.connect(play_and_refresh)
         action2 = QtW.QAction('&Explore')
         action2.triggered.connect(lambda: qthelpers.openPath(path, explore=True))
         action3 = QtW.QAction('&Remove')
         action3.triggered.connect(lambda: qthelpers.listRemoveSelected(self))
+        action4 = QtW.QAction('&Set as output (filename)')
+        action4.triggered.connect(set_output_part)
+        action5 = QtW.QAction('&Set as output (folder)')
+        action5.triggered.connect(lambda: set_output_part(filename=False))
+        action6 = QtW.QAction('&Set as output (full path)')
+        action6.triggered.connect(lambda: self.parent().output.setText(path))
 
         context = QtW.QMenu(self)
         context.addActions((action1, action2, action3))
+        context.addSeparator()
+        context.addActions((action4, action5, action6))
         context.exec(event.globalPos())
 
 

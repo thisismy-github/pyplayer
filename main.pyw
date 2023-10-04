@@ -417,6 +417,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     _open_external_command_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
     force_pause_signal = QtCore.pyqtSignal(bool)
+    concatenate_signal = QtCore.pyqtSignal(QtW.QAction, list)
     show_ffmpeg_warning_signal = QtCore.pyqtSignal(QtW.QWidget)
     show_trim_dialog_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
@@ -2875,7 +2876,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # update taskbar icon's toolbar, reset cursor, show media title on screen, and set default subtitles
             self.refresh_taskbar()
-            self.unsetCursor()                          # in some situations, a busy cursor might appear and get "stuck" TODO DOESN'T WORK!!
             if settings.checkTextOnOpen.isChecked():    # certain combinations of autoplay + settings can override this marquee
                 if not (settings.checkAutoplayHideMarquee.isChecked() and self.current_file_is_autoplay):
                     show_on_player(os.path.basename(self.video), 1000)
@@ -3668,7 +3668,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # display indeterminant progress bar, set busy cursor, and update UI to frame 0
         self.set_save_progress_max_signal.emit(frame_count_raw)         # set progress bar max to max possible (raw) frames
-        self.setCursor(Qt.BusyCursor)
         emit_update_progress_signal(0)
 
     # --- Apply operations to media ---
@@ -3952,7 +3951,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.locked_files.discard(video)                    # unlock source file
             self.locked_files.discard(dest)                     # unlock destination
             self.set_save_progress_visible_signal.emit(False)   # hide the progress bar no matter what
-            self.unsetCursor()                                  # restore cursor no matter what
             self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
             self.set_save_progress_max_signal.emit(0)           # reset progress bar values
             self.set_save_progress_current_signal.emit(0)
@@ -4602,6 +4600,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     action.setToolTip(file)
                     cat_recent_menu.addAction(action)
 
+            def add_last_file():
+                ''' Adds the actual most recently played file. If no files have
+                    been played yet, the normal recent files list is used. '''
+                if self.last_video:
+                    dialog.videoList.add(files=(self.last_video,))
+                elif self.recent_files:
+                    dialog.videoList.add(files=self.recent_files[-1:])
+
             # connect dialog signals/events
             dialog.keyPressEvent = keyPressEvent
             dialog.buttonBox.clicked.connect(set_choice)
@@ -4610,7 +4616,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.up.clicked.connect(dialog.videoList.move)
             dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
             dialog.reverse.clicked.connect(dialog.videoList.reverse)
-            dialog.recent.clicked.connect(lambda: dialog.videoList.add(files=(self.last_video,)))
+            dialog.recent.clicked.connect(add_last_file)
             dialog.recent.contextMenuEvent = lambda *args: dialog.recent.showMenu()
             dialog.recent.menu().aboutToShow.connect(refresh_cat_recent_menu)
             dialog.browse.clicked.connect(
@@ -4639,6 +4645,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # repeatedly open dialog until user succeeds or outright cancels
             while True:
                 logging.info('Opening concatenation dialog...')
+                self.vlc.idle_timeout_time = 0.0            # lock cursor (`QVideoPlayer.leaveEvent` might not trigger)
+
                 if dialog.exec() == QtW.QDialog.Rejected:   # cancel selected on dialog -> return
                     return log_on_statusbar('Concatenation canceled.')
                 files = [abspath(item.toolTip()) for item in dialog.videoList]
@@ -4647,9 +4655,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 missing = [(i, f) for i, f in enumerate(files) if not exists(f)]
                 if missing:
                     logging.info(f'(?) Files to be concatenated no longer exist, cancelling: {missing}')
+                    missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
                     if len(missing) == 1: header = 'The file at the following index no longer exists:\n\n'
                     else:                 header = 'The files at the following indexes no longer exist:\n\n'
-                    missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
                     qthelpers.getPopup(                     # TODO this is a rare scenario so it just shows...
                         title='Concatenation canceled!',    # ...the popup and goes away, but it should...
                         text=header + missing_string,       # ...really give "discard" and "ignore" options
@@ -4696,6 +4704,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             continue
                     elif no_output:                         # no output -> default to first file's name + "_concatenated"
                         output = add_path_suffix(files[0], '_concatenated', unique=True)
+
+                    # check if `output` or any of our `files` are locked -> re-loop if so
+                    # this allows as many concat dialogs to be open as we want, anytime we want
+                    locked_files = self.locked_files
+                    output_locked = output in locked_files
+                    locked = [(i, f) for i, f in enumerate(files) if f in locked_files]
+                    if locked or output_locked:
+                        logging.info(f'(?) Files to be concatenated and/or the output are locked, cancelling: {missing}')
+                        missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
+                        if output_locked:
+                            if len(locked) > 1:    header = 'The output path and the files at the following indexes are already being worked on:\n\n'
+                            elif len(locked) == 1: header = 'The output path and the file at the following index are already being worked on:\n\n'
+                            else:                  header = 'The output path is already being worked on.'
+                        else:
+                            if locked:             header = 'The file at the following index is already being worked on:\n\n'
+                            else:                  header = 'The files at the following indexes are already being worked on:\n\n'
+                        qthelpers.getPopup(
+                            title='Concatenation canceled!',
+                            text=header + missing_string,
+                            icon='warning',
+                            centerMouse=True
+                        ).exec()
+                        continue                            # re-loop if any files were locked
                     break                                   # we have our files, we have our name -> break loop
 
             logging.info(f'Concatenation dialog files to {output}: {files}')
@@ -4727,6 +4758,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 gc.collect(generation=2)
             except:
                 pass
+
+            # reset cursor idle timeout
+            self.vlc.idle_timeout_time = get_time() + settings.spinHideIdleCursorDuration.value()
 
 
     def _concatenate(

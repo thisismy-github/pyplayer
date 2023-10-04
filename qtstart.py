@@ -5,6 +5,7 @@
 
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets as QtW
+from PyQt5.QtCore import Qt
 import config
 import constants
 import qthelpers
@@ -289,6 +290,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self._open_external_command_signal.connect(self._open_external_command_slot)
     self.restart_signal.connect(self.restart)
     self.force_pause_signal.connect(self.force_pause)
+    self.concatenate_signal.connect(self.concatenate, type=Qt.QueuedConnection)     # without this, `QVideoPlayer.dropEvent()` freezes explorer windows
     self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)
     self.show_trim_dialog_signal.connect(self.show_trim_dialog)
     self.update_progress_signal.connect(self._update_progress_slot)
