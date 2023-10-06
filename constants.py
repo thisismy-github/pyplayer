@@ -128,7 +128,7 @@ if IS_COMPILED:
     FFMPEG = f'{CWD}{_sep}plugins{_sep}ffmpeg{_sep}ffmpeg'
     FFPROBE = f'{CWD}{_sep}plugins{_sep}ffmpeg{_sep}ffprobe'
 else:
-    folder = 'ffmpeg-windows' if PLATFORM == 'Windows' else 'ffmpeg-unix'
+    folder = 'ffmpeg-windows' if IS_WINDOWS else 'ffmpeg-unix'
     FFMPEG = f'{CWD}{_sep}executable{_sep}include{_sep}{folder}{_sep}ffmpeg'
     FFPROBE = f'{CWD}{_sep}executable{_sep}include{_sep}{folder}{_sep}ffprobe'
 
@@ -140,12 +140,13 @@ def verify_ffmpeg(self, warning: bool = True, force_warning: bool = False) -> st
         clicks 'Cancel' on one of the popups. If `force_warning` is True and
         constants.FFMPEG is missing, a popup is displayed no matter what. '''
     global FFMPEG
-    expected_path = (FFMPEG + '.exe') if PLATFORM == 'Windows' else FFMPEG
-    filename = 'ffmpeg.exe' if PLATFORM == 'Windows' else 'ffmpeg'
+    expected_path = (FFMPEG + '.exe') if IS_WINDOWS else FFMPEG
+    filename = 'ffmpeg.exe' if IS_WINDOWS else 'ffmpeg'
     if not os.path.exists(expected_path):                   # FFmpeg not in expected path
         if os.path.exists(filename):
             FFMPEG = os.path.realpath(filename)             # ffmpeg.exe exists in root
-            if PLATFORM == 'Windows': FFMPEG = FFMPEG[:-4]  # strip '.exe'
+            if IS_WINDOWS:                                  # strip '.exe'
+                FFMPEG = FFMPEG[:-4]
         else:
             import util
             FFMPEG = util.get_from_PATH(filename)
@@ -171,16 +172,18 @@ def verify_ffprobe(self, warning: bool = True) -> str:
         logging.getLogger('constants.py').info('FFprobe is disabled.')
         FFPROBE = ''
     else:
-        expected_path = (FFPROBE + '.exe') if PLATFORM == 'Windows' else FFPROBE
-        filename = 'ffprobe.exe' if PLATFORM == 'Windows' else 'ffprobe'
+        expected_path = (FFPROBE + '.exe') if IS_WINDOWS else FFPROBE
+        filename = 'ffprobe.exe' if IS_WINDOWS else 'ffprobe'
         if not os.path.exists(expected_path):                       # FFprobe not in expected path
             if os.path.exists(filename):
                 FFPROBE = os.path.realpath(filename)                # ffprobe.exe exists in root
-                if PLATFORM == 'Windows': FFPROBE = FFPROBE[:-4]    # strip '.exe'
+                if IS_WINDOWS:                                      # strip '.exe'
+                    FFPROBE = FFPROBE[:-4]
             else:
                 import util
                 FFPROBE = util.get_from_PATH(filename)
-                if FFPROBE == '' and warning: _display_ffprobe_warning(self)
+                if FFPROBE == '' and warning:
+                    _display_ffprobe_warning(self)
     return FFPROBE
 
 

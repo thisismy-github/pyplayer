@@ -35,17 +35,27 @@ def add_path_suffix(path: str, suffix: str, unique: bool = False) -> str:
 def ffmpeg(cmd: str) -> None:   # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -map_metadata 0 -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a -hide_banner -loglevel warning'.replace('""', '"')
+    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
-    subprocess.run(cmd, startupinfo=startupinfo, shell=True)
+    subprocess.run(
+        cmd,
+        startupinfo=startupinfo,
+        shell=True,
+    )
 
 
 def ffmpeg_async(cmd: str) -> subprocess.Popen:
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -map_metadata 0 -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a -hide_banner -loglevel warning'.replace('""', '"')
+    cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
-    return subprocess.Popen(cmd, startupinfo=startupinfo, shell=True, stdout=subprocess.PIPE, text=True)
+    return subprocess.Popen(
+        cmd,
+        startupinfo=startupinfo,
+        shell=True,
+        stdout=subprocess.PIPE,                 # pipes stdout so that we can read the output in real time
+        text=True                               # turns stdout into easily parsible lines of text rather than a byte stream
+    )
 
 
 def foreground_is_fullscreen() -> bool:
@@ -101,7 +111,7 @@ def get_unique_path(path: str, start: int = 2, key: str = None, zeros: int = 0, 
     return path
 
 
-def get_from_PATH(filename: str) -> str:
+def get_from_PATH(filename: str) -> str:        # i learned about `shutil.which()` way too late. oh well, this works
     ''' Returns the full path to a `filename` if it exists in
         the user's PATH, otherwise returns an empty string. '''
     sep = ';' if constants.IS_WINDOWS else ':'
@@ -160,7 +170,7 @@ def get_PIL_Image():
             assert os.path.exists(old_path) or new_path_already_existed, 'PIL folder not found at ' + old_path
 
             # backup old PIL path and create new PIL path. if it already exists (for some reason), rename it temporarily
-            if os.path.exists(old_path):                # if old PIL path doesn't exist, just hope the new PIL path is correct
+            if os.path.exists(old_path):        # if old PIL path doesn't exist, just hope the new PIL path is correct
                 import shutil
                 shutil.copytree(old_path, backup_path)
                 if new_path_already_existed:
@@ -168,7 +178,8 @@ def get_PIL_Image():
                         new_path_temp_name = get_unique_path(new_path + '_temp')
                         os.rename(new_path, new_path_temp_name)
                         new_path_renamed = True
-                    except: logger.warning(f'Could not rename {new_path} to {new_path}_temp: {format_exc()}')
+                    except:
+                        logger.warning(f'Could not rename {new_path} to {new_path}_temp: {format_exc()}')
                 try: os.makedirs(new_path)
                 except: logger.warning(f'Could not make {new_path}: {format_exc()}')
 
@@ -191,7 +202,7 @@ def get_PIL_Image():
             if not (new_path_already_existed and not new_path_renamed):
                 try: shutil.rmtree(new_path)
                 except: logger.warning(f'Could not delete {new_path}: {format_exc()}')
-            if new_path_renamed: os.rename(new_path_temp_name, new_path)
+            if new_path_renamed:            os.rename(new_path_temp_name, new_path)
             if os.path.exists(backup_path): shutil.rmtree(backup_path)
             if backup_path_already_existed: os.rename(old_path, backup_path)
             logger.info('First-time PIL import successful.')
@@ -206,7 +217,8 @@ def get_PIL_Image():
             elif not os.path.exists(old_path) and not os.path.exists(new_path):
                 raise Exception('None of the following candidates for a PIL folder were found:'
                                 f'\nOld: {old_path}\nNew: {new_path}\nBackup: {backup_path}')
-        except NameError: pass              # NameError -> error occurred before the paths were even defined
+        except NameError:                       # NameError -> error occurred before the paths were even defined
+            pass
         except:     # PIL is seemingly unrecoverable. hopefully this is extremely unlikely outside of user-tampering
             logger.critical(f'(!!!) COULD NOT RESTORE PIL FOLDER: {format_exc()}')
             logger.critical('\n\n  WARNING -- You may need to reinstall PyPlayer to restore snapshotting capabilities.'
@@ -231,8 +243,7 @@ def sanitize(filename: str, allow_reserved_words: bool = True, default: str = ''
     if len(filename) == 0:
         filename = default
     elif filename in _SANITIZE_RESERVED:        # check for reserved filenames such as CON
-        if not allow_reserved_words: filename = default
-        else: filename = '__' + filename
+        filename = default if not allow_reserved_words else ('__' + filename)
     return filename
 
 

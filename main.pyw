@@ -422,7 +422,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     show_trim_dialog_signal = QtCore.pyqtSignal()
     update_progress_signal = QtCore.pyqtSignal(float)
     refresh_title_signal = QtCore.pyqtSignal()
-    log_on_statusbar_signal = QtCore.pyqtSignal(str)
     set_save_progress_visible_signal = QtCore.pyqtSignal(bool)
     set_save_progress_max_signal = QtCore.pyqtSignal(int)
     set_save_progress_current_signal = QtCore.pyqtSignal(int)
@@ -430,6 +429,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     disable_crop_mode_signal = QtCore.pyqtSignal(bool)
     handle_updates_signal = QtCore.pyqtSignal(bool)
     _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
+    log_on_statusbar_signal = QtCore.pyqtSignal(str)
 
     def __init__(self, app, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2248,7 +2248,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if snapshot_needed or delete_path_anyway:
                 logging.info(f'Deleting temporary snapshot at path {path}')
                 try: os.remove(path)
-                except: logging.warning('(!) FAILED TO DELETE TEMPORARY SNAPSHOT')
+                except: logging.warning('(!) Failed to delete temporary snapshot.')
         except:
             log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
         finally:                                    # restore pause-state before leaving
@@ -3894,22 +3894,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # clean up temp paths if we have any
             for path in temp_paths:
                 if exists(path):
-                    try:
-                        logging.debug(f'Removing temporary edit-path: {path}')
-                        os.remove(path)
-                    except:
-                        logging.warning('(!) Failed to remove temporary edit-path')
+                    logging.info(f'Deleting temporary edit-path: {path}')
+                    try: os.remove(path)
+                    except: logging.warning('(!) Failed to delete temporary edit-path.')
 
             # confirm our operations, clean up base video, and get final path
             if operations:                                      # double-check that we've actually done anything at all
                 if not exists(dest):
                     return log_on_statusbar('(!) Media saved without error, but never actually appeared. Possibly an FFmpeg error.')
                 if os.stat(dest).st_size == 0:
-                    os.remove(dest)
+                    logging.info(f'Deleting temporary FFmpeg file: {dest}')
+                    try: os.remove(dest)
+                    except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
                     return log_on_statusbar('(!) Media saved without error, but was completely empty. Possibly an FFmpeg error.')
 
                 # handle deletion behavior
-                if delete_after_save == FULL_DELETE: self.delete(video, cycle=False)
+                if delete_after_save == FULL_DELETE:   self.delete(video, cycle=False)
                 elif delete_after_save == MARK_DELETE: self.marked_for_deletion.add(video)
                 #elif replacing_original:                       # TODO add setting for this behavior
                 #    temp_name = add_path_suffix(video, '_original', unique=True)
@@ -3947,13 +3947,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return log_on_statusbar('No changes have been made.')
         except:
             log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
-        finally:                                                # NOTE: this order is intentional
+        finally:
             self.locked_files.discard(video)                    # unlock source file
             self.locked_files.discard(dest)                     # unlock destination
-            self.set_save_progress_visible_signal.emit(False)   # hide the progress bar no matter what
             self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
-            self.set_save_progress_max_signal.emit(0)           # reset progress bar values
-            self.set_save_progress_current_signal.emit(0)
+            self.reset_save_progress_bar()                      # reset edit progress on statusbar/titlebar/taskbar
 
 
     def update_gif_progress(self, frame: int):
@@ -4170,10 +4168,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         seconds = seconds_spinbox.value()
 
         # calculate and update to new frame as long as it's within our bounds
-        if forward:                                 # media will wrap around cleanly if it goes below 0/above max frames
+        if forward:                                     # media will wrap around cleanly if it goes below 0/above max frames
             if old_frame == self.frame_count and settings.checkNavigationWrap.isChecked(): new_frame = 0
             else: new_frame = min(self.maximum, old_frame + self.frame_rate_rounded * seconds)
-        else:                                       # NOTE: only wrap start-to-end if we're paused
+        else:                                           # NOTE: only wrap start-to-end if we're paused
             if old_frame == 0 and self.is_paused and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
             else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
 
@@ -4254,7 +4252,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         emit_progress_text = self.set_save_progress_format_signal.emit
         emit_progress_value = self.set_save_progress_current_signal.emit
         emit_progress_text(start_text)
-        emit_progress_value(0)                      # we must call this to actually show the progress bar
+        emit_progress_value(0)                          # we must call this to actually show the progress bar
         self.set_save_progress_visible_signal.emit(True)
 
         use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
@@ -4273,23 +4271,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         try:
             # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
+            editing_in_place = False
             if infile_provided:
-                if infile == outfile:
-                    temp_path = add_path_suffix(infile, '_temp', unique=True)
+                if infile == outfile:                   # NOTE: this never happens if called through `self._save()`
+                    editing_in_place = True
+                    temp_infile = add_path_suffix(infile, '_temp', unique=True)
                     if infile in locked_files:          # if `infile` is already locked, lock the temp...
-                        locked_files.add(temp_path)     # ...path too, regardless of our `lock` parameter
-                    os.renames(infile, temp_path)       # rename `infile` to our temporary name
-                    logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_path}"')
+                        locked_files.add(temp_infile)   # ...path too, regardless of our `lock` parameter
+                    os.renames(infile, temp_infile)     # rename `infile` to our temporary name
+                    logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_infile}"')
                 else:
-                    temp_path = infile
+                    temp_infile = infile
             else:                                       # no infile provided at all, so no temp path either
-                temp_path = ''
+                temp_infile = ''
 
             # lock files if desired to prevent them from being opened/edited
             if lock:
                 locked_files.add(infile)
                 locked_files.add(outfile)
-                locked_files.add(temp_path)
+                locked_files.add(temp_infile)
 
             # update progress bar's maximum value if desired (through signal to ensure it's not overwritten)
             if frame_count_hint:
@@ -4297,7 +4297,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
             if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
-            try: process = ffmpeg_async(cmd.replace('%in', f'"{temp_path}"').replace('%out', f'"{outfile}"'))
+            try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
             except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
@@ -4359,14 +4359,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if use_taskbar_progress:
                 self.taskbar_progress.reset()
 
-            # cleanup temp file, if needed
-            if infile_provided and temp_path != infile:
+            # cleanup temp file, if needed (editing in place means we had to rename `infile`)
+            if editing_in_place:                        # NOTE: NEVER true for edits called through `self._save()`
                 if exists(infile):                      # if `infile` was externally replaced while we were working,...
-                    try: os.remove(temp_path)           # ...just delete the temp file. TODO does that make sense...?
-                    except: logging.warning(f'(!) Temporary FFmpeg file "{temp_path}" could not be deleted.')
+                    logging.info(f'Deleting temporary FFmpeg file: {temp_infile}')
+                    try: os.remove(temp_infile)         # ...just delete the temp file. TODO does that make sense...?
+                    except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
                 else:                                   # otherwise, rename `temp_path` back to `infile`
-                    os.renames(temp_path, infile)
-                    logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{infile}"')
+                    os.renames(temp_infile, infile)
+                    logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
 
             log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
             return outfile
@@ -4380,16 +4381,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 locked_files.discard(infile)
                 locked_files.discard(outfile)
             try:
-                if temp_path != infile:                 # always unlock our temporary path if possible
-                    locked_files.discard(temp_path)
+                if editing_in_place:                    # always unlock our temporary path if necessary
+                    locked_files.discard(temp_infile)
             except:
                 pass
-
-            if cleanup:
-                self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
-                self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
-                self.set_save_progress_current_signal.emit(0)
-
+            if cleanup:                                 # reset edit progress on statusbar/titlebar/taskbar
+                self.reset_save_progress_bar()
 
 
     def set_trim_start(self, *args, force: bool = False):
@@ -4662,7 +4659,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         title='Concatenation canceled!',    # ...the popup and goes away, but it should...
                         text=header + missing_string,       # ...really give "discard" and "ignore" options
                         icon='warning',
-                        centerMouse=True
+                        **self.get_popup_location()
                     ).exec()
 
                 elif len(files) < 2:
@@ -4724,7 +4721,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             title='Concatenation canceled!',
                             text=header + missing_string,
                             icon='warning',
-                            centerMouse=True
+                            **self.get_popup_location()
                         ).exec()
                         continue                            # re-loop if any files were locked
                     break                                   # we have our files, we have our name -> break loop
@@ -4887,8 +4884,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally:
             if temp_path != dest:
                 if exists(dest):                            # for concatenating, `dest` should now exist if `temp_path` was used
+                    logging.info(f'Deleting temporary FFmpeg file: {temp_path}')
                     try: os.remove(temp_path)
-                    except: logging.warning(f'(!) Temporary FFmpeg file "{temp_path}" could not be deleted.')
+                    except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
                 else:                                       # otherwise, rename `temp_path` back to `infile`
                     os.renames(temp_path, dest)
                     logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{dest}"')
@@ -5787,7 +5785,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             2. 'latest_version_url' - The URL to download the update from.
 
             `popup_kwargs` are a dict of keyword-arguments needed to construct
-            the relevant QMessageBox for the user, depending on `results`. '''
+            the relevant `QMessageBox` for the user, depending on `results`. '''
         try:
             logging.info(f'Cleaning up after update check. results={results}')
             settings_were_open = settings.isVisible()   # hide the always-on-top settings while we show popups
@@ -5795,7 +5793,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 settings.hide()
 
             if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
-                if 'failed' in results: return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
+                if 'failed' in results:
+                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
                 if constants.IS_COMPILED and constants.IS_WINDOWS:
@@ -6956,6 +6955,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', '0'))
 
 
+    def reset_save_progress_bar(self):
+        ''' Resets the editing progress bar to zero and hides it on the
+            statusbar, titlebar, and taskbar button (on Windows). '''
+        self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
+        self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
+        self.set_save_progress_current_signal.emit(0)
+        if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
+            self.taskbar_progress.reset()                           # reset taskbar progress (`setVisible(False)` not needed)
+        refresh_title()                                             # refresh title to hide progress percentage
+
+
     # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
     def convert_snapshot_to_jpeg(self, path: str = None, image_data=None, quality: int = None):
         ''' Saves `path` or `image_data` as a JPEG file with the desired
@@ -7049,5 +7059,5 @@ if __name__ == "__main__":
             except: logging.critical(f'(!) GUI FAILED TO EXECUTE: {format_exc()}')
             logging.info('Application execution has finished.')
         try: os.remove(constants.PID_PATH)
-        except: logging.warning('(!) Failed to remove PID file:' + format_exc())
+        except: logging.warning(f'(!) Failed to delete PID file: {format_exc()}')
     except: logging.critical(f'(!) SCRIPT FAILED TO INITIALIZE: {format_exc()}')
