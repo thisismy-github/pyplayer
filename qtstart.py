@@ -302,6 +302,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.disable_crop_mode_signal.connect(self.disable_crop_mode)
     self.handle_updates_signal.connect(self.handle_updates)
     self._handle_updates_signal.connect(self._handle_updates)
+    self.popup_signal.connect(lambda kwargs: qthelpers.getPopup(**kwargs).exec())
     self.log_on_statusbar_signal.connect(self._log_on_statusbar_slot)
 
     self.sliderVolume.valueChanged.connect(self.set_volume)

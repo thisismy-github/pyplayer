@@ -53,7 +53,9 @@ def ffmpeg_async(cmd: str) -> subprocess.Popen:
         cmd,
         startupinfo=startupinfo,
         shell=True,
+        start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
         stdout=subprocess.PIPE,                 # pipes stdout so that we can read the output in real time
+        stderr=subprocess.STDOUT,               # pipes errors to stdout so we can read both (keeping them separate is hard)
         text=True                               # turns stdout into easily parsible lines of text rather than a byte stream
     )
 

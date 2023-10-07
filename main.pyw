@@ -429,6 +429,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     disable_crop_mode_signal = QtCore.pyqtSignal(bool)
     handle_updates_signal = QtCore.pyqtSignal(bool)
     _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
+    popup_signal = QtCore.pyqtSignal(dict)
     log_on_statusbar_signal = QtCore.pyqtSignal(str)
 
     def __init__(self, app, *args, **kwargs):
@@ -3557,6 +3558,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def _save(self, dest: str = None, operations: dict = {}):
         ''' Do not call this directly. Use `save()` instead. Iteration: V '''
         start_time = get_time()
+        successful = True
 
         # save copies of critical properties that could potentially change while we're saving
         video = self.video.strip()
@@ -3890,7 +3892,35 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 cmd = f'-i %in -filter:a "volume={op_amplify_audio}"'
                 intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
 
+        except Exception as error:
+            successful = False
+            logging.info(f'Deleting temporary FFmpeg file: {dest}')
+            try: os.remove(dest)
+            except: logging.warning('(!) Failed to delete temporary FFmpeg file')
+
+            text = str(error)
+            if 'malloc of size' in text:
+                start_index = text.find('malloc of size') + 14
+                size = int(text[start_index:text.find('failed', start_index)])
+                if size < 1048576:      size_label = f'{size / 1024:.0f}kb'
+                elif size < 1073741824: size_label = f'{size / 1048576:.2f}mb'
+                else:                   size_label = f'{size / 1073741824:.2f}gb'
+                msg = (f'FFmpeg failed to allocate {size_label} of RAM. Rarely, this'
+                       '\nmay happen even when plenty of free RAM is available.'
+                       '\n\nNo changes have been made. Feel free to try again.')
+                self.popup_signal.emit(                         # TODO it *might* be nice to have retry/cancel options
+                    dict(
+                        title='FFmpeg error',
+                        text=msg,
+                        icon='warning',
+                        **self.get_popup_location()
+                    )
+                )
+            else:
+                log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
+
         # --- Post-edit cleanup & opening our newly edited media ---
+        try:
             # clean up temp paths if we have any
             for path in temp_paths:
                 if exists(path):
@@ -3899,7 +3929,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except: logging.warning('(!) Failed to delete temporary edit-path.')
 
             # confirm our operations, clean up base video, and get final path
-            if operations:                                      # double-check that we've actually done anything at all
+            if operations and successful:                       # double-check that we've actually done anything at all
                 if not exists(dest):
                     return log_on_statusbar('(!) Media saved without error, but never actually appeared. Possibly an FFmpeg error.')
                 if os.stat(dest).st_size == 0:
@@ -3943,15 +3973,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 elif settings.checkTextOnSave.isChecked():
                     show_on_player(f'Changes saved to {final_dest}.')
                 log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
-            else:
+            elif successful:
                 return log_on_statusbar('No changes have been made.')
         except:
-            log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
+            log_on_statusbar(f'(!) POST-SAVE CLEANUP FAILED: {format_exc()}')
         finally:
             self.locked_files.discard(video)                    # unlock source file
             self.locked_files.discard(dest)                     # unlock destination
             self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
             self.reset_save_progress_bar()                      # reset edit progress on statusbar/titlebar/taskbar
+            logging.info(f'Remaining locked files after edit: {self.locked_files}')
 
 
     def update_gif_progress(self, frame: int):
@@ -4322,6 +4353,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
                         break
 
+                    # check for error - "malloc of size ___ failed"
+                    if progress_text[-6:] == 'failed':
+                        if 'malloc of size' in progress_text:
+                            raise AssertionError(progress_text)
+
                     # normal videos will have a "frame=" progress string
                     if progress_text[:6] == 'frame=':
                         max_frames = self.save_progress_bar.maximum()       # this might change late, so always check it
@@ -4355,10 +4391,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             try: process.terminate()
             except: pass
 
-            # reset taskbar progress (no need to use `setVisible(False)`)
-            if use_taskbar_progress:
-                self.taskbar_progress.reset()
-
             # cleanup temp file, if needed (editing in place means we had to rename `infile`)
             if editing_in_place:                        # NOTE: NEVER true for edits called through `self._save()`
                 if exists(infile):                      # if `infile` was externally replaced while we were working,...
@@ -4374,6 +4406,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except:
             log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
+
+            # aggressively terminate ffmpeg process in case it's still running
+            # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
+            # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in `self._save()`)
+            try:
+                if constants.IS_WINDOWS:
+                    subprocess.call(f'taskkill /F /T /PID {process.pid}')
+                else:
+                    import signal
+                    os.killpg(os.getpgid(process.pid), signal.SIGSTOP)
+                sleep(0.25)                             # give FFmpeg a moment to actually close
+            except:
+                logging.warning(f'(!) Failed to terminate FFmpeg process: {format_exc()}')
+
+            if editing_in_place:
+                logging.info(f'Deleting temporary FFmpeg file: {temp_infile}')
+                try: os.remove(temp_infile)
+                except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
             raise                                       # raise exception anyway (we'll still go to the finally-statement)
 
         finally:
