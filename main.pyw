@@ -2066,6 +2066,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             log_on_statusbar(f'(!) Probe file opening/deletion failed: {format_exc()}')
 
 
+    def add_subtitle_files(self, *files: tuple):
+        ''' Adds an arbitrary number of `files` as subtitle tracks,
+            if possible. `files` may be paths or `QUrl`s. '''
+        urls = []
+        for file in files:
+            if isinstance(file, QtCore.QUrl):
+                urls.append(file)
+            else:
+                urls.append(QtCore.QUrl.fromLocalFile(file))
+        for url in urls:
+            url = url.url()
+            if player.add_slave(0, url, settings.checkAutoEnableSubtitles.isChecked()) == 0:    # slaves can be subtitles (0) or audio (1). last arg = auto-select
+                log_on_statusbar(f'Subtitle file {url} added and enabled.')                     # returns 0 on success
+                if settings.checkTextOnSubtitleAdded.isChecked():
+                    show_on_player('Subtitle file added and enabled')
+            else:
+                log_on_statusbar(f'Failed to add subtitle file {url} (VLC does not report specific errors for this).')
+                if settings.checkTextOnSubtitleAdded.isChecked():
+                    show_on_player('Failed to add subtitle file')
+
+
     def explore(self, path: str = None, noun: str = 'Recent file'):
         ''' Opens `path` (or self.video if not provided) in the default file
             explorer, with `path` pre-selected if possible. `noun` controls
@@ -5129,6 +5150,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     def browse_for_directory(
         self,
+        *args,
         lineEdit: QtW.QLineEdit = None,
         noun: str = None,
         default_path: str = None
@@ -5146,6 +5168,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def browse_for_save_file(
         self,
+        *args,
         lineEdit: QtW.QLineEdit = None,
         noun: str = None,
         filter: str = 'All files (*)',
@@ -5243,8 +5266,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return path
 
 
-    def browse_for_subtitle_files(self, urls: tuple = None) -> None:
-        if self.mime_type == 'image': show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
+    def browse_for_subtitle_files(self, *args, urls: tuple = None) -> None:
+        if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if urls is None:
             urls, cfg.lastdir = qthelpers.browseForFiles(
                 lastdir=cfg.lastdir,
@@ -5252,16 +5275,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 filter='Subtitle Files (*.cdg *.idx *.srt *.sub *.utf *.ass *.ssa *.aqt *.jss *.psb *.it *.sami *smi *.txt *.smil *.stl *.usf *.dks *.pjs *.mpl2 *.mks *.vtt *.tt *.ttml *.dfxp *.scc);;All files (*)',
                 url=True
             )
-        for url in urls:
-            url = url.url()
-            if player.add_slave(0, url, settings.checkAutoEnableSubtitles.isChecked()) == 0:    # slaves can be subtitles (0) or audio (1). last arg = auto-select
-                log_on_statusbar(f'Subtitle file {url} added and enabled.')                     # returns 0 on success
-                if settings.checkTextOnSubtitleAdded.isChecked():
-                    show_on_player('Subtitle file added and enabled')
-            else:
-                log_on_statusbar(f'Failed to add subtitle file {url} (VLC does not report specific errors for this).')
-                if settings.checkTextOnSubtitleAdded.isChecked():
-                    show_on_player('Failed to add subtitle file')
+        self.add_subtitle_files(urls)
 
 
     def show_size_dialog(self, snapshot: bool = False):

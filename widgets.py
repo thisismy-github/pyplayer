@@ -91,6 +91,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         self.last_invalid_snap_state_time = 0.0
         self.dragdrop_in_progress = False
         self.dragdrop_last_modifiers = None
+        self.dragdrop_subtitle_count = 0
+        self.dragdrop_is_folder = False
+        self.dragdrop_files = []
 
         self.dragging: int = None                           # NOTE: 0 is valid -> always check against None
         self.dragging_offset: QtCore.QPoint = None
@@ -703,6 +706,18 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         if event.mimeData().hasUrls(): event.accept()
         else: event.ignore()
         self.dragdrop_in_progress = True
+        self.dragdrop_subtitle_count = 0
+        self.dragdrop_is_folder = False
+
+        files = [url.toLocalFile() for url in event.mimeData().urls()]
+        self.dragdrop_files = files
+        for file in files:
+            if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS:
+                self.dragdrop_subtitle_count += 1
+            elif os.path.isdir(file):
+                self.dragdrop_is_folder = True
+                break
+
         return super().dragEnterEvent(event)            # run QWidget's built-in behavior
 
 
@@ -717,9 +732,9 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Indicates on the statusbar and player (if possible) what the current
             button-combination will do once the drag-and-drop finishes. Keeps
             track of combination to avoid repeated statusbar/marquee calls. '''
-        files = [url.toLocalFile() for url in event.mimeData().urls()]
+        files = self.dragdrop_files
 
-        if os.path.isdir(files[0]):
+        if self.dragdrop_is_folder:
             mod = event.keyboardModifiers()
             if mod != self.dragdrop_last_modifiers:     # VVV alt OR ctrl+shift (play random file without autoplay)
                 if mod & Qt.AltModifier or (mod & Qt.ControlModifier and mod & Qt.ShiftModifier):
@@ -732,8 +747,22 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                     msg = 'Drop to autoplay folder contents, or hold ctrl/alt/shift for more options'
             gui.statusbar.showMessage(msg, 0)
             self.show_text(msg, timeout=0, position=0)
+        elif self.dragdrop_subtitle_count:
+            count = self.dragdrop_subtitle_count
+            if count == len(files):
+                if gui.video:
+                    if count == 1: msg = 'Drop to add subtitle file'
+                    else:          msg = 'Drop to add subtitle files'
+                else:
+                    msg = 'You cannot drop subtitle files by themselves if no media is playing.'
+            else:
+                if count == 1: msg = 'Drop to play media and add subtitle file'
+                else:          msg = 'Drop to play media and add subtitle files'
+            gui.statusbar.showMessage(msg, 0)
+            self.show_text(msg, timeout=0, position=0)
         elif not gui.video:                             # no media playing, can't show marquee. don't bother with special options
-            gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
+            prefix = 'Drop to add subtitle file' if self.dragdrop_is_subtitles else 'Drop to play media'
+            gui.statusbar.showMessage(prefix + ', or hold ctrl/alt/shift while media is playing for additional options')
         else:
             mod = event.keyboardModifiers()
             if mod != self.dragdrop_last_modifiers:
@@ -750,7 +779,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                     if os.path.abspath(files[0]) == gui.video:
                         msg += ' (disabled due to identical file)'
                 else:
-                    msg = 'Drop to play media, or hold ctrl/alt/shift for more options'
+                    prefix = 'Drop to add subtitle file' if self.dragdrop_is_subtitles else 'Drop to play media'
+                    msg = prefix + ', or hold ctrl/alt/shift for more options'
                 gui.statusbar.showMessage(msg, 0)
                 self.show_text(msg, timeout=0, position=0)
         return super().dragMoveEvent(event)
@@ -766,12 +796,22 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             - Shift        -> Concatenates media file(s) to the end of the current media.
             - Alt          -> Concatenates media file(s) to the start of the current media. '''
         self.reset_dragdrop_status()
-        files = [url.toLocalFile() for url in event.mimeData().urls()]
+        files = self.dragdrop_files
         if gui.isFullScreen():  focus_window = settings.checkFocusOnDropFullscreen.isChecked()
         elif gui.isMaximized(): focus_window = settings.checkFocusOnDropMaximized.isChecked()
         else:                   focus_window = settings.checkFocusOnDropNormal.isChecked()
 
-        if os.path.isdir(files[0]):
+        def open_media_and_add_subtitles():
+            for file in files:                          # open first valid media file, if any
+                if os.path.splitext(file)[-1] not in constants.SUBTITLE_EXTENSIONS:
+                    if gui.open(file, focus_window=focus_window) == 1:
+                        break
+            if gui.video and self.dragdrop_subtitle_count:
+                for file in files:                      # re-loop and add all valid subtitle files (if ANY media is playing)
+                    if os.path.splitext(file)[-1] in constants.SUBTITLE_EXTENSIONS:
+                        gui.add_subtitle_files(file)
+
+        if self.dragdrop_is_folder:
             gui.open_folder(files[0], event.keyboardModifiers(), focus_window=focus_window)
         elif gui.video:
             mod = event.keyboardModifiers()
@@ -783,13 +823,10 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                 file = files[0]
                 if os.path.abspath(file) != gui.video: gui.add_audio(path=file)
                 else: gui.statusbar.showMessage('Cannot add file to itself as an audio track', 10000)
-            else:                                       # no modifiers pressed, check if subtitle files were dropped
-                to_url = QtCore.QUrl.fromLocalFile
-                subtitle_files = [to_url(f) for f in files if os.path.splitext(f)[-1] in constants.SUBTITLE_EXTENSIONS]
-                if subtitle_files: gui.browse_for_subtitle_file(urls=subtitle_files)
-                else: gui.open(files[0], focus_window=focus_window)     # no modifiers, no subs -> play dropped file as media
+            else:                                       # no modifiers pressed, add first media file and any subtitle files
+                open_media_and_add_subtitles()
         else:
-            gui.open(files[0], focus_window=focus_window)               # no media playing -> ignore mods and play dropped file
+            open_media_and_add_subtitles()              # no media playing -> ignore modifiers entirely
 
         if settings.checkRememberDropFolder.isChecked():                # update `cfg.lastdir` if desired
             cfg.lastdir = files[0] if os.path.isdir(files[0]) else os.path.dirname(files[0])
