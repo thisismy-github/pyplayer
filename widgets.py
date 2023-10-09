@@ -761,8 +761,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             gui.statusbar.showMessage(msg, 0)
             self.show_text(msg, timeout=0, position=0)
         elif not gui.video:                             # no media playing, can't show marquee. don't bother with special options
-            prefix = 'Drop to add subtitle file' if self.dragdrop_is_subtitles else 'Drop to play media'
-            gui.statusbar.showMessage(prefix + ', or hold ctrl/alt/shift while media is playing for additional options')
+            gui.statusbar.showMessage('Drop to play media, or hold ctrl/alt/shift while media is playing for additional options')
         else:
             mod = event.keyboardModifiers()
             if mod != self.dragdrop_last_modifiers:
@@ -779,8 +778,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
                     if os.path.abspath(files[0]) == gui.video:
                         msg += ' (disabled due to identical file)'
                 else:
-                    prefix = 'Drop to add subtitle file' if self.dragdrop_is_subtitles else 'Drop to play media'
-                    msg = prefix + ', or hold ctrl/alt/shift for more options'
+                    msg = 'Drop to play media, or hold ctrl/alt/shift for more options'
                 gui.statusbar.showMessage(msg, 0)
                 self.show_text(msg, timeout=0, position=0)
         return super().dragMoveEvent(event)
