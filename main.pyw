@@ -2316,8 +2316,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         probe_data: dict = None
     ) -> int:
         ''' Parses a media `file` for relevant metadata and updates properties
-            accordingly. Emits `self._open_cleanup_signal`. Returns -1 if
-            unsuccessful. This could be simpler, but it still needs to be fast.
+            accordingly. Emits `self._open_cleanup_signal`. Returns 1 if
+            successful, otherwise returns a string containing the reason for
+            failure. This could be simpler, but it still needs to be fast.
 
             The following properties should be set by this function:
                 - `self.mime_type`
@@ -2340,7 +2341,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # >>> videos <<<
         try:
             if mime == 'video':
-                if probe_file or probe_data:
+                if probe_file:                      # `probe_file` can be None if FFprobe is disabled
                     if probe_data or self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
                         start = get_time()
                         if probe_data is None:      # VLC not finished, no data provided, but probe file is being generated
@@ -2356,7 +2357,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                             break
                                         if get_time() - start > 5:
                                             logging.error('Media probe did not finish after 5 seconds.')
-                                            return -1
+                                            raise AssertionError('video probing timed out')
                                         probe.seek(0)
 
                         if probe_data:              # double check if data was actually acquired
@@ -2389,9 +2390,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
                         start = get_time()          # get_parsed_status() == 4 means parsing is apparently done, but values are often not accessible immediately
                         while self.vlc.media.get_parsed_status() != 4 or player.get_fps() == 0 or player.get_length() == 0 or player.video_get_size() == (0, 0):
-                            if get_time() - start > 15:
-                                logging.error('FFprobe is disabled and VLC did not finish parsing after 15 seconds.')
-                                return -1
+                            if get_time() - start > 5:
+                                logging.error('FFprobe is disabled and VLC did not finish parsing after 5 seconds.')
+                                raise AssertionError('video parsing timed out')
                         logging.info(f'VLC needed an additional {get_time() - start:.4f} seconds to parse.')
                     elif probe_file:
                         logging.info('VLC did not need additional time to parse.')
@@ -2409,6 +2410,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.vwidth, self.vheight = player.video_get_size()
                     self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
                     logging.info('VLC parsed faster than FFprobe.')
+                elif probe_data == {}:
+                    raise AssertionError('video probe returned no data')
 
         # >>> audio <<<
             if mime == 'audio':
@@ -2464,9 +2467,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     except:
                                         if get_time() - start > 5:
                                             logging.error('Media probe did not finish after 5 seconds.')
-                                            return -1
+                                            raise AssertionError('audio parsing timed out')
                                         probe.seek(0)
                         return self.parse_media_file(file, probe_file, mime='video', extension=extension, probe_data=probe_data)
+                elif probe_data == {}:
+                    raise AssertionError('audio probe returned no data')
 
                 frame_count_raw = round(duration * 20)
                 self.duration = duration
@@ -2533,10 +2538,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.delay = 0.2                # run update_slider_thread only 5 times/second
                     self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
 
-            assert self.duration != 0, f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (invalid duration).'
-        except:
+            assert self.duration != 0, 'invalid duration'
+        except AssertionError as error:
             logging.error(f'(!) Parsing failure: {format_exc()}')
-            return -1
+            self._open_cleanup_in_progress = False  # ensure that this gets reset
+            return str(error)
+        except:
+            logging.error(f'(!) Unexpected parsing failure: {format_exc()}')
+            self._open_cleanup_in_progress = False
+            return 'parsing failed for unknown reason - see log file'
+
+        # mark that cleanup is about to start - setting this here makes it impossible to leave `self.open()`...
+        # ...with this being improperly set, avoiding scenarios where `self.open_in_progress` gets stuck on True
+        self._open_cleanup_in_progress = True
 
         # extra setup. frame_rate_rounded, ratio, delay, etc. could be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_cleanup_signal
@@ -2617,7 +2631,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 if os.path.isdir(file):
                     file = self.open_folder(file, focus_window=focus_window)
-                    return -1 if file is None else 1
+                    return 1 if file else -1
                 if file in self.locked_files:               # if file is locked and we didn't cycle here, show a warning message
                     show_on_statusbar(f'File {file} is currently being worked on.')
                     return -1
@@ -2639,6 +2653,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         try:
                             probe_data = json.loads(f.read())
                             probe_process = None
+                            if not probe_data:              # probe is literally just two braces with no data -> DON'T...
+                                raise                       # ...give up. instead, raise error and try to re-probe it
                         except:
                             f.close()
                             logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
@@ -2696,13 +2712,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         # attempt to parse probe file. if successful, this might be actual media
                         with open(probe_file) as probe:
                             while probe_data is None:
-                                if probe.read():
+                                if probe.read():            # keep reading until the file actually contains data
                                     sleep(0.1)
                                     probe.seek(0)
                                     probe_data = json.loads(probe.read())
 
                         # for some asinine reason, FFprobe "recognizes" text as a form of video
-                        if probe_data['format']['format_name'] == 'tty':
+                        # if that, or probe is literally just two braces with no data -> give up
+                        if not probe_data or probe_data['format']['format_name'] == 'tty':
                             raise
 
                         # if there are no valid video streams, assume it's an audio file
@@ -2746,20 +2763,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # --- Playing media ---
             self.open_in_progress = True                    # mark that we're now officially opening something
-            self._open_main_in_progress = True
-            self._open_cleanup_in_progress = True
 
             player.stop()                                   # player must be stopped for images/gifs and to reduce delays on almost-finished media
             if mime == 'image': play_image(file, gif=extension == 'gif')
             elif not play(file): return -1                  # immediately attempt to play media once we know it might be valid
             else: play_image(None)                          # clear gifPlayer if vlc successfully played media
 
+            # this and `_open_cleanup_in_progress` (set in `self.parse_media_file()`) are internal...
+            # ...properties for tracking when it's safe to set `self.open_in_progress` back to False
+            self._open_main_in_progress = True              # (set this here instead of above to slightly optimize cycling through corrupt files)
+
         # --- Parsing metadata and setting up UI/recent files list ---
             # parse non-video files and show/log file on statusbar
             parsed = False                                  # keep track of parse so we can avoid re-parsing it later if it ends up being a video
             if mime != 'video':                             # parse metadata early if it isn't a video
-                if self.parse_media_file(file, probe_file, mime, extension, probe_data) == -1:
-                    log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (non-video parsing failed).')
+                if (reason := self.parse_media_file(file, probe_file, mime, extension, probe_data)) != 1:
+                    log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened ({reason}).')
                     return -1
                 parsed = True
 
@@ -2834,8 +2853,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # if presumed to be a video -> finish parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
-                if self.parse_media_file(file, probe_file, mime, extension, probe_data) == -1:
-                    log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (video parsing failed).')
+                if (reason := self.parse_media_file(file, probe_file, mime, extension, probe_data)) != 1:
+                    log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened ({reason}).')
                     return -1
 
                 # update marquee size and offset relative to video's dimensions
@@ -3015,7 +3034,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # ensure media still exists, otherwise warn user
             if not exists(video):
-                log_on_statusbar('Current media no longer exists. You likely renamed, moved, or deleted it from outside PyPlayer.')
+                if video:                           # certain corrupt files will trigger a false restart
+                    log_on_statusbar('Current media no longer exists. You likely renamed, moved, or deleted it from outside PyPlayer.')
                 self.stop(icon='x')                 # use X-icon as visual clue that something is preventing playback
                 return -1
 
