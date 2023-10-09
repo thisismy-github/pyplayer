@@ -231,13 +231,19 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -------------------------------------------
 # Additional media-related utility functions
 # -------------------------------------------
-def probe_files(*files: tuple) -> dict:
+def probe_files(*files: tuple, refresh: bool = False, write: bool = True) -> dict:
     ''' Probe an indeterminant number of `files` and return a dictionary of
         `{path: probe_dictionary}` pairs. All files are probed concurrently, but
         this function does not return until all probes are completed. Files that
-        fail are simply not included. This function is similar to the probing
-        process in `self.open()` (but is not used there for performance reasons),
-        in that it will create/validate/reuse probe files for all `files`. '''
+        fail are simply not included.
+
+        This function is similar to the probing process in `self.open()`
+        (but is not used there for performance reasons) - by default, it will
+        create/validate/reuse probe files. However, if `refresh` is True, a new
+        probe will always be generated even if the probe file already exists.
+        If `write` is False, any new probes will not be written to a file. '''
+
+    logging.info(f'Manually probing files: {files} (refresh={refresh})')
     probes = {}
     processes = []
 
@@ -250,36 +256,44 @@ def probe_files(*files: tuple) -> dict:
         probe_file = f'{constants.PROBE_DIR}{sep}{os.path.basename(file)}_{stat.st_mtime}_{stat.st_size}.txt'
         probe_exists = exists(probe_file)
         if probe_exists:
-            with open(probe_file, 'r') as f:
-                try:
-                    probes[file] = json.loads(f.read())
-                except:
-                    f.close()
-                    logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
-                    try: os.remove(probe_file)
-                    except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
-                    probe_exists = False
+            if refresh:                                         # NOTE: if `refresh` is True and `write` is False, existing...
+                try: os.remove(probe_file)                      # ...probe files will be deleted without being replaced
+                except: logging.warning('(!) FAILED TO DELETE UNWANTED PROBE FILE: ' + format_exc())
+                probe_exists = False
+            else:
+                with open(probe_file, 'r') as f:
+                    try:
+                        probes[file] = json.loads(f.read())
+                    except:
+                        f.close()
+                        logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
+                        try: os.remove(probe_file)
+                        except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
+                        probe_exists = False
 
         if not probe_exists:
             processes.append(
                 (
                     file,
-                    subprocess.Popen(
-                        f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',
-                        shell=True,
-                        stdout=subprocess.PIPE,
-                        text=True
+                    probe_file,
+                    subprocess.Popen(                           # ↓ do NOT use ">" here since we need to read stdout
+                        f'"{FFPROBE}" -show_format -show_streams -of json "{file}"',
+                        stdout=subprocess.PIPE,                 # don't use `shell=True` either
                     )
                 )
             )
 
     # for any files that did not have pre-existing probe files, wait until...
     # ...their processes are complete and read output directly from the process
-    for file, process in processes:
+    for file, probe_file, process in processes:
         out, err = process.communicate()
-        try: probes[file] = json.loads(out)
-        except: log_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
-
+        try:
+            probes[file] = json.loads(out)
+            if write:                                           # manually write probe to file
+                with open(probe_file, 'w') as f:
+                    f.write(out)
+        except:
+            log_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
     return probes
 
 
@@ -2044,15 +2058,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def open_probe_file(self, *args, file: str = None, delete: bool = False, verbose: bool = True):
         ''' Opens `file`'s probe file, if it exists and FFprobe is enabled.
+            If `file` is provided but doesn't exist, this method returns early.
             If `file` is not provided, `self.video` is used. If `delete` is
-            True, the probe file is deleted if possible. If `verbose` is True,
-            a warning is shown if no probe file actually exists for `file`. '''
+            True, the probe file is deleted instead of opened. If `verbose` is
+            True, warnings are shown `file` or its probe file do not exist. '''
         if not FFPROBE:
             return show_on_statusbar('You don\'t have FFprobe enabled.')
 
         try:
             if file:
-                stat = os.stat(file)
+                try:
+                    stat = os.stat(file)
+                except:
+                    if verbose:
+                        show_on_statusbar('This media\'s probe file cannot be accessed as the media itself cannot be accessed.')
+                    return
             elif self.video:
                 file = self.video
                 stat = self.stat
@@ -2073,7 +2093,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 except: log_on_statusbar(f'Failed to delete probe file at {path}: {format_exc()}')
             else:
                 qthelpers.openPath(path)
-
         except:
             log_on_statusbar(f'(!) Probe file opening/deletion failed: {format_exc()}')
 
@@ -3955,38 +3974,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if exists(path):
                     delete_temp_path(path, 'edit-path')
 
-            # confirm our operations, clean up base video, and get final path
-            if operations and successful:                       # double-check that we've actually done anything at all
-                if not exists(dest):
-                    return log_on_statusbar('(!) Media saved without error, but never actually appeared. Possibly an FFmpeg error.')
-                if os.stat(dest).st_size == 0:
-                    logging.info(f'Deleting temporary FFmpeg file: {dest}')
-                    try: os.remove(dest)
-                    except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
-                    return log_on_statusbar('(!) Media saved without error, but was completely empty. Possibly an FFmpeg error.')
-
-                # handle deletion behavior
-                if delete_after_save == FULL_DELETE:   self.delete(video, cycle=False)
-                elif delete_after_save == MARK_DELETE: self.marked_for_deletion.add(video)
-                #elif replacing_original:                       # TODO add setting for this behavior
-                #    temp_name = add_path_suffix(video, '_original', unique=True)
-                #    os.rename(video, temp_name)
-                #    video = temp_name
-
-                # rename `dest` back to `final_dest`
-                if self.video == final_dest: self.stop()        # stop player again if necessary
-                if exists(final_dest): os.replace(dest, final_dest)
-                else: os.rename(dest, final_dest)
-
-                # update `final_dest`'s ctime/mtime if necessary
-                self.set_file_timestamps(
-                    path=final_dest,
-                    ctime=new_ctime,
-                    mtime=new_mtime
-                )
-
-                # delete `final_dest`'s probe file in rare event it becomes stale (size & mtime/ctime were not altered)
-                self.open_probe_file(file=final_dest, delete=True, verbose=False)
+            # confirm/validate/cleanup our operations
+            if operations and successful:
+                mark =   delete_after_save == MARK_DELETE
+                delete = delete_after_save == FULL_DELETE
+                if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, video):
+                    return
 
                 # only open edited video if user hasn't opened something else TODO make this a setting
                 if self.video == video:
@@ -4003,7 +3996,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif successful:
                 return log_on_statusbar('No changes have been made.')
         except:
-            log_on_statusbar(f'(!) POST-SAVE CLEANUP FAILED: {format_exc()}')
+            log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
         finally:
             self.locked_files.discard(video)                    # unlock source file
             self.locked_files.discard(dest)                     # unlock destination
@@ -4857,7 +4850,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             `self.concatenate()`, but like `self._save()`, this should only be
             done through a thread (or the GUI will freeze while encoding). '''
         try:
-            temp_path = dest
+            final_dest = dest
+            dest = add_path_suffix(dest, '_temp', unique=True)
             original_files = files.copy()
 
             # lock all files and destination
@@ -4872,16 +4866,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # calculate timestamps for final output based on our input files
             new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
 
-            # create temp file if `dest` is one of the `files` (ffmpeg can't edit files in-place)
-            if dest in files:
-                temp_path = add_path_suffix(dest, '_temp', unique=True)
-                locked_files.add(temp_path)                 # lock temp path regardless of our `lock` parameter
-                os.renames(dest, temp_path)                 # rename `dest` to our temporary name
-                for index, file in enumerate(files):        # replace instances of `dest` with our temp path
-                    if file == dest:
-                        files[index] = dest
-                logging.info(f'Renamed "{dest}" to temporary FFmpeg file "{temp_path}"')
-
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
                 inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
@@ -4893,7 +4877,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if FFPROBE:
                     fps_sum = 0
                     new_frame_total = 0
-                    probes = probe_files(*files, temp_path)
+                    probes = probe_files(*files)
                     for probe_data in probes.values():
                         for stream in probe_data['streams']:
                             if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
@@ -4939,49 +4923,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     try: os.remove(intermediate_file)
                     except: pass
 
-            # validiate output
-            if not exists(dest):
-                return log_on_statusbar('(!) Concatenation failed. No files have been altered.')
+            try:
+                # confirm/validate/cleanup our output
+                if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
+                    return
 
-            # update `dest`'s ctime/mtime if necessary
-            self.set_file_timestamps(
-                path=dest,
-                ctime=new_ctime,
-                mtime=new_mtime
-            )
-
+                # post-concat activites
+                if open:     self.open_from_thread(file=final_dest, focus_window=settings.checkFocusOnEdit.isChecked())
+                if explore:  qthelpers.openPath(final_dest, explore=True)
+                log_on_statusbar(f'Concatenation saved to {final_dest}.')
+            except:
+                log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
         except:                                             # return without doing post-concat activities
-            return log_on_statusbar(f'(!) FFmpeg concatenation failed: {format_exc()}')
+            return log_on_statusbar(f'(!) CONCATENATION FAILED: {format_exc()}')
 
         # always cleanup temp path, unlock all files, and refresh `dest`'s probe file
         finally:
-            if temp_path != dest:
-                if exists(dest):                            # for concatenating, `dest` should now exist if `temp_path` was used
-                    logging.info(f'Deleting temporary FFmpeg file: {temp_path}')
-                    try: os.remove(temp_path)
-                    except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
-                else:                                       # otherwise, rename `temp_path` back to `infile`
-                    os.renames(temp_path, dest)
-                    logging.info(f'Renamed temporary FFmpeg file "{temp_path}" back to "{dest}"')
-
             locked_files.discard(dest)
-            locked_files.discard(temp_path)
+            locked_files.discard(final_dest)
             locked_files.difference_update(files)
             locked_files.difference_update(original_files)
-
-            # delete `dest`'s probe file in rare event it becomes stale (size & mtime/ctime were not altered)
-            self.open_probe_file(file=dest, delete=True, verbose=False)
-
-    # >>> post-concat activites <<<
-        try:
-            if open:     self.open_from_thread(file=dest, focus_window=settings.checkFocusOnEdit.isChecked())
-            if explore:  qthelpers.openPath(dest, explore=True)
-            if mark:     self.marked_for_deletion.update(files)
-            elif delete: self.delete(files)
-            log_on_statusbar(f'Concatenation saved to {dest}.')
-
-        except:
-            log_on_statusbar(f'(!) FFmpeg post-concatenation activities failed: {format_exc()}')
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
@@ -5882,6 +5843,81 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             settings.buttonCheckForUpdates.setText('Check for updates')
             if settings_were_open:                      # restore settings if they were originally open
                 settings.show()
+
+
+    def cleanup_edit(
+        self,
+        temp_dest: str,
+        final_dest: str,
+        ctime: float,
+        mtime: float,
+        mark: bool = False,
+        delete: bool = False,
+        to_delete=None,
+        noun: str = 'Media'
+    ) -> bool:
+        ''' Ensures `temp_dest` exists, is not empty, can be probed, and doesn't
+            return an empty probe (in that order). If unsuccessful, False is
+            returned, the specific failure is logged (referring to the file as
+            `noun`), and `temp_dest` is deleted. Once validated, `temp_dest` is
+            renamed to `final_dest` with its timestamps set to `ctime`/`mtime`.
+            If `mark` is True, `to_delete` (which may be either a string or an
+            iterable) is marked for deletion. If `delete` is True, `to_delete`
+            is deleted/recycled outright.
+
+            NOTE: If `dest` is valid, this function is relatively "slow"
+            as we must wait for a fresh probe file to be created. '''
+        try:
+            if not exists(temp_dest):
+                log_on_statusbar(f'(!) {noun} saved without error, but never actually appeared. Possibly an FFmpeg error. No changes have been made.')
+                return False
+            if os.stat(temp_dest).st_size == 0:
+                log_on_statusbar(f'(!) {noun} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
+                delete_temp_path(temp_dest, 'FFmpeg file')
+                return False
+
+            # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
+            # ... but cleanup is 100x easier if we do this now rather than later
+            new_probe = probe_files(temp_dest, refresh=True, write=False)
+            if not new_probe:                                   # no probe returned
+                log_on_statusbar(f'(!) {noun} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
+                delete_temp_path(temp_dest, 'FFmpeg file')
+                return False
+            elif not new_probe[temp_dest]:                      # empty probe returned
+                log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
+                delete_temp_path(temp_dest, 'FFmpeg file')
+                return False
+
+            # handle deletion behavior
+            if mark:
+                if isinstance(to_delete, str): self.marked_for_deletion.add(to_delete)
+                elif to_delete:                self.marked_for_deletion.update(to_delete)
+            elif delete:                       self.delete(to_delete, cycle=False)
+            #elif replacing_original:                       # TODO add setting for this behavior?
+            #    temp_name = add_path_suffix(video, '_original', unique=True)
+            #    os.rename(video, temp_name)
+            #    video = temp_name
+
+            # rename `dest` back to `final_dest`
+            if self.video == final_dest: self.stop()        # stop player if necessary
+            if exists(final_dest): os.replace(temp_dest, final_dest)
+            else: os.rename(temp_dest, final_dest)
+
+            # update `final_dest`'s ctime/mtime if necessary
+            self.set_file_timestamps(
+                path=final_dest,
+                ctime=ctime,
+                mtime=mtime
+            )
+
+            # delete `final_dest`'s probe file in rare event it becomes stale (size & mtime/ctime were not altered)
+            self.open_probe_file(file=final_dest, delete=True, verbose=False)
+            return True
+        except:
+            log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
+            return False
+        finally:                                            # make sure `temp_dest` does not actually have a probe file
+            self.open_probe_file(file=temp_dest, delete=True, verbose=False)
 
 
     def add_info_actions(self, context: QtW.QMenu):
