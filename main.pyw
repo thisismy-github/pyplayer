@@ -302,7 +302,7 @@ def get_image_data(path: str, extension: str = None):
     # TODO I don't need this anymore and should probably avoid using it at all.
     try:
         if exists(path): image_data = get_PIL_Image().open(path, formats=(extension,) if extension else None)
-        else: image_data = get_PIL_Image().fromqpixmap(image_player.art)
+        else:            image_data = get_PIL_Image().fromqpixmap(image_player.art)
         yield image_data
     finally:
         try: image_data.close()
@@ -380,6 +380,18 @@ def splitext_media(
     if period:
         return base, ext
     return base, ext[1:]
+
+
+def delete_temp_path(path: str, noun: str = 'file') -> bool:
+    ''' Safely deletes `path` while logging it a temporary
+        "`noun`". Returns True if successful. '''
+    try:
+        logging.info(f'Deleting temporary {noun}: {path}')
+        os.remove(path)
+        return True
+    except:
+        logging.warning(f'(!) Failed to delete temporary {noun}.')
+        return False
 
 
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
@@ -2268,9 +2280,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar(f'Cropped image data for "{os.path.basename(path)}" copied to clipboard.{temp_string}')
 
             if snapshot_needed or delete_path_anyway:
-                logging.info(f'Deleting temporary snapshot at path {path}')
-                try: os.remove(path)
-                except: logging.warning('(!) Failed to delete temporary snapshot.')
+                delete_temp_path(path, 'snapshot')
         except:
             log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
         finally:                                    # restore pause-state before leaving
@@ -2692,7 +2702,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             extension_label = 'MPEG-TS'
                         else:
                             if mime == 'video': valid_extensions = constants.VIDEO_EXTENSIONS
-                            else: valid_extensions = constants.AUDIO_EXTENSIONS
+                            else:               valid_extensions = constants.AUDIO_EXTENSIONS
                             _, extension = splitext_media(file, valid_extensions, period=False)
                             if not extension:
                                 extension = 'mp4' if mime == 'video' else 'mp3'
@@ -2702,13 +2712,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if not exists(file): log_on_statusbar(f'File \'{file}\' does not exist.')
                         else: log_on_statusbar(f'File \'{file}\' appears to be corrupted or an invalid format and cannot be opened (failed to determine mime type).')
                         logging.warning(format_exc())
-                        return -1                           # ^^^ .match() errors out in rare circumstances ^^^
+                        return -1
 
         # --- Restoring window ---
             # restore window from tray if hidden, otherwise there's a risk for unusual VLC output
             if self.isVisible():
                 was_minimzed_to_tray = False
-            else:                                           # we need to do this even if focus_window is True
+            else:                                           # we need to do this even if `focus_window` is True
                 was_minimzed_to_tray = True
                 if self.isMaximized():
                     self.resize(self.last_window_size)      # restore size/pos or maximized windows will forget...
@@ -3215,8 +3225,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def delete(self, files=None, cycle: bool = True):
         ''' Deletes (or recycles) a list of `files`. If `files` is a string,
             it becomes a single-length tuple. If `files` is None, `self.video`
-            is used. If `self.video` is within `files`, all players are stopped,
-            and the media is cycled if possible before deleting. '''
+            is used. If `self.video` is within `files`, all players are stopped
+            and the media is cycled (if `cycle` is True) before deleting. '''
         if not files: files = (self.video,)
         elif isinstance(files, str): files = (files,)
 
@@ -3915,9 +3925,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except Exception as error:
             successful = False
-            logging.info(f'Deleting temporary FFmpeg file: {dest}')
-            try: os.remove(dest)
-            except: logging.warning('(!) Failed to delete temporary FFmpeg file')
+            delete_temp_path(dest, 'FFmpeg file')
 
             text = str(error)
             if 'malloc of size' in text:
@@ -3945,9 +3953,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # clean up temp paths if we have any
             for path in temp_paths:
                 if exists(path):
-                    logging.info(f'Deleting temporary edit-path: {path}')
-                    try: os.remove(path)
-                    except: logging.warning('(!) Failed to delete temporary edit-path.')
+                    delete_temp_path(path, 'edit-path')
 
             # confirm our operations, clean up base video, and get final path
             if operations and successful:                       # double-check that we've actually done anything at all
@@ -4413,12 +4419,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except: pass
 
             # cleanup temp file, if needed (editing in place means we had to rename `infile`)
-            if editing_in_place:                        # NOTE: NEVER true for edits called through `self._save()`
-                if exists(infile):                      # if `infile` was externally replaced while we were working,...
-                    logging.info(f'Deleting temporary FFmpeg file: {temp_infile}')
-                    try: os.remove(temp_infile)         # ...just delete the temp file. TODO does that make sense...?
-                    except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
-                else:                                   # otherwise, rename `temp_path` back to `infile`
+            if editing_in_place:                                            # NOTE: NEVER true for edits called through `self._save()`
+                if exists(infile):                                          # if `infile` was externally replaced while we were working,...
+                    delete_temp_path(temp_infile, 'FFmpeg file')            # ...just delete the temp file. TODO does that make sense...?
+                else:                                                       # otherwise, rename `temp_path` back to `infile`
                     os.renames(temp_infile, infile)
                     logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
 
@@ -4442,9 +4446,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 logging.warning(f'(!) Failed to terminate FFmpeg process: {format_exc()}')
 
             if editing_in_place:
-                logging.info(f'Deleting temporary FFmpeg file: {temp_infile}')
-                try: os.remove(temp_infile)
-                except: logging.warning('(!) Failed to delete temporary FFmpeg file.')
+                delete_temp_path(temp_infile, 'FFmpeg file')
             raise                                       # raise exception anyway (we'll still go to the finally-statement)
 
         finally:
