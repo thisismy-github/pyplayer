@@ -3817,7 +3817,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                     duration = trim_duration                                        # update duration
                     frame_count = maximum - minimum                                 # update frame count
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count, 'Seeking to start of trim...')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count, 'Trimming (%p%)', 'Seeking to start of trim...')
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
@@ -3849,7 +3849,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
                     if fade_cmd_parts:
                         cmd = f'-i %in {" ".join(fade_cmd_parts)}'
-                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Fading (%p%)')
 
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
             if op_crop:     # ffmpeg cropping is not 100% accurate, final dimensions may be off by ~1 pixel
@@ -3863,7 +3863,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     intermediate_file = dest
                 else:
                     cmd = f'-i %in -filter:v "crop={crop_width}:{crop_height}:{round(crop_left)}:{round(crop_top)}"'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Cropping (%p%)')
                 vwidth = round(crop_width) - 1                                      # update dimensions
                 vheight = round(crop_height) - 1
 
@@ -3877,7 +3877,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if mime == 'audio':
                     self.set_save_progress_max_signal.emit((duration / float(width)) * frame_rate)
                     cmd = f'-i %in -filter:a atempo="{width}"'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Adjusting tempo (%p%)')
                 else:
                     vwidth, vheight = scale(vwidth, vheight, width, height)
                     if is_static_image:     # ^ pillow can't handle 0/-1 and ffmpeg is stupid (see below) -> scale right away
@@ -3892,7 +3892,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         vwidth -= int(vwidth % 2 != 0)
                         vheight -= int(vheight % 2 != 0)
                         cmd = f'-i %in -vf "scale={vwidth}:{vheight}" -crf 28 -c:a copy'
-                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Resizing (%p%)')
 
             # rotate video/GIF/image
             # TODO: this should use Pillow for images/GIFs but I'm lazy
@@ -3902,10 +3902,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 cmd = f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy'
                 if is_static_image:
                     with get_PIL_safe_path(original_path=video, final_path=dest) as temp_path:
-                        self.ffmpeg(intermediate_file, cmd, temp_path, frame_rate)
+                        self.ffmpeg(intermediate_file, cmd, temp_path, frame_rate, text='Rotating (%p%)')
                         intermediate_file = dest
                 else:
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Rotating (%p%)')
                 if op_rotate_video == 'transpose=clock' or op_rotate_video == 'transpose=cclock':
                     vwidth, vheight = vheight, vwidth                               # update dimensions
 
@@ -3914,7 +3914,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar('Audio replacement requested.')
                 audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
                 cmd = f'-i %in -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Replacing audio (%p%)')
 
             # add audio track - adding audio to images or GIFs will turn them into videos
             # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
@@ -3937,30 +3937,30 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
                     frame_count_hint = int(get_audio_duration(audio) * 25)          # ffmpeg defaults to using 25fps for this
                     cmd = f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count_hint)
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count_hint, text='Adding audio track (%p%)')
                 elif is_gif:                # gifs
                     log_on_statusbar('Adding audio to animated GIF (final video duration may not exactly line up with audio).')
                     is_gif = False                              # mark that this is no longer a gif
                     frame_count_hint = int(get_audio_duration(audio) * frame_rate)
                     cmd = f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count_hint)
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count_hint, text='Adding audio track (%p%)')
                 else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
                     log_on_statusbar('Additional audio track requested.')
                     the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
                     cmd = f'-i %in -i "{audio}" {the_important_part}'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Adding audio track (%p%)')
 
             # remove all video or audio tracks (does not turn file into an image/GIF)
             if op_remove_track is not None:                     # NOTE: This can degrade audio quality slightly.
                 log_on_statusbar(f'{op_remove_track}-track removal requested.')
                 cmd = f'-i %in {"-q:a 0 -map a" if op_remove_track == "Video" else "-c copy -an"}'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text=f'Removing {op_remove_track.lower()} track (%p%)')
 
             # amplify audio (TODO: do math to chain several of these together at once to circumvent the max volume limitation)
             if op_amplify_audio is not None:
                 log_on_statusbar('Audio amplification requested.')
                 cmd = f'-i %in -filter:a "volume={op_amplify_audio}"'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate)
+                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Amplifying audio (%p%)')
 
         except Exception as error:
             successful = False
@@ -4278,8 +4278,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         outfile: str = None,
         frame_rate_hint: float = None,
         frame_count_hint: int = None,
-        start_text: str = 'Saving (%p%)',
-        active_text: str = 'Saving (%p%)',
+        text: str = 'Saving (%p%)',
+        start_text: str = None,
         cleanup: bool = False,
         lock: bool = False
     ) -> str:
@@ -4299,10 +4299,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             `frame_count_hint` sets `self.save_progress_bar`'s maximum value,
             otherwise the pre-existing maximum is assumed to be correct.
 
-            `start_text` specifies what text should be used on the progress bar
-            before the first progress update is parsed, with `active_text` being
-            after. Valid `QProgressBar` format variables: %p - percent complete,
-            %v - raw current value (frame), %m - raw max value (frame count).
+            `text` specifies what text the progress bar should display while
+            updating, and `start_text` (if provided) overrides `text` until the
+            first progress update is parsed. `QProgressBar`'s format variables:
+            - %p - percent complete
+            - %v - raw current value (frame)
+            - %m - raw max value (frame count).
 
             If `cleanup` is True, `self.save_progress_bar` will be hidden and
             have its maximum value reset upon completion.
@@ -4317,6 +4319,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         start = get_time()
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
+
+        if start_text is None:
+            start_text = text
 
         # aliases, then show progress bar and set progress bar format text
         locked_files = self.locked_files
@@ -4407,7 +4412,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         else:
                             use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
                             emit_progress_value(frame)
-                            emit_progress_text(active_text)                 # reset format in case we changed it temporarily
+                            emit_progress_text(text)                        # reset format in case we changed it temporarily
                             if use_taskbar_progress:
                                 self.taskbar_progress.setValue(int((frame / max_frames) * 100))
                         last_frame = frame
@@ -4420,7 +4425,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             max_frames = self.save_progress_bar.maximum()   # this might change late, so always check it
                             frame = min(int(seconds * frame_rate), max_frames)
                             emit_progress_value(frame)
-                            emit_progress_text(active_text)                 # reset format in case we changed it temporarily
+                            emit_progress_text(text)                        # reset format in case we changed it temporarily
                             if use_taskbar_progress:
                                 self.taskbar_progress.setValue(int((frame / max_frames) * 100))
                             break
@@ -4919,8 +4924,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     cmd=cmd,
                     outfile=dest,
                     frame_rate_hint=fps_hint,
-                    start_text=text,
-                    active_text=text,
+                    text=text,
                     cleanup=True
                 )
 
@@ -5895,6 +5899,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar(f'(!) {noun} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
                 delete_temp_path(temp_dest, 'FFmpeg file')
                 return False
+
+            # next part takes a while so show a new message on the progress bar
+            self.set_save_progress_format_signal.emit('Cleaning up...')
 
             # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
             # ... but cleanup is 100x easier if we do this now rather than later
