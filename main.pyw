@@ -408,6 +408,13 @@ def delete_temp_path(path: str, noun: str = 'file') -> bool:
         return False
 
 
+class SaveParameters:
+    __slots__ = 'frame_rate', 'frame_count'
+    def __init__(self):
+        self.frame_rate = 0.0
+        self.frame_count = 0
+
+
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
 #    _, vext = os.path.splitext(video)
 #    abase, aext = os.path.splitext(audio)
@@ -566,6 +573,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.open_in_progress = False
         self._open_main_in_progress = False
         self._open_cleanup_in_progress = False
+        self.saves_in_progress = []             # NOTE: a list of `SaveParameters` objects
 
         self.current_file_is_autoplay = False
         self.shuffle_folder = ''
@@ -3626,7 +3634,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def _save(self, dest: str = None, operations: dict = {}):
-        ''' Do not call this directly. Use `save()` instead. Iteration: V '''
+        ''' Do not call this directly. Use `save()` instead. Iteration: VI '''
         start_time = get_time()
         successful = True
 
@@ -3742,6 +3750,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # NOTE: ABSOLUTELY EXTREMELY IMPORTANT!!! update any relevant properties such as...
         # ...vheight/vwidth, is_gif/is_static_image, etc. as SOON as an operation is done!!!
         try:
+            params = SaveParameters()
+            params.frame_rate = frame_rate
+            params.frame_count = frame_count_raw                        # ↓ account for trimming taking up multiple keys
+            self.saves_in_progress.append(params)
+
             # static images are cached and can be deleted independant of pyplayer
             # if this happens, take the cached QPixmap and save it to a temporary file
             # we'll assume the user wants the original image to stay gone, so we'll delete the temporary file later
@@ -3811,8 +3824,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         else:           cmd += ' -map 0 -codec copy -avoid_negative_ts make_zero'
 
                     duration = trim_duration                                        # update duration
-                    frame_count = maximum - minimum                                 # update frame count
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count, 'Trimming (%p%)', 'Seeking to start of trim...')
+                    params.frame_count = frame_count = maximum - minimum            # update frame count
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Trimming', 'Seeking to start of trim...')
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
@@ -3844,7 +3857,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
                     if fade_cmd_parts:
                         cmd = f'-i %in {" ".join(fade_cmd_parts)}'
-                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Fading (%p%)')
+                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Fading')
 
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
             if op_crop:     # ffmpeg cropping is not 100% accurate, final dimensions may be off by ~1 pixel
@@ -3858,7 +3871,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     intermediate_file = dest
                 else:
                     cmd = f'-i %in -filter:v "crop={crop_width}:{crop_height}:{round(crop_left)}:{round(crop_top)}"'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Cropping (%p%)')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Cropping')
                 vwidth = round(crop_width) - 1                                      # update dimensions
                 vheight = round(crop_height) - 1
 
@@ -3870,9 +3883,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
                 width, height = op_resize   # for audio, width is a value from 0-1 (as a string) and height is None
                 if mime == 'audio':
-                    self.set_save_progress_max_signal.emit((duration / float(width)) * frame_rate)
+                    params.frame_count = (duration / float(width)) * frame_rate
                     cmd = f'-i %in -filter:a atempo="{width}"'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Adjusting tempo (%p%)')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adjusting tempo')
                 else:
                     vwidth, vheight = scale(vwidth, vheight, width, height)
                     if is_static_image:     # ^ pillow can't handle 0/-1 and ffmpeg is stupid (see below) -> scale right away
@@ -3887,7 +3900,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         vwidth -= int(vwidth % 2 != 0)
                         vheight -= int(vheight % 2 != 0)
                         cmd = f'-i %in -vf "scale={vwidth}:{vheight}" -crf 28 -c:a copy'
-                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Resizing (%p%)')
+                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Resizing')
 
             # rotate video/GIF/image
             # TODO: this should use Pillow for images/GIFs but I'm lazy
@@ -3897,10 +3910,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 cmd = f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy'
                 if is_static_image:
                     with get_PIL_safe_path(original_path=video, final_path=dest) as temp_path:
-                        self.ffmpeg(intermediate_file, cmd, temp_path, frame_rate, text='Rotating (%p%)')
+                        self.ffmpeg(intermediate_file, cmd, temp_path, params, 'Rotating')
                         intermediate_file = dest
                 else:
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Rotating (%p%)')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Rotating')
                 if op_rotate_video == 'transpose=clock' or op_rotate_video == 'transpose=cclock':
                     vwidth, vheight = vheight, vwidth                               # update dimensions
 
@@ -3909,7 +3922,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar('Audio replacement requested.')
                 audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
                 cmd = f'-i %in -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Replacing audio (%p%)')
+                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Replacing audio')
 
             # add audio track - adding audio to images or GIFs will turn them into videos
             # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
@@ -3930,32 +3943,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 vheight -= top
                         except:
                             return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
-                    frame_count_hint = int(get_audio_duration(audio) * 25)          # ffmpeg defaults to using 25fps for this
+                    params.frame_count = int(get_audio_duration(audio) * 25)        # ffmpeg defaults to using 25fps for this
                     cmd = f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count_hint, text='Adding audio track (%p%)')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adding audio track')
                 elif is_gif:                # gifs
                     log_on_statusbar('Adding audio to animated GIF (final video duration may not exactly line up with audio).')
                     is_gif = False                              # mark that this is no longer a gif
-                    frame_count_hint = int(get_audio_duration(audio) * frame_rate)
+                    params.frame_count = int(get_audio_duration(audio) * frame_rate)
                     cmd = f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, frame_count_hint, text='Adding audio track (%p%)')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adding audio track')
                 else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
                     log_on_statusbar('Additional audio track requested.')
                     the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
                     cmd = f'-i %in -i "{audio}" {the_important_part}'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Adding audio track (%p%)')
+                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adding audio track')
 
             # remove all video or audio tracks (does not turn file into an image/GIF)
             if op_remove_track is not None:                     # NOTE: This can degrade audio quality slightly.
                 log_on_statusbar(f'{op_remove_track}-track removal requested.')
                 cmd = f'-i %in {"-q:a 0 -map a" if op_remove_track == "Video" else "-c copy -an"}'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text=f'Removing {op_remove_track.lower()} track (%p%)')
+                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, f'Removing {op_remove_track.lower()} track')
 
             # amplify audio (TODO: do math to chain several of these together at once to circumvent the max volume limitation)
             if op_amplify_audio is not None:
                 log_on_statusbar('Audio amplification requested.')
                 cmd = f'-i %in -filter:a "volume={op_amplify_audio}"'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, frame_rate, text='Amplifying audio (%p%)')
+                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Amplifying audio')
 
         except Exception as error:
             successful = False
@@ -3981,6 +3994,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 )
             else:
                 log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
+        finally:
+            self.saves_in_progress.remove(params)
 
         # --- Post-edit cleanup & opening our newly edited media ---
         try:
@@ -4016,7 +4031,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.locked_files.discard(video)                    # unlock source file
             self.locked_files.discard(dest)                     # unlock destination
             self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
-            self.reset_save_progress_bar()                      # reset edit progress on statusbar/titlebar/taskbar
+            if not self.saves_in_progress:
+                self.reset_save_progress_bar()                  # reset edit progress on statusbar/titlebar/taskbar
             logging.info(f'Remaining locked files after edit: {self.locked_files}')
 
 
@@ -4271,10 +4287,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         infile: str,
         cmd: str,
         outfile: str = None,
-        frame_rate_hint: float = None,
-        frame_count_hint: int = None,
-        text: str = 'Saving (%p%)',
+        params: SaveParameters = None,
+        text: str = 'Saving',
         start_text: str = None,
+        percent_format: str = '(%p%)',
+        text_override: str = None,
         cleanup: bool = False,
         lock: bool = False
     ) -> str:
@@ -4286,20 +4303,36 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             do not necessarily need to be included, but you should not include
             "%in" if you are not providing `infile`.
 
-            `frame_rate_hint` is a hint for the progress bar as to what frame
+            NOTE: This method will only update the progress bar if
+            it has priority. Priority may change mid-operation and
+            is gained whenever `len(self.saves_in_progress) == 1`.
+
+            `params` is a `SaveParameters` object containing relevant hints
+            and other properties for tracking all active save operations.
+
+            `params.frame_rate` is a hint for the progress bar as to what frame
             rate to use when normal frame-output from FFmpeg is not available
             (such as for audio files) and we must convert timestamp-output to
             frames instead. If not provided, `self.frame_rate` is used.
 
-            `frame_count_hint` sets `self.save_progress_bar`'s maximum value,
-            otherwise the pre-existing maximum is assumed to be correct.
+            `params.frame_count` is the target value that is used to calculate
+            our current progress percentage. If not provided and this operation
+            has priority, the progress bar switches to an indeterminate bar.
 
-            `text` specifies what text the progress bar should display while
-            updating, and `start_text` (if provided) overrides `text` until the
-            first progress update is parsed. `QProgressBar`'s format variables:
+            `text` specifies the main text that will appear on the progress bar
+            (while this thread has priority), surrounded by relevant information
+            such as how many other edits are in progress and how many operations
+            this edit has left. `start_text` (if provided) overrides `text`
+            until the first progress update is parsed, and `percent_format` is
+            the suffix that will be added to the end of `text`. It does not have
+            to be an actual percentage. `QProgressBar`'s format variables:
             - %p - percent complete
             - %v - raw current value (frame)
-            - %m - raw max value (frame count).
+            - %m - raw max value (frame count, or "?" if frame count is 0).
+
+            If `text_override` is provided (and this thread has priority),
+            `text`, `percent_format`, and `start_text` are all ignored, and
+            no other information is added.
 
             If `cleanup` is True, `self.save_progress_bar` will be hidden and
             have its maximum value reset upon completion.
@@ -4313,22 +4346,42 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             Returns the actual final output path. '''
 
         start = get_time()
+        has_priority = len(self.saves_in_progress) == 1
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
-
-        if start_text is None:
-            start_text = text
 
         # aliases, then show progress bar and set progress bar format text
         locked_files = self.locked_files
         emit_progress_text = self.set_save_progress_format_signal.emit
         emit_progress_value = self.set_save_progress_current_signal.emit
-        emit_progress_text(start_text)
-        emit_progress_value(0)                          # we must call this to actually show the progress bar
-        self.set_save_progress_visible_signal.emit(True)
-
         use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
-        if use_taskbar_progress:
-            self.taskbar_progress.reset()
+
+        def get_progress_text(frame: int = 0) -> str:
+            ''' Returns `text` surrounded by relevant information,
+                e.g. "2 edits in progress - Trimming (25%)"
+                Since %v and %m aren't used anymore, these are
+                manually replaced by `frame` and `params.frame_count`.
+                If `params.frame_count` is 0, "?" is used instead. '''
+            if text_override:
+                return text_override
+            if (saves_in_progress := len(self.saves_in_progress)) > 1:
+                format = f'{saves_in_progress} edits in progress - {text}'
+            else:
+                format = text
+            format = f'{format} {percent_format}'
+            return format.replace('%v', str(frame)).replace('%m', str(params.frame_count or '?'))
+
+        if start_text is None:
+            start_text = text_override or get_progress_text()
+        if params is None:
+            params = SaveParameters()
+
+        if has_priority:
+            emit_progress_text(start_text)
+            emit_progress_value(0)                      # we must call this to actually show the progress bar
+            self.set_save_progress_max_signal.emit(100 if params.frame_count else 0)
+            self.set_save_progress_visible_signal.emit(True)
+            if use_taskbar_progress:
+                self.taskbar_progress.reset()
 
         # see if a valid `infile` was actually provided. it's okay if it wasn't, as long as `outfile` is valid
         try: infile_provided = infile and exists(infile)
@@ -4362,25 +4415,43 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 locked_files.add(outfile)
                 locked_files.add(temp_infile)
 
-            # update progress bar's maximum value if desired (through signal to ensure it's not overwritten)
-            if frame_count_hint:
-                self.set_save_progress_max_signal.emit(int(frame_count_hint))
-
             # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
             if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
             try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
             except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
 
+            def set_progress_bar_value(frame: int):
+                ''' Sets the progress bar & taskbar button's value to `frame`/
+                    `params.frame_count`. Updates the progress bar's text. '''
+                if not has_priority:
+                    return
+                value = int((frame / max(1, params.frame_count)) * 100)
+                emit_progress_value(value)
+                emit_progress_text(get_progress_text(frame))
+                if use_taskbar_progress:
+                    self.taskbar_progress.setValue(value)
+
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
             # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
-            frame_rate = max(1, frame_rate_hint or self.frame_rate)         # used when ffmpeg provides `out_time_ms` instead of `frame`
+            frame_rate = max(1, params.frame_rate or self.frame_rate)       # used when ffmpeg provides `out_time_ms` instead of `frame`
             use_backup_lines = True
             lines_read = 0
             last_frame = 0
             while True:
                 if process.poll() is not None:
                     break
+
+                # update whether or not this thread gets to control the progress bar
+                if not has_priority:
+                    if len(self.saves_in_progress) == 1:
+                        has_priority = True
+                        if last_frame == 0:             # assume we haven't parsed any output yet
+                            emit_progress_text(start_text)
+                            emit_progress_value(0)      # we must call this to actually show the progress bar
+                        else:
+                            set_progress_bar_value(last_frame)
+                        self.set_save_progress_max_signal.emit(100 if params.frame_count else 0)
 
                 # loop over stdout until we get to the line(s) we want
                 # this us sleep between loops without falling behind, saving a lot of resources
@@ -4400,16 +4471,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                     # normal videos will have a "frame=" progress string
                     if progress_text[:6] == 'frame=':
-                        max_frames = self.save_progress_bar.maximum()       # this might change late, so always check it
-                        frame = min(int(progress_text[6:].strip()), max_frames)
+                        frame = min(int(progress_text[6:].strip()), params.frame_count)
                         if last_frame == frame and frame == 1:              # specific edits will constantly spit out "frame=1"...
                             use_backup_lines = True                         # ...for these scenarios, we should ignore frame output
                         else:
                             use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
-                            emit_progress_value(frame)
-                            emit_progress_text(text)                        # reset format in case we changed it temporarily
-                            if use_taskbar_progress:
-                                self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                            set_progress_bar_value(frame)
                         last_frame = frame
                         break
 
@@ -4417,12 +4484,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
                         try:
                             seconds = int(progress_text.strip()[12:-6])
-                            max_frames = self.save_progress_bar.maximum()   # this might change late, so always check it
-                            frame = min(int(seconds * frame_rate), max_frames)
-                            emit_progress_value(frame)
-                            emit_progress_text(text)                        # reset format in case we changed it temporarily
-                            if use_taskbar_progress:
-                                self.taskbar_progress.setValue(int((frame / max_frames) * 100))
+                            frame = min(int(seconds * frame_rate), params.frame_count)
+                            set_progress_bar_value(frame)
                             break
                         except ValueError:
                             pass
@@ -4471,7 +4534,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     locked_files.discard(temp_infile)
             except:
                 pass
-            if cleanup:                                 # reset edit progress on statusbar/titlebar/taskbar
+            if cleanup and not self.saves_in_progress:  # reset edit progress on statusbar/titlebar/taskbar
                 self.reset_save_progress_bar()
 
 
@@ -4891,6 +4954,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
 
         try:
+            params = SaveParameters()
+            self.saves_in_progress.append(params)
+
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
                 inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
@@ -4911,22 +4977,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 duration = float(probe_data['format']['duration'])
                                 new_frame_total += math.ceil(duration * fps)
                                 fps_sum += fps
-                    text = 'Concatenating (%p%)'
-                    self.set_save_progress_max_signal.emit(new_frame_total)
-                    fps_hint = fps_sum / len(probes)        # the average FPS of all `files`
+                    percent_format = '(%p%)'
+                    params.frame_rate = fps_sum / len(probes)
+                    params.frame_count = new_frame_total    # ^ the average FPS of all `files`
                 else:
-                    text = 'Concatenating (re-encode requested, this will take a while)'
+                    percent_format = '(re-encode requested, this will take a while)'
                     self.set_save_progress_max_signal.emit(0)
-                    fps_hint = None
 
-                self.ffmpeg(
-                    infile=None,
-                    cmd=cmd,
-                    outfile=dest,
-                    frame_rate_hint=fps_hint,
-                    text=text,
-                    cleanup=True
-                )
+                self.ffmpeg(None, cmd, dest, params, 'Concatenating', percent_format=percent_format)
 
             # no re-encoding, concatenate (almost instantly) using stream copying
             else:
@@ -4949,6 +5007,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except:                                             # return without doing post-concat activities
             successful = False
             return log_on_statusbar(f'(!) CONCATENATION FAILED: {format_exc()}')
+        finally:
+            self.saves_in_progress.remove(params)
 
         # --- Post-concat cleanup & opening/exploring our newly edited media ---
         try:
@@ -4966,6 +5026,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             locked_files.discard(dest)
             locked_files.discard(final_dest)
             locked_files.difference_update(files)
+            if not self.saves_in_progress:
+                self.reset_save_progress_bar()
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
@@ -5900,7 +5962,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return False
 
             # next part takes a while so show a new message on the progress bar
-            self.set_save_progress_format_signal.emit('Cleaning up...')
+            if not self.saves_in_progress:
+                self.set_save_progress_format_signal.emit('Cleaning up...')
 
             # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
             # ... but cleanup is 100x easier if we do this now rather than later
