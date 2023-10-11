@@ -409,10 +409,12 @@ def delete_temp_path(path: str, noun: str = 'file') -> bool:
 
 
 class SaveParameters:
-    __slots__ = 'frame_rate', 'frame_count'
+    __slots__ = 'frame_rate', 'frame_count', 'operation_count', 'operations_completed'
     def __init__(self):
         self.frame_rate = 0.0
         self.frame_count = 0
+        self.operation_count = 0
+        self.operations_completed = 0
 
 
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
@@ -3753,6 +3755,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             params = SaveParameters()
             params.frame_rate = frame_rate
             params.frame_count = frame_count_raw                        # ↓ account for trimming taking up multiple keys
+            params.operation_count = len(operations) - int(op_trim_start and op_trim_end)
             self.saves_in_progress.append(params)
 
             # static images are cached and can be deleted independant of pyplayer
@@ -4357,7 +4360,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         def get_progress_text(frame: int = 0) -> str:
             ''' Returns `text` surrounded by relevant information,
-                e.g. "2 edits in progress - Trimming (25%)"
+                e.g. "2 edits in progress - Trimming [1/3] (25%)"
                 Since %v and %m aren't used anymore, these are
                 manually replaced by `frame` and `params.frame_count`.
                 If `params.frame_count` is 0, "?" is used instead. '''
@@ -4367,7 +4370,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 format = f'{saves_in_progress} edits in progress - {text}'
             else:
                 format = text
-            format = f'{format} {percent_format}'
+            if params.operation_count > 1:
+                format = f'{format} [{params.operations_completed + 1}/{params.operation_count}] {percent_format}'
+            else:
+                format = f'{format} {percent_format}'
             return format.replace('%v', str(frame)).replace('%m', str(params.frame_count or '?'))
 
         if start_text is None:
@@ -4502,6 +4508,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     os.renames(temp_infile, infile)
                     logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
 
+            params.operations_completed += 1            # increment counter if we were successful
             log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
             return outfile
 
