@@ -3652,9 +3652,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             minimum = max(0, minimum - 2)
             maximum = maximum if maximum == frame_count else (maximum - 1)
 
-        # get the new ctime/mtime to set out output file to (0 means don't change)
-        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
-
         # what will we do to the media file after saving? (0, 1, or 2)
         delete_after_save = self.checkDeleteOriginal.checkState()
         NO_DELETE =   0
@@ -3717,16 +3714,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # log data and create some strings for temporary paths we'll be needing
         logging.info(f'Saving file to "{dest}"')
-        intermediate_file = video   # the path to the file that will be receiving all changes between operations
-        final_dest = dest           # save the original dest so we can rename our temporary dest back later
+        intermediate_file = video           # the path to the file that will be receiving all changes between operations
+        final_dest = dest                   # save the original dest so we can rename our temporary dest back later
         dest = add_path_suffix(dest, '_temp', unique=True)              # add _temp to dest, in case dest is the same as our base video
         temp_paths = []
         logging.debug(f'temp-dest={dest}, video={video} delete_after_save={delete_after_save} operations={operations}')
 
-        # stop player if we've reached this point. it's our last chance to do so safely (without theoretically disrupting the user)
-        self.stop()
-
         # lock source file from being played if we're replacing it OR it's being immediately deleted
+        self.locked_files.add(dest)                                     # ensure destination is also locked
         if replacing_original or delete_after_save == FULL_DELETE:
             self.locked_files.add(video)
             logging.info(f'File locked during edits: {video}')
@@ -3735,12 +3730,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if replacing_original:
                 delete_after_save = NO_DELETE
 
-        # ensure destination is also locked
-        self.locked_files.add(dest)
+        # stop player if we've reached this point. it's our last chance to do so safely (without theoretically disrupting the user)
+        self.stop()
+        emit_update_progress_signal(0)                                  # update UI to frame 0
 
-        # display indeterminant progress bar, set busy cursor, and update UI to frame 0
-        self.set_save_progress_max_signal.emit(frame_count_raw)         # set progress bar max to max possible (raw) frames
-        emit_update_progress_signal(0)
+        # get the new ctime/mtime to set out output file to (0 means don't change)
+        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=final_dest)
 
     # --- Apply operations to media ---
         # TODO: GIFs should probably use Pillow for their operations
@@ -4799,8 +4794,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     output_locked = output in locked_files
                     locked = [(i, f) for i, f in enumerate(files) if f in locked_files]
                     if locked or output_locked:
-                        logging.info(f'(?) Files to be concatenated and/or the output are locked, cancelling: {missing}')
-                        missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
+                        logging.info(f'(?) Files to be concatenated and/or the output are locked, cancelling: {locked}')
+                        locked_string = '\n'.join(f'{index + 1}. {file}' for index, file in locked)
                         if output_locked:
                             if len(locked) > 1:    header = 'The output path and the files at the following indexes are already being worked on:\n\n'
                             elif len(locked) == 1: header = 'The output path and the file at the following index are already being worked on:\n\n'
@@ -4810,7 +4805,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             else:                  header = 'The files at the following indexes are already being worked on:\n\n'
                         qthelpers.getPopup(
                             title='Concatenation canceled!',
-                            text=header + missing_string,
+                            text=header + locked_string,
                             icon='warning',
                             **self.get_popup_location()
                         ).exec()
@@ -4874,23 +4869,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             NOTE: Unlike `self._save()`, this is safe to call independently of
             `self.concatenate()`, but like `self._save()`, this should only be
             done through a thread (or the GUI will freeze while encoding). '''
+
+        start_time = get_time()
+        successful = True
+
+        # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
+        final_dest = dest
+        dest = add_path_suffix(dest, '_temp', unique=True)
+
+        # lock all files and destination
+        locked_files = self.locked_files
+        locked_files.update(files)
+        locked_files.add(dest)
+
+        # stop player if we're deleting the current media or saving to its path
+        if self.video == dest or (delete and self.video in files):
+            self.stop()
+            emit_update_progress_signal(0)                  # update UI to frame 0
+
+        # calculate timestamps for final output based on our input files
+        new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
+
         try:
-            final_dest = dest
-            dest = add_path_suffix(dest, '_temp', unique=True)
-            original_files = files.copy()
-
-            # lock all files and destination
-            locked_files = self.locked_files
-            locked_files.update(files)
-            locked_files.add(dest)
-
-            # stop player if we're deleting the current media or saving to its path
-            if self.video == dest or (delete and self.video in files):
-                self.stop()
-
-            # calculate timestamps for final output based on our input files
-            new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
-
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
                 inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
@@ -4946,27 +4946,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 for intermediate_file in intermediate_files:
                     try: os.remove(intermediate_file)
                     except: pass
-
-            try:
-                # confirm/validate/cleanup our output
-                if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
-                    return
-
-                # post-concat activites
-                if open:     self.open_from_thread(file=final_dest, focus_window=settings.checkFocusOnEdit.isChecked())
-                if explore:  qthelpers.openPath(final_dest, explore=True)
-                log_on_statusbar(f'Concatenation saved to {final_dest}.')
-            except:
-                log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
         except:                                             # return without doing post-concat activities
+            successful = False
             return log_on_statusbar(f'(!) CONCATENATION FAILED: {format_exc()}')
 
-        # always cleanup temp path, unlock all files, and refresh `dest`'s probe file
+        # --- Post-concat cleanup & opening/exploring our newly edited media ---
+        try:
+            if successful:                                  # confirm/validate/cleanup our output
+                if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
+                    return
+                if open:
+                    self.open_from_thread(file=final_dest, focus_window=settings.checkFocusOnEdit.isChecked())
+                if explore:
+                    qthelpers.openPath(final_dest, explore=True)
+                log_on_statusbar(f'Concatenation saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
+        except:
+            log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
         finally:
             locked_files.discard(dest)
             locked_files.discard(final_dest)
             locked_files.difference_update(files)
-            locked_files.difference_update(original_files)
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
@@ -6452,7 +6451,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     class P:
                         ''' Enum representing points of the crop rectangle in QVideoPlayer.selection. Used here
                             purely for readablity purposes, performance impact is not worth it in realtime. '''
-                        __slots__ = ()
                         TOP_LEFT = 0
                         TOP_RIGHT = 1
                         BOTTOM_LEFT = 2
