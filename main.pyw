@@ -619,6 +619,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.dockControls.resizeEvent = self.dockControlsResizeEvent         # ensures dockControls correctly hides/shows widgets in fullscreen
         self.dockControls.keyPressEvent = self.keyPressEvent                 # pass dockControls key presses directly to GUI_Instance
         self.dockControls.keyReleaseEvent = self.keyReleaseEvent
+        self.dockControls.enterEvent = lambda e: self.dockControls.unsetCursor()
+        self.menubar.enterEvent = lambda e: self.menubar.unsetCursor()
 
         self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
@@ -1307,6 +1309,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.ignore_next_right_click = False
             return
         context = QtW.QMenu(self)
+
+        # HACK: reset the player's base cursor (and then again after a short delay)...
+        # ...to fix one of many obscure cursor bugs that can occur after drag-and-drops
+        def reset():
+            self.vlc.setCursor(Qt.ArrowCursor)
+            self.vlc.unsetCursor()
+        reset()
+        QtCore.QTimer.singleShot(50, Qt.CoarseTimer, reset)
 
         # add crop/zoom toggle if in crop mode or we're zoomed in
         if self.actionCrop.isChecked():

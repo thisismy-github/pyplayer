@@ -648,6 +648,8 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
         # right-click released -> reset cursor to default for context menu
         if event.button() == Qt.RightButton:
+            self.setCursor(Qt.ArrowCursor)              # HACK: reset base cursor as well to...
+            self.unsetCursor()                          # ...fix obscure drag-and-drop cursor bugs
             while app.overrideCursor():
                 app.restoreOverrideCursor()
 
@@ -679,6 +681,11 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
         ''' Automatically stop dragging, reset the cursor, and
             lock the cursor/UI when the mouse leaves the player. '''
         self.idle_timeout_time = 0.0                    # 0 locks the cursor/UI
+
+        # HACK: set base cursors for the widgets above/below the player...
+        # ...to fix various obscure cursor bugs related to drag-and-drop
+        gui.dockControls.setCursor(Qt.ArrowCursor)      # (these are unset in their `enterEvent`s)
+        gui.menubar.setCursor(Qt.ArrowCursor)
 
         # if cropping & the mouse is still over the player but NOT the controls (in fullscreen),...
         # ...don't reset cursor (the player AND each crop frame trigger their own `leaveEvent`'s)
@@ -793,7 +800,14 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             - Ctrl         -> Adds single media file as an audio track.
             - Shift        -> Concatenates media file(s) to the end of the current media.
             - Alt          -> Concatenates media file(s) to the start of the current media. '''
+
+        # clear messages
         self.reset_dragdrop_status()
+
+        # HACK: reset base cursor to help fix several cursor bugs
+        self.setCursor(Qt.ArrowCursor)
+        self.unsetCursor()
+
         files = self.dragdrop_files
         if gui.isFullScreen():  focus_window = settings.checkFocusOnDropFullscreen.isChecked()
         elif gui.isMaximized(): focus_window = settings.checkFocusOnDropMaximized.isChecked()
