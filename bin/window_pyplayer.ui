@@ -453,604 +453,7 @@
         <property name="bottomMargin">
          <number>0</number>
         </property>
-        <item row="0" column="1">
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <property name="spacing">
-           <number>1</number>
-          </property>
-          <item>
-           <widget class="QPushButton" name="buttonTrimStart">
-            <property name="minimumSize">
-             <size>
-              <width>44</width>
-              <height>18</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>95</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>Click to set the starting position of a trim/
-the point where the intro fade will stop.
-
-Right-click for more options.</string>
-            </property>
-            <property name="text">
-             <string notr="true">Start</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="buttonTrimEnd">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>18</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>95</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>Click to set the ending position of a trim/
-the point where the outro fade will stop.
-
-Right-click for more options.</string>
-            </property>
-            <property name="text">
-             <string notr="true">End</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="0" column="3">
-         <layout class="QGridLayout" name="gridLayout_6" columnstretch="0,0,0,0,0,1,0">
-          <property name="bottomMargin">
-           <number>1</number>
-          </property>
-          <property name="verticalSpacing">
-           <number>1</number>
-          </property>
-          <item row="0" column="6" rowspan="2">
-           <widget class="QFrame" name="frameQuickChecks">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>38</height>
-             </size>
-            </property>
-            <layout class="QVBoxLayout" name="verticalLayout_2">
-             <property name="spacing">
-              <number>2</number>
-             </property>
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <spacer name="verticalSpacer">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="checkDeleteOriginal">
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>13</height>
-                </size>
-               </property>
-               <property name="focusPolicy">
-                <enum>Qt::NoFocus</enum>
-               </property>
-               <property name="toolTip">
-                <string notr="true">Tristate:
-
-Partially checked - videos will be marked
-for deletion after saving an edit.
-
-Fully checked - videos will be immediately
-deleted after successfully saving an edit.
-
-Note: File deletion/recycling
-is dependent on your settings.</string>
-               </property>
-               <property name="text">
-                <string notr="true">Delete originals</string>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QCheckBox" name="checkSkipMarked">
-               <property name="minimumSize">
-                <size>
-                 <width>103</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>13</height>
-                </size>
-               </property>
-               <property name="focusPolicy">
-                <enum>Qt::NoFocus</enum>
-               </property>
-               <property name="toolTip">
-                <string notr="true">If checked, using the next/previous video buttons will
-skip over files that have been marked for deletion.</string>
-               </property>
-               <property name="text">
-                <string notr="true">Skip marked files</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item row="1" column="0" colspan="5">
-           <widget class="QLineEditPassthrough" name="lineOutput">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>120</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>No media is currently playing.</string>
-            </property>
-            <property name="maxLength">
-             <number>155</number>
-            </property>
-            <property name="placeholderText">
-             <string notr="true">Output name</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0" colspan="4">
-           <layout class="QHBoxLayout" name="hlayoutQuickButtons">
-            <property name="spacing">
-             <number>6</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QPushButton" name="buttonExploreMediaPath">
-              <property name="minimumSize">
-               <size>
-                <width>22</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>22</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>Open media location</string>
-              </property>
-              <property name="text">
-               <string notr="true">📂</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="buttonMarkDeleted">
-              <property name="minimumSize">
-               <size>
-                <width>22</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>22</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>Mark media for future deletion.
-0 files are currently marked for deletion.
-
-Shortcuts:
-Shift + click: Show deletion-confirmation prompt.
-Ctrl + click: Immediately delete current media.
-
-Right-click for more options. Deletion-confirmation
-prompt is shown on exit if any files are marked.</string>
-              </property>
-              <property name="text">
-               <string notr="true">❌</string>
-              </property>
-              <property name="checkable">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="buttonSnapshot">
-              <property name="minimumSize">
-               <size>
-                <width>22</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>22</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>Takes a snapshot of the current media at its current position.
-
-Ctrl + click: Opens size and save-file dialogs for your snapshot.
-Shift + click: Opens the last snapshot in PyPlayer.
-Alt + click: Opens the last snapshot in your default program.
-
-Right-click for more options.</string>
-              </property>
-              <property name="text">
-               <string notr="true">📷</string>
-              </property>
-              <property name="checkable">
-               <bool>false</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="buttonLoop">
-              <property name="minimumSize">
-               <size>
-                <width>22</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>22</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>11</pointsize>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>If checked, media loops upon completion — even with autoplay enabled.</string>
-              </property>
-              <property name="text">
-               <string notr="true"/>
-              </property>
-              <property name="checkable">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="buttonAutoplay">
-              <property name="minimumSize">
-               <size>
-                <width>22</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>22</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>9</pointsize>
-                <weight>50</weight>
-                <bold>false</bold>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>If checked, the next valid media file in the current folder will
-automatically play upon completion of the current media.</string>
-              </property>
-              <property name="text">
-               <string notr="true"/>
-              </property>
-              <property name="checkable">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="buttonPrevious">
-              <property name="minimumSize">
-               <size>
-                <width>20</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>20</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>Plays the previous media file in the current folder.
-
-Click: Plays previous valid file.
-Ctrl + click: Plays a random file.
-Shift + click: Plays previous valid file that matches the current mime type (video, audio, or image).
-Alt + click: Plays a random file that matches the current mime type (video, audio, or image).
-
-Right-click for more options.</string>
-              </property>
-              <property name="text">
-               <string notr="true"/>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="buttonNext">
-              <property name="minimumSize">
-               <size>
-                <width>20</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>20</width>
-                <height>18</height>
-               </size>
-              </property>
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-               </font>
-              </property>
-              <property name="focusPolicy">
-               <enum>Qt::NoFocus</enum>
-              </property>
-              <property name="toolTip">
-               <string>Plays the next media file in the current folder.
-
-Click: Plays next valid file.
-Ctrl + click: Plays a random file.
-Shift + click: Plays next valid file that matches the current mime type (video, audio, or image).
-Alt + click: Plays a random file that matches the current mime type (video, audio, or image).
-
-Right-click for more options.</string>
-              </property>
-              <property name="text">
-               <string notr="true"/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="0" column="5" rowspan="2">
-           <widget class="QFrame" name="frameCropInfo">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Ignored">
-              <horstretch>1</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>38</height>
-             </size>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::WinPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Raised</enum>
-            </property>
-            <layout class="QGridLayout" name="gridLayout_4">
-             <property name="leftMargin">
-              <number>2</number>
-             </property>
-             <property name="topMargin">
-              <number>2</number>
-             </property>
-             <property name="rightMargin">
-              <number>2</number>
-             </property>
-             <property name="bottomMargin">
-              <number>2</number>
-             </property>
-             <property name="verticalSpacing">
-              <number>0</number>
-             </property>
-             <item row="1" column="5">
-              <widget class="QLabel" name="labelCropRight">
-               <property name="text">
-                <string>R: 0</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="5">
-              <widget class="QLabel" name="labelCropLeft">
-               <property name="text">
-                <string>L: 0</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="4" rowspan="2">
-              <widget class="Line" name="line_2">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2" rowspan="2">
-              <widget class="Line" name="line">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="3">
-              <widget class="QLabel" name="labelCropBottom">
-               <property name="text">
-                <string>B: 0</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="3">
-              <widget class="QLabel" name="labelCropTop">
-               <property name="text">
-                <string>T: 0</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>Crop:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QLabel" name="labelCropSize">
-               <property name="text">
-                <string>0x0</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignCenter</set>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0" rowspan="2">
-              <spacer name="horizontalSpacer_3">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item row="0" column="4">
-           <spacer name="spacerToolbar">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeType">
-             <enum>QSizePolicy::Maximum</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>5</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </item>
-        <item row="0" column="4">
+        <item row="0" column="5">
          <widget class="QFrame" name="frameVolume">
           <property name="lineWidth">
            <number>0</number>
@@ -1131,6 +534,527 @@ Right-click for more options.</string>
           </property>
          </widget>
         </item>
+        <item row="0" column="4">
+         <layout class="QGridLayout" name="gridLayout_6" columnstretch="1,0,0">
+          <property name="bottomMargin">
+           <number>1</number>
+          </property>
+          <property name="horizontalSpacing">
+           <number>13</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>1</number>
+          </property>
+          <item row="0" column="2" rowspan="2">
+           <widget class="QFrame" name="frameQuickChecks">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>38</height>
+             </size>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>5</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <spacer name="verticalSpacer">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkDeleteOriginal">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>13</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string notr="true">Tristate:
+
+Partially checked - videos will be marked
+for deletion after saving an edit.
+
+Fully checked - videos will be immediately
+deleted after successfully saving an edit.
+
+Note: File deletion/recycling
+is dependent on your settings.</string>
+               </property>
+               <property name="text">
+                <string notr="true">Delete originals</string>
+               </property>
+               <property name="tristate">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkSkipMarked">
+               <property name="minimumSize">
+                <size>
+                 <width>103</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>13</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="toolTip">
+                <string notr="true">If checked, using the next/previous video buttons will
+skip over files that have been marked for deletion.</string>
+               </property>
+               <property name="text">
+                <string notr="true">Skip marked files</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="0" column="1" rowspan="2">
+           <widget class="QFrame" name="frameCropInfo">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Ignored">
+              <horstretch>1</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>38</height>
+             </size>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::WinPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <property name="leftMargin">
+              <number>2</number>
+             </property>
+             <property name="topMargin">
+              <number>2</number>
+             </property>
+             <property name="rightMargin">
+              <number>3</number>
+             </property>
+             <property name="bottomMargin">
+              <number>2</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>0</number>
+             </property>
+             <item row="0" column="3" rowspan="2">
+              <widget class="Line" name="line_2">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="4">
+              <widget class="QLabel" name="labelCropRight">
+               <property name="text">
+                <string>R: 0</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="4">
+              <widget class="QLabel" name="labelCropLeft">
+               <property name="text">
+                <string>L: 0</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="labelCropSize">
+               <property name="text">
+                <string>0x0</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1" rowspan="2">
+              <widget class="Line" name="line">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLabel" name="labelCropBottom">
+               <property name="text">
+                <string>B: 0</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="labelCropTop">
+               <property name="text">
+                <string>T: 0</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>Crop:</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="0" column="0" rowspan="2">
+           <layout class="QGridLayout" name="glayoutQuickButtons">
+            <property name="horizontalSpacing">
+             <number>6</number>
+            </property>
+            <property name="verticalSpacing">
+             <number>1</number>
+            </property>
+            <item row="0" column="7">
+             <spacer name="spacerToolbar">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeType">
+               <enum>QSizePolicy::MinimumExpanding</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>5</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="6">
+             <widget class="QPushButton" name="buttonNext">
+              <property name="minimumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Plays the next media file in the current folder.
+
+Click: Plays next valid file.
+Ctrl + click: Plays a random file.
+Shift + click: Plays next valid file that matches the current mime type (video, audio, or image).
+Alt + click: Plays a random file that matches the current mime type (video, audio, or image).
+
+Right-click for more options.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="buttonMarkDeleted">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Mark media for future deletion.
+0 files are currently marked for deletion.
+
+Shortcuts:
+Shift + click: Show deletion-confirmation prompt.
+Ctrl + click: Immediately delete current media.
+
+Right-click for more options. Deletion-confirmation
+prompt is shown on exit if any files are marked.</string>
+              </property>
+              <property name="text">
+               <string notr="true">❌</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QPushButton" name="buttonLoop">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>11</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>If checked, media loops upon completion — even with autoplay enabled.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QPushButton" name="buttonExploreMediaPath">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Open media location</string>
+              </property>
+              <property name="text">
+               <string notr="true">📂</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QPushButton" name="buttonSnapshot">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Takes a snapshot of the current media at its current position.
+
+Ctrl + click: Opens size and save-file dialogs for your snapshot.
+Shift + click: Opens the last snapshot in PyPlayer.
+Alt + click: Opens the last snapshot in your default program.
+
+Right-click for more options.</string>
+              </property>
+              <property name="text">
+               <string notr="true">📷</string>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="4">
+             <widget class="QPushButton" name="buttonAutoplay">
+              <property name="minimumSize">
+               <size>
+                <width>22</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>22</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>9</pointsize>
+                <weight>50</weight>
+                <bold>false</bold>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>If checked, the next valid media file in the current folder will
+automatically play upon completion of the current media.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="5">
+             <widget class="QPushButton" name="buttonPrevious">
+              <property name="minimumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>20</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+               </font>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::NoFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>Plays the previous media file in the current folder.
+
+Click: Plays previous valid file.
+Ctrl + click: Plays a random file.
+Shift + click: Plays previous valid file that matches the current mime type (video, audio, or image).
+Alt + click: Plays a random file that matches the current mime type (video, audio, or image).
+
+Right-click for more options.</string>
+              </property>
+              <property name="text">
+               <string notr="true"/>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0" colspan="8">
+             <widget class="QLineEditPassthrough" name="lineOutput">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>120</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="toolTip">
+               <string>No media is currently playing.</string>
+              </property>
+              <property name="maxLength">
+               <number>155</number>
+              </property>
+              <property name="placeholderText">
+               <string notr="true">Output name</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
         <item row="0" column="0">
          <layout class="QGridLayout" name="gridLayout_3">
           <property name="horizontalSpacing">
@@ -1138,80 +1062,76 @@ Right-click for more options.</string>
           </property>
           <item row="0" column="1">
            <layout class="QGridLayout" name="gridLayout_2">
-            <property name="spacing">
+            <property name="horizontalSpacing">
+             <number>1</number>
+            </property>
+            <property name="verticalSpacing">
              <number>2</number>
             </property>
-            <item row="1" column="0">
-             <layout class="QHBoxLayout" name="horizontalLayout_2">
-              <property name="spacing">
-               <number>1</number>
+            <item row="1" column="2">
+             <widget class="QSpinBoxPassthrough" name="spinSecond">
+              <property name="minimumSize">
+               <size>
+                <width>32</width>
+                <height>18</height>
+               </size>
               </property>
-              <item>
-               <widget class="QSpinBoxPassthrough" name="spinHour">
-                <property name="minimumSize">
-                 <size>
-                  <width>32</width>
-                  <height>18</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>0</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBoxPassthrough" name="spinMinute">
-                <property name="minimumSize">
-                 <size>
-                  <width>32</width>
-                  <height>18</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>0</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-                <property name="maximum">
-                 <number>59</number>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBoxPassthrough" name="spinSecond">
-                <property name="minimumSize">
-                 <size>
-                  <width>32</width>
-                  <height>18</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>0</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="focusPolicy">
-                 <enum>Qt::ClickFocus</enum>
-                </property>
-                <property name="maximum">
-                 <number>59</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
+              <property name="maximumSize">
+               <size>
+                <width>0</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="maximum">
+               <number>59</number>
+              </property>
+             </widget>
             </item>
-            <item row="2" column="0">
+            <item row="1" column="0">
+             <widget class="QSpinBoxPassthrough" name="spinHour">
+              <property name="minimumSize">
+               <size>
+                <width>32</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>0</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QSpinBoxPassthrough" name="spinMinute">
+              <property name="minimumSize">
+               <size>
+                <width>32</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>0</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::ClickFocus</enum>
+              </property>
+              <property name="maximum">
+               <number>59</number>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="3">
              <widget class="QSpinBoxPassthrough" name="spinFrame">
               <property name="minimumSize">
                <size>
@@ -1268,6 +1188,75 @@ Right-click for more options.</string>
               <width>14</width>
               <height>14</height>
              </size>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="1">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="spacing">
+           <number>1</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="buttonTrimStart">
+            <property name="minimumSize">
+             <size>
+              <width>44</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>95</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Click to set the starting position of a trim/
+the point where the intro fade will stop.
+
+Right-click for more options.</string>
+            </property>
+            <property name="text">
+             <string notr="true">Start</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="buttonTrimEnd">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>18</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>95</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="toolTip">
+             <string>Click to set the ending position of a trim/
+the point where the outro fade will stop.
+
+Right-click for more options.</string>
+            </property>
+            <property name="text">
+             <string notr="true">End</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -1889,10 +1878,6 @@ type (video, audio, or image) as the file you started with.</string>
   <tabstop>buttonPause</tabstop>
   <tabstop>buttonTrimStart</tabstop>
   <tabstop>buttonTrimEnd</tabstop>
-  <tabstop>lineOutput</tabstop>
-  <tabstop>spinHour</tabstop>
-  <tabstop>spinMinute</tabstop>
-  <tabstop>spinSecond</tabstop>
   <tabstop>spinFrame</tabstop>
  </tabstops>
  <resources/>
