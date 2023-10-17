@@ -477,6 +477,30 @@ class Edit:
         gui.set_save_progress_format_signal.emit(self.get_progress_text(frame))
         if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
             gui.taskbar_progress.setValue(value)
+
+        # update our tooltip with the status of all saves in progress
+        avg_value = 0
+        total_edits = len(gui.saves_in_progress)
+        total_operations = 0
+        lines = []
+        for save in gui.saves_in_progress:
+            operation_count = save.operation_count
+            if operation_count > 1:
+                lines.append(f'{save.text} [{save.operations_completed + 1}/{operation_count}] ({save.value}%)')
+            else:
+                lines.append(f'{save.text} ({save.value}%)')
+            total_operations += operation_count
+            avg_value += save.value
+        avg_value /= total_operations
+
+        if total_edits > 1:
+            header = f'{total_operations} operations across {total_edits} edits: {avg_value:.0f}%\n---\n'
+        elif total_operations > 1:
+            header = f'{total_operations} operations: {avg_value:.0f}%\n---\n'
+        else:
+            header = ''
+        footer = '\n'.join(lines)
+        gui.save_progress_bar.setToolTip(f'{header}{footer}')
         return value
 
 
