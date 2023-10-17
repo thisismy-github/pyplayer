@@ -408,6 +408,21 @@ def delete_temp_path(path: str, noun: str = 'file') -> bool:
         return False
 
 
+#def correct_misaligned_formats(audio, video) -> str:                # this barely works
+#    _, vext = os.path.splitext(video)
+#    abase, aext = os.path.splitext(audio)
+#    if vext != aext and not (vext == '.mp4' and aext == '.mp3'):    # audio is not the same format as video
+#        new_audio = f'{abase}{vext}'                                # create new audio filename
+#        logging.info(f'Formats misaligned between audio "{audio}" and video "{video}". Correcting audio to "{new_audio}"')
+#        ffmpeg(None, f'-i "{audio}" "{new_audio}"')                 # convert audio to video's format
+#        audio = new_audio                                           # replace bad audio filename
+#    else: logging.info(f'Formats aligned between audio "{audio}" and video "{video}".')
+#    return audio
+
+
+# ---------------------
+# Editing helper class
+# ---------------------
 class Edit:
     ''' A class for handling, executing, and tracking edits in progress. '''
 
@@ -462,30 +477,6 @@ class Edit:
         gui.set_save_progress_format_signal.emit(self.get_progress_text(frame))
         if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
             gui.taskbar_progress.setValue(value)
-
-        # update our tooltip with the status of all saves in progress
-        avg_value = 0
-        total_edits = len(gui.saves_in_progress)
-        total_operations = 0
-        lines = []
-        for save in gui.saves_in_progress:
-            operation_count = save.operation_count
-            if operation_count > 1:
-                lines.append(f'{save.text} [{save.operations_completed + 1}/{operation_count}] ({save.value}%)')
-            else:
-                lines.append(f'{save.text} ({save.value}%)')
-            total_operations += operation_count
-            avg_value += save.value
-        avg_value /= total_operations
-
-        if total_edits > 1:
-            header = f'{total_operations} operations across {total_edits} edits: {avg_value:.0f}%\n---\n'
-        elif total_operations > 1:
-            header = f'{total_operations} operations: {avg_value:.0f}%\n---\n'
-        else:
-            header = ''
-        footer = '\n'.join(lines)
-        gui.save_progress_bar.setToolTip(f'{header}{footer}')
         return value
 
 
@@ -609,7 +600,7 @@ class Edit:
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
             # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
-            frame_rate = max(1, self.frame_rate or gui.frame_rate)        # used when ffmpeg provides `out_time_ms` instead of `frame`
+            frame_rate = max(1, self.frame_rate or gui.frame_rate)          # used when ffmpeg provides `out_time_ms` instead of `frame`
             use_backup_lines = True
             lines_read = 0
             last_frame = 0
@@ -710,31 +701,8 @@ class Edit:
                     locked_files.discard(temp_infile)
             except:
                 pass
-            if cleanup and not gui.saves_in_progress:  # reset edit progress on statusbar/titlebar/taskbar
+            if cleanup and not gui.saves_in_progress:   # reset edit progress on statusbar/titlebar/taskbar
                 gui.reset_save_progress_bar()
-
-
-#def correct_misaligned_formats(audio, video) -> str:                # this barely works
-#    _, vext = os.path.splitext(video)
-#    abase, aext = os.path.splitext(audio)
-#    if vext != aext and not (vext == '.mp4' and aext == '.mp3'):    # audio is not the same format as video
-#        new_audio = f'{abase}{vext}'                                # create new audio filename
-#        logging.info(f'Formats misaligned between audio "{audio}" and video "{video}". Correcting audio to "{new_audio}"')
-#        ffmpeg(None, f'-i "{audio}" "{new_audio}"')                 # convert audio to video's format
-#        audio = new_audio                                           # replace bad audio filename
-#    else: logging.info(f'Formats aligned between audio "{audio}" and video "{video}".')
-#    return audio
-
-
-#def indeterminate_progress(func):      # originally used for _save()
-#    ''' Cute and pointless decorator for toggling the progress bar inside our status bar without doing it the conventional ways
-#        (adding save_progress_bar.hide() to every return line or wrapping all of _save() in a try-except-finally statement). '''
-#    def wrapper(gui, *args, **kwargs):
-#        gui.save_progress_bar.show()
-#        return_value = func(gui, *args, **kwargs)
-#        gui.save_progress_bar.hide()
-#        return return_value
-#    return wrapper
 
 
 # ---------------------
@@ -919,7 +887,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.dockControls.enterEvent = lambda e: self.dockControls.unsetCursor()
         self.menubar.enterEvent = lambda e: self.menubar.unsetCursor()
 
-        self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
         self.buttonTrimStart.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonTrimEnd.contextMenuEvent = self.trimButtonContextMenuEvent
         self.buttonExploreMediaPath.contextMenuEvent = self.buttonMediaLocationContextMenuEvent
@@ -931,8 +898,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuRecent.contextMenuEvent = self.menuRecentContextMenuEvent
         self.frameProgress.contextMenuEvent = self.frameProgressContextMenuEvent
         self.frameVolume.contextMenuEvent = self.frameVolumeContextMenuEvent
-        self.buttonPause.mousePressEvent = self.buttonPauseMousePressEvent
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
+        self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
+        self.buttonPause.mousePressEvent = self.buttonPauseMousePressEvent
 
         # set default icons for various buttons
         self.buttonPause.setIcon(self.icons['pause'])
@@ -1693,7 +1661,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.spinFrame.setMinimumSize(0, 0)
 
 
-
     def frameProgressContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the progress slider. '''
         precision_action = QtW.QAction(settings.checkHighPrecisionProgress.text())
@@ -1705,14 +1672,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context = QtW.QMenu(self)
         context.setToolTipsVisible(True)
         context.addAction(precision_action)
-        context.exec(event.globalPos())
-
-
-    def buttonPauseContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
-        ''' Handles the context (right-click) menu for the pause button. '''
-        context = QtW.QMenu(self)
-        context.addAction(self.actionStop)
-        context.addAction('Restart', set_and_update_progress)               # TODO this might have timing issues with update_thread
         context.exec(event.globalPos())
 
 
@@ -1919,6 +1878,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             since the slider can be disabled. Unmutes on left-click. '''
         if event.button() == Qt.LeftButton:
             self.set_mute(False)
+
+
+    def buttonPauseContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
+        ''' Handles the context (right-click) menu for the pause button. '''
+        context = QtW.QMenu(self)
+        context.addAction(self.actionStop)
+        context.addAction('Restart', set_and_update_progress)               # TODO this might have timing issues with update_thread
+        context.exec(event.globalPos())
 
 
     def buttonPauseMousePressEvent(self, event: QtGui.QMouseEvent):
