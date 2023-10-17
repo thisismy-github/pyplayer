@@ -444,6 +444,23 @@ class Edit:
         self.override_text = False
 
 
+    def give_priority(self, update_others: bool = True):
+        ''' Refreshes progress bar/taskbar to this edit's values if we've been
+            given priority over updating the progress bar. If `update_others`
+            is True, all other edits in `gui.saves_in_progress` will have
+            their `has_priority` properties set to False. '''
+        if update_others:
+            for save in gui.saves_in_progress:
+                save.has_priority = False
+        self.has_priority = True
+        if self.frame == 0:             # assume we haven't parsed any output yet
+            gui.set_save_progress_format_signal.emit(self.start_text)
+            gui.set_save_progress_current_signal.emit(0)
+        else:
+            self.set_progress_bar(value=self.value)
+        gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
+
+
     def get_progress_text(self, frame: int = 0) -> str:
         ''' Returns `text` surrounded by relevant information, e.g.
             "2 edits in progress - Trimming [1/3] (25%)". %v and %m
@@ -566,25 +583,27 @@ class Edit:
             Returns the actual final output path. '''
 
         start = get_time()
-        self.has_priority = len(gui.saves_in_progress) == 1
+        locked_files = gui.locked_files
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
-        # aliases, then show progress bar and set progress bar format text
-        locked_files = gui.locked_files
-        emit_progress_text = gui.set_save_progress_format_signal.emit
-        emit_progress_value = gui.set_save_progress_current_signal.emit
-        use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
+        # set text-format-related properties based on parameters and existing values
+        self.override_text = bool(text_override)
+        self.start_text = start_text or text_override or self.get_progress_text()
+        self.text = text_override or text or self.text
+        if percent_format is not None:
+            self.percent_format = percent_format
 
-        if start_text is None:
-            start_text = text_override or self.get_progress_text()
-
-        if self.has_priority:
-            emit_progress_text(start_text)
-            emit_progress_value(0)                      # we must call this to actually show the progress bar
+        # prepare the progress bar/taskbar/titlebar if no other edits are active
+        had_priority = len(gui.saves_in_progress) == 1
+        if had_priority:
+            self.has_priority = True
+            gui.set_save_progress_format_signal.emit(self.start_text)
+            gui.set_save_progress_current_signal.emit(0)    # we must call this to actually show the progress bar
             gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
             gui.set_save_progress_visible_signal.emit(True)
-            if use_taskbar_progress:
+            if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
                 gui.taskbar_progress.reset()
+            refresh_title()
 
         # see if a valid `infile` was actually provided. it's okay if it wasn't, as long as `outfile` is valid
         try: infile_provided = infile and exists(infile)
@@ -634,16 +653,20 @@ class Edit:
                 if process.poll() is not None:
                     break
 
-                # update whether or not this thread gets to control the progress bar
+                # check if this thread lost priority
+                if had_priority and not self.has_priority:
+                    had_priority = False
+
+                # check if this thread was manually set to control the progress bar
+                if not had_priority and self.has_priority:
+                    had_priority = True
+                    self.give_priority()
+
+                # check if this thread should automatically start controlling the progress bar
                 if not self.has_priority:
                     if len(gui.saves_in_progress) == 1:
-                        self.has_priority = True
-                        if last_frame == 0:             # assume we haven't parsed any output yet
-                            emit_progress_text(start_text)
-                            emit_progress_value(0)      # we must call this to actually show the progress bar
-                        else:
-                            self.set_progress_bar(last_frame)
-                        gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
+                        had_priority = True
+                        self.give_priority()
 
                 # loop over stdout until we get to the line(s) we want
                 # this us sleep between loops without falling behind, saving a lot of resources
@@ -933,6 +956,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
         self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
         self.buttonPause.mousePressEvent = self.buttonPauseMousePressEvent
+        self.save_progress_bar.mouseReleaseEvent = self.editProgressBarMouseReleaseEvent
 
         # set default icons for various buttons
         self.buttonPause.setIcon(self.icons['pause'])
@@ -1925,6 +1949,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             since the slider can be disabled. Unmutes on left-click. '''
         if event.button() == Qt.MiddleButton: self.stop()
         else: QtW.QPushButton.mousePressEvent(self.buttonPause, event)
+
+
+    def editProgressBarMouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        ''' Handles clicking (and releasing) over the edit progress bar,
+            cycling which edit currently has priority on left-click. '''
+        if len(self.saves_in_progress) > 1 and event.button() == Qt.LeftButton:
+            self.cycle_edit_priority()
 
 
     # ---------------------
@@ -4593,6 +4624,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> FFMPEG <<<
     # ---------------------
+    def cycle_edit_priority(self):
+        ''' Gives priority to the edit at `self.saves_in_progress`'s next index,
+            wrapping if necessary. Updates the progress bar immediately. '''
+        saves = self.saves_in_progress
+        for new_index, save in enumerate(saves, start=1):
+            if save.has_priority:
+                save.has_priority = False
+                saves[new_index % len(saves)].give_priority()
+                break
+
+
+    def get_edit_with_priority(self) -> Edit:
+        ''' Returns the `Edit` object in `self.saves_in_progress` that currently
+            has priority. Only returns the first one found. '''
+        for save in self.saves_in_progress:
+            if save.has_priority:
+                return save
+
+
     def set_trim_start(self, *args, force: bool = False):
         ''' Validates a start-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
