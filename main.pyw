@@ -937,6 +937,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.save_progress_bar.setFormat('Saving (%p%)')                     # TODO add "(%v/%m frames)"?
         self.save_progress_bar.setAlignment(Qt.AlignCenter)
         self.save_progress_bar.setSizePolicy(QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Expanding)
+        self.save_progress_bar.setCursor(Qt.PointingHandCursor)
         self.save_progress_bar.hide()
 
         # set custom one-off event handlers for various widgets
@@ -965,6 +966,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
         self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
         self.buttonPause.mousePressEvent = self.buttonPauseMousePressEvent
+        self.save_progress_bar.contextMenuEvent = self.editProgressBarContextMenuEvent
         self.save_progress_bar.mouseReleaseEvent = self.editProgressBarMouseReleaseEvent
 
         # set default icons for various buttons
@@ -1958,6 +1960,59 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             since the slider can be disabled. Unmutes on left-click. '''
         if event.button() == Qt.MiddleButton: self.stop()
         else: QtW.QPushButton.mousePressEvent(self.buttonPause, event)
+
+
+    def editProgressBarContextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        ''' Handles the context (right-click) menu for the edit progress bar,
+            allowing you to see, display, and cancel all active saves. '''
+        context = QtW.QMenu(self)
+
+        # add a "Cancel all" action, if appropriate
+        action_cancel_all = QtW.QAction('Cancel all')
+        if not self.saves_in_progress: action_cancel_all.setEnabled(False)
+        else: action_cancel_all.triggered.connect(self.cancel_all)
+        context.addAction(action_cancel_all)
+        context.addSeparator()
+
+        # workarounds for python bug/oddity involving creating lambdas in iterables
+        # (needed for the actions to actually remember which edit they belong to)
+        def cancel(save: Edit): save.cancelled = True
+        get_cancel_lambda =   lambda save: lambda: cancel(save)
+        get_priority_lambda = lambda save: lambda: save.give_priority()
+
+        # workaround for python bug/oddity involving local scope variables in iterables or something
+        # (this is the only way i could manage to actually get all of the submenus to even appear)
+        action_dicts = {}
+
+        # this + the above workarounds took like two hours to get working
+        for save in self.saves_in_progress:
+            action_dicts[save] = {}
+            action_dict = action_dicts[save]
+
+            # set edit's menu title with text, operation count, and (operation) progress
+            operation_count = save.operation_count
+            if operation_count > 1:
+                submenu = QtW.QMenu(f'{save.text} [{save.operations_completed + 1}/{operation_count}] ({save.value}%)', context)
+            else:
+                submenu = QtW.QMenu(f'{save.text} ({save.value}%)', context)
+
+            # give priority to selected edit (if possible)
+            if save.has_priority:
+                action_dict['priority'] = QtW.QAction('Currently displayed')
+                action_dict['priority'].setEnabled(False)
+            else:
+                action_dict['priority'] = QtW.QAction('Display')
+                action_dict['priority'].triggered.connect(get_priority_lambda(save))
+
+            # cancel selected edit
+            action_dict['cancel'] = QtW.QAction('Cancel')
+            action_dict['cancel'].triggered.connect(get_cancel_lambda(save))
+
+            submenu.addAction(action_dict['priority'])
+            submenu.addAction(action_dict['cancel'])
+            context.addMenu(submenu)
+
+        context.exec(event.globalPos())
 
 
     def editProgressBarMouseReleaseEvent(self, event: QtGui.QMouseEvent):
