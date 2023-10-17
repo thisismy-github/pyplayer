@@ -426,11 +426,12 @@ def delete_temp_path(path: str, noun: str = 'file') -> bool:
 class Edit:
     ''' A class for handling, executing, and tracking edits in progress. '''
 
-    __slots__ = ('has_priority', 'frame_rate', 'frame_count', 'operation_count',
-                 'operations_completed', 'frame', 'value', 'text',
-                 'percent_format', 'start_text', 'override_text')
+    __slots__ = ('cancelled', 'has_priority', 'frame_rate', 'frame_count',
+                 'operation_count', 'operations_completed', 'frame', 'value',
+                 'text', 'percent_format', 'start_text', 'override_text')
 
     def __init__(self):
+        self.cancelled = False
         self.has_priority = False
         self.frame_rate = 0.0
         self.frame_count = 0
@@ -653,6 +654,10 @@ class Edit:
                 if process.poll() is not None:
                     break
 
+                # edit cancelled -> kill this thread's ffmpeg process and cleanup
+                if self.cancelled:
+                    raise AssertionError('Cancelled.')
+
                 # check if this thread lost priority
                 if had_priority and not self.has_priority:
                     had_priority = False
@@ -727,8 +732,12 @@ class Edit:
             log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
             return outfile
 
-        except:
-            log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
+        except Exception as error:
+            if str(error) == 'Cancelled.':
+                log_on_statusbar('Cancelling...')
+                logging.info(f'FFmpeg operation cancelled after {get_time() - start:.1f} seconds. Cleaning up...')
+            else:
+                log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
 
             # aggressively terminate ffmpeg process in case it's still running
             # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
@@ -4710,9 +4719,37 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     **self.get_popup_location()
                 )
             )
-        else:                                               # only include `start_time` if provided
+        elif text == 'Cancelled.':
+            if not start_time: log_on_statusbar(f'{noun} cancelled.')
+            else: log_on_statusbar(f'{noun} cancelled after {get_time() - start_time:.1f} seconds.')
+        else:
             if not start_time: log_on_statusbar(f'(!) {noun.upper()} FAILED: {format_exc()}')
             else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_time() - start_time:.1f} SECONDS: {format_exc()}')
+
+
+    def cancel_all(self, *args, wait: bool = False):
+        ''' Cancels all edits in progress. If `wait` is True, this method
+            blocks until the offending `Edit` objects are no longer in
+            `self.saves_in_progress`, while ignoring any edits started
+            after this method is called. '''
+
+        # NOTE: this method works on the assumption a cancelled edit isn't removed from...
+        # ...`self.saves_in_progress` until its FFmpeg process is confirmed to be killed
+        logging.info('Cancelling all active edits...')
+        if wait: to_cancel = self.saves_in_progress.copy()
+        else:    to_cancel = self.saves_in_progress
+
+        for save in to_cancel:
+            save.cancelled = True
+
+        if wait:
+            while True:
+                sleep(0.1)
+                for save in to_cancel:
+                    if save in self.saves_in_progress:
+                        continue
+                break
+            log_on_statusbar('All edits cancelled, killed, and cleaned up.')
 
 
     def cycle_edit_priority(self):
