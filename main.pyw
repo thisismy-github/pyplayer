@@ -408,13 +408,310 @@ def delete_temp_path(path: str, noun: str = 'file') -> bool:
         return False
 
 
-class SaveParameters:
-    __slots__ = 'frame_rate', 'frame_count', 'operation_count', 'operations_completed'
+class Edit:
+    ''' A class for handling, executing, and tracking edits in progress. '''
+
+    __slots__ = ('has_priority', 'frame_rate', 'frame_count', 'operation_count',
+                 'operations_completed', 'frame', 'value', 'text',
+                 'percent_format', 'start_text', 'override_text')
+
     def __init__(self):
+        self.has_priority = False
         self.frame_rate = 0.0
         self.frame_count = 0
         self.operation_count = 0
         self.operations_completed = 0
+        self.frame = 0
+        self.value = 0
+        self.text = 'Saving'
+        self.percent_format = '(%p%)'
+        self.start_text = 'Saving'
+        self.override_text = False
+
+
+    def get_progress_text(self, frame: int = 0) -> str:
+        ''' Returns `text` surrounded by relevant information, e.g.
+            "2 edits in progress - Trimming [1/3] (25%)". %v and %m
+            are manually replaced by `frame` and `self.frame_count`.
+            If `self.frame_count` is 0, "?" is used instead. '''
+        if self.override_text:
+            return self.text
+        if (save_count := len(gui.saves_in_progress)) > 1:
+            format = f'{save_count} edits in progress - {self.text}'
+        else:
+            format = self.text
+        if self.operation_count > 1:
+            format = f'{format} [{self.operations_completed + 1}/{self.operation_count}] {self.percent_format}'
+        else:
+            format = f'{format} {self.percent_format}'
+        return format.replace('%v', str(frame)).replace('%m', str(self.frame_count or '?'))
+
+
+    def set_progress_bar(self, frame: int = None, value: int = None) -> int:
+        ''' Sets the progress bar/taskbar button to `frame`/`Edit.frame_count`.
+            Updates the progress bar's text. Returns the new percentage. '''
+        if value is None:
+            value = int((frame / max(1, self.frame_count)) * 100)
+        self.value = value
+        self.frame = frame
+        if not self.has_priority:
+            return value
+
+        # update progress bar, titlebar, and taskbar with our current value/text
+        gui.set_save_progress_current_signal.emit(value)
+        gui.set_save_progress_format_signal.emit(self.get_progress_text(frame))
+        if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
+            gui.taskbar_progress.setValue(value)
+
+        # update our tooltip with the status of all saves in progress
+        avg_value = 0
+        total_edits = len(gui.saves_in_progress)
+        total_operations = 0
+        lines = []
+        for save in gui.saves_in_progress:
+            operation_count = save.operation_count
+            if operation_count > 1:
+                lines.append(f'{save.text} [{save.operations_completed + 1}/{operation_count}] ({save.value}%)')
+            else:
+                lines.append(f'{save.text} ({save.value}%)')
+            total_operations += operation_count
+            avg_value += save.value
+        avg_value /= total_operations
+
+        if total_edits > 1:
+            header = f'{total_operations} operations across {total_edits} edits: {avg_value:.0f}%\n---\n'
+        elif total_operations > 1:
+            header = f'{total_operations} operations: {avg_value:.0f}%\n---\n'
+        else:
+            header = ''
+        footer = '\n'.join(lines)
+        gui.save_progress_bar.setToolTip(f'{header}{footer}')
+        return value
+
+
+    def ffmpeg(
+        self,
+        infile: str,
+        cmd: str,
+        outfile: str = None,
+        text: str = None,
+        start_text: str = None,
+        percent_format: str = None,
+        text_override: str = None,
+        cleanup: bool = False,
+        lock: bool = False
+    ) -> str:
+        ''' Executes an FFmpeg `cmd` on `infile` and outputs to `outfile`,
+            showing a progress bar on both the statusbar and the taskbar icon
+            (on Windows) by parsing FFmpeg's output. "%in" and "%out" will be
+            replaced within `cmd` if provided. If `outfile` is specified, "%out"
+            will be appended to the end of `cmd` if needed. `infile` and "%in"
+            do not necessarily need to be included, but you should not include
+            "%in" if you are not providing `infile`.
+
+            NOTE: This method will only update the progress bar if this edit
+            has priority. Priority may change mid-operation and is gained
+            whenever `len(gui.saves_in_progress) == 1`.
+
+            `Edit.frame_rate` is a hint for the progress bar as to what frame
+            rate to use when normal frame-output from FFmpeg is not available
+            (such as for audio files) and we must convert timestamp-output to
+            frames instead. If not provided, `gui.frame_rate` is used.
+
+            `Edit.frame_count` is the target value that is used to calculate
+            our current progress percentage. If not provided and this operation
+            has priority, the progress bar switches to an indeterminate bar.
+
+            `text` specifies the main text that will appear on the progress bar
+            (while this edit has priority), surrounded by relevant information
+            such as how many other edits are in progress and how many operations
+            this edit has left. `start_text` (if provided) overrides `text`
+            until the first progress update is parsed, and `percent_format` is
+            the suffix that will be added to the end of `text`. It does not have
+            to be an actual percentage. `QProgressBar`'s format variables:
+            - %p - percent complete
+            - %v - raw current value (frame)
+            - %m - raw max value (frame count, or "?" if frame count is 0).
+
+            If `text_override` is provided (and this edit has priority), `text`,
+            `percent_format`, and `start_text` are all ignored, no other
+            information is added, and `Edit.override_text` is set to True.
+
+            If `cleanup` is True, `gui.save_progress_bar` will be hidden and
+            have its maximum value reset upon completion.
+
+            If `lock` is True, both `infile` and `outfile` (as well as any
+            temporary paths that are created) will be automatically added to
+            `gui.locked_files` and subsequently removed upon completion.
+            NOTE: Temporary paths will be locked/unlocked regardless if
+            `infile` is already locked when you call this method.
+
+            Returns the actual final output path. '''
+
+        start = get_time()
+        self.has_priority = len(gui.saves_in_progress) == 1
+        logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
+
+        # aliases, then show progress bar and set progress bar format text
+        locked_files = gui.locked_files
+        emit_progress_text = gui.set_save_progress_format_signal.emit
+        emit_progress_value = gui.set_save_progress_current_signal.emit
+        use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
+
+        if start_text is None:
+            start_text = text_override or self.get_progress_text()
+
+        if self.has_priority:
+            emit_progress_text(start_text)
+            emit_progress_value(0)                      # we must call this to actually show the progress bar
+            gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
+            gui.set_save_progress_visible_signal.emit(True)
+            if use_taskbar_progress:
+                gui.taskbar_progress.reset()
+
+        # see if a valid `infile` was actually provided. it's okay if it wasn't, as long as `outfile` is valid
+        try: infile_provided = infile and exists(infile)
+        except: infile_provided = False
+        if not outfile:
+            if infile_provided:
+                outfile = infile
+                logging.info(f'`outfile` not provided, setting to `infile`: {infile}')
+            else:
+                raise TypeError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
+
+        try:
+            # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
+            editing_in_place = False
+            if infile_provided:
+                if infile == outfile:                   # NOTE: this never happens if called through `gui._save()`
+                    editing_in_place = True
+                    temp_infile = add_path_suffix(infile, '_temp', unique=True)
+                    if infile in locked_files:          # if `infile` is already locked, lock the temp...
+                        locked_files.add(temp_infile)   # ...path too, regardless of our `lock` parameter
+                    os.renames(infile, temp_infile)     # rename `infile` to our temporary name
+                    logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_infile}"')
+                else:
+                    temp_infile = infile
+            else:                                       # no infile provided at all, so no temp path either
+                temp_infile = ''
+
+            # lock files if desired to prevent them from being opened/edited
+            if lock:
+                locked_files.add(infile)
+                locked_files.add(outfile)
+                locked_files.add(temp_infile)
+
+            # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
+            if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
+            try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
+            except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
+
+            # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
+            # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
+            # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
+            frame_rate = max(1, self.frame_rate or gui.frame_rate)        # used when ffmpeg provides `out_time_ms` instead of `frame`
+            use_backup_lines = True
+            lines_read = 0
+            last_frame = 0
+            while True:
+                if process.poll() is not None:
+                    break
+
+                # update whether or not this thread gets to control the progress bar
+                if not self.has_priority:
+                    if len(gui.saves_in_progress) == 1:
+                        self.has_priority = True
+                        if last_frame == 0:             # assume we haven't parsed any output yet
+                            emit_progress_text(start_text)
+                            emit_progress_value(0)      # we must call this to actually show the progress bar
+                        else:
+                            self.set_progress_bar(last_frame)
+                        gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
+
+                # loop over stdout until we get to the line(s) we want
+                # this us sleep between loops without falling behind, saving a lot of resources
+                sleep(0.2)
+                while True:
+                    progress_text = process.stdout.readline().strip()
+                    lines_read += 1
+                    logging.debug(f'FFmpeg output line #{lines_read}: {progress_text}')
+                    if not progress_text:
+                        logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
+                        break
+
+                    # check for error - "malloc of size ___ failed"
+                    if progress_text[-6:] == 'failed':
+                        if 'malloc of size' in progress_text:
+                            raise AssertionError(progress_text)
+
+                    # normal videos will have a "frame=" progress string
+                    if progress_text[:6] == 'frame=':
+                        frame = min(int(progress_text[6:].strip()), self.frame_count)
+                        if last_frame == frame and frame == 1:              # specific edits will constantly spit out "frame=1"...
+                            use_backup_lines = True                         # ...for these scenarios, we should ignore frame output
+                        else:
+                            use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
+                            self.set_progress_bar(frame)
+                        last_frame = frame
+                        break
+
+                    # ffmpeg usually uses "out_time_ms" for audio files
+                    elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
+                        try:
+                            seconds = int(progress_text.strip()[12:-6])
+                            frame = min(int(seconds * frame_rate), self.frame_count)
+                            self.set_progress_bar(frame)
+                            break
+                        except ValueError:
+                            pass
+
+            # terminate process just in case ffmpeg got locked up
+            try: process.terminate()
+            except: pass
+
+            # cleanup temp file, if needed (editing in place means we had to rename `infile`)
+            if editing_in_place:                                            # NOTE: NEVER true for edits called through `gui._save()`
+                if exists(infile):                                          # if `infile` was externally replaced while we were working,...
+                    delete_temp_path(temp_infile, 'FFmpeg file')            # ...just delete the temp file. TODO does that make sense...?
+                else:                                                       # otherwise, rename `temp_path` back to `infile`
+                    os.renames(temp_infile, infile)
+                    logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
+
+            self.operations_completed += 1              # increment counter if we were successful
+            log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
+            return outfile
+
+        except:
+            log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
+
+            # aggressively terminate ffmpeg process in case it's still running
+            # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
+            # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in `gui._save()`)
+            try:
+                if constants.IS_WINDOWS:
+                    subprocess.call(f'taskkill /F /T /PID {process.pid}')
+                else:
+                    import signal
+                    os.killpg(os.getpgid(process.pid), signal.SIGSTOP)
+                sleep(0.25)                             # give FFmpeg a moment to actually close
+            except:
+                logging.warning(f'(!) Failed to terminate FFmpeg process: {format_exc()}')
+
+            if editing_in_place:
+                delete_temp_path(temp_infile, 'FFmpeg file')
+            raise                                       # raise exception anyway (we'll still go to the finally-statement)
+
+        finally:
+            if lock:                                    # unlock all files involved, if desired
+                locked_files.discard(infile)
+                locked_files.discard(outfile)
+            try:
+                if editing_in_place:                    # always unlock our temporary path if necessary
+                    locked_files.discard(temp_infile)
+            except:
+                pass
+            if cleanup and not gui.saves_in_progress:  # reset edit progress on statusbar/titlebar/taskbar
+                gui.reset_save_progress_bar()
 
 
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
@@ -3762,11 +4059,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # NOTE: ABSOLUTELY EXTREMELY IMPORTANT!!! update any relevant properties such as...
         # ...vheight/vwidth, is_gif/is_static_image, etc. as SOON as an operation is done!!!
         try:
-            params = SaveParameters()
-            params.frame_rate = frame_rate
-            params.frame_count = frame_count_raw                        # ↓ account for trimming taking up multiple keys
-            params.operation_count = len(operations) - int(op_trim_start and op_trim_end)
-            self.saves_in_progress.append(params)
+            edit = Edit()
+            edit.frame_rate = frame_rate
+            edit.frame_count = frame_count_raw
+            edit.operation_count = len(operations)
+            if op_trim_start and op_trim_end:                           # account for trimming taking up two keys
+                edit.operation_count -= 1
+            self.saves_in_progress.append(edit)
 
             # static images are cached and can be deleted independant of pyplayer
             # if this happens, take the cached QPixmap and save it to a temporary file
@@ -3837,8 +4136,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         else:           cmd += ' -map 0 -codec copy -avoid_negative_ts make_zero'
 
                     duration = trim_duration                                        # update duration
-                    params.frame_count = frame_count = maximum - minimum            # update frame count
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Trimming', 'Seeking to start of trim...')
+                    edit.frame_count = frame_count = maximum - minimum              # update frame count
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Trimming', 'Seeking to start of trim...')
 
                 # fade (using trim buttons as fade points) -> https://dev.to/dak425/add-fade-in-and-fade-out-effects-with-ffmpeg-2bj7
                 # TODO: ffmpeg fading is actually very versatile, this could be WAY more sophisticated
@@ -3870,7 +4169,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             fade_cmd_parts.append(f'-af "{",".join(fade_parts)}{" -c:v copy" if mode != "both" and mime == "video" else ""}"')
                     if fade_cmd_parts:
                         cmd = f'-i %in {" ".join(fade_cmd_parts)}'
-                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Fading')
+                        intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Fading')
 
             # crop -> https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
             if op_crop:     # ffmpeg cropping is not 100% accurate, final dimensions may be off by ~1 pixel
@@ -3884,7 +4183,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     intermediate_file = dest
                 else:
                     cmd = f'-i %in -filter:v "crop={crop_width}:{crop_height}:{round(crop_left)}:{round(crop_top)}"'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Cropping')
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Cropping')
                 vwidth = round(crop_width) - 1                                      # update dimensions
                 vheight = round(crop_height) - 1
 
@@ -3896,9 +4195,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
                 width, height = op_resize   # for audio, width is a value from 0-1 (as a string) and height is None
                 if mime == 'audio':
-                    params.frame_count = (duration / float(width)) * frame_rate
+                    edit.frame_count = (duration / float(width)) * frame_rate
                     cmd = f'-i %in -filter:a atempo="{width}"'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adjusting tempo')
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adjusting tempo')
                 else:
                     vwidth, vheight = scale(vwidth, vheight, width, height)
                     if is_static_image:     # ^ pillow can't handle 0/-1 and ffmpeg is stupid (see below) -> scale right away
@@ -3913,7 +4212,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         vwidth -= int(vwidth % 2 != 0)
                         vheight -= int(vheight % 2 != 0)
                         cmd = f'-i %in -vf "scale={vwidth}:{vheight}" -crf 28 -c:a copy'
-                        intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Resizing')
+                        intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Resizing')
 
             # rotate video/GIF/image
             # TODO: this should use Pillow for images/GIFs but I'm lazy
@@ -3923,10 +4222,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 cmd = f'-i %in -vf "{op_rotate_video}" -crf 28 -c:a copy'
                 if is_static_image:
                     with get_PIL_safe_path(original_path=video, final_path=dest) as temp_path:
-                        self.ffmpeg(intermediate_file, cmd, temp_path, params, 'Rotating')
+                        edit.ffmpeg(intermediate_file, cmd, temp_path, 'Rotating')
                         intermediate_file = dest
                 else:
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Rotating')
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Rotating')
                 if op_rotate_video == 'transpose=clock' or op_rotate_video == 'transpose=cclock':
                     vwidth, vheight = vheight, vwidth                               # update dimensions
 
@@ -3935,7 +4234,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar('Audio replacement requested.')
                 audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
                 cmd = f'-i %in -i "{audio}" -c:v copy -map 0:v:0 -map 1:a:0'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Replacing audio')
+                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Replacing audio')
 
             # add audio track - adding audio to images or GIFs will turn them into videos
             # https://superuser.com/questions/1041816/combine-one-image-one-audio-file-to-make-one-video-using-ffmpeg
@@ -3956,32 +4255,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 vheight -= top
                         except:
                             return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
-                    params.frame_count = int(get_audio_duration(audio) * 25)        # ffmpeg defaults to using 25fps for this
+                    edit.frame_count = int(get_audio_duration(audio) * 25)          # ffmpeg defaults to using 25fps for this
                     cmd = f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adding audio track')
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
                 elif is_gif:                # gifs
                     log_on_statusbar('Adding audio to animated GIF (final video duration may not exactly line up with audio).')
                     is_gif = False                              # mark that this is no longer a gif
-                    params.frame_count = int(get_audio_duration(audio) * frame_rate)
+                    edit.frame_count = int(get_audio_duration(audio) * frame_rate)
                     cmd = f'-stream_loop -1 -i %in -i "{audio}" -filter_complex amix=inputs=1 -shortest'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adding audio track')
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
                 else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
                     log_on_statusbar('Additional audio track requested.')
                     the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
                     cmd = f'-i %in -i "{audio}" {the_important_part}'
-                    intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Adding audio track')
+                    intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
 
             # remove all video or audio tracks (does not turn file into an image/GIF)
             if op_remove_track is not None:                     # NOTE: This can degrade audio quality slightly.
                 log_on_statusbar(f'{op_remove_track}-track removal requested.')
                 cmd = f'-i %in {"-q:a 0 -map a" if op_remove_track == "Video" else "-c copy -an"}'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, f'Removing {op_remove_track.lower()} track')
+                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, f'Removing {op_remove_track.lower()} track')
 
             # amplify audio (TODO: do math to chain several of these together at once to circumvent the max volume limitation)
             if op_amplify_audio is not None:
                 log_on_statusbar('Audio amplification requested.')
                 cmd = f'-i %in -filter:a "volume={op_amplify_audio}"'
-                intermediate_file = self.ffmpeg(intermediate_file, cmd, dest, params, 'Amplifying audio')
+                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Amplifying audio')
 
         except Exception as error:
             successful = False
@@ -4008,7 +4307,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 log_on_statusbar(f'(!) SAVE FAILED: {format_exc()}')
         finally:
-            self.saves_in_progress.remove(params)
+            self.saves_in_progress.remove(edit)
 
         # --- Post-edit cleanup & opening our newly edited media ---
         try:
@@ -4295,266 +4594,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> FFMPEG <<<
     # ---------------------
-    def ffmpeg(
-        self,
-        infile: str,
-        cmd: str,
-        outfile: str = None,
-        params: SaveParameters = None,
-        text: str = 'Saving',
-        start_text: str = None,
-        percent_format: str = '(%p%)',
-        text_override: str = None,
-        cleanup: bool = False,
-        lock: bool = False
-    ) -> str:
-        ''' Executes an FFmpeg `cmd` on `infile` and outputs to `outfile`,
-            showing a progress bar on both the statusbar and the taskbar icon
-            (on Windows) by parsing FFmpeg's output. "%in" and "%out" will be
-            replaced within `cmd` if provided. If `outfile` is specified, "%out"
-            will be appended to the end of `cmd` if needed. `infile` and "%in"
-            do not necessarily need to be included, but you should not include
-            "%in" if you are not providing `infile`.
-
-            NOTE: This method will only update the progress bar if
-            it has priority. Priority may change mid-operation and
-            is gained whenever `len(self.saves_in_progress) == 1`.
-
-            `params` is a `SaveParameters` object containing relevant hints
-            and other properties for tracking all active save operations.
-
-            `params.frame_rate` is a hint for the progress bar as to what frame
-            rate to use when normal frame-output from FFmpeg is not available
-            (such as for audio files) and we must convert timestamp-output to
-            frames instead. If not provided, `self.frame_rate` is used.
-
-            `params.frame_count` is the target value that is used to calculate
-            our current progress percentage. If not provided and this operation
-            has priority, the progress bar switches to an indeterminate bar.
-
-            `text` specifies the main text that will appear on the progress bar
-            (while this thread has priority), surrounded by relevant information
-            such as how many other edits are in progress and how many operations
-            this edit has left. `start_text` (if provided) overrides `text`
-            until the first progress update is parsed, and `percent_format` is
-            the suffix that will be added to the end of `text`. It does not have
-            to be an actual percentage. `QProgressBar`'s format variables:
-            - %p - percent complete
-            - %v - raw current value (frame)
-            - %m - raw max value (frame count, or "?" if frame count is 0).
-
-            If `text_override` is provided (and this thread has priority),
-            `text`, `percent_format`, and `start_text` are all ignored, and
-            no other information is added.
-
-            If `cleanup` is True, `self.save_progress_bar` will be hidden and
-            have its maximum value reset upon completion.
-
-            If `lock` is True, both `infile` and `outfile` (as well as any
-            temporary paths that are created) will be automatically added to
-            `self.locked_files` and subsequently removed upon completion.
-            NOTE: Temporary paths will be locked/unlocked regardless if
-            `infile` is already locked when you call this method.
-
-            Returns the actual final output path. '''
-
-        start = get_time()
-        has_priority = len(self.saves_in_progress) == 1
-        logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
-
-        # aliases, then show progress bar and set progress bar format text
-        locked_files = self.locked_files
-        emit_progress_text = self.set_save_progress_format_signal.emit
-        emit_progress_value = self.set_save_progress_current_signal.emit
-        use_taskbar_progress = constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked()
-
-        def get_progress_text(frame: int = 0) -> str:
-            ''' Returns `text` surrounded by relevant information,
-                e.g. "2 edits in progress - Trimming [1/3] (25%)"
-                Since %v and %m aren't used anymore, these are
-                manually replaced by `frame` and `params.frame_count`.
-                If `params.frame_count` is 0, "?" is used instead. '''
-            if text_override:
-                return text_override
-            if (saves_in_progress := len(self.saves_in_progress)) > 1:
-                format = f'{saves_in_progress} edits in progress - {text}'
-            else:
-                format = text
-            if params.operation_count > 1:
-                format = f'{format} [{params.operations_completed + 1}/{params.operation_count}] {percent_format}'
-            else:
-                format = f'{format} {percent_format}'
-            return format.replace('%v', str(frame)).replace('%m', str(params.frame_count or '?'))
-
-        if start_text is None:
-            start_text = text_override or get_progress_text()
-        if params is None:
-            params = SaveParameters()
-
-        if has_priority:
-            emit_progress_text(start_text)
-            emit_progress_value(0)                      # we must call this to actually show the progress bar
-            self.set_save_progress_max_signal.emit(100 if params.frame_count else 0)
-            self.set_save_progress_visible_signal.emit(True)
-            if use_taskbar_progress:
-                self.taskbar_progress.reset()
-
-        # see if a valid `infile` was actually provided. it's okay if it wasn't, as long as `outfile` is valid
-        try: infile_provided = infile and exists(infile)
-        except: infile_provided = False
-        if not outfile:
-            if infile_provided:
-                outfile = infile
-                logging.info(f'`outfile` not provided, setting to `infile`: {infile}')
-            else:
-                raise TypeError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
-
-        try:
-            # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
-            editing_in_place = False
-            if infile_provided:
-                if infile == outfile:                   # NOTE: this never happens if called through `self._save()`
-                    editing_in_place = True
-                    temp_infile = add_path_suffix(infile, '_temp', unique=True)
-                    if infile in locked_files:          # if `infile` is already locked, lock the temp...
-                        locked_files.add(temp_infile)   # ...path too, regardless of our `lock` parameter
-                    os.renames(infile, temp_infile)     # rename `infile` to our temporary name
-                    logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_infile}"')
-                else:
-                    temp_infile = infile
-            else:                                       # no infile provided at all, so no temp path either
-                temp_infile = ''
-
-            # lock files if desired to prevent them from being opened/edited
-            if lock:
-                locked_files.add(infile)
-                locked_files.add(outfile)
-                locked_files.add(temp_infile)
-
-            # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
-            if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
-            try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
-            except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
-
-            def set_progress_bar_value(frame: int):
-                ''' Sets the progress bar & taskbar button's value to `frame`/
-                    `params.frame_count`. Updates the progress bar's text. '''
-                if not has_priority:
-                    return
-                value = int((frame / max(1, params.frame_count)) * 100)
-                emit_progress_value(value)
-                emit_progress_text(get_progress_text(frame))
-                if use_taskbar_progress:
-                    self.taskbar_progress.setValue(value)
-
-            # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
-            # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
-            # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
-            frame_rate = max(1, params.frame_rate or self.frame_rate)       # used when ffmpeg provides `out_time_ms` instead of `frame`
-            use_backup_lines = True
-            lines_read = 0
-            last_frame = 0
-            while True:
-                if process.poll() is not None:
-                    break
-
-                # update whether or not this thread gets to control the progress bar
-                if not has_priority:
-                    if len(self.saves_in_progress) == 1:
-                        has_priority = True
-                        if last_frame == 0:             # assume we haven't parsed any output yet
-                            emit_progress_text(start_text)
-                            emit_progress_value(0)      # we must call this to actually show the progress bar
-                        else:
-                            set_progress_bar_value(last_frame)
-                        self.set_save_progress_max_signal.emit(100 if params.frame_count else 0)
-
-                # loop over stdout until we get to the line(s) we want
-                # this us sleep between loops without falling behind, saving a lot of resources
-                sleep(0.2)
-                while True:
-                    progress_text = process.stdout.readline().strip()
-                    lines_read += 1
-                    logging.debug(f'FFmpeg output line #{lines_read}: {progress_text}')
-                    if not progress_text:
-                        logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
-                        break
-
-                    # check for error - "malloc of size ___ failed"
-                    if progress_text[-6:] == 'failed':
-                        if 'malloc of size' in progress_text:
-                            raise AssertionError(progress_text)
-
-                    # normal videos will have a "frame=" progress string
-                    if progress_text[:6] == 'frame=':
-                        frame = min(int(progress_text[6:].strip()), params.frame_count)
-                        if last_frame == frame and frame == 1:              # specific edits will constantly spit out "frame=1"...
-                            use_backup_lines = True                         # ...for these scenarios, we should ignore frame output
-                        else:
-                            use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
-                            set_progress_bar_value(frame)
-                        last_frame = frame
-                        break
-
-                    # ffmpeg usually uses "out_time_ms" for audio files
-                    elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
-                        try:
-                            seconds = int(progress_text.strip()[12:-6])
-                            frame = min(int(seconds * frame_rate), params.frame_count)
-                            set_progress_bar_value(frame)
-                            break
-                        except ValueError:
-                            pass
-
-            # terminate process just in case ffmpeg got locked up
-            try: process.terminate()
-            except: pass
-
-            # cleanup temp file, if needed (editing in place means we had to rename `infile`)
-            if editing_in_place:                                            # NOTE: NEVER true for edits called through `self._save()`
-                if exists(infile):                                          # if `infile` was externally replaced while we were working,...
-                    delete_temp_path(temp_infile, 'FFmpeg file')            # ...just delete the temp file. TODO does that make sense...?
-                else:                                                       # otherwise, rename `temp_path` back to `infile`
-                    os.renames(temp_infile, infile)
-                    logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
-
-            params.operations_completed += 1            # increment counter if we were successful
-            log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
-            return outfile
-
-        except:
-            log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
-
-            # aggressively terminate ffmpeg process in case it's still running
-            # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
-            # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in `self._save()`)
-            try:
-                if constants.IS_WINDOWS:
-                    subprocess.call(f'taskkill /F /T /PID {process.pid}')
-                else:
-                    import signal
-                    os.killpg(os.getpgid(process.pid), signal.SIGSTOP)
-                sleep(0.25)                             # give FFmpeg a moment to actually close
-            except:
-                logging.warning(f'(!) Failed to terminate FFmpeg process: {format_exc()}')
-
-            if editing_in_place:
-                delete_temp_path(temp_infile, 'FFmpeg file')
-            raise                                       # raise exception anyway (we'll still go to the finally-statement)
-
-        finally:
-            if lock:                                    # unlock all files involved, if desired
-                locked_files.discard(infile)
-                locked_files.discard(outfile)
-            try:
-                if editing_in_place:                    # always unlock our temporary path if necessary
-                    locked_files.discard(temp_infile)
-            except:
-                pass
-            if cleanup and not self.saves_in_progress:  # reset edit progress on statusbar/titlebar/taskbar
-                self.reset_save_progress_bar()
-
-
     def set_trim_start(self, *args, force: bool = False):
         ''' Validates a start-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
@@ -4971,8 +5010,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
 
         try:
-            params = SaveParameters()
-            self.saves_in_progress.append(params)
+            edit = Edit()
+            self.saves_in_progress.append(edit)
 
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
@@ -4994,14 +5033,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 duration = float(probe_data['format']['duration'])
                                 new_frame_total += math.ceil(duration * fps)
                                 fps_sum += fps
-                    percent_format = '(%p%)'
-                    params.frame_rate = fps_sum / len(probes)
-                    params.frame_count = new_frame_total    # ^ the average FPS of all `files`
+                    edit.frame_rate = fps_sum / len(probes)
+                    edit.frame_count = new_frame_total    # ^ the average FPS of all `files`
                 else:
-                    percent_format = '(re-encode requested, this will take a while)'
+                    edit.percent_format = '(re-encode requested, this will take a while)'
                     self.set_save_progress_max_signal.emit(0)
 
-                self.ffmpeg(None, cmd, dest, params, 'Concatenating', percent_format=percent_format)
+                edit.ffmpeg(None, cmd, dest, 'Concatenating')
 
             # no re-encoding, concatenate (almost instantly) using stream copying
             else:
@@ -5025,7 +5063,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             successful = False
             return log_on_statusbar(f'(!) CONCATENATION FAILED: {format_exc()}')
         finally:
-            self.saves_in_progress.remove(params)
+            self.saves_in_progress.remove(edit)
 
         # --- Post-concat cleanup & opening/exploring our newly edited media ---
         try:
