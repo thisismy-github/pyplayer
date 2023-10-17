@@ -647,11 +647,12 @@ class Edit:
 
                 # loop over stdout until we get to the line(s) we want
                 # this us sleep between loops without falling behind, saving a lot of resources
-                sleep(0.2)
+                sleep(0.2 if self.has_priority else 0.5)                    # update less frequently while not visible
+                new_lines = []
                 while True:
                     progress_text = process.stdout.readline().strip()
                     lines_read += 1
-                    logging.debug(f'FFmpeg output line #{lines_read}: {progress_text}')
+                    new_lines.append(f'FFmpeg output line #{lines_read}: {progress_text}')
                     if not progress_text:
                         logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
                         break
@@ -681,6 +682,11 @@ class Edit:
                             break
                         except ValueError:
                             pass
+
+                # batch-log all our newly read lines at once
+                if new_lines:
+                    lines = '\n'.join(new_lines)
+                    logging.info(f'New FFmpeg output from {self}:\n{lines}')
 
             # terminate process just in case ffmpeg got locked up
             try: process.terminate()
