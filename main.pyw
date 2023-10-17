@@ -464,7 +464,8 @@ class Edit:
 
     def set_progress_bar(self, frame: int = None, value: int = None) -> int:
         ''' Sets the progress bar/taskbar button to `frame`/`Edit.frame_count`.
-            Updates the progress bar's text. Returns the new percentage. '''
+            Updates the progress bar's text and puts the average progress of all
+            edits/operations in the titlebar. Returns the new percentage. '''
         if value is None:
             value = int((frame / max(1, self.frame_count)) * 100)
         self.value = value
@@ -472,11 +473,12 @@ class Edit:
         if not self.has_priority:
             return value
 
-        # update progress bar, titlebar, and taskbar with our current value/text
+        # update progress bar, taskbar, and titlebar with our current value/text
         gui.set_save_progress_current_signal.emit(value)
         gui.set_save_progress_format_signal.emit(self.get_progress_text(frame))
         if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
             gui.taskbar_progress.setValue(value)
+        refresh_title()
 
         # update our tooltip with the status of all saves in progress
         avg_value = 0
@@ -6831,7 +6833,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             resolution = '0x0'
             ratio = '0:0'
 
-        title = settings.lineWindowTitleFormat.text()
+        # add progress percentage if it should be visible
+        if self.saves_in_progress:
+            avg_value = 0
+            total_operations = 0
+            for save in self.saves_in_progress:                 # get average across all operations in all edits
+                operation_count = save.operation_count
+                total_operations += operation_count
+                avg_value += save.value
+            avg_value /= total_operations
+            title = f'[{avg_value:.0f}%] {settings.lineWindowTitleFormat.text()}'
+        else:
+            title = settings.lineWindowTitleFormat.text()
+
+        # replace potential variables in the title with their values and set new title
         replace = {'?base': base, '?name': name, '?parent': parent, '?path': path, '?ext': self.extension_label, '?mime': mime,
                    '?paused': paused, '?fps': fps, '?duration': duration, '?resolution': resolution, '?ratio': ratio,
                    '?volume': str(get_volume_slider()), '?speed': f'{player.get_rate():.2f}', '?size': self.size_label}
@@ -7192,8 +7207,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def reset_save_progress_bar(self):
-        ''' Resets the editing progress bar to zero and hides it on the
-            statusbar, titlebar, and taskbar button (on Windows). '''
+        ''' Resets the editing progress bar to zero and hides its
+            widget on the statusbar while clearing its percentage
+            from the titlebar and taskbar button (on Windows). '''
         self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
         self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
         self.set_save_progress_current_signal.emit(0)
