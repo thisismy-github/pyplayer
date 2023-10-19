@@ -466,22 +466,35 @@ class Edit:
         gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
 
 
-    def get_progress_text(self, frame: int = 0) -> str:
-        ''' Returns `text` surrounded by relevant information, e.g.
-            "2 edits in progress - Trimming [1/3] (25%)". %v and %m
-            are manually replaced by `frame` and `self.frame_count`.
-            If `self.frame_count` is 0, "?" is used instead. '''
-        if self.override_text:
+    def get_progress_text(self, frame: int = 0, simple: bool = False) -> str:
+        ''' Returns `self.text` surrounded by relevant information, e.g. "2
+            edits in progress - Trimming [1/3] (25%)". Manually replaces %v/%m
+            with `frame`/`self.frame_count`. If `self.frame_count` is 0, "?" is
+            used instead. If `simple` is provided, a standardized format that
+            ignores edit counts/percent formats/text overrides is returned. '''
+
+        if simple:
+            text = self.text
+            percent_format = f'({self.value}%)'
+        elif self.override_text:
             return self.text
-        if (save_count := len(gui.saves_in_progress)) > 1:
-            format = f'{save_count} edits in progress - {self.text}'
         else:
-            format = self.text
-        if self.operation_count > 1:
-            format = f'{format} [{self.operations_completed + 1}/{self.operation_count}] {self.percent_format}'
+            percent_format = self.percent_format
+            save_count = len(gui.saves_in_progress)
+            if save_count > 1:
+                text = f'{save_count} edits in progress - {self.text}'
+            else:
+                text = self.text
+
+        # handle operation count and pause symbol for this edit
+        operation_count = self.operation_count
+        if operation_count > 1:
+            text = f'{text} [{self.operations_completed + 1}/{operation_count}] {percent_format}'
         else:
-            format = f'{format} {self.percent_format}'
-        return format.replace('%v', str(frame)).replace('%m', str(self.frame_count or '?'))
+            text = f'{text} {percent_format}'
+
+        # return with `QProgressBar` variables manually replaced
+        return text.replace('%v', str(frame)).replace('%m', str(self.frame_count or '?'))
 
 
     def set_progress_bar(self, frame: int = None, value: int = None) -> int:
@@ -508,12 +521,8 @@ class Edit:
         total_operations = 0
         lines = []
         for save in gui.saves_in_progress:
-            operation_count = save.operation_count
-            if operation_count > 1:
-                lines.append(f'{save.text} [{save.operations_completed + 1}/{operation_count}] ({save.value}%)')
-            else:
-                lines.append(f'{save.text} ({save.value}%)')
-            total_operations += operation_count
+            lines.append(save.get_progress_text(simple=True))
+            total_operations += save.operation_count
             avg_value += save.value
         avg_value /= total_operations
 
@@ -1984,11 +1993,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             action_dict = action_dicts[save]
 
             # set edit's menu title with text, operation count, and (operation) progress
-            operation_count = save.operation_count
-            if operation_count > 1:
-                submenu = QtW.QMenu(f'{save.text} [{save.operations_completed + 1}/{operation_count}] ({save.value}%)', context)
-            else:
-                submenu = QtW.QMenu(f'{save.text} ({save.value}%)', context)
+            submenu = QtW.QMenu(save.get_progress_text(simple=True), context)
 
             # give priority to selected edit (if possible)
             if save.has_priority:
