@@ -6,6 +6,7 @@ import constants
 
 import os
 import sys
+import time
 import logging
 import subprocess
 import unicodedata
@@ -250,6 +251,8 @@ def sanitize(filename: str, allow_reserved_words: bool = True, default: str = ''
 
 
 def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple:
+    ''' Returns (`x`, `y`) scaled to either `new_x` or `new_y`, if
+        either is >=0. If both are provided, `new_y` is ignored. '''
     if new_x <= 0:   new_x = round((float(new_y) / y) * x)
     elif new_y <= 0: new_y = round((float(new_x) / x) * y)
     return new_x, new_y
@@ -265,11 +268,14 @@ def setctime(path: str, ctime: int):
     if not constants.IS_WINDOWS: return
     from ctypes import byref, get_last_error, wintypes, WinDLL, WinError
 
+    # dll and function definitions
     kernel32 = WinDLL("kernel32", use_last_error=True)
     CreateFileW = kernel32.CreateFileW
     SetFileTime = kernel32.SetFileTime
     CloseHandle = kernel32.CloseHandle
 
+    # defining return/argument types for the above functions for type-safety
+    CreateFileW.restype = wintypes.HANDLE
     CreateFileW.argtypes = (
         wintypes.LPWSTR,
         wintypes.DWORD,
@@ -279,18 +285,17 @@ def setctime(path: str, ctime: int):
         wintypes.DWORD,
         wintypes.HANDLE,
     )
-    CreateFileW.restype = wintypes.HANDLE
 
+    SetFileTime.restype = wintypes.BOOL
     SetFileTime.argtypes = (
         wintypes.HANDLE,
         wintypes.PFILETIME,
         wintypes.PFILETIME,
         wintypes.PFILETIME,
     )
-    SetFileTime.restype = wintypes.BOOL
 
-    CloseHandle.argtypes = (wintypes.HANDLE,)
     CloseHandle.restype = wintypes.BOOL
+    CloseHandle.argtypes = (wintypes.HANDLE,)
 
     # ---
 
@@ -314,5 +319,28 @@ def setctime(path: str, ctime: int):
         raise WinError(get_last_error())
 
 
+def kill_process(process: subprocess.Popen, wait: bool = True, wait_after: float = 0.0):
+    ''' Cross-platform way of killing a `process`. On Windows, taskkill is used.
+        On Linux/Mac, a SIGTERM signal is sent to `process`'s group pid. If
+        `wait` is True, this function blocks until `process` is gone, then waits
+        `wait_after` seconds afterwards to allow any handles to be released. '''
+    try:
+        if constants.IS_WINDOWS:                # why bother with signals when you can just nuke it from orbit?
+            subprocess.call(f'taskkill /F /T /PID {process.pid}')
+        else:
+            try:
+                import signal
+                group_pid = os.getpgid(process.pid)
+                os.killpg(group_pid, signal.SIGTERM)
+                process.wait(timeout=0.25)      # wait briefly to see if it terminates peacefully
+            except subprocess.TimeoutExpired:   # it's is still alive. old yeller it
+                os.killpg(group_pid, signal.SIGKILL)
+        if wait:
+            process.wait(timeout=3)             # give it up to 3 seconds to actually close before giving up
+            time.sleep(wait_after)              # wait for any handles to (hopefully) be released
+    except:
+        logger.warning(f'(!) Failed to terminate process: {format_exc()}')
+
+
 if constants.IS_WINDOWS: file_is_hidden = lambda path: os.stat(path).st_file_attributes & 2
-else: file_is_hidden = lambda path: os.path.basename(path)[0] == '.'
+else:                    file_is_hidden = lambda path: os.path.basename(path)[0] == '.'

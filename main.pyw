@@ -175,9 +175,13 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from util import add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize, scale, setctime, file_is_hidden
-from bin.window_pyplayer import Ui_MainWindow
+from bin.window_pyplayer import Ui_MainWindow           # ^ direct import time-sensitive utils for a very small optimization
 from bin.window_settings import Ui_settingsDialog
+from util import (
+    add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen,
+    get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize,
+    scale, setctime, kill_process, file_is_hidden
+)
 
 import os
 import gc
@@ -454,7 +458,7 @@ class Edit:
             for save in gui.saves_in_progress:
                 save.has_priority = False
         self.has_priority = True
-        if self.frame == 0:             # assume we haven't parsed any output yet
+        if self.frame == 0:                 # assume we haven't parsed any output yet
             gui.set_save_progress_format_signal.emit(self.start_text)
             gui.set_save_progress_current_signal.emit(0)
         else:
@@ -641,7 +645,7 @@ class Edit:
             # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
             if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
             try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
-            except: logging.error(f'(!) FFMPEG CALL FAILED: {format_exc()}')
+            except: return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
 
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
@@ -651,7 +655,7 @@ class Edit:
             lines_read = 0
             last_frame = 0
             while True:
-                if process.poll() is not None:
+                if process.poll() is not None:                              # returns None if process hasn't terminated yet
                     break
 
                 # edit cancelled -> kill this thread's ffmpeg process and cleanup
@@ -739,19 +743,9 @@ class Edit:
             else:
                 log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
 
-            # aggressively terminate ffmpeg process in case it's still running
             # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
-            # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in `gui._save()`)
-            try:
-                if constants.IS_WINDOWS:
-                    subprocess.call(f'taskkill /F /T /PID {process.pid}')
-                else:
-                    import signal
-                    os.killpg(os.getpgid(process.pid), signal.SIGSTOP)
-                sleep(0.25)                             # give FFmpeg a moment to actually close
-            except:
-                logging.warning(f'(!) Failed to terminate FFmpeg process: {format_exc()}')
-
+            # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in normal edit cleanup)
+            kill_process(process)                       # aggressively terminate ffmpeg process in case it's still running
             if editing_in_place:
                 delete_temp_path(temp_infile, 'FFmpeg file')
             raise                                       # raise exception anyway (we'll still go to the finally-statement)
@@ -2169,6 +2163,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         update_recent_list = settings.checkAutoplayShuffleAddToRecents.isChecked()
         skip_marked = self.checkSkipMarked.isChecked()
         marked = self.marked_for_deletion
+        is_hidden = file_is_hidden
         locked_files = self.locked_files
         open = self.open
         ignore = self.shuffle_ignore_unique
@@ -2213,7 +2208,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # check for reasons we might skip a playable file (from most to least likely)
             # NOTE: we don't skip just-edited clips like in `cycle_media` (for performance)
             if filename in ignore: continue
-            if file_is_hidden(file): continue
+            if is_hidden(file): continue
             if skip_marked and file in marked: continue
             if filename == current_basename: continue
             if file in locked_files: continue
@@ -2319,6 +2314,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # aliases for the loop
         skip_marked = self.checkSkipMarked.isChecked()
         marked = self.marked_for_deletion
+        is_hidden = file_is_hidden
         locked_files = self.locked_files
         open = self.open
 
@@ -2347,7 +2343,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 continue
 
             # check for reasons we might skip a playable file (from most to least likely)
-            if file_is_hidden(file): continue
+            if is_hidden(file): continue
             if file in ignore: continue
             if skip_marked and file in marked: continue
             #if index_offset == 0 and (file == original_video_path or file == current_video_path): continue
@@ -2425,6 +2421,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not mod or (mod & Qt.ShiftModifier and not mod & Qt.ControlModifier):
                 #skip_marked = self.checkSkipMarked.isChecked()
                 #marked = self.marked_for_deletion  # TODO see below
+                is_hidden = file_is_hidden
                 locked_files = self.locked_files
                 open = self.open
 
@@ -2436,7 +2433,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     try: mime, extension = filetype.match(file).mime.split('/')
                     except: continue
 
-                    if file_is_hidden(file): continue
+                    if is_hidden(file): continue
                     if file in locked_files: continue
                     #if skip_marked and file in marked: continue    # TODO should we do this here?
 
@@ -3114,7 +3111,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if probe_process is not None:
                             while True:
                                 if probe_process.poll() is not None:
-                                    break
+                                    break                   # ^ returns None if process hasn't terminated yet
 
                         # wait for probe file to be created
                         while not exists(probe_file):
@@ -3846,15 +3843,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # take and save snapshot
             if is_gif:
                 if width or height:                             # use "scale" ffmpeg filter for gifs
-                    w = width if width else -1                  # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
-                    h = height if height else -1
+                    w = width or -1                             # -1 uses aspect ratio in ffmpeg (as opposed to 0 in VLC)
+                    h = height or -1
                     ffmpeg(f'-i "{self.video}" -vf "select=\'eq(n\\,{frame})\', scale={w}:{h}" -vsync 0 "{path}"')
                 else:
                     ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
             elif is_art:
                 if width or height:
-                    w = width if width else height * (self.vwidth / self.vheight)
-                    h = height if height else width * (self.vheight / self.vwidth)
+                    w = width or height * (self.vwidth / self.vheight)
+                    h = height or width * (self.vheight / self.vwidth)
                     image_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
                 else:
                     image_player.art.save(path, quality=quality)
