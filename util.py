@@ -41,7 +41,6 @@ def ffmpeg(cmd: str) -> None:   # https://code.activestate.com/recipes/409002-la
     subprocess.run(
         cmd,
         startupinfo=startupinfo,
-        shell=True,
     )
 
 
@@ -53,7 +52,6 @@ def ffmpeg_async(cmd: str) -> subprocess.Popen:
     return subprocess.Popen(
         cmd,
         startupinfo=startupinfo,
-        shell=True,
         start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
         stdout=subprocess.PIPE,                 # pipes stdout so that we can read the output in real time
         stderr=subprocess.STDOUT,               # pipes errors to stdout so we can read both (keeping them separate is hard)
@@ -317,6 +315,70 @@ def setctime(path: str, ctime: int):
         raise WinError(get_last_error())
     if not wintypes.BOOL(CloseHandle(handle)):
         raise WinError(get_last_error())
+
+
+def suspend_process(process: subprocess.Popen, suspend: bool = True) -> int:
+    ''' Cross-platform way of suspending or resuming a `process`. On Linux/Mac,
+        SIGSTOP/SIGCONT signals are sent. On Windows, the undocumented
+        `ntdll.NtSuspendProcess()` and `ntdll.NtResumeProcess()` APIs are
+        used. Returns 0 on success (this does not inherently mean `process`
+        was actually suspended, just that the calls did not fail).
+
+        Windows notes:
+        - `ntdll.NtSuspendProcess` calls stack (i.e. each suspend call must
+        have a corresponding resume call before `process` actually resumes)!
+        This method does not check if `process` is already suspended or not.
+        - Suspend/resume calls will be sent to the parent shell rather than
+        the actual process if `process` was created using `shell=True`!
+        - This is based on `psutil`'s `psutil_proc_suspend_or_resume()`
+        function, recreated from scratch in "pure" Python. '''
+
+    if not constants.IS_WINDOWS:
+        import signal
+        process.send_signal(signal.SIGSTOP if suspend else signal.SIGCONT)
+        return 0
+
+    from ctypes import wintypes, WinDLL
+
+    # dll and function definitions
+    ntdll = WinDLL("ntdll", use_last_error=True)
+    kernel32 = WinDLL("kernel32", use_last_error=True)
+    CloseHandle = kernel32.CloseHandle
+    OpenProcess = kernel32.OpenProcess
+
+    # defining return/argument types for the above functions for type-safety
+    CloseHandle.restype = wintypes.LONG
+    CloseHandle.argtypes = (wintypes.HANDLE,)
+    OpenProcess.restype = wintypes.HANDLE
+    OpenProcess.argtypes = (
+        wintypes.DWORD,
+        wintypes.BOOL,
+        wintypes.DWORD,
+    )
+
+    # open limited handle to process using its pid (closed in the finally-statement)
+    access_flags = 2048 | 4096      # PROCESS_SUSPEND_RESUME | PROCESS_QUERY_LIMITED_INFORMATION
+    process_handle = OpenProcess(access_flags, False, process.pid)
+
+    # define and call either ntdll.NtSuspendProcess or ntdll.NtResumeProcess
+    try:
+        if suspend:
+            logger.info(f'Suspending process {process} at handle {process_handle}...')
+            NtSuspendProcess = ntdll.NtSuspendProcess
+            NtSuspendProcess.argtypes = (wintypes.HANDLE,)
+            NtSuspendProcess.restype = wintypes.LONG
+            return NtSuspendProcess(process_handle)
+        else:
+            logger.info(f'Resuming process {process} at handle {process_handle}...')
+            NtResumeProcess = ntdll.NtResumeProcess
+            NtResumeProcess.argtypes = (wintypes.HANDLE,)
+            NtResumeProcess.restype = wintypes.LONG
+            return NtResumeProcess(process_handle)
+    except:
+        logger.info(f'(!) Failed to {"suspend" if suspend else "resume"} process: {format_exc()}')
+        return -1
+    finally:
+        CloseHandle(process_handle)
 
 
 def kill_process(process: subprocess.Popen, wait: bool = True, wait_after: float = 0.0):

@@ -180,7 +180,7 @@ from bin.window_settings import Ui_settingsDialog
 from util import (
     add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen,
     get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize,
-    scale, setctime, kill_process, file_is_hidden
+    scale, setctime, suspend_process, kill_process, file_is_hidden
 )
 
 import os
@@ -430,11 +430,15 @@ def delete_temp_path(path: str, noun: str = 'file') -> bool:
 class Edit:
     ''' A class for handling, executing, and tracking edits in progress. '''
 
-    __slots__ = ('cancelled', 'has_priority', 'frame_rate', 'frame_count',
-                 'operation_count', 'operations_completed', 'frame', 'value',
-                 'text', 'percent_format', 'start_text', 'override_text')
+    __slots__ = (
+        'process', '_is_paused', 'cancelled', 'has_priority', 'frame_rate',
+        'frame_count', 'operation_count', 'operations_completed', 'frame',
+        'value', 'text', 'percent_format', 'start_text', 'override_text'
+    )
 
     def __init__(self):
+        self.process: subprocess.Popen = None
+        self._is_paused = False
         self.cancelled = False
         self.has_priority = False
         self.frame_rate = 0.0
@@ -447,6 +451,31 @@ class Edit:
         self.percent_format = '(%p%)'
         self.start_text = 'Saving'
         self.override_text = False
+
+
+    @property
+    def is_paused(self) -> bool:
+        ''' Use `self.pause()` to safely alter this property. '''
+        return self._is_paused
+
+
+    def pause(self, paused: bool = None) -> bool:
+        ''' Suspends or resumes the edit's FFmpeg process. If `paused` is
+            not provided, the current pause-state is toggled instead. '''
+
+        # if `paused` is not provided, just toggle our current pause state
+        will_pause = (not self._is_paused) if paused is None else paused
+
+        # NOTE: on Windows, suspending a process STACKS!!! i.e. if you suspend a process...
+        # ...twice, you must resume it twice -> ONLY suspend if `self._is_paused` will change
+        if will_pause != self._is_paused:
+            self._is_paused = will_pause     # ↓ returns None if process hasn't terminated yet
+            if self.process and self.process.poll() is not None:
+                suspend_process(self.process, suspend=will_pause)
+                if self.has_priority:
+                    self.set_progress_bar(value=self.value)
+
+        return will_pause
 
 
     def give_priority(self, update_others: bool = True):
@@ -489,9 +518,11 @@ class Edit:
         # handle operation count and pause symbol for this edit
         operation_count = self.operation_count
         if operation_count > 1:
-            text = f'{text} [{self.operations_completed + 1}/{operation_count}] {percent_format}'
+            pause = ', 𝗜𝗜' if self._is_paused else ''
+            text = f'{text} [{self.operations_completed + 1}/{operation_count}{pause}] {percent_format}'
         else:
-            text = f'{text} {percent_format}'
+            pause = ' [𝗜𝗜] ' if self._is_paused else ' '
+            text = f'{text}{pause}{percent_format}'
 
         # return with `QProgressBar` variables manually replaced
         return text.replace('%v', str(frame)).replace('%m', str(self.frame_count or '?'))
@@ -655,6 +686,7 @@ class Edit:
             if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
             try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
             except: return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
+            self.process = process
 
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
@@ -686,12 +718,12 @@ class Edit:
                         had_priority = True
                         self.give_priority()
 
-                # loop over stdout until we get to the line(s) we want
-                # this us sleep between loops without falling behind, saving a lot of resources
-                sleep(0.2 if self.has_priority else 0.5)                    # update less frequently while not visible
-                new_lines = []
+                # loop over stdout until we get to the line(s) we want, letting us...
+                # ...sleep between loops without falling behind, saving a lot of resources
+                sleep(0.2 if self.has_priority and not self._is_paused else 0.5)
+                new_lines = []                                              # ^ update less frequently while paused/not visible
                 while True:
-                    progress_text = process.stdout.readline().strip()
+                    progress_text = process.stdout.readline().strip()       # this line naturally stalls if we're paused
                     lines_read += 1
                     new_lines.append(f'FFmpeg output line #{lines_read}: {progress_text}')
                     if not progress_text:
@@ -4807,6 +4839,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         continue
                 break
             log_on_statusbar('All edits cancelled, killed, and cleaned up.')
+
+
+    def pause_all(self, paused: bool = True):
+        verb = 'Pausing' if paused else 'Resuming'
+        logging.info(verb + ' all active edits...')
+        for save in self.saves_in_progress:
+            save.pause(paused=paused)
 
 
     def cycle_edit_priority(self):
