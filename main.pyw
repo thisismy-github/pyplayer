@@ -431,7 +431,7 @@ class Edit:
     ''' A class for handling, executing, and tracking edits in progress. '''
 
     __slots__ = (
-        'process', '_is_paused', 'cancelled', 'has_priority', 'frame_rate',
+        'process', '_is_paused', '_is_cancelled', 'has_priority', 'frame_rate',
         'frame_count', 'operation_count', 'operations_completed', 'frame',
         'value', 'text', 'percent_format', 'start_text', 'override_text'
     )
@@ -439,7 +439,7 @@ class Edit:
     def __init__(self):
         self.process: subprocess.Popen = None
         self._is_paused = False
-        self.cancelled = False
+        self._is_cancelled = False
         self.has_priority = False
         self.frame_rate = 0.0
         self.frame_count = 0
@@ -459,6 +459,12 @@ class Edit:
         return self._is_paused
 
 
+    @property
+    def is_cancelled(self) -> bool:
+        ''' Use `self.cancel()` to safely cancel. '''
+        return self._is_cancelled
+
+
     def pause(self, paused: bool = None) -> bool:
         ''' Suspends or resumes the edit's FFmpeg process. If `paused` is
             not provided, the current pause-state is toggled instead. '''
@@ -476,6 +482,13 @@ class Edit:
                     self.set_progress_bar(value=self.value)
 
         return will_pause
+
+
+    def cancel(self):
+        ''' Cancels this edit by killing its current FFmpeg process.
+            Resumes process first if it was previously suspended. '''
+        self._is_cancelled = True
+        self.pause(paused=False)
 
 
     def give_priority(self, update_others: bool = True):
@@ -700,7 +713,7 @@ class Edit:
                     break
 
                 # edit cancelled -> kill this thread's ffmpeg process and cleanup
-                if self.cancelled:
+                if self._is_cancelled:
                     raise AssertionError('Cancelled.')
 
                 # check if this thread lost priority
@@ -2011,8 +2024,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # workarounds for python bug/oddity involving creating lambdas in iterables
         # (needed for the actions to actually remember which edit they belong to)
-        def cancel(save: Edit): save.cancelled = True
-        get_cancel_lambda =   lambda save: lambda: cancel(save)
+        get_cancel_lambda =   lambda save: lambda: save.cancel()
         get_priority_lambda = lambda save: lambda: save.give_priority()
 
         # workaround for python bug/oddity involving local scope variables in iterables or something
@@ -4829,7 +4841,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else:    to_cancel = self.saves_in_progress
 
         for save in to_cancel:
-            save.cancelled = True
+            save.cancel()
 
         if wait:
             while True:
