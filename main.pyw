@@ -2020,16 +2020,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             allowing you to see, display, and cancel all active saves. '''
         context = QtW.QMenu(self)
 
-        # add a "Cancel all" action, if appropriate
+        # add "Cancel/Pause/Resume all" actions, if appropriate
+        action_pause_all = QtW.QAction('Pause all')
+        action_resume_all = QtW.QAction('Resume all')
         action_cancel_all = QtW.QAction('Cancel all')
-        if not self.saves_in_progress: action_cancel_all.setEnabled(False)
-        else: action_cancel_all.triggered.connect(self.cancel_all)
+        if not self.saves_in_progress:
+            action_pause_all.setEnabled(False)
+            action_resume_all.setEnabled(False)
+            action_cancel_all.setEnabled(False)
+        else:
+            action_pause_all.triggered.connect(lambda: self.pause_all(paused=True))
+            action_resume_all.triggered.connect(lambda: self.pause_all(paused=False))
+            action_cancel_all.triggered.connect(self.cancel_all)
+
+        context.addAction(action_pause_all)
+        context.addAction(action_resume_all)
         context.addAction(action_cancel_all)
         context.addSeparator()
 
         # workarounds for python bug/oddity involving creating lambdas in iterables
         # (needed for the actions to actually remember which edit they belong to)
         get_cancel_lambda =   lambda save: lambda: save.cancel()
+        get_pause_lambda =    lambda save: lambda: save.pause(paused=True)
+        get_resume_lambda =   lambda save: lambda: save.pause(paused=False)
         get_priority_lambda = lambda save: lambda: save.give_priority()
 
         # workaround for python bug/oddity involving local scope variables in iterables or something
@@ -2052,22 +2065,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 action_dict['priority'] = QtW.QAction('Display')
                 action_dict['priority'].triggered.connect(get_priority_lambda(save))
 
-            # cancel selected edit
+            # cancel, pause, or resume selected edit
             action_dict['cancel'] = QtW.QAction('Cancel')
             action_dict['cancel'].triggered.connect(get_cancel_lambda(save))
+            if not save._is_paused:
+                action_dict['suspend'] = QtW.QAction('Pause')
+                action_dict['suspend'].triggered.connect(get_pause_lambda(save))
+            else:
+                action_dict['suspend'] = QtW.QAction('Resume')
+                action_dict['suspend'].triggered.connect(get_resume_lambda(save))
 
-            submenu.addAction(action_dict['priority'])
+            submenu.addAction(action_dict['suspend'])
             submenu.addAction(action_dict['cancel'])
+            submenu.addSeparator()
+            submenu.addAction(action_dict['priority'])
             context.addMenu(submenu)
 
         context.exec(event.globalPos())
 
 
     def editProgressBarMouseReleaseEvent(self, event: QtGui.QMouseEvent):
-        ''' Handles clicking (and releasing) over the edit progress bar,
-            cycling which edit currently has priority on left-click. '''
+        ''' Handles clicking (and releasing) over the edit progress bar. Cycles
+            which edit currently has priority on left-click, toggles pause-state
+            for the current edit with priority on middle-click. '''
         if len(self.saves_in_progress) > 1 and event.button() == Qt.LeftButton:
             self.cycle_edit_priority()
+        elif event.button() == Qt.MiddleButton:
+            edit = self.get_edit_with_priority()
+            edit.pause()
 
 
     # ---------------------
