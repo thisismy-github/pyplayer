@@ -476,7 +476,7 @@ class Edit:
         # ...twice, you must resume it twice -> ONLY suspend if `self._is_paused` will change
         if will_pause != self._is_paused:
             self._is_paused = will_pause     # ↓ returns None if process hasn't terminated yet
-            if self.process and self.process.poll() is not None:
+            if self.process and self.process.poll() is None:
                 suspend_process(self.process, suspend=will_pause)
                 if self.has_priority:
                     self.set_progress_bar(value=self.value)
@@ -708,6 +708,7 @@ class Edit:
             use_backup_lines = True
             lines_read = 0
             last_frame = 0
+            new_lines = []
             while True:
                 if process.poll() is not None:                              # returns None if process hasn't terminated yet
                     break
@@ -734,8 +735,7 @@ class Edit:
                 # loop over stdout until we get to the line(s) we want, letting us...
                 # ...sleep between loops without falling behind, saving a lot of resources
                 sleep(0.2 if self.has_priority and not self._is_paused else 0.5)
-                new_lines = []                                              # ^ update less frequently while paused/not visible
-                while True:
+                while True:                                                 # ^ update less frequently while paused/not visible
                     progress_text = process.stdout.readline().strip()       # this line naturally stalls if we're paused
                     lines_read += 1
                     new_lines.append(f'FFmpeg output line #{lines_read}: {progress_text}')
@@ -773,6 +773,7 @@ class Edit:
                 if new_lines:
                     lines = '\n'.join(new_lines)
                     logging.info(f'New FFmpeg output from {self}:\n{lines}')
+                    new_lines.clear()
 
             # terminate process just in case ffmpeg got locked up
             try: process.terminate()
@@ -791,6 +792,10 @@ class Edit:
             return outfile
 
         except Exception as error:
+            if new_lines:
+                lines = '\n'.join(new_lines)
+                logging.info(f'Final FFmpeg output leading up to error {self}:\n{lines}')
+
             if str(error) == 'Cancelled.':
                 log_on_statusbar('Cancelling...')
                 logging.info(f'FFmpeg operation cancelled after {get_time() - start:.1f} seconds. Cleaning up...')
@@ -4811,7 +4816,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:                   size_label = f'{size / 1073741824:.2f}gb'
             msg = (f'FFmpeg failed to allocate {size_label} of RAM. Rarely, this'
                    '\nmay happen even when plenty of free RAM is available.'
-                   '\n\nNo changes have been made. Feel free to try again.')
+                   '\n\nNo changes have been made. Feel free to try again.'
+                   '\nIf the issue persists, restart PyPlayer.')
             self.popup_signal.emit(                         # TODO it *might* be nice to have retry/cancel options
                 dict(
                     title='FFmpeg error',
