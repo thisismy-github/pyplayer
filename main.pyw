@@ -400,15 +400,26 @@ def splitext_media(
     return base, ext[1:]
 
 
-def delete_temp_path(path: str, noun: str = 'file') -> bool:
-    ''' Safely deletes `path` while logging it a temporary
-        "`noun`". Returns True if successful. '''
+def delete_temp_path(path: str, noun: str = 'file', retry_delay: float = 0.5, retry_attempts: int = 2) -> bool:
+    ''' Safely deletes `path` and logs it as a "temporary `noun`". Returns True
+        on success. Otherwise, `QTimer.singleShot()` is used every `retry_delay`
+        seconds `retry_attempts` times, if provided (still returns False). '''
     try:
         logging.info(f'Deleting temporary {noun}: {path}')
         os.remove(path)
         return True
     except:
-        logging.warning(f'(!) Failed to delete temporary {noun}.')
+        if retry_attempts > 0 and retry_delay > 0:
+            sec = '1 second' if retry_delay == 1.0 else f'{retry_delay} seconds'
+            att = '1 attempt' if retry_attempts == 1 else f'{retry_attempts} attempts'
+            logging.warning(f'(?) Failed to delete temporary {noun}, retrying in {sec} ({att} remaining)...')
+            QtCore.QTimer.singleShot(
+                retry_delay * 1000,
+                Qt.CoarseTimer,
+                lambda: delete_temp_path(path, noun, retry_delay, retry_attempts - 1)
+            )
+        else:
+            logging.warning(f'(!) Failed to delete temporary {noun}. Giving up.')
         return False
 
 
