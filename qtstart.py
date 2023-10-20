@@ -285,6 +285,12 @@ def connect_shortcuts(self: QtW.QMainWindow):
 
 
 def connect_widget_signals(self: QtW.QMainWindow):
+    def set_save_progress_value_and_format(value: int, format: str):
+        ''' This ensures the edit progress bar's value and
+            text change at the same time. For aesthetics. '''
+        self.save_progress_bar.setValue(value)
+        self.save_progress_bar.setFormat(format)
+
     self._open_cleanup_signal.connect(self._open_cleanup_slot)
     self._open_signal.connect(lambda kwargs: self.open(**kwargs))
     self._open_external_command_signal.connect(self._open_external_command_slot)
@@ -297,8 +303,9 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.refresh_title_signal.connect(self._refresh_title_slot)
     self.set_save_progress_visible_signal.connect(self.save_progress_bar.setVisible)
     self.set_save_progress_max_signal.connect(self.save_progress_bar.setMaximum)
-    self.set_save_progress_current_signal.connect(self.save_progress_bar.setValue)
+    self.set_save_progress_value_signal.connect(self.save_progress_bar.setValue)
     self.set_save_progress_format_signal.connect(self.save_progress_bar.setFormat)
+    self.set_save_progress_value_and_format_signal.connect(set_save_progress_value_and_format)
     self.disable_crop_mode_signal.connect(self.disable_crop_mode)
     self.handle_updates_signal.connect(self.handle_updates)
     self._handle_updates_signal.connect(self._handle_updates)

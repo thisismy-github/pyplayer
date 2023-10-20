@@ -432,7 +432,7 @@ class Edit:
 
     __slots__ = (
         'process', '_is_paused', '_is_cancelled', 'has_priority', 'frame_rate',
-        'frame_count', 'operation_count', 'operations_completed', 'frame',
+        'frame_count', 'operation_count', 'operations_started', 'frame',
         'value', 'text', 'percent_format', 'start_text', 'override_text'
     )
 
@@ -444,7 +444,7 @@ class Edit:
         self.frame_rate = 0.0
         self.frame_count = 0
         self.operation_count = 0
-        self.operations_completed = 0
+        self.operations_started = 0
         self.frame = 0
         self.value = 0
         self.text = 'Saving'
@@ -501,8 +501,7 @@ class Edit:
                 save.has_priority = False
         self.has_priority = True
         if self.frame == 0:                 # assume we haven't parsed any output yet
-            gui.set_save_progress_format_signal.emit(self.start_text)
-            gui.set_save_progress_current_signal.emit(0)
+            gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
         else:
             self.set_progress_bar(value=self.value)
         gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
@@ -532,7 +531,7 @@ class Edit:
         operation_count = self.operation_count
         if operation_count > 1:
             pause = ', 𝗜𝗜' if self._is_paused else ''
-            text = f'{text} [{self.operations_completed + 1}/{operation_count}{pause}] {percent_format}'
+            text = f'{text} [{self.operations_started}/{operation_count}{pause}] {percent_format}'
         else:
             pause = ' [𝗜𝗜] ' if self._is_paused else ' '
             text = f'{text}{pause}{percent_format}'
@@ -553,8 +552,7 @@ class Edit:
             return value
 
         # update progress bar, taskbar, and titlebar with our current value/text
-        gui.set_save_progress_current_signal.emit(value)
-        gui.set_save_progress_format_signal.emit(self.get_progress_text(frame))
+        gui.set_save_progress_value_and_format_signal.emit(value, self.get_progress_text(frame))
         if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
             gui.taskbar_progress.setValue(value)
         refresh_title()
@@ -654,9 +652,8 @@ class Edit:
         # prepare the progress bar/taskbar/titlebar if no other edits are active
         had_priority = len(gui.saves_in_progress) == 1
         if had_priority:
-            self.has_priority = True
-            gui.set_save_progress_format_signal.emit(self.start_text)
-            gui.set_save_progress_current_signal.emit(0)    # we must call this to actually show the progress bar
+            self.has_priority = True                    # we must set the value to 0 to actually show the progress bar
+            gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
             gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
             gui.set_save_progress_visible_signal.emit(True)
             if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
@@ -699,7 +696,9 @@ class Edit:
             if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
             try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
             except: return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
+
             self.process = process
+            self.operations_started += 1
 
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
@@ -787,7 +786,6 @@ class Edit:
                     os.renames(temp_infile, infile)
                     logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
 
-            self.operations_completed += 1              # increment counter if we were successful
             log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
             return outfile
 
@@ -841,8 +839,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     refresh_title_signal = QtCore.pyqtSignal()
     set_save_progress_visible_signal = QtCore.pyqtSignal(bool)
     set_save_progress_max_signal = QtCore.pyqtSignal(int)
-    set_save_progress_current_signal = QtCore.pyqtSignal(int)
+    set_save_progress_value_signal = QtCore.pyqtSignal(int)
     set_save_progress_format_signal = QtCore.pyqtSignal(str)
+    set_save_progress_value_and_format_signal = QtCore.pyqtSignal(int, str)
     disable_crop_mode_signal = QtCore.pyqtSignal(bool)
     handle_updates_signal = QtCore.pyqtSignal(bool)
     _handle_updates_signal = QtCore.pyqtSignal(dict, dict)
@@ -7085,11 +7084,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             avg_value = 0
             total_operations = 0
             for save in self.saves_in_progress:                 # get average across all operations in all edits
-                operation_count = save.operation_count
-                total_operations += operation_count
-                avg_value += save.value
+                total_operations += save.operation_count
+                avg_value += save.value + ((save.operations_started - 1) * 100)
             avg_value /= total_operations
-            title = f'[{avg_value:.0f}%] {settings.lineWindowTitleFormat.text()}'
+            title = f'[{max(0, avg_value):.0f}%] {settings.lineWindowTitleFormat.text()}'
         else:
             title = settings.lineWindowTitleFormat.text()
 
@@ -7459,7 +7457,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             from the titlebar and taskbar button (on Windows). '''
         self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
         self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
-        self.set_save_progress_current_signal.emit(0)
+        self.set_save_progress_value_signal.emit(0)
         if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
             self.taskbar_progress.reset()                           # reset taskbar progress (`setVisible(False)` not needed)
         refresh_title()                                             # refresh title to hide progress percentage
