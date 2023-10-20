@@ -530,8 +530,8 @@ class Edit:
         # handle operation count and pause symbol for this edit
         operation_count = self.operation_count
         if operation_count > 1:
-            pause = ', 𝗜𝗜' if self._is_paused else ''
-            text = f'{text} [{self.operations_started}/{operation_count}{pause}] {percent_format}'
+            pause = '𝗜𝗜, ' if self._is_paused else ''
+            text = f'{text} [{pause}{self.operations_started}/{operation_count}] {percent_format}'
         else:
             pause = ' [𝗜𝗜] ' if self._is_paused else ' '
             text = f'{text}{pause}{percent_format}'
@@ -548,34 +548,14 @@ class Edit:
             value = int((frame / max(1, self.frame_count)) * 100)
         self.value = value
         self.frame = frame
-        if not self.has_priority:
-            return value
 
         # update progress bar, taskbar, and titlebar with our current value/text
-        gui.set_save_progress_value_and_format_signal.emit(value, self.get_progress_text(frame))
-        if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
-            gui.taskbar_progress.setValue(value)
-        refresh_title()
+        if self.has_priority:
+            gui.set_save_progress_value_and_format_signal.emit(value, self.get_progress_text(frame))
+            if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
+                gui.taskbar_progress.setValue(value)
+            refresh_title()
 
-        # update our tooltip with the status of all saves in progress
-        avg_value = 0
-        total_edits = len(gui.saves_in_progress)
-        total_operations = 0
-        lines = []
-        for save in gui.saves_in_progress:
-            lines.append(save.get_progress_text(simple=True))
-            total_operations += save.operation_count
-            avg_value += save.value
-        avg_value /= total_operations
-
-        if total_edits > 1:
-            header = f'{total_operations} operations across {total_edits} edits: {avg_value:.0f}%\n---\n'
-        elif total_operations > 1:
-            header = f'{total_operations} operations: {avg_value:.0f}%\n---\n'
-        else:
-            header = ''
-        footer = '\n'.join(lines)
-        gui.save_progress_bar.setToolTip(f'{header}{footer}')
         return value
 
 
@@ -2019,24 +1999,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             allowing you to see, display, and cancel all active saves. '''
         context = QtW.QMenu(self)
 
-        # add "Cancel/Pause/Resume all" actions, if appropriate
-        action_pause_all = QtW.QAction('Pause all')
-        action_resume_all = QtW.QAction('Resume all')
-        action_cancel_all = QtW.QAction('Cancel all')
-        if not self.saves_in_progress:
-            action_pause_all.setEnabled(False)
-            action_resume_all.setEnabled(False)
-            action_cancel_all.setEnabled(False)
-        else:
-            action_pause_all.triggered.connect(lambda: self.pause_all(paused=True))
-            action_resume_all.triggered.connect(lambda: self.pause_all(paused=False))
-            action_cancel_all.triggered.connect(self.cancel_all)
-
-        context.addAction(action_pause_all)
-        context.addAction(action_resume_all)
-        context.addAction(action_cancel_all)
-        context.addSeparator()
-
         # workarounds for python bug/oddity involving creating lambdas in iterables
         # (needed for the actions to actually remember which edit they belong to)
         get_cancel_lambda =   lambda save: lambda: save.cancel()
@@ -2044,41 +2006,45 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         get_resume_lambda =   lambda save: lambda: save.pause(paused=False)
         get_priority_lambda = lambda save: lambda: save.give_priority()
 
-        # workaround for python bug/oddity involving local scope variables in iterables or something
-        # (this is the only way i could manage to actually get all of the submenus to even appear)
-        action_dicts = {}
-
-        # this + the above workarounds took like two hours to get working
+        # this + the above workarounds (edit: now just the four) took like two hours to get working
+        # NOTE: this loop could be much shorter, but this is way easier to read
+        total_edits = len(self.saves_in_progress)
         for save in self.saves_in_progress:
-            action_dicts[save] = {}
-            action_dict = action_dicts[save]
 
             # set edit's menu title with text, operation count, and (operation) progress
-            submenu = QtW.QMenu(save.get_progress_text(simple=True), context)
+            if total_edits > 1:
+                submenu = QtW.QMenu(save.get_progress_text(simple=True), context)
+                context.addMenu(submenu)
+            else:
+                submenu = context          # for just one edit, show the submenu directly
+
+            # resume/pause selected edit
+            if not save._is_paused:
+                action_suspend = submenu.addAction('Pause')
+                action_suspend.triggered.connect(get_pause_lambda(save))
+            else:
+                action_suspend = submenu.addAction('Resume')
+                action_suspend.triggered.connect(get_resume_lambda(save))
+
+            # cancel selected edit
+            action_cancel = submenu.addAction('Cancel')
+            action_cancel.triggered.connect(get_cancel_lambda(save))
+            submenu.addSeparator()                          # show separator after suspend/cancel actions
 
             # give priority to selected edit (if possible)
-            if save.has_priority:
-                action_dict['priority'] = QtW.QAction('Currently displayed')
-                action_dict['priority'].setEnabled(False)
-            else:
-                action_dict['priority'] = QtW.QAction('Display')
-                action_dict['priority'].triggered.connect(get_priority_lambda(save))
+            if total_edits > 1:
+                action_priority = submenu.addAction('Display')
+                if save.has_priority:
+                    action_priority.setEnabled(False)
+                else:
+                    action_priority.triggered.connect(get_priority_lambda(save))
 
-            # cancel, pause, or resume selected edit
-            action_dict['cancel'] = QtW.QAction('Cancel')
-            action_dict['cancel'].triggered.connect(get_cancel_lambda(save))
-            if not save._is_paused:
-                action_dict['suspend'] = QtW.QAction('Pause')
-                action_dict['suspend'].triggered.connect(get_pause_lambda(save))
-            else:
-                action_dict['suspend'] = QtW.QAction('Resume')
-                action_dict['suspend'].triggered.connect(get_resume_lambda(save))
-
-            submenu.addAction(action_dict['suspend'])
-            submenu.addAction(action_dict['cancel'])
-            submenu.addSeparator()
-            submenu.addAction(action_dict['priority'])
-            context.addMenu(submenu)
+        # add "Pause/Resume/Cancel all" actions, if appropriate
+        if total_edits > 1:
+            context.addSeparator()
+            context.addAction('Pause all').triggered.connect(lambda: self.pause_all(paused=True))
+            context.addAction('Resume all').triggered.connect(lambda: self.pause_all(paused=False))
+            context.addAction('Cancel all').triggered.connect(self.cancel_all)
 
         context.exec(event.globalPos())
 
