@@ -431,12 +431,15 @@ class Edit:
     ''' A class for handling, executing, and tracking edits in progress. '''
 
     __slots__ = (
-        'process', '_is_paused', '_is_cancelled', 'has_priority', 'frame_rate',
-        'frame_count', 'operation_count', 'operations_started', 'frame',
-        'value', 'text', 'percent_format', 'start_text', 'override_text'
+        'dest', 'temp_dest', 'process', '_is_paused', '_is_cancelled',
+        'has_priority', 'frame_rate', 'frame_count', 'operation_count',
+        'operations_started', 'frame', 'value', 'text', 'percent_format',
+        'start_text', 'override_text'
     )
 
-    def __init__(self):
+    def __init__(self, dest: str = ''):
+        self.dest = dest
+        self.temp_dest = ''
         self.process: subprocess.Popen = None
         self._is_paused = False
         self._is_cancelled = False
@@ -678,6 +681,7 @@ class Edit:
             except: return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
 
             self.process = process
+            self.temp_dest = outfile
             self.operations_started += 1
 
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
@@ -1998,6 +2002,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles the context (right-click) menu for the edit progress bar,
             allowing you to see, display, and cancel all active saves. '''
         context = QtW.QMenu(self)
+        context.setToolTipsVisible(True)
 
         # workarounds for python bug/oddity involving creating lambdas in iterables
         # (needed for the actions to actually remember which edit they belong to)
@@ -2038,6 +2043,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     action_priority.setEnabled(False)
                 else:
                     action_priority.triggered.connect(get_priority_lambda(save))
+
+            # show dest's basename as disabled action so edits can be distinguished
+            if save.dest:
+                action_outfile = submenu.addAction(os.path.basename(save.dest))
+                action_outfile.setEnabled(False)
+                if save.temp_dest == save.dest:             # show full path(s) as tooltip
+                    action_outfile.setToolTip(save.dest)
+                else:
+                    action_outfile.setToolTip(f'Final destination:\t {save.dest}\n'
+                                              f'Temp destination:\t {save.temp_dest}')
 
         # add "Pause/Resume/Cancel all" actions, if appropriate
         if total_edits > 1:
@@ -4194,7 +4209,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # NOTE: ABSOLUTELY EXTREMELY IMPORTANT!!! update any relevant properties such as...
         # ...vheight/vwidth, is_gif/is_static_image, etc. as SOON as an operation is done!!!
         try:
-            edit = Edit()
+            edit = Edit(final_dest)
             edit.frame_rate = frame_rate
             edit.frame_count = frame_count_raw
             edit.operation_count = len(operations)
@@ -5291,7 +5306,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
 
         try:
-            edit = Edit()
+            edit = Edit(final_dest)
             self.saves_in_progress.append(edit)
 
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
