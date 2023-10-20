@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 2670))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 345, 2694))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -124,36 +124,40 @@ class Ui_settingsDialog(object):
         self.spinHideIdleCursorDuration.setProperty("value", 1.5)
         self.spinHideIdleCursorDuration.setObjectName("spinHideIdleCursorDuration")
         self.formLayout.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.spinHideIdleCursorDuration)
-        self.checkHighPrecisionProgress = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkHighPrecisionProgress.setChecked(True)
-        self.checkHighPrecisionProgress.setObjectName("checkHighPrecisionProgress")
-        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkHighPrecisionProgress)
         self.checkFFprobe = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkFFprobe.setChecked(True)
         self.checkFFprobe.setObjectName("checkFFprobe")
-        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
-        self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRecycleBin.setChecked(True)
-        self.checkRecycleBin.setObjectName("checkRecycleBin")
-        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
-        self.checkCopyEscapeBackslashes = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkCopyEscapeBackslashes.setChecked(True)
-        self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
-        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.formLayout.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkFFprobe)
+        self.checkHighPrecisionProgress = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkHighPrecisionProgress.setChecked(True)
+        self.checkHighPrecisionProgress.setObjectName("checkHighPrecisionProgress")
+        self.formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.checkHighPrecisionProgress)
+        self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkStopOnFinish.setObjectName("checkStopOnFinish")
+        self.formLayout.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
+        self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
+        self.formLayout.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
         self.checkRememberDropFolder = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkRememberDropFolder.setChecked(True)
         self.checkRememberDropFolder.setObjectName("checkRememberDropFolder")
         self.formLayout.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.checkRememberDropFolder)
-        self.checkRecentFilesReorderFromMenu = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkRecentFilesReorderFromMenu.setObjectName("checkRecentFilesReorderFromMenu")
-        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkRecentFilesReorderFromMenu)
-        self.checkStopOnFinish = QtWidgets.QCheckBox(self.tabGeneral)
-        self.checkStopOnFinish.setObjectName("checkStopOnFinish")
-        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkStopOnFinish)
         self.checkAutoEnableSubtitles = QtWidgets.QCheckBox(self.tabGeneral)
         self.checkAutoEnableSubtitles.setChecked(True)
         self.checkAutoEnableSubtitles.setObjectName("checkAutoEnableSubtitles")
-        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.formLayout.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.checkAutoEnableSubtitles)
+        self.checkRecycleBin = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkRecycleBin.setChecked(True)
+        self.checkRecycleBin.setObjectName("checkRecycleBin")
+        self.formLayout.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.checkRecycleBin)
+        self.checkCopyEscapeBackslashes = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkCopyEscapeBackslashes.setChecked(True)
+        self.checkCopyEscapeBackslashes.setObjectName("checkCopyEscapeBackslashes")
+        self.formLayout.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.checkCopyEscapeBackslashes)
+        self.checkContextShowSubmenus = QtWidgets.QCheckBox(self.tabGeneral)
+        self.checkContextShowSubmenus.setTristate(True)
+        self.checkContextShowSubmenus.setObjectName("checkContextShowSubmenus")
+        self.formLayout.setWidget(15, QtWidgets.QFormLayout.SpanningRole, self.checkContextShowSubmenus)
         self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(-1, 0, -1, 0)
@@ -2045,9 +2049,7 @@ class Ui_settingsDialog(object):
         settingsDialog.setTabOrder(self.comboDialogPosition, self.checkHideIdleCursor)
         settingsDialog.setTabOrder(self.checkHideIdleCursor, self.spinHideIdleCursorDuration)
         settingsDialog.setTabOrder(self.spinHideIdleCursorDuration, self.checkHighPrecisionProgress)
-        settingsDialog.setTabOrder(self.checkHighPrecisionProgress, self.checkStopOnFinish)
-        settingsDialog.setTabOrder(self.checkStopOnFinish, self.checkAutoEnableSubtitles)
-        settingsDialog.setTabOrder(self.checkAutoEnableSubtitles, self.checkMinimizePause)
+        settingsDialog.setTabOrder(self.checkHighPrecisionProgress, self.checkMinimizePause)
         settingsDialog.setTabOrder(self.checkMinimizePause, self.checkMinimizeRestore)
         settingsDialog.setTabOrder(self.checkMinimizeRestore, self.checkSnapVideos)
         settingsDialog.setTabOrder(self.checkSnapVideos, self.checkSnapGifs)
@@ -2262,6 +2264,18 @@ class Ui_settingsDialog(object):
         self.checkHideIdleCursor.setText(_translate("settingsDialog", "Hide cursor/UI"))
         self.spinHideIdleCursorDuration.setPrefix(_translate("settingsDialog", "After: "))
         self.spinHideIdleCursorDuration.setSuffix(_translate("settingsDialog", " seconds"))
+        self.checkFFprobe.setToolTip(_translate("settingsDialog", "If checked, FFprobe will be used to parse media files for data such as\n"
+"their FPS, duration, etc. This is more stable, reliable, and sometimes\n"
+"faster than VLC\'s built-in parsing, though VLC is often sufficient.\n"
+"\n"
+"PyPlayer tracks both FFprobe and VLC\'s parsing progress and will use\n"
+"whichever one finishes first. FFprobe\'s data is saved to a .txt file and\n"
+"reused if possible, providing better performance when reopening\n"
+"files. These probe-files can be accessed from the \"Help\" submenu.\n"
+"\n"
+"Note: If you experience noticable delays while opening media,\n"
+"try disabling this setting."))
+        self.checkFFprobe.setText(_translate("settingsDialog", "Use FFprobe (requires restart)"))
         self.checkHighPrecisionProgress.setToolTip(_translate("settingsDialog", "If checked, the progress slider for the current media will be faked in\n"
 "order to create the effect of a smooth slider. It will increment once\n"
 "per frame according to the media\'s frame rate, and a separate\n"
@@ -2269,19 +2283,28 @@ class Ui_settingsDialog(object):
 "\n"
 "If not checked, libVLC\'s native updates will be used."))
         self.checkHighPrecisionProgress.setText(_translate("settingsDialog", "High-precision progress slider (CPU-intensive)"))
-        self.checkFFprobe.setToolTip(_translate("settingsDialog", "If checked, FFprobe will be used (if it exists) to parse media files\n"
-"for data such as its FPS, duration, etc. to display on the UI. This\n"
-"is more reliable, more stable, and sometimes faster than VLC\'s\n"
-"built-in parsing, though VLC is sufficient for many use-cases.\n"
+        self.checkStopOnFinish.setToolTip(_translate("settingsDialog", "If checked, the media player will completely stop upon the\n"
+"completion of a media file, instead of just pausing the media.\n"
+"This is how VLC handles media files.\n"
 "\n"
-"PyPlayer tracks both FFprobe and VLC\'s parsing progress, and will\n"
-"use whichever one finishes first. FFprobe\'s data is saved to a .txt\n"
-"file and reused if possible, for better performance when replaying\n"
-"the same files.\n"
-"\n"
-"NOTE: If you experience noticable delays while\n"
-"opening media, you can try disabling this setting."))
-        self.checkFFprobe.setText(_translate("settingsDialog", "Use FFprobe when possible (requires PyPlayer restart)"))
+"NOTE: If the player is not stopped, video and audio files will\n"
+"still be considered \"in-use\" by your OS. You can manually\n"
+"stop the player by right-clicking the player or pause button,\n"
+"or by going to \"File -> Stop Player\" in the menubar."))
+        self.checkStopOnFinish.setText(_translate("settingsDialog", "Stop player after media has finished (VLC behavior)"))
+        self.checkRecentFilesReorderFromMenu.setToolTip(_translate("settingsDialog", "If checked, opening recent files through\n"
+"the menu will update their order, moving\n"
+"the newly played file to the top."))
+        self.checkRecentFilesReorderFromMenu.setText(_translate("settingsDialog", "Opening recent files from the menu updates their order"))
+        self.checkRememberDropFolder.setToolTip(_translate("settingsDialog", "If checked, dragging and dropping media will remember that\n"
+"media\'s folder and use it as the default for the next time you\n"
+"open a file-browsing dialog. Otherwise, only media opened\n"
+"through those dialogs will have their folders remembered."))
+        self.checkRememberDropFolder.setText(_translate("settingsDialog", "Remember folders for drag-and-dropped media"))
+        self.checkAutoEnableSubtitles.setToolTip(_translate("settingsDialog", "If checked, subtitle tracks will be automatically\n"
+"enabled if they\'re available. This includes both\n"
+"pre-existing and manually-added tracks."))
+        self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
         self.checkRecycleBin.setToolTip(_translate("settingsDialog", "If checked, files marked for deletion are sent to your computer\'s\n"
 "recycle bin instead of being immediately/permanently deleted."))
         self.checkRecycleBin.setText(_translate("settingsDialog", "Deleted files are moved to recycle bin"))
@@ -2292,29 +2315,16 @@ class Ui_settingsDialog(object):
 "This is only relevant on Windows as other operating\n"
 "systems do not use backslashes in their paths."))
         self.checkCopyEscapeBackslashes.setText(_translate("settingsDialog", "Escape backslashes ( \\ → \\\\ ) when copying media path"))
-        self.checkRememberDropFolder.setToolTip(_translate("settingsDialog", "If checked, dragging and dropping media will remember\n"
-"that media\'s folder and use it as the default for the next\n"
-"time you open a file-browsing dialog. Otherwise, only\n"
-"media opened through those dialogs will have their\n"
-"folders remembered."))
-        self.checkRememberDropFolder.setText(_translate("settingsDialog", "Remember folders for drag-and-dropped media"))
-        self.checkRecentFilesReorderFromMenu.setToolTip(_translate("settingsDialog", "If checked, opening recent files through\n"
-"the menu will update their order, moving\n"
-"the newly played file to the top."))
-        self.checkRecentFilesReorderFromMenu.setText(_translate("settingsDialog", "Opening recent files from the menu updates their order"))
-        self.checkStopOnFinish.setToolTip(_translate("settingsDialog", "If checked, the media player will completely stop upon the\n"
-"completion of a media file, instead of just pausing the media.\n"
-"This is how VLC handles media files.\n"
+        self.checkContextShowSubmenus.setToolTip(_translate("settingsDialog", "Tristate:\n"
 "\n"
-"NOTE: If the player is not stopped, video and audio files will\n"
-"still be considered \"in-use\" by your OS. You can manually\n"
-"stop the player by right-clicking the player or pause button,\n"
-"or by going to \"File -> Stop Player\" in the menubar."))
-        self.checkStopOnFinish.setText(_translate("settingsDialog", "Stop player after media has finished (VLC behavior)"))
-        self.checkAutoEnableSubtitles.setToolTip(_translate("settingsDialog", "If checked, subtitle tracks will be automatically\n"
-"enabled if they\'re available. This includes both\n"
-"pre-existing tracks and manually-added tracks."))
-        self.checkAutoEnableSubtitles.setText(_translate("settingsDialog", "Automatically enable subtitle tracks"))
+"Fully checked - The menubar\'s submenus (\"File\", \"Edit\", etc.)\n"
+"will always appear in the context (right-click) menu.\n"
+"\n"
+"Partially checked - The submenus will only appear in the context\n"
+"menu if the menubar itself is not visible.\n"
+"\n"
+"Unchecked - The submenus will never appear in the context menu."))
+        self.checkContextShowSubmenus.setText(_translate("settingsDialog", "Show menubar\'s submenus in context menu (tristate)"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusAggressive.setToolTip(_translate("settingsDialog", "If checked, PyPlayer will use COM and native Windows\' APIs\n"
 "to aggressively steal focus on Windows. Otherwise, Windows\n"
@@ -2475,7 +2485,7 @@ class Ui_settingsDialog(object):
         self.comboTaskbarFlash.setItemText(1, _translate("settingsDialog", "Flash once"))
         self.comboTaskbarFlash.setItemText(2, _translate("settingsDialog", "Flash 3 times"))
         self.comboTaskbarFlash.setItemText(3, _translate("settingsDialog", "Flash indefinitely"))
-        self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires PyPlayer restart)"))
+        self.groupTray.setTitle(_translate("settingsDialog", "Enable system tray icon (requires restart)"))
         self.checkTrayClose.setToolTip(_translate("settingsDialog", "If checked, closing the window will minimize\n"
 "it to your system tray. You can still fully exit\n"
 "by going to \"File->Exit\" or by right-clicking\n"

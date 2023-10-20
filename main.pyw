@@ -963,6 +963,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.lineOutput.setIgnoreAll(False)
         self.frameAdvancedControls.setDragTarget(self)
         self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
+        self.dialog_settings.checkContextShowSubmenus.setCheckState(1)       # can't make checkboxes default to partially checked in Qt Designer :(
         for spin in (self.spinHour, self.spinMinute, self.spinSecond, self.spinFrame):
             spin.setProxyWidget(self)
 
@@ -1718,14 +1719,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             context.addAction(self.actionCopyImage)
         context.addAction(self.actionSettings)
 
-        # add all menubar menus
-        context.addSeparator()
-        context.addMenu(self.menuFile)
-        context.addMenu(self.menuEdit)
-        context.addMenu(self.menuVideo)
-        context.addMenu(self.menuAudio)
-        context.addMenu(self.menuWindow)
-        context.addMenu(self.menuHelp)
+        # add submenus if menubar isn't visible or we always want them shown
+        show_submenus = settings.checkContextShowSubmenus.checkState()
+        always_show = show_submenus == 2
+        dynamic_show = show_submenus == 1
+        if always_show or (not self.menubar.isVisible() and dynamic_show):
+            context.addSeparator()
+            context.addMenu(self.menuFile)
+            context.addMenu(self.menuEdit)
+            context.addMenu(self.menuVideo)
+            context.addMenu(self.menuAudio)
+            context.addMenu(self.menuWindow)
+            context.addMenu(self.menuHelp)
 
         # add labels with info about the current media, then show context menu
         if self.video:
@@ -6288,11 +6293,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Appends greyed-out actions to `context` containing
             information about the current media. '''
         context.addSeparator()
-        if '?size' not in settings.lineWindowTitleFormat.text():
+        is_fullscreen = self.isFullScreen()             # always show all info in fullscreen
+        if is_fullscreen or '?size' not in settings.lineWindowTitleFormat.text():
             context.addAction(f'Size: {self.size_label}').setEnabled(False)
-        if '?resolution' not in settings.lineWindowTitleFormat.text():
+        if is_fullscreen or '?resolution' not in settings.lineWindowTitleFormat.text():
             context.addAction(f'Res: {self.vwidth:.0f}x{self.vheight:.0f}').setEnabled(False)
-        if '?ratio' not in settings.lineWindowTitleFormat.text():
+        if is_fullscreen or '?ratio' not in settings.lineWindowTitleFormat.text():
             context.addAction(f'Ratio: {self.ratio}').setEnabled(False)
 
         # generate timestamps for media's ctime/mtime

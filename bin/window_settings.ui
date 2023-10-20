@@ -74,8 +74,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>344</width>
-        <height>2670</height>
+        <width>345</width>
+        <height>2694</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -395,6 +395,29 @@ of time. While fullscreen, the UI will also disappear.</string>
               </widget>
              </item>
              <item row="7" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkFFprobe">
+               <property name="toolTip">
+                <string>If checked, FFprobe will be used to parse media files for data such as
+their FPS, duration, etc. This is more stable, reliable, and sometimes
+faster than VLC's built-in parsing, though VLC is often sufficient.
+
+PyPlayer tracks both FFprobe and VLC's parsing progress and will use
+whichever one finishes first. FFprobe's data is saved to a .txt file and
+reused if possible, providing better performance when reopening
+files. These probe-files can be accessed from the &quot;Help&quot; submenu.
+
+Note: If you experience noticable delays while opening media,
+try disabling this setting.</string>
+               </property>
+               <property name="text">
+                <string>Use FFprobe (requires restart)</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkHighPrecisionProgress">
                <property name="toolTip">
                 <string>If checked, the progress slider for the current media will be faked in
@@ -412,31 +435,67 @@ If not checked, libVLC's native updates will be used.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkFFprobe">
+             <item row="9" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkStopOnFinish">
                <property name="toolTip">
-                <string>If checked, FFprobe will be used (if it exists) to parse media files
-for data such as its FPS, duration, etc. to display on the UI. This
-is more reliable, more stable, and sometimes faster than VLC's
-built-in parsing, though VLC is sufficient for many use-cases.
+                <string>If checked, the media player will completely stop upon the
+completion of a media file, instead of just pausing the media.
+This is how VLC handles media files.
 
-PyPlayer tracks both FFprobe and VLC's parsing progress, and will
-use whichever one finishes first. FFprobe's data is saved to a .txt
-file and reused if possible, for better performance when replaying
-the same files.
-
-NOTE: If you experience noticable delays while
-opening media, you can try disabling this setting.</string>
+NOTE: If the player is not stopped, video and audio files will
+still be considered &quot;in-use&quot; by your OS. You can manually
+stop the player by right-clicking the player or pause button,
+or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
                </property>
                <property name="text">
-                <string>Use FFprobe when possible (requires PyPlayer restart)</string>
+                <string>Stop player after media has finished (VLC behavior)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="10" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
+               <property name="toolTip">
+                <string>If checked, opening recent files through
+the menu will update their order, moving
+the newly played file to the top.</string>
+               </property>
+               <property name="text">
+                <string>Opening recent files from the menu updates their order</string>
+               </property>
+              </widget>
+             </item>
+             <item row="11" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRememberDropFolder">
+               <property name="toolTip">
+                <string>If checked, dragging and dropping media will remember that
+media's folder and use it as the default for the next time you
+open a file-browsing dialog. Otherwise, only media opened
+through those dialogs will have their folders remembered.</string>
+               </property>
+               <property name="text">
+                <string>Remember folders for drag-and-dropped media</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
                </property>
               </widget>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkAutoEnableSubtitles">
+               <property name="toolTip">
+                <string>If checked, subtitle tracks will be automatically
+enabled if they're available. This includes both
+pre-existing and manually-added tracks.</string>
+               </property>
+               <property name="text">
+                <string>Automatically enable subtitle tracks</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="13" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRecycleBin">
                <property name="toolTip">
                 <string>If checked, files marked for deletion are sent to your computer's
@@ -450,7 +509,7 @@ recycle bin instead of being immediately/permanently deleted.</string>
                </property>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCopyEscapeBackslashes">
                <property name="toolTip">
                 <string>If checked, copying a media's path to your clipboard
@@ -468,63 +527,23 @@ systems do not use backslashes in their paths.</string>
                </property>
               </widget>
              </item>
-             <item row="11" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRememberDropFolder">
+             <item row="15" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkContextShowSubmenus">
                <property name="toolTip">
-                <string>If checked, dragging and dropping media will remember
-that media's folder and use it as the default for the next
-time you open a file-browsing dialog. Otherwise, only
-media opened through those dialogs will have their
-folders remembered.</string>
-               </property>
-               <property name="text">
-                <string>Remember folders for drag-and-dropped media</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="12" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRecentFilesReorderFromMenu">
-               <property name="toolTip">
-                <string>If checked, opening recent files through
-the menu will update their order, moving
-the newly played file to the top.</string>
-               </property>
-               <property name="text">
-                <string>Opening recent files from the menu updates their order</string>
-               </property>
-              </widget>
-             </item>
-             <item row="13" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkStopOnFinish">
-               <property name="toolTip">
-                <string>If checked, the media player will completely stop upon the
-completion of a media file, instead of just pausing the media.
-This is how VLC handles media files.
+                <string>Tristate:
 
-NOTE: If the player is not stopped, video and audio files will
-still be considered &quot;in-use&quot; by your OS. You can manually
-stop the player by right-clicking the player or pause button,
-or by going to &quot;File -&gt; Stop Player&quot; in the menubar.</string>
+Fully checked - The menubar's submenus (&quot;File&quot;, &quot;Edit&quot;, etc.)
+will always appear in the context (right-click) menu.
+
+Partially checked - The submenus will only appear in the context
+menu if the menubar itself is not visible.
+
+Unchecked - The submenus will never appear in the context menu.</string>
                </property>
                <property name="text">
-                <string>Stop player after media has finished (VLC behavior)</string>
+                <string>Show menubar's submenus in context menu (tristate)</string>
                </property>
-              </widget>
-             </item>
-             <item row="14" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkAutoEnableSubtitles">
-               <property name="toolTip">
-                <string>If checked, subtitle tracks will be automatically
-enabled if they're available. This includes both
-pre-existing tracks and manually-added tracks.</string>
-               </property>
-               <property name="text">
-                <string>Automatically enable subtitle tracks</string>
-               </property>
-               <property name="checked">
+               <property name="tristate">
                 <bool>true</bool>
                </property>
               </widget>
@@ -1364,7 +1383,7 @@ media is opened, but the window does not get focused.</string>
            <item>
             <widget class="QGroupBox" name="groupTray">
              <property name="title">
-              <string>Enable system tray icon (requires PyPlayer restart)</string>
+              <string>Enable system tray icon (requires restart)</string>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -6215,8 +6234,6 @@ mime type as the current media (video, audio, or image).</string>
   <tabstop>checkHideIdleCursor</tabstop>
   <tabstop>spinHideIdleCursorDuration</tabstop>
   <tabstop>checkHighPrecisionProgress</tabstop>
-  <tabstop>checkStopOnFinish</tabstop>
-  <tabstop>checkAutoEnableSubtitles</tabstop>
   <tabstop>checkMinimizePause</tabstop>
   <tabstop>checkMinimizeRestore</tabstop>
   <tabstop>checkSnapVideos</tabstop>
