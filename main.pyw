@@ -4147,7 +4147,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # operation aliases
         op_replace_audio = operations.get('replace audio', None)        # path to audio track
         op_add_audio =     operations.get('add audio', None)            # path to audio track
-        op_remove_track =  operations.get('remove track', None)         # track to remove
+        op_isolate_track = operations.get('isolate track', None)        # track to isolate
         op_amplify_audio = operations.get('amplify audio', None)        # new volume, from 0-1(+)
         op_resize =        operations.get('resize', None)
         op_rotate_video =  operations.get('rotate video', None)         # rotate angle -> 90/180/270
@@ -4439,11 +4439,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     cmd = f'-i %in -i "{audio}" {the_important_part}'
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
 
-            # remove all video or audio tracks (does not turn file into an image/GIF)
-            if op_remove_track is not None:                     # NOTE: This can degrade audio quality slightly.
-                log_on_statusbar(f'{op_remove_track}-track removal requested.')
-                cmd = f'-i %in {"-q:a 0 -map a" if op_remove_track == "Video" else "-c copy -an"}'
-                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, f'Removing {op_remove_track.lower()} track')
+            # isolate audio or all video tracks (does not turn file into an image/GIF)
+            if op_isolate_track is not None:                    # NOTE: This can degrade audio quality slightly.
+                log_on_statusbar(f'{op_isolate_track}-track removal requested.')
+                cmd = f'-i %in {"-q:a 0 -map a" if op_isolate_track == "Audio" else "-c copy -an"}'
+                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, f'Isolating {op_isolate_track.lower()} track')
 
             # amplify audio (TODO: do math to chain several of these together at once to circumvent the max volume limitation)
             if op_amplify_audio is not None:
@@ -5629,28 +5629,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     # https://superuser.com/questions/268985/remove-audio-from-video-file-with-ffmpeg
-    def remove_track(self, *args, audio: bool = True):
+    def isolate_track(self, *args, audio: bool = True):
         if not self.video:            return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Track removal for audio files is not supported yet.', 10000)
         if player.audio_get_track_count() == 0:
-            if audio: return show_on_statusbar('There are no audio tracks left to remove.', 10000)
-            else:     return show_on_statusbar('There are no audio tracks. If you want to remove the video too, you might as well just close your eyes.', 10000)
+            if audio: return show_on_statusbar('There are no audio tracks. If you want to remove the video too, you might as well just close your eyes.', 10000)
+            else:     return show_on_statusbar('There are no audio tracks left to remove.', 10000)
 
         if audio:
-            filter = 'MP4 files (*.mp4);;All files (*)'
-            valid_extensions = constants.VIDEO_EXTENSIONS
-            preferred_extensions = None
-        else:
+            self.operations['isolate track'] = 'Audio'
             filter = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
             preferred_extensions = constants.AUDIO_EXTENSIONS
+        else:
+            self.operations['isolate track'] = 'Video'
+            filter = 'MP4 files (*.mp4);;All files (*)'
+            valid_extensions = constants.VIDEO_EXTENSIONS
+            preferred_extensions = None
 
-        self.operations['remove track'] = 'Audio' if audio else 'Video'     # we need to capitalize these later so might as well just do it here
         self.save(
-            noun=f'{self.operations["remove track"]}',
+            noun=f'{self.operations["isolate track"]}',
             filter=filter,
-            ext_hint=None if audio else '.mp3',                             # give hint for extension
+            ext_hint='.mp3' if audio else None,                             # give hint for extension
             valid_extensions=valid_extensions,
             preferred_extensions=preferred_extensions                       # tells a potential "save as" prompt which extensions should be default
         )

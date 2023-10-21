@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>757</width>
-    <height>551</height>
+    <height>522</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -194,7 +194,7 @@
     <addaction name="actionAmplifyVolume"/>
     <addaction name="actionReplaceAudio"/>
     <addaction name="actionAddAudioTrack"/>
-    <addaction name="actionRemoveAudio"/>
+    <addaction name="actionIsolateAudio"/>
    </widget>
    <widget class="QMenu" name="menuVideo">
     <property name="title">
@@ -254,7 +254,7 @@
     <addaction name="menuConcatenate"/>
     <addaction name="menuRotate"/>
     <addaction name="menuTrimMode"/>
-    <addaction name="actionRemoveVideo"/>
+    <addaction name="actionIsolateVideo"/>
     <addaction name="actionResize"/>
     <addaction name="actionCrop"/>
    </widget>
@@ -1311,14 +1311,14 @@ Right-click for more options.</string>
     <enum>QAction::PreferencesRole</enum>
    </property>
   </action>
-  <action name="actionRemoveVideo">
+  <action name="actionIsolateVideo">
    <property name="text">
-    <string>Re&amp;move video</string>
+    <string>&amp;Isolate video</string>
    </property>
   </action>
-  <action name="actionRemoveAudio">
+  <action name="actionIsolateAudio">
    <property name="text">
-    <string>Re&amp;move audio</string>
+    <string>&amp;Isolate audio track</string>
    </property>
   </action>
   <action name="actionReplaceAudio">
