@@ -458,7 +458,7 @@ class Edit:
         self.has_priority = False
         self.frame_rate = 0.0
         self.frame_count = 0
-        self.operation_count = 0
+        self.operation_count = 1
         self.operations_started = 0
         self.frame = 0
         self.value = 0
@@ -5416,14 +5416,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
-                inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
-                funnysquares = ''.join(f'[{i}:v:0][{i}:a:0]' for i in range(len(files)))
-                filtercmd = f'-filter_complex "{funnysquares}concat=n={len(files)}:v=1:a=1[outv][outa]"'
-                cmd = f'{inputs}" {filtercmd} -map "[outv]" -map "[outa]" %out'
-
                 if not FFPROBE:                             # couldn't probe files -> use special text and indeterminate progress
                     edit.percent_format = '(re-encode requested, this will take a while)'
                     self.set_save_progress_max_signal.emit(0)
+
+                inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
+                funnysquares = ''.join(f'[{i}:v:0][{i}:a:0]' for i in range(len(files)))
+                filtercmd = f'-filter_complex "{funnysquares}concat=n={len(files)}:v=1:a=1[outv][outa]"'
+                cmd = f'{inputs}" {filtercmd} -map "[outv]" -map "[outa]" -vsync 2 %out'
                 edit.ffmpeg(None, cmd, dest, 'Concatenating')
 
             # no re-encoding, concatenate (almost instantly) using stream copying
@@ -7177,7 +7177,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             for save in self.saves_in_progress:                 # get average across all operations in all edits
                 total_operations += save.operation_count
                 avg_value += save.value + ((save.operations_started - 1) * 100)
-            avg_value /= total_operations
+            avg_value /= total_operations                       # divide-by-zero SHOULD be impossible here
             title = f'[{max(0, avg_value):.0f}%] {settings.lineWindowTitleFormat.text()}'
         else:
             title = settings.lineWindowTitleFormat.text()
