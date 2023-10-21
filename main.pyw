@@ -737,10 +737,12 @@ class Edit:
                         logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
                         break
 
-                    # check for error - "malloc of size ___ failed"
-                    if progress_text[-6:] == 'failed':
+                    # check for common errors
+                    if progress_text[-6:] == 'failed':                      # "malloc of size ___ failed"
                         if 'malloc of size' in progress_text:
                             raise AssertionError(progress_text)
+                    elif 'do not match the corresponding output link' in progress_text:
+                        raise AssertionError(progress_text)                 # ^ concating videos with different dimensions
 
                     # normal videos will have a "frame=" progress string
                     if progress_text[:6] == 'frame=':
@@ -4975,10 +4977,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 button.setToolTip(constants.TRIM_BUTTON_TOOLTIP_BASE.replace('?mode', 'fade'))
 
 
-    def concatenate(self, action: QtW.QAction, files: list = None):
+    def concatenate(self, action: QtW.QAction = None, files: list = None):
         ''' Opens a separate dialog for concatenation with `files` included by
             default. Behavior changes depending on which `action` is passed:
 
+            - `actionCatDialog`     - Open dialog immediately with `self.video`
+                                      if present, otherwise an empty dialog.
+                                      This is the default if `action` is None.
             - `actionCatBeforeThis` - Open file browser first, then the dialog if
                                       more than one additional file was provided.
                                       Cancel if file browser is canceled. Files
@@ -4988,8 +4993,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                       placed before `self.last_video`. If
                                       `self.last_video` doesn't exist, cancel.
             - `actionCatAfterLast`  - Ditto, but the order is reversed.
-            - `actionCatDialog`     - Open dialog immediately with `self.video`
-                                      if present, otherwise an empty dialog.
 
             Dialog (if opened) stays open indefinitely until user either
             successfully concatenates or deliberately closes the dialog.
@@ -5003,6 +5006,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             if not constants.verify_ffmpeg(self, force_warning=True):
                 return marquee('You don\'t have FFmpeg installed!')
+            if not action:
+                action = self.actionCatDialog
+
+            # we probe our files before starting so we set these here instead of in `self._concatenate()`
+            FRAME_RATE_HINT = 0.0
+            FRAME_COUNT_HINT = 0
 
             # aliases for the main types of behavior the user can choose from/expect
             CAT_APPEND_THIS  = action in (self.actionCatBeforeThis, self.actionCatAfterThis)
@@ -5013,11 +5022,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # determine if our current file, our last file, or no file should be included by default
             # if we're adding to the current file but our current file isn't a video, just return
             output = ''
-            files = files or list()
-            if CAT_APPEND_LAST:             base_video = self.last_video
-            elif self.mime_type == 'video': base_video = self.video
-            elif CAT_APPEND_THIS: return show_on_statusbar('Concatenation is not implemented for audio and image files yet.', 10000)
-            else:                           base_video = ''
+            if files and action is self.actionCatDialog:
+                base_video = ''
+            else:
+                files = files or list()
+                if CAT_APPEND_LAST:             base_video = self.last_video
+                elif self.mime_type == 'video': base_video = self.video
+                elif CAT_APPEND_THIS: return show_on_statusbar('Concatenation is not implemented for audio and image files yet.', 10000)
+                else:                           base_video = ''
 
             # if we're adding our last file and current file together,...
             # ...add current file to `files` (which should be empty)
@@ -5184,6 +5196,72 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     continue
 
                 else:
+                    # calculate final duration and average FPS of `files` for progress bar
+                    # (we do this here so we can catch invalid dimensions early)
+                    if FFPROBE:
+                        dimensions = []
+                        invalid_dimensions_detected = False
+                        fps_sum = 0
+                        new_frame_total = 0
+
+                        # attempt to probe files. if we're low on RAM, wait one second and try again
+                        try:
+                            probes = probe_files(*files)
+                        except OSError:                     # "[WinError 1455] The paging file is too small for this operation to complete"
+                            logging.warning(f'(!) OSError while probing files before concatenation: {format_exc()}')
+                            show_on_statusbar('(!) Not enough RAM to probe files before concatenation. Trying again...')
+                            try:
+                                sleep(1)
+                                probes = probe_files(*files)
+                            except OSError:
+                                show_on_statusbar('(!) Not enough RAM to probe files before concatenation. Going in blind.')
+                                probes = {}
+
+                        if probes:
+                            for file, probe_data in probes.items():
+                                for stream in probe_data['streams']:
+                                    if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
+                                        new_dimensions = (str(int(stream['width'])), str(int(stream['height'])))
+                                        dimensions.append((file, new_dimensions))
+                                        if new_dimensions != dimensions[0][-1]:
+                                            invalid_dimensions_detected = True
+                                        fps_parts = stream['avg_frame_rate'].split('/')
+                                        fps = int(fps_parts[0]) / int(fps_parts[1])
+                                        duration = float(probe_data['format']['duration'])
+                                        new_frame_total += math.ceil(duration * fps)
+                                        fps_sum += fps      # ↓ the average FPS of all `files`
+                            FRAME_RATE_HINT = fps_sum / len(probes)
+                            FRAME_COUNT_HINT = new_frame_total
+
+                        # the videos have different dimensions -> warn user and cancel if necessary
+                        if invalid_dimensions_detected:
+                            footer = '\n'.join(f'{index}. {"x".join(wh)}: {os.path.basename(f)}' for index, (f, wh) in enumerate(dimensions, start=1))
+                            if dialog.buttonEncode.isChecked():
+                                header = ('All files must have the same dimensions for re-encoded concatenation.\n'
+                                          'You\'ll need to crop or resize the offending files individually.')
+                                qthelpers.getPopup(
+                                    title='Concatenation canceled!',
+                                    text=header if len(files) > 20 else f'{header}\n\n{footer}',
+                                    textDetailed=footer if len(files) > 20 else None,
+                                    icon='warning',         # ↓ needed so it appears over the concat dialog
+                                    **self.get_popup_location()
+                                ).exec()
+                                continue
+                            else:
+                                header = ('Your files do not have the same dimensions. You can still concatenate\n'
+                                          'them with stream-copying, but the output will be very broken if you\n'
+                                          'don\'t crop or resize the offending files individually. Continue?')
+                                popup = qthelpers.getPopupOkCancel(
+                                    title='Concatenation canceled!',
+                                    text=header if len(files) > 20 else f'{header}\n\n{footer}',
+                                    textDetailed=footer if len(files) > 20 else None,
+                                    icon='warning',         # ↓ needed so it appears over the concat dialog
+                                    **self.get_popup_location()
+                                )
+                                if popup.exec() == QtW.QMessageBox.Cancel:
+                                    continue
+
+                # >>> prepare output from dialog <<<
                     output = dialog.output.text().strip()
                     unchanged = output == self.lineOutput.text().strip()
                     no_output = output == ''
@@ -5253,7 +5331,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # >>> concatenate and cleanup <<<
             Thread(
                 target=self._concatenate,
-                args=(files, output, CAT_ENCODE, CAT_OPEN, CAT_EXPLORE, CAT_MARK, CAT_DELETE),
+                args=(files, output, CAT_ENCODE, CAT_OPEN, CAT_EXPLORE, CAT_MARK, CAT_DELETE, FRAME_RATE_HINT, FRAME_COUNT_HINT),
                 daemon=True
             ).start()
 
@@ -5285,11 +5363,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         open: bool = False,
         explore: bool = False,
         mark: bool = False,
-        delete: bool = False
+        delete: bool = False,
+        frame_rate_hint: float = 0.0,
+        frame_count_hint: int = 0
     ):
         ''' Concatenates `files` together in the order they are provided
-            using FFmpeg, saving to `dest`. Re-encodes (with a progress bar)
-            if `encode` is True, otherwise stream copying is attempted.
+            using FFmpeg, saving to `dest`. Re-encodes (with a progress
+            bar using `frame_rate_hint` and `frame_count_hint` hints) if
+            `encode` is True, otherwise stream copying is attempted.
 
             - `open`    - Opens `dest` after saving, if successful.
             - `explore` - Opens `dest` in explorer after saving, if successful.
@@ -5323,6 +5404,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         try:
             edit = Edit(final_dest)
+            edit.frame_rate = frame_rate_hint
+            edit.frame_count = frame_count_hint
             self.saves_in_progress.append(edit)
 
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
@@ -5332,25 +5415,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 filtercmd = f'-filter_complex "{funnysquares}concat=n={len(files)}:v=1:a=1[outv][outa]"'
                 cmd = f'{inputs}" {filtercmd} -map "[outv]" -map "[outa]" %out'
 
-                # calculate final duration and average FPS of `files` for progress bar
-                if FFPROBE:
-                    fps_sum = 0
-                    new_frame_total = 0
-                    probes = probe_files(*files)
-                    for probe_data in probes.values():
-                        for stream in probe_data['streams']:
-                            if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
-                                fps_parts = stream['avg_frame_rate'].split('/')
-                                fps = int(fps_parts[0]) / int(fps_parts[1])
-                                duration = float(probe_data['format']['duration'])
-                                new_frame_total += math.ceil(duration * fps)
-                                fps_sum += fps
-                    edit.frame_rate = fps_sum / len(probes)
-                    edit.frame_count = new_frame_total    # ^ the average FPS of all `files`
-                else:
+                if not FFPROBE:                             # couldn't probe files -> use special text and indeterminate progress
                     edit.percent_format = '(re-encode requested, this will take a while)'
                     self.set_save_progress_max_signal.emit(0)
-
                 edit.ffmpeg(None, cmd, dest, 'Concatenating')
 
             # no re-encoding, concatenate (almost instantly) using stream copying
@@ -5374,7 +5441,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except Exception as error:
             successful = False
-            self.cleanup_edit_exception(error, dest, start_time, 'Concatenation')
+
+            # handle videos with different dimensions (if we got this far, assume FFprobe isn't available)
+            if 'do not match the corresponding output link' in str(error):
+                delete_temp_path(dest, 'FFmpeg file')
+                self.concatenate_signal.emit(None, files)       # reopen concat dialog with previous files (NOTE: state won't be fully restored)
+
+                header = ('All files must have the same dimensions for re-encoded concatenation.\n'
+                          'You\'ll need to crop or resize the offending files individually.')
+                self.popup_signal.emit(
+                    dict(
+                        title='Concatenation canceled!',
+                        text=header,
+                        icon='warning',
+                        flags=Qt.WindowStaysOnTopHint,          # needed so it appears over the concat dialog
+                        **self.get_popup_location()
+                    )
+                )
+
+            # do normal edit exception handling
+            else:
+                self.cleanup_edit_exception(error, dest, start_time, 'Concatenation')
         finally:
             self.saves_in_progress.remove(edit)
 

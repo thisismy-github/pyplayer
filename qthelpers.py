@@ -304,6 +304,7 @@ def getPopup(
     modal: bool = True,
     opacity: float = 1.0,
     windowIcon=None,
+    flags: int = None,
     parent: QtW.QWidget = None
 ) -> QMessageBox:
 
@@ -329,6 +330,7 @@ def getPopup(
     if textInformative: msg.setInformativeText(textInformative)
     if textDetailed:    msg.setDetailedText(textDetailed)
     if not modal:       msg.setWindowModality(Qt.WindowModal)
+    if flags:           msg.setWindowFlags(flags)
     msg.setStandardButtons(buttons)                         # ^ invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
     msg.setDefaultButton(defaultButton)
     msg.setWindowOpacity(opacity)
