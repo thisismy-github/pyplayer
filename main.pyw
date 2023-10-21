@@ -297,7 +297,8 @@ def probe_files(*files: tuple, refresh: bool = False, write: bool = True) -> dic
                 with open(probe_file, 'w') as f:
                     f.write(out)
         except:
-            log_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
+            logging.warning(f'(!) {file} could not be correctly parsed by FFprobe: {format_exc()}')
+            show_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
     return probes
 
 
@@ -1421,7 +1422,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             choice = self.show_delete_prompt(exiting=force_close or not event.spontaneous())
             if choice == QtW.QMessageBox.Cancel:        # cancel selected, don't close
                 self.close_cancel_selected = True       # required in case .close() was called from qtstart.exit()
-                logging.info('Close canceled.')
+                logging.info('Close cancelled.')
                 return event.ignore()
 
         self.stop()                                     # stop player
@@ -2708,14 +2709,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # if we're watching a video or audio with cover art, snapshot the frame/cover art first
             if snapshot_needed:
                 path = self.snapshot(mode='full' if extended else 'quick', is_temp=True)
-                if path is None:                    # dialog canceled (finally-statement ensures we unpause if needed)
+                if path is None:                    # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
                 temp_string = ' Temporary snapshot file has been deleted.'
             elif extended:
                 if self.is_gif: image_player.gif.setPaused(True)
                 else: player.set_pause(True)
                 width, height, quality = self.show_size_dialog(snapshot=True)
-                if width is None:                   # dialog canceled (finally-statement ensures we unpause if needed)
+                if width is None:                   # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
 
             log_on_statusbar('Copying image data to clipboard...')
@@ -3863,7 +3864,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # get width, height, and jpeg quality of snapshot
             if mode == 'full':
                 width, height, quality = self.show_size_dialog(snapshot=True)
-                if width is None:                               # dialog canceled (finally-statement ensures we unpause if needed)
+                if width is None:                               # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
             else:
                 width = 0
@@ -4274,13 +4275,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             # don't use auto-precise mode. either use preferred mode or show dialog for user to pick mode
                             else:
                                 if self.actionTrimPickEveryTime.isChecked() or not cfg.trimmodeselected:
-                                    self.trim_mode_selection_canceled = False
+                                    self.trim_mode_selection_cancelled = False
                                     cfg.trimmodeselected = False
                                     self.show_trim_dialog_signal.emit()
                                     while not cfg.trimmodeselected:
                                         sleep(0.1)
-                                    if self.trim_mode_selection_canceled:           # user hit X on the trim dialog
-                                        return log_on_statusbar('Trim canceled.')
+                                    if self.trim_mode_selection_cancelled:          # user hit X on the trim dialog
+                                        return log_on_statusbar('Trim cancelled.')
 
                                 start_time = get_time()                             # reset start_time to undo time spent waiting for dialog
                                 requires_precision = extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
@@ -4839,8 +4840,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:                   size_label = f'{size / 1073741824:.2f}gb'
             msg = (f'FFmpeg failed to allocate {size_label} of RAM. Rarely, this'
                    '\nmay happen even when plenty of free RAM is available.'
-                   '\n\nNo changes have been made. Feel free to try again.'
-                   '\nIf the issue persists, restart PyPlayer.')
+                   '\n\nIf the issue persists, try the following:'
+                   '\n • Check if the issue happens with other files'
+                   '\n • Restart PyPlayer'
+                   '\n • Restart your computer'
+                   '\n • Reinstall FFmpeg'
+                   '\n • Pray'
+                   '\n\nNo changes have been made. Feel free to try again.')
             self.popup_signal.emit(                         # TODO it *might* be nice to have retry/cancel options
                 dict(
                     title='FFmpeg error',
@@ -4986,7 +4992,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                       This is the default if `action` is None.
             - `actionCatBeforeThis` - Open file browser first, then the dialog if
                                       more than one additional file was provided.
-                                      Cancel if file browser is canceled. Files
+                                      Cancel if file browser is cancelled. Files
                                       picked are inserted BEFORE `self.video`.
             - `actionCatAfterThis`  - Ditto, but files are appended AFTER.
             - `actionCatBeforeLast` - Open dialog immediately with `self.video`
@@ -5174,7 +5180,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.vlc.idle_timeout_time = 0.0            # lock cursor (`QVideoPlayer.leaveEvent` might not trigger)
 
                 if dialog.exec() == QtW.QDialog.Rejected:   # cancel selected on dialog -> return
-                    return log_on_statusbar('Concatenation canceled.')
+                    return log_on_statusbar('Concatenation cancelled.')
                 files = [abspath(item.toolTip()) for item in dialog.videoList]
 
                 # check if any files have stopped existing - if so, show a warning and re-loop
@@ -5185,7 +5191,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if len(missing) == 1: header = 'The file at the following index no longer exists:\n\n'
                     else:                 header = 'The files at the following indexes no longer exist:\n\n'
                     qthelpers.getPopup(                     # TODO this is a rare scenario so it just shows...
-                        title='Concatenation canceled!',    # ...the popup and goes away, but it should...
+                        title='Concatenation cancelled!',   # ...the popup and goes away, but it should...
                         text=header + missing_string,       # ...really give "discard" and "ignore" options
                         icon='warning',
                         **self.get_popup_location()
@@ -5240,7 +5246,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 header = ('All files must have the same dimensions for re-encoded concatenation.\n'
                                           'You\'ll need to crop or resize the offending files individually.')
                                 qthelpers.getPopup(
-                                    title='Concatenation canceled!',
+                                    title='Concatenation cancelled!',
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
@@ -5252,7 +5258,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                           'them with stream-copying, but the output will be very broken if you\n'
                                           'don\'t crop or resize the offending files individually. Continue?')
                                 popup = qthelpers.getPopupOkCancel(
-                                    title='Concatenation canceled!',
+                                    title='Concatenation cancelled!',
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
@@ -5313,7 +5319,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             if locked:             header = 'The file at the following index is already being worked on:\n\n'
                             else:                  header = 'The files at the following indexes are already being worked on:\n\n'
                         qthelpers.getPopup(
-                            title='Concatenation canceled!',
+                            title='Concatenation cancelled!',
                             text=header + locked_string,
                             icon='warning',
                             **self.get_popup_location()
@@ -5451,7 +5457,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                           'You\'ll need to crop or resize the offending files individually.')
                 self.popup_signal.emit(
                     dict(
-                        title='Concatenation canceled!',
+                        title='Concatenation cancelled!',
                         text=header,
                         icon='warning',
                         flags=Qt.WindowStaysOnTopHint,          # needed so it appears over the concat dialog
@@ -5493,7 +5499,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
         width, height = self.show_size_dialog()
-        if width is None: return            # dialog canceled
+        if width is None: return            # dialog cancelled
         if width == 0: width = -1           # ffmpeg takes -1 as a default value, not 0
         if height == 0: height = -1         # ffmpeg takes -1 as a default value, not 0
 
@@ -6183,7 +6189,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if dialog.choice == button_auto: self.actionTrimAuto.setChecked(True)
                 else: self.actionTrimPrecise.setChecked(True)
             else:                                                   # trim mode rejected -> set flag so whatever opened...
-                self.trim_mode_selection_canceled = True            # ...the dialog can cancel whatever work it was doing
+                self.trim_mode_selection_cancelled = True           # ...the dialog can cancel whatever work it was doing
 
         except: log_on_statusbar(f'(!) TRIM DIALOG ERROR: {format_exc()}')
         finally: cfg.trimmodeselected = True                        # set this to True no matter what (_save is waiting on this)
