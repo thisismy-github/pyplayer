@@ -4441,9 +4441,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # isolate audio or all video tracks (does not turn file into an image/GIF)
             if op_isolate_track is not None:                    # NOTE: This can degrade audio quality slightly.
-                log_on_statusbar(f'{op_isolate_track}-track removal requested.')
-                cmd = f'-i %in {"-q:a 0 -map a" if op_isolate_track == "Audio" else "-c copy -an"}'
-                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, f'Isolating {op_isolate_track.lower()} track')
+                noun, track = op_isolate_track                  # NOTE: video can keep all its tracks, but audio MUST pick just one
+                log_on_statusbar(f'{noun}-track removal requested.')
+                cmd = f'-i %in -q:a 0 -map 0:a:{track}' if noun == 'Audio' else '-i %in -c copy -an'
+                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, f'Removing {noun.lower()} track')
 
             # amplify audio (TODO: do math to chain several of these together at once to circumvent the max volume limitation)
             if op_amplify_audio is not None:
@@ -5638,18 +5639,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:     return show_on_statusbar('There are no audio tracks left to remove.', 10000)
 
         if audio:
-            self.operations['isolate track'] = 'Audio'
+            current_track = player.audio_get_track()
+            if current_track == -1:
+                return show_on_statusbar('No audio track is currently selected.', 10000)
+            self.operations['isolate track'] = ('Audio', max(0, current_track - 1))
             filter = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
             preferred_extensions = constants.AUDIO_EXTENSIONS
         else:
-            self.operations['isolate track'] = 'Video'
+            self.operations['isolate track'] = ('Video', 0)
             filter = 'MP4 files (*.mp4);;All files (*)'
             valid_extensions = constants.VIDEO_EXTENSIONS
             preferred_extensions = None
 
         self.save(
-            noun=f'{self.operations["isolate track"]}',
+            noun=f'{self.operations["isolate track"][0]}',
             filter=filter,
             ext_hint='.mp3' if audio else None,                             # give hint for extension
             valid_extensions=valid_extensions,
