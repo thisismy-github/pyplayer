@@ -305,6 +305,7 @@ def getPopup(
     opacity: float = 1.0,
     windowIcon=None,
     flags: int = None,
+    app: QtGui.QGuiApplication = None,
     parent: QtW.QWidget = None
 ) -> QMessageBox:
 
@@ -313,8 +314,9 @@ def getPopup(
         icons = {'information': 1, 'info': 1, 'warning': 2, 'warn': 2, 'critical': 3, 'question': 4}
         icon = icons[icon.strip().lower()]
 
-    def showEvent(event):
-        ''' Plays default OS sound and centers the popup before showing if desired. '''
+    def showEvent(event: QtGui.QShowEvent):
+        ''' Plays default OS sound and centers
+            the popup before showing if desired. '''
         if sound:
             QtW.QApplication.beep()
         if centerWidget or centerScreen or centerMouse:
@@ -323,8 +325,15 @@ def getPopup(
             mouse = centerMouse or False
             center(msg, target=target, screen=screen, mouse=mouse)
 
+    def enterEvent(event: QtGui.QEnterEvent):
+        ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
+        if app:
+            while app.overrideCursor():
+                app.restoreOverrideCursor()
+
     msg = QMessageBox(parent, icon=icon)
     msg.showEvent = showEvent
+    msg.enterEvent = enterEvent
     msg.setWindowTitle(title)
     msg.setText(text)
     if textInformative: msg.setInformativeText(textInformative)
@@ -355,7 +364,7 @@ def getPopupRetryCancel(*args, **kwargs): return getPopup(*args, buttons=QMessag
 def getPopupAbortRetryIgnore(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Abort | QMessageBox.Retry | QMessageBox.Ignore, **kwargs)
 
 
-def getDialogFromUiClass(uiClass, parent: QtW.QWidget = None, **kwargs):
+def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW.QWidget = None, **kwargs):
     ''' Returns a persistent dialog based on a `uiClass`, likely provided by
         a converted Qt Designer file. Can be used repeatedly, as a persistent
         dialog. Accepts `modal`, `deleteOnClose/delete`, and
@@ -371,7 +380,7 @@ def getDialogFromUiClass(uiClass, parent: QtW.QWidget = None, **kwargs):
             self.setParent(parent)
             self.setupUi(self)
 
-        def showEvent(self, event):
+        def showEvent(self, event: QtGui.QShowEvent):
             ''' Plays default OS sound and centers
                 dialog before showing (if desired). '''
             if kwargs.get('sound', False):
@@ -385,10 +394,18 @@ def getDialogFromUiClass(uiClass, parent: QtW.QWidget = None, **kwargs):
                 mouse = centerMouse or False
                 center(self, target=target, screen=screen, mouse=mouse)
             return super().showEvent(event)
+
+        def enterEvent(self, event: QtGui.QEnterEvent):
+            ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
+            if app:
+                while app.overrideCursor():
+                    app.restoreOverrideCursor()
+
     return QPersistentDialog(parent, **kwargs)
 
 
 def getDialog(
+    app: QtGui.QGuiApplication = None,
     parent: QtW.QWidget = None,
     title: str = 'Dialog',
     icon='SP_MessageBoxInformation',
@@ -434,8 +451,9 @@ def getDialog(
                 buttonBox.button(button).clicked.connect(getButtonCallback(self, button))     # buttons cannot be connected directly
             layout.addWidget(buttonBox)
 
-        def showEvent(self, event):
-            ''' Plays default OS sound and centers the popup before showing if desired. '''
+        def showEvent(self, event: QtGui.QShowEvent):
+            ''' Plays default OS sound and centers the
+                popup before showing if desired. '''
             if sound:
                 QtW.QApplication.beep()
             if centerWidget or centerScreen or centerMouse:
@@ -444,6 +462,12 @@ def getDialog(
                 mouse = centerMouse or False
                 center(self, target=target, screen=screen, mouse=mouse)
             return super().showEvent(event)
+
+        def enterEvent(self, event: QtGui.QEnterEvent):
+            ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
+            if app:
+                while app.overrideCursor():
+                    app.restoreOverrideCursor()
 
     dialog = QDialogHybrid(parent)
     dialog.setWindowFlags(flags)

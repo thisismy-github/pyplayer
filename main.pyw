@@ -852,7 +852,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # this allows easier clicking off of lineEdits
         self.save_progress_bar = QtW.QProgressBar(self.statusbar)
-        self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog)
+        self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog, app=app)
         self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
         if not constants.IS_WINDOWS:                     # settings dialog was designed around Windows UI
             self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width(),
@@ -4881,7 +4881,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     title='FFmpeg error',
                     text=msg,
                     icon='warning',
-                    **self.get_popup_location()
+                    **self.get_popup_kwargs()
                 )
             )
         elif text == 'Cancelled.':
@@ -5099,7 +5099,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # NOTE: originally if we only had 2 files and already knew their order, we'd skip the...
             # ...dialog and use preset settings, but I think it's better to always use the dialog
             from bin.window_cat import Ui_catDialog
-            dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_location())
+            dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_kwargs())
 
             dialog.setWindowFlags(Qt.WindowStaysOnTopHint)
             dialog.checkOpen.setChecked(cfg.concatenate.open)
@@ -5178,7 +5178,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.down.clicked.connect(lambda: dialog.videoList.move(down=True))
             dialog.reverse.clicked.connect(dialog.videoList.reverse)
             dialog.recent.clicked.connect(add_last_file)
-            dialog.recent.contextMenuEvent = lambda *args: dialog.recent.showMenu()
+            dialog.recent.contextMenuEvent = lambda event: dialog.recent.showMenu()
             dialog.recent.menu().aboutToShow.connect(refresh_cat_recent_menu)
             dialog.browse.clicked.connect(
                 lambda: self.browse_for_save_file(
@@ -5223,7 +5223,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         title='Concatenation cancelled!',   # ...the popup and goes away, but it should...
                         text=header + missing_string,       # ...really give "discard" and "ignore" options
                         icon='warning',
-                        **self.get_popup_location()
+                        **self.get_popup_kwargs()
                     ).exec()
 
                 elif len(files) < 2:
@@ -5279,7 +5279,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
-                                    **self.get_popup_location()
+                                    **self.get_popup_kwargs()
                                 ).exec()
                                 continue
                             else:
@@ -5291,7 +5291,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
-                                    **self.get_popup_location()
+                                    **self.get_popup_kwargs()
                                 )
                                 if popup.exec() == QtW.QMessageBox.Cancel:
                                     continue
@@ -5351,7 +5351,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             title='Concatenation cancelled!',
                             text=header + locked_string,
                             icon='warning',
-                            **self.get_popup_location()
+                            **self.get_popup_kwargs()
                         ).exec()
                         continue                            # re-loop if any files were locked
                     break                                   # we have our files, we have our name -> break loop
@@ -5490,7 +5490,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         text=header,
                         icon='warning',
                         flags=Qt.WindowStaysOnTopHint,          # needed so it appears over the concat dialog
-                        **self.get_popup_location()
+                        **self.get_popup_kwargs()
                     )
                 )
 
@@ -5624,7 +5624,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
             preferred_extensions = None
 
-        dialog = qthelpers.getDialog(title='Amplify Audio', **self.get_popup_location(), fixedSize=(125, 105), flags=Qt.Tool)
+        dialog = qthelpers.getDialog(title='Amplify Audio', **self.get_popup_kwargs(), fixedSize=(125, 105), flags=Qt.Tool)
         layout = QtW.QVBoxLayout(dialog)
         label = QtW.QLabel('Input desired volume \n(applies on save):', dialog)
         spin = QtW.QSpinBox(dialog)
@@ -5847,8 +5847,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dimensions = snapshot or self.mime_type != 'audio'
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
-        dialog = qthelpers.getDialog(title='Input desired ' + 'size' if dimensions else 'length',
-                                     **self.get_popup_location(), fixedSize=(0, 0), flags=Qt.Tool)
+        dialog = qthelpers.getDialog(
+            title='Input desired ' + 'size' if dimensions else 'length',
+            **self.get_popup_kwargs(),
+            fixedSize=(0, 0),
+            flags=Qt.Tool
+        )
 
         if dimensions:
             label = QtW.QLabel(constants.SIZE_DIALOG_DIMENSIONS_LABEL_BASE.replace('?resolution', f'{vwidth}x{vheight}'), dialog)
@@ -5929,7 +5933,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         from bin.window_about import Ui_aboutDialog
         dialog = qthelpers.getDialogFromUiClass(
             Ui_aboutDialog,
-            **self.get_popup_location(),
+            **self.get_popup_kwargs(),
             modal=True,
             deleteOnClose=True
         )
@@ -5951,7 +5955,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         from bin.window_timestamp import Ui_timestampDialog
         dialog = qthelpers.getDialogFromUiClass(
             Ui_timestampDialog,
-            **self.get_popup_location(),
+            **self.get_popup_kwargs(),
             modal=False,
             deleteOnClose=True
         )
@@ -6187,8 +6191,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             settings yet. Sets cfg.trimmodeselected to True. '''
         try:
             self.force_pause(True)
-            dialog = qthelpers.getDialog(title='Choose default trim mode', **self.get_popup_location(),
-                                         modal=True, deleteOnClose=True, flags=Qt.Tool)
+            dialog = qthelpers.getDialog(
+                title='Choose default trim mode',
+                **self.get_popup_kwargs(),
+                modal=True,
+                deleteOnClose=True,
+                flags=Qt.Tool
+            )
             dialog.setMinimumSize(427, 220)
             dialog.resize(0, 0)
 
@@ -6260,7 +6269,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         logging.info('Opening deletion prompt...')
         try:
-            dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_location())
+            dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_kwargs())
             recycle = settings.checkRecycleBin.isChecked()
             marked = []
             unmarked = []
@@ -6420,11 +6429,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
                 if 'failed' in results:
-                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
+                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_kwargs()).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
                 if constants.IS_COMPILED and constants.IS_WINDOWS:
-                    choice = qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()
+                    choice = qthelpers.getPopup(**popup_kwargs, **self.get_popup_kwargs()).exec()
                     if choice == QtW.QMessageBox.Yes:
                         import update
                         name = constants.VERSION.split()[0]
@@ -6436,7 +6445,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         download_path = f'{constants.TEMP_DIR}{sep}{filename}'
                         update.download_update(self, latest_version, download_url, download_path)
                 else:
-                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location()).exec()  # non-windows version of popup
+                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_kwargs()).exec()  # non-windows version of popup
         finally:
             self.checking_for_updates = False
             settings.buttonCheckForUpdates.setText('Check for updates')
@@ -6550,9 +6559,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             os.chdir(old_oscwd)                         # reset os module's CWD before returning
 
 
-    def get_popup_location(self) -> dict:
-        ''' Returns keyword arguments as a dictionary for
-            the center-parameters of popups and dialogs. '''
+    def get_popup_kwargs(self) -> dict:
+        ''' Returns keyword arguments as a dictionary for the center-parameters
+            of popups and dialogs. Includes the `app` parameter as well. '''
         index = settings.comboDialogPosition.currentIndex()
         if index:
             widget = None
@@ -6564,7 +6573,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             widget = (x, y)
         else:                                           # use VLC window if it's big enough
             widget = self.vlc if self.vlc.height() >= 20 else self.frameGeometry()
-        return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2}
+        return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2, 'app': app}
 
 
     def get_hotkey_full_string(self, hotkey: str) -> str:
