@@ -5540,7 +5540,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return show_on_statusbar('New size cannot be the same as the old size.', 10000)
 
         self.operations['resize'] = (width, height)
-        self.save(noun='resized media', filter='All files(*)')              # don't really need any hints
+        self.save(                          # doesn't really need any hints
+            noun='resized media',
+            filter='All files(*)',
+            unique_default=True
+        )
 
 
     def rotate_video(self, action: QtW.QAction):
@@ -5555,22 +5559,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.actionFlipHorizontally: 'hflip'
         }
         self.operations['rotate video'] = rotation_presets[action]
-        self.save(noun='rotated video/image', filter='All files(*)')        # don't really need any hints
+        self.save(                          # doesn't really need any hints
+            noun='rotated video/image',
+            filter='All files(*)',
+            unique_default=True
+        )
 
 
     # TODO: doing this on an audio file is somewhat unstable
     # TODO: add option to toggle "shortest" setting?
-    def add_audio(self, *args, path: str = None, save: bool = True):
+    def add_audio(self, *args, path: str = None, save: bool = True, caption: str = None) -> bool:
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
         try:
             if not path:
                 path, cfg.lastdir = qthelpers.browseForFile(
                     lastdir=cfg.lastdir,
-                    caption='Select audio file to add'
+                    caption=caption or 'Select audio file to add'
                 )
-                if not path:                                                # cancel selected
-                    return
+                if not path:                # cancel selected
+                    return False
 
             self.operations['add audio'] = path
             if self.mime_type == 'image':
@@ -5582,15 +5590,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 filter = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'
                 valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
-            if save:                                                        # amplify_audio may call this, so saving is optional
+            if save:                        # amplify_audio may call this, so saving is optional
                 self.save(
                     noun='media with additional audio track',
                     filter=filter,
                     ext_hint='.mp4',
-                    valid_extensions=valid_extensions
+                    valid_extensions=valid_extensions,
+                    unique_default=True
                 )
+            return True
         except:
             log_on_statusbar(f'(!) ADD_AUDIO FAILED: {format_exc()}')
+            return False
 
 
     # https://stackoverflow.com/questions/81627/how-can-i-hide-delete-the-help-button-on-the-title-bar-of-a-qt-dialog
@@ -5599,15 +5610,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         if self.mime_type == 'image' or (self.mime_type == 'video' and player.audio_get_track_count() == 0):
             show_on_statusbar('Add audio first, then you can amplify it.')
-            self.add_audio(save=False)
+            if not self.add_audio(save=False, caption='Add audio first, then you can amplify it.'):
+                return                      # add audio failed/was cancelled
             filter = 'MP4 files (*.mp4);;All files (*)'
             valid_extensions = constants.VIDEO_EXTENSIONS
+            preferred_extensions = None
         elif self.mime_type == 'audio':
             filter = 'MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
+            preferred_extensions = constants.AUDIO_EXTENSIONS
         else:
             filter = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)'
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
+            preferred_extensions = None
 
         dialog = qthelpers.getDialog(title='Amplify Audio', **self.get_popup_location(), fixedSize=(125, 105), flags=Qt.Tool)
         layout = QtW.QVBoxLayout(dialog)
@@ -5616,7 +5631,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         spin.setSuffix('%')
         spin.setMaximum(1000)
         spin.setValue(self.last_amplify_audio_value)
-        for w in (label, spin): layout.addWidget(w)
+        for w in (label, spin):
+            layout.addWidget(w)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
         def accept():
@@ -5625,8 +5641,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.save(
                 noun='amplified video/audio',
                 filter=filter,
-                ext_hint='.mp4',
-                valid_extensions=valid_extensions
+                valid_extensions=valid_extensions,
+                preferred_extensions=preferred_extensions,
+                unique_default=True
             )
 
         dialog.accepted.connect(accept)
@@ -5634,7 +5651,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def replace_audio(self, *args, path: str = None):
-        if not self.video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.video:            return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'image': return self.add_audio(path=path)
 
@@ -5651,7 +5668,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 noun='video with replaced audio track',
                 filter='MP4 files (*.mp4);;All files (*)',
                 ext_hint='.mp4',
-                valid_extensions=constants.VIDEO_EXTENSIONS
+                valid_extensions=constants.VIDEO_EXTENSIONS,
+                unique_default=True
             )
         except:
             log_on_statusbar(f'(!) REPLACE_AUDIO FAILED: {format_exc()}')
@@ -5685,7 +5703,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             filter=filter,
             ext_hint='.mp3' if audio else None,                             # give hint for extension
             valid_extensions=valid_extensions,
-            preferred_extensions=preferred_extensions                       # tells a potential "save as" prompt which extensions should be default
+            preferred_extensions=preferred_extensions,                      # tells a potential "save as" prompt which extensions should be default
+            unique_default=True
         )
 
 
