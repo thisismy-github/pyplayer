@@ -3681,12 +3681,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def rename(self, new_name: str = None):
         ''' Renames the current media to `new_name`. If `new_name` is blank,
-            self.lineOutput is used. See `get_renamed_output` for details. '''
+            `self.lineOutput` is used. See `self.get_output()` for details. '''
 
-        # prepare aliases/variables, then stop the player
+        # prepare new name
         old_name = self.video
-        new_name, basename_no_ext, ext = self.get_renamed_output(new_name)
-        if new_name is None: return                 # `get_renamed_output` failed to create a valid output path
+        new_name, basename_no_ext, ext = self.get_output(new_name)
+        if not new_name:                            # output was invalid, blank, or the default
+            return
+
+        # see if we're currently paused then stop the player
         was_paused = self.is_paused
         self.stop()                                 # player must be stopped before we can rename
 
@@ -4005,7 +4008,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Opens a file dialog with `filter` and the caption "Save `noun`
             as...", before saving to the user-selected path, if any.
             See `save()` for more details. '''
+
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
+        if not default_path:
+            default_path, _, _ = self.get_output(
+                valid_extensions=valid_extensions,
+                ext_hint=ext_hint
+            )
 
         try:
             logging.info('Opening \'Save As...\' dialog.')
@@ -4018,10 +4027,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 unique_default=unique_default
             )
 
-            if file is None:
-                return
-            logging.info(f'Saving as \'{file}\'')
-            self.save(dest=file)
+            if file:                                            # None if cancel was selected
+                logging.info(f'Saving as \'{file}\'')
+                self.save(dest=file)
         except:
             log_on_statusbar(f'(!) SAVE_AS FAILED: {format_exc()}')
 
@@ -4030,11 +4038,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self,
         *args,                                                  # *args to capture unused signal args
         dest: str = None,
-        ext_hint: str = None,
         noun: str = 'media',
         filter: str = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
         valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
-        preferred_extensions: tuple = None
+        preferred_extensions: tuple = None,
+        ext_hint: str = None,
+        unique_default: bool = False
     ):
         ''' Checks for any edit operations, applies them to the current media,
             and saves the new file to `dest`. If `dest` is None, `save_as()`
@@ -4043,7 +4052,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             to an extension from this list if possible, even if the current
             extension is already valid. If `dest` has no extension, `ext_hint`
             will be used. If `ext_hint` is None, PyPlayer will guess the
-            extension. NOTE: Saving occurs in a separate thread. '''
+            extension. `unique_default` is passed to `save_as()` if necessary.
+
+            NOTE: Saving occurs in a separate thread. '''
 
         video = self.video
         if not video: return show_on_statusbar('No media is playing.', 10000)
@@ -4068,15 +4079,32 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # get output name
         if dest_was_not_modified:
-            output_text, _, ext = self.get_renamed_output(valid_extensions=valid_extensions)
-            if not output_text or output_text == video:         # no name OR name is same as original video
+
+            # NOTE: `unique_default` behavior examples:
+            # Example 1: video='test.mp4', output='test', ext_hint='.mp3'
+            #     -> open prompt with 'test.mp3' as the default if it doesn't exist, 'test (2).mp3' otherwise
+            # Example 2: video='test.mp4', output='new', ext_hint='.mp3'
+            #     -> immediately saves as 'new.mp3' if it doesn't exist, opens a prompt with 'new (2).mp3' otherwise
+            output_text, _, ext = self.get_output(              # TODO: ^ this is extremely stupid
+                valid_extensions=valid_extensions,
+                ext_hint=ext_hint,
+            )
+
+            # no name OR name already exists -> use preset name or "Save as..." prompt
+            # NOTE: `exists(output_text)` only applies to OTHER files, not `self.video`
+            unchanged = not output_text
+            if unchanged or exists(output_text):
+                if ext_hint and unchanged:                  # invalid/unchanged output -> use `ext_hint` if possible but still show prompt
+                    output_text = old_base + ext_hint
+
                 if settings.checkSaveAsForceOnNoName.isChecked():
                     return self.save_as(
                         noun=noun,
                         filter=filter,
                         valid_extensions=preferred_extensions or valid_extensions,
                         ext_hint=ext_hint or old_ext,           # ^ pass preferred extensions if provided
-                        unique_default=False
+                        default_path=output_text,
+                        unique_default=unique_default
                     )
                 elif operations:
                     dest = add_path_suffix(video, '_edited', unique=True)
@@ -5778,8 +5806,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             lineEdit=lineEdit
         )
 
-        if path is None: return
-        return path
+        return path                             # could be None if cancel was selected
 
 
     def browse_for_subtitle_files(self, *args, urls: tuple = None) -> None:
@@ -6446,19 +6473,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     # TODO: we have like THREE variations of this exact method for handling vague input,...
     #       ...all of which do *almost* the same thing. this should all be ONE method
-    def get_renamed_output(
+    def get_output(
         self,
         text: str = None,
-        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS
+        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        ext_hint: str = None,
+        unique: bool = False
     ) -> tuple:
-        ''' Returns `new_name` or `self.lineOutput.text()` as a unique, valid,
+        ''' Returns `new_name` or `self.lineOutput.text()` as a `unique`, valid,
             sanitized, absolute path, along with its extensionless basename and
-            extension (as determined by `valid_extensions`). If `new_name` ends
+            extension (as determined by `valid_extensions`, with `ext_hint`
+            being the preferred fallback if provided). If `new_name` ends
             up the same as `self.video`, `new_name`/`self.lineOutput` are both
             blank, or no media is playing, then three None's are returned. '''
         output = text or self.lineOutput.text().strip()
         video = self.video
         if not video or not output:                     # no media playing or no text provided/accessible
+            return None, None, None
+
+        video_base, video_ext = splitext_media(video)
+        video_tail_base = os.path.split(video_base)[-1]
+        if output == video_tail_base:                   # output is completely unchanged
             return None, None, None
 
         try:
@@ -6473,15 +6508,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # append valid extension if needed
             if not ext:
-                ext = splitext_media(video)[-1] or ('.' + self.extension)
+                ext = ext_hint or video_ext or ('.' + self.extension)
                 output = f'{output}{ext}'
 
-            # make sure new name isn't the same as the old name
+            # make sure new name didn't end up being the same as the old one anyway
             if output == video:
                 return None, None, None
 
-            # TODO make the usage of `get_unique_path` a setting (use os.replace instead of renames)
-            return get_unique_path(output), basename_no_ext, ext
+            # make output unique if it's not unchanged and update `basename_no_ext` if needed
+            if unique:                                  # TODO make the usage of `get_unique_path` a setting
+                unique_output = get_unique_path(output)
+                if output != unique_output:
+                    output = unique_output
+                    basename_no_ext, _ = os.path.splitext(os.path.basename(output))
+
+            return output, basename_no_ext, ext
 
         except:
             log_on_statusbar(f'(!) Could not get valid string from output textbox: {format_exc()}')
