@@ -506,17 +506,31 @@ class Edit:
         self.pause(paused=False)
 
 
-    def give_priority(self, update_others: bool = True):
+    def give_priority(self, update_others: bool = True, ignore_lock: bool = False, conditional: bool = False):
         ''' Refreshes progress bar/taskbar to this edit's values if we've been
             given priority over updating the progress bar. If `update_others`
-            is True, all other edits in `gui.saves_in_progress` will have
-            their `has_priority` properties set to False. '''
+            is True, all other edits in `gui.saves_in_progress` will set their
+            `has_priority` property to False. This method returns immediately
+            if `gui.lock_edit_priority` is True and `ignore_lock` is False,
+            or if `conditional` is True and any other edit has priority. '''
+
+        # return immediately if desired
+        if gui.lock_edit_priority and not ignore_lock:
+            return
+        if conditional:
+            for save in gui.saves_in_progress:
+                if save.has_priority:
+                    return
+
+        # ensure priority is disabled on everything else
         if update_others:
             for save in gui.saves_in_progress:
                 save.has_priority = False
+
         self.has_priority = True
         if self.frame == 0:                 # assume we haven't parsed any output yet
             gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
+            refresh_title()
         else:
             self.set_progress_bar(value=self.value)
         gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
@@ -814,8 +828,8 @@ class Edit:
                     locked_files.discard(temp_infile)
             except:
                 pass
-            if cleanup and not gui.saves_in_progress:   # reset edit progress on statusbar/titlebar/taskbar
-                gui.reset_save_progress_bar()
+            if cleanup:                                 # set priority to next edit or reset the statusbar/titlebar/taskbar
+                gui.reset_edit_priority()
 
 
 # ---------------------
@@ -948,6 +962,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.add_to_progress_offset = 0.0
         self.lock_progress_updates = False
         self.lock_spin_updates = False
+        self.lock_edit_priority = False
 
         self.swap_slider_styles_queued = False
         self.open_cleanup_queued = False
@@ -4524,8 +4539,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.locked_files.discard(video)                    # unlock source file
             self.locked_files.discard(dest)                     # unlock destination
             self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
-            if not self.saves_in_progress:
-                self.reset_save_progress_bar()                  # reset edit progress on statusbar/titlebar/taskbar
+            self.reset_edit_priority()                          # set priority to next edit or reset the statusbar/titlebar/taskbar
             logging.info(f'Remaining locked files after edit: {self.locked_files}')
 
 
@@ -4924,6 +4938,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             save.pause(paused=paused)
 
 
+    def get_edit_with_priority(self) -> Edit:
+        ''' Returns the `Edit` object in `self.saves_in_progress` that currently
+            has priority. Only returns the first one found. '''
+        for save in self.saves_in_progress:
+            if save.has_priority:
+                return save
+
+
     def cycle_edit_priority(self):
         ''' Gives priority to the edit at `self.saves_in_progress`'s next index,
             wrapping if necessary. Updates the progress bar immediately. '''
@@ -4935,12 +4957,97 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 break
 
 
-    def get_edit_with_priority(self) -> Edit:
-        ''' Returns the `Edit` object in `self.saves_in_progress` that currently
-            has priority. Only returns the first one found. '''
-        for save in self.saves_in_progress:
-            if save.has_priority:
-                return save
+    def reset_edit_priority(self, _paranoia: bool = False):
+        ''' Sets priority to the `Edit` in `self.saves_in_progress` closest
+            to completion, preferring an unpaused one if possible. If 20+
+            edits are running, the first unpaused edit is used instead.
+            If they're all paused, index 0 is used instead. If no edits
+            are remaining, the progress bar is reset. '''
+        if not _paranoia:
+            self.lock_edit_priority = True      # lock priority so the progress bar doesn't flicker from a rare double-switch
+
+        # NOTE: Dealing with the high-precision slider has made me very, very paranoid about race conditions.
+        # TODO: we should probably calculate ETAs and use those instead (and display them somewhere)
+        try:
+            sleep(0.05)                         # sleep to absolutely ensure we don't double-switch priority
+            saves = self.saves_in_progress
+            if saves:
+
+                # 1 edit, switch priority immediately
+                if len(saves) == 1:
+                    saves[0].give_priority(ignore_lock=True, conditional=True)
+
+                # 2-19 edits, switch to edit closest to completion
+                elif len(saves) < 20:
+                    highest_edit = None
+                    highest_unpaused_edit = None
+                    highest_value = -1
+                    highest_unpaused_value = -1
+                    for save in saves:
+                        percent = save.value
+                        if percent > highest_value:
+                            highest_value = percent
+                            highest_edit = save
+                        if not save._is_paused:
+                            if percent > highest_unpaused_value:
+                                highest_unpaused_value = percent
+                                highest_unpaused_edit = save
+
+                    # switch to highest unpaused edit if one exists, otherwise fallback to paused ones
+                    if highest_unpaused_edit:
+                        highest_unpaused_edit.give_priority(ignore_lock=True, conditional=True)
+                    elif highest_edit:          # they're all paused
+                        highest_edit.give_priority(ignore_lock=True, conditional=True)
+
+                # 20+ edits in progress, just change priority fast
+                else:
+                    for save in saves:
+                        if not save._is_paused:
+                            save.give_priority(ignore_lock=True, conditional=True)
+                            break
+                    else:                       # we didn't break the for-loop (they're all paused)
+                        saves[0].give_priority(ignore_lock=True, conditional=True)
+
+                # make sure something actually got priority
+                if self.get_edit_with_priority() is None:
+                    if not _paranoia:           # somehow, nothing got set. try again?
+                        logging.warning('(!) Edit priority auto-update somehow accomplished nothing, resorting to emergency measures.')
+                        self.reset_edit_priority(_paranoia=True)
+                    elif saves:                 # nothing got set AGAIN? just try and brute-force the first edit
+                        saves[0].give_priority(ignore_lock=True, update_others=True)
+                    else:                       # failed repeatedly, yet there aren't even any edits. just hide everything
+                        self.hide_edit_progress()
+
+            # no edits are in progress anymore, hide progress bar and reset titlebar/taskbar
+            else:
+                self.hide_edit_progress()
+
+        # uh oh spaghettios
+        except:
+            logging.warning(f'(!) Edit priority auto-update is failing, trying last-ditch effort: {format_exc()}')
+            if not saves:                       # likely failed because all edits finished while this method was executing
+                self.hide_edit_progress()
+            else:
+                try:                            # failed because... huh? try and set priority one more time
+                    saves[0].give_priority(ignore_lock=True, update_others=True)
+                except:                         # getting here basically requires several consecutive race conditions
+                    log_on_statusbar(f'(!) Edit priority auto-update failed BADLY: {format_exc()}')
+        finally:
+            if not _paranoia:
+                self.lock_edit_priority = False
+
+
+    def hide_edit_progress(self):
+        ''' Resets the editing progress bar to zero and hides its
+            widget on the statusbar while clearing its percentage
+            from the titlebar and taskbar button (on Windows). You
+            should probably use `self.reset_edit_priority()` instead. '''
+        self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
+        self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
+        self.set_save_progress_value_signal.emit(0)
+        if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
+            self.taskbar_progress.reset()                           # reset taskbar progress (`setVisible(False)` not needed)
+        refresh_title()                                             # refresh title to hide progress percentage
 
 
     def set_trim_start(self, *args, force: bool = False):
@@ -5518,8 +5625,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             locked_files.discard(dest)
             locked_files.discard(final_dest)
             locked_files.difference_update(files)
-            if not self.saves_in_progress:
-                self.reset_save_progress_bar()
+            self.reset_edit_priority()      # set priority to next edit or reset the statusbar/titlebar/taskbar
+            logging.info(f'Remaining locked files after concatenation: {self.locked_files}')
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
@@ -7614,18 +7721,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.actionMarkDeleted.setChecked(False)
         self.buttonMarkDeleted.setChecked(False)
         self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', '0'))
-
-
-    def reset_save_progress_bar(self):
-        ''' Resets the editing progress bar to zero and hides its
-            widget on the statusbar while clearing its percentage
-            from the titlebar and taskbar button (on Windows). '''
-        self.set_save_progress_visible_signal.emit(False)           # hide the progress bar
-        self.set_save_progress_max_signal.emit(0)                   # reset progress bar values
-        self.set_save_progress_value_signal.emit(0)
-        if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
-            self.taskbar_progress.reset()                           # reset taskbar progress (`setVisible(False)` not needed)
-        refresh_title()                                             # refresh title to hide progress percentage
 
 
     # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
