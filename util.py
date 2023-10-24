@@ -1,6 +1,7 @@
 ''' Generic, non-Qt-related utility functions.
     thisismy-github 4/23/22 '''
 
+from __future__ import annotations
 
 import constants
 
@@ -69,7 +70,7 @@ def foreground_is_fullscreen() -> bool:
     # NOTE: ctypes can do this quite easily, but `ctypes.wintypes` is unreliable
     import win32gui
 
-    def rects_are_equal(a: tuple, b: tuple) -> bool:
+    def rects_are_equal(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
         return a[0] == b[0] and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
 
     hwnd = win32gui.GetForegroundWindow()
@@ -126,7 +127,7 @@ def get_from_PATH(filename: str) -> str:        # i learned about `shutil.which(
     return ''
 
 
-def get_hms(seconds: float) -> tuple:
+def get_hms(seconds: float) -> tuple[int, int, int, int]:
     ''' Converts seconds to the hours, minutes, seconds, and milliseconds it represents. '''
     h_remainder = seconds % 3600
     h = int(seconds // 3600)
@@ -229,7 +230,7 @@ def get_PIL_Image():
                             '\n             this error (along with this log file) on Github.\n')
 
 
-def sanitize(filename: str, allow_reserved_words: bool = True, default: str = ''):
+def sanitize(filename: str, allow_reserved_words: bool = True, default: str = '') -> str:
     ''' A slightly more optimized version of `sanitize_filename.sanitize()`,
         with added parameters.
 
@@ -250,7 +251,7 @@ def sanitize(filename: str, allow_reserved_words: bool = True, default: str = ''
     return filename
 
 
-def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple:
+def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple[int | float, int | float]:
     ''' Returns (`x`, `y`) scaled to either `new_x` or `new_y`, if
         either is >=0. If both are provided, `new_y` is ignored. '''
     if new_x <= 0:   new_x = round((float(new_y) / y) * x)
@@ -258,7 +259,7 @@ def scale(x: float, y: float, new_x: float = -1, new_y: float = -1) -> tuple:
     return new_x, new_y
 
 
-def setctime(path: str, ctime: int):
+def setctime(path: str, ctime: int) -> None:
     ''' A slightly stripped down version of the `win32_setctime` library,
         which I had trouble importing correctly after compiling. Sets the
         creation time of `path` to `ctime` seconds (a unix timestamp). To
@@ -383,7 +384,7 @@ def suspend_process(process: subprocess.Popen, suspend: bool = True) -> int:
         CloseHandle(process_handle)
 
 
-def kill_process(process: subprocess.Popen, wait: bool = True, wait_after: float = 0.0):
+def kill_process(process: subprocess.Popen, wait: bool = True, wait_after: float = 0.0) -> None:
     ''' Cross-platform way of killing a `process`. On Windows, taskkill is used.
         On Linux/Mac, a SIGTERM signal is sent to `process`'s group pid. If
         `wait` is True, this function blocks until `process` is gone, then waits

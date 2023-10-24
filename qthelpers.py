@@ -5,6 +5,8 @@
 
     thisismy-github '''
 
+from __future__ import annotations
+
 from PyQt5 import QtCore, QtGui
 from PyQt5 import QtWidgets as QtW
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
@@ -139,14 +141,14 @@ def stopFlashingWindow(window: QtW.QWidget) -> None:
 
 
 def clampToScreen(
-    window,
+    window: QtW.QWidget,
     screen: QtGui.QScreen = None,
     resize: bool = True,
     move: bool = True,
     mouseFallback: bool = True,
     returnScreen: bool = False,
     strict: bool = False
-):
+) -> QtCore.QRect | QtGui.QScreen:
     ''' Clamps `window` to the boundaries of `screen`. If `screen` is None,
         the `window`'s current screen will be approximated if possible. If not
         possible and `mouseFallback` is True, the mouse's screen will be used.
@@ -263,13 +265,10 @@ def center(
                 widget.move(widgetRect.topLeft())           # .setGeometry() is sometimes wrong
 
 
-def resetCursor(app: QtGui.QGuiApplication):
-    ''' Resets `app`'s overridden cursor by clearing its cursor-stack. '''
-    while app.overrideCursor():
-        app.restoreOverrideCursor()
-
-
-def setCursor(app: QtGui.QGuiApplication, cursor: QtCore.Qt.CursorShape = QtCore.Qt.ArrowCursor):
+def setCursor(
+    app: QtGui.QGuiApplication,
+    cursor: QtGui.QCursor | QtCore.Qt.CursorShape = QtCore.Qt.ArrowCursor
+) -> None:
     ''' Clears `app`'s cursor-stack and sets its top-level cursor to `cursor`,
         which can be a `QCursor` object or a `Qt.CursorShape` enum. '''
     while app.overrideCursor():
@@ -277,7 +276,13 @@ def setCursor(app: QtGui.QGuiApplication, cursor: QtCore.Qt.CursorShape = QtCore
     app.setOverrideCursor(cursor)
 
 
-def hideCursor(app: QtGui.QGuiApplication):
+def resetCursor(app: QtGui.QGuiApplication) -> None:
+    ''' Resets `app`'s overridden cursor by clearing its cursor-stack. '''
+    while app.overrideCursor():
+        app.restoreOverrideCursor()
+
+
+def hideCursor(app: QtGui.QGuiApplication) -> None:
     ''' Clears `app`'s cursor-stack then sets its
         top-level cursor to `Qt.BlankCursor`, hiding it. '''
     while app.overrideCursor():
@@ -296,7 +301,7 @@ def getPopup(
     textDetailedAutoOpen: bool = True,
     buttons: int = QMessageBox.Ok,
     defaultButton: int = QMessageBox.Ok,
-    icon=QMessageBox.Question,
+    icon: str | int = QMessageBox.Question,
     centerWidget: QtW.QWidget = None,
     centerScreen: bool = False,
     centerMouse: bool = False,
@@ -314,7 +319,7 @@ def getPopup(
         icons = {'information': 1, 'info': 1, 'warning': 2, 'warn': 2, 'critical': 3, 'question': 4}
         icon = icons[icon.strip().lower()]
 
-    def showEvent(event: QtGui.QShowEvent):
+    def showEvent(event: QtGui.QShowEvent) -> None:
         ''' Plays default OS sound and centers
             the popup before showing if desired. '''
         if sound:
@@ -325,7 +330,7 @@ def getPopup(
             mouse = centerMouse or False
             center(msg, target=target, screen=screen, mouse=mouse)
 
-    def enterEvent(event: QtGui.QEnterEvent):
+    def enterEvent(event: QtGui.QEnterEvent) -> None:
         ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
         if app:
             while app.overrideCursor():
@@ -364,11 +369,12 @@ def getPopupRetryCancel(*args, **kwargs): return getPopup(*args, buttons=QMessag
 def getPopupAbortRetryIgnore(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Abort | QMessageBox.Retry | QMessageBox.Ignore, **kwargs)
 
 
-def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW.QWidget = None, **kwargs):
+def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW.QWidget = None, **kwargs) -> QtW.QDialog:
     ''' Returns a persistent dialog based on a `uiClass`, likely provided by
         a converted Qt Designer file. Can be used repeatedly, as a persistent
         dialog. Accepts `modal`, `deleteOnClose/delete`, and
         `centerWidget/centerScreen/centerMouse` keyword parameters. '''
+
     class QPersistentDialog(QtW.QDialog, uiClass):
         def __init__(self, parent, **kwargs):
             super().__init__(parent)
@@ -380,7 +386,7 @@ def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW
             self.setParent(parent)
             self.setupUi(self)
 
-        def showEvent(self, event: QtGui.QShowEvent):
+        def showEvent(self, event: QtGui.QShowEvent) -> None:
             ''' Plays default OS sound and centers
                 dialog before showing (if desired). '''
             if kwargs.get('sound', False):
@@ -395,7 +401,7 @@ def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW
                 center(self, target=target, screen=screen, mouse=mouse)
             return super().showEvent(event)
 
-        def enterEvent(self, event: QtGui.QEnterEvent):
+        def enterEvent(self, event: QtGui.QEnterEvent) -> None:
             ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
             if app:
                 while app.overrideCursor():
@@ -408,12 +414,12 @@ def getDialog(
     app: QtGui.QGuiApplication = None,
     parent: QtW.QWidget = None,
     title: str = 'Dialog',
-    icon='SP_MessageBoxInformation',
+    icon: str | int = 'SP_MessageBoxInformation',
     centerWidget: QtW.QWidget = None,
     centerScreen: bool = False,
     centerMouse: bool = False,
-    size: tuple = None,
-    fixedSize: tuple = None,
+    size: tuple[int] = None,
+    fixedSize: tuple[int] = None,
     modal: bool = False,
     opacity: float = 1.0,
     sound: bool = False,
@@ -437,7 +443,7 @@ def getDialog(
                 any type and is accessed/manipulated after dialog execution. '''
             self.choice = choice
 
-        def addButtons(self, layout, *buttons):             # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
+        def addButtons(self, layout, *buttons) -> None:     # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
             ''' Adds `QDialogButtonBox` to `layout` with a COMMA SEPARATED
                 list of `buttons`, connecting them to the `self.select()`
                 method in order to access the user's choice after execution.
@@ -451,7 +457,7 @@ def getDialog(
                 buttonBox.button(button).clicked.connect(getButtonCallback(self, button))     # buttons cannot be connected directly
             layout.addWidget(buttonBox)
 
-        def showEvent(self, event: QtGui.QShowEvent):
+        def showEvent(self, event: QtGui.QShowEvent) -> None:
             ''' Plays default OS sound and centers the
                 popup before showing if desired. '''
             if sound:
@@ -463,7 +469,7 @@ def getDialog(
                 center(self, target=target, screen=screen, mouse=mouse)
             return super().showEvent(event)
 
-        def enterEvent(self, event: QtGui.QEnterEvent):
+        def enterEvent(self, event: QtGui.QEnterEvent) -> None:
             ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
             if app:
                 while app.overrideCursor():
@@ -497,7 +503,7 @@ def browseForDirectory(
     directory: str = None,
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
-) -> tuple:
+) -> tuple[str, str]:
     try:                                                    # this can be done with one `if url` but it's not worth it
         directory = directory or lastdir
         _dir = (QFileDialog.getExistingDirectoryUrl if url else QFileDialog.getExistingDirectory)(
@@ -525,7 +531,7 @@ def browseForFile(
     name: str = None,
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
-) -> tuple:
+) -> tuple[QtCore.QUrl | str, str] | tuple[QtCore.QUrl | str, str, str]:
     try:                                                    # this can be done with one `if url` but it's not worth it
         directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
         file, filter = (QFileDialog.getOpenFileUrl if url else QFileDialog.getOpenFileName)(
@@ -556,7 +562,7 @@ def browseForFiles(
     directory: str = None,
     name: str = None,
     url: bool = False
-) -> tuple:
+) -> tuple[list[QtCore.QUrl] | list[str], str] | tuple[list[QtCore.QUrl] | list[str], str, str]:
     try:
         directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
         files, filter = (QFileDialog.getOpenFileUrls if url else QFileDialog.getOpenFileNames)(
@@ -587,7 +593,7 @@ def saveFile(
     name: str = None,
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
-) -> tuple:
+) -> tuple[list[QtCore.QUrl] | list[str], str] | tuple[list[QtCore.QUrl] | list[str], str, str]:
     try:                                                    # this can be done with one `if url` but it's not worth it
         directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
         file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(

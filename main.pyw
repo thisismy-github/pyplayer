@@ -170,6 +170,8 @@ KNOWN ISSUES:
         libvlc randomly jumps to a very, very low progress after otherwise successful navigation (very rare, unknown cause)
 '''
 
+from __future__ import annotations
+
 import config
 import widgets
 import qtstart
@@ -235,8 +237,8 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -------------------------------------------
 # Additional media-related utility functions
 # -------------------------------------------
-def probe_files(*files: tuple, refresh: bool = False, write: bool = True) -> dict:
-    ''' Probe an indeterminant number of `files` and return a dictionary of
+def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[str, dict]:
+    ''' Probes an indeterminant number of `files` and returns a dictionary of
         `{path: probe_dictionary}` pairs. All files are probed concurrently, but
         this function does not return until all probes are completed. Files that
         fail are simply not included.
@@ -351,12 +353,12 @@ def get_PIL_safe_path(original_path: str, final_path: str):
 
 def splitext_media(
     path: str,
-    valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
-    invalid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+    valid_extensions: tuple[str] = constants.ALL_MEDIA_EXTENSIONS,
+    invalid_extensions: tuple[str] = constants.ALL_MEDIA_EXTENSIONS,
     *,
     strict: bool = True,
     period: bool = True
-) -> tuple:
+) -> tuple[str, str]:
     ''' Split the extension from a `path` if the extension is within a
         list of `valid_extensions`. If not, the basename is returned with an
         empty extension. The extension will be lowercase. If `period` is True,
@@ -921,9 +923,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         self.video = ''
         self.video_original_path = ''
-        self.locked_files = set()
+        self.locked_files: set[str] = set()
         self.last_video = ''                    # NOTE: the actual last non-edited file played
-        self.recent_files = []                  # NOTE: the user-friendly list of recent files
+        self.recent_files: list[str] = []       # NOTE: the user-friendly list of recent files
         self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
@@ -969,13 +971,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.open_in_progress = False
         self._open_main_in_progress = False
         self._open_cleanup_in_progress = False
-        self.edits_in_progress = []             # NOTE: a list of `SaveParameters` objects
+        self.edits_in_progress: list[Edit] = []
 
         self.current_file_is_autoplay = False
         self.shuffle_folder = ''
         self.shuffle_ignore_order = []
-        self.shuffle_ignore_unique = set()
-        self.marked_for_deletion = set()
+        self.shuffle_ignore_unique: set[str] = set()
+        self.marked_for_deletion: set[str] = set()
         self.shortcuts: dict = None
         self.operations = {}
         self.playback_speed = 1.0
@@ -2146,8 +2148,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.themes.append(theme)
 
 
-    def refresh_theme_combo(self, *args, restore_theme: bool = True, set_theme: str = None):
-        self.load_themes()                                  # ^ *args to capture unused signal args
+    def refresh_theme_combo(self, *, restore_theme: bool = True, set_theme: str = None):
+        self.load_themes()                                  # ^ * to capture unused signal args
         comboThemes = settings.comboThemes
         old_theme = comboThemes.currentText()               # save current theme's name
 
@@ -2235,7 +2237,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self,
         folder: str = None,
         autoplay: bool = False,                     # NOTE: this doesn't change the current autoplay state
-        valid_mime_types: tuple = None
+        valid_mime_types: tuple[str] = None
     ) -> str:
         if folder is None:                          # no folder provided, shuffle within current folder
             if not self.video:                      # return if no folder provided and no media playing
@@ -2341,14 +2343,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def cycle_media(
         self,
-        *args,
+        *,                                          # * to capture unused signal args
         next: bool = True,
-        ignore: tuple = tuple(),
+        ignore: tuple[str] = tuple(),
         update_recent_list: bool = True,
         autoplay: bool = False,
-        valid_mime_types: tuple = None,
+        valid_mime_types: tuple[str] = None,
         index_override: int = 0
-    ) -> str:                                       # *args to capture unused signal args
+    ) -> str:
         ''' Cycles through the current media's folder and looks for the `next`
             or previous openable, non-hidden file that isn't in the `ignore`
             list. If there are no other openable files, nothing happens.
@@ -2557,7 +2559,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: self.refresh_autoplay_button()
 
 
-    def open_probe_file(self, *args, file: str = None, delete: bool = False, verbose: bool = True):
+    def open_probe_file(self, *, file: str = None, delete: bool = False, verbose: bool = True):
         ''' Opens `file`'s probe file, if it exists and FFprobe is enabled.
             If `file` is provided but doesn't exist, this method returns early.
             If `file` is not provided, `self.video` is used. If `delete` is
@@ -2598,7 +2600,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             log_on_statusbar(f'(!) Probe file opening/deletion failed: {format_exc()}')
 
 
-    def add_subtitle_files(self, *files: tuple):
+    def add_subtitle_files(self, *files: str | QtCore.QUrl):
         ''' Adds an arbitrary number of `files` as subtitle tracks,
             if possible. `files` may be paths or `QUrl`s. '''
         urls = []
@@ -3675,7 +3677,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return paused
 
 
-    def stop(self, *args, icon: str = 'stop'):      # *args to capture unused signal args
+    def stop(self, *, icon: str = 'stop'):          # * to capture unused signal args
         ''' A more robust way of stopping - stop the player while also force-
             pausing. `icon` specifies what icon to use on the pause button. '''
         player.stop()
@@ -3765,13 +3767,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             pass
 
 
-    def delete(self, files=None, cycle: bool = True):
-        ''' Deletes (or recycles) a list of `files`. If `files` is a string,
-            it becomes a single-length tuple. If `files` is None, `self.video`
-            is used. If `self.video` is within `files`, all players are stopped
-            and the media is cycled (if `cycle` is True) before deleting. '''
-        if not files: files = (self.video,)
-        elif isinstance(files, str): files = (files,)
+    def delete(self, *files: str, cycle: bool = True):
+        ''' Deletes (or recycles) an indeterminate number of `files`. If no
+            `files` are provided, `self.video` is used. If `self.video` is
+            within `files`, all players are stopped and the media is cycled
+            (if `cycle` is True) before deleting. '''
+
+        if not files:
+            files = (self.video,)
 
         if self.video in files:
             if not cycle:
@@ -3804,7 +3807,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
 
 
-    def snapshot(self, *args, mode: str = 'quick', is_temp: bool = False):  # *args to capture unused signal args
+    def snapshot(self, *, mode: str = 'quick', is_temp: bool = False):      # * to capture unused signal args
         ''' Snapshot modes:
                 'full' - Open a resizing dialog and save dialog
                 'quick' - Take and save snapshot immediately using predefined settings
@@ -4012,10 +4015,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def save_as(
         self,
-        *args,
+        *,                                                      # * to capture unused signal args
         noun: str = 'media',
         filter: str = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
-        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        valid_extensions: tuple[str] = constants.ALL_MEDIA_EXTENSIONS,
         ext_hint: str = None,
         default_path: str = None,
         unique_default: bool = True
@@ -4051,12 +4054,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def save(
         self,
-        *args,                                                  # *args to capture unused signal args
+        *,                                                      # * to capture unused signal args
         dest: str = None,
         noun: str = 'media',
         filter: str = 'MP4 files (*.mp4);;MP3 files (*.mp3);;WAV files (*.wav);;AAC files (*.aac);;All files (*)',
-        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
-        preferred_extensions: tuple = None,
+        valid_extensions: tuple[str] = constants.ALL_MEDIA_EXTENSIONS,
+        preferred_extensions: tuple[str] = None,
         ext_hint: str = None,
         unique_default: bool = False
     ):
@@ -4797,7 +4800,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         mtime: float,
         mark: bool = False,
         delete: bool = False,
-        to_delete=None,
+        to_delete: str | tuple[str] = None,
         noun: str = 'Media'
     ) -> bool:
         ''' Ensures `temp_dest` exists, is not empty, can be probed, and doesn't
@@ -4840,7 +4843,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if mark:
                 if isinstance(to_delete, str): self.marked_for_deletion.add(to_delete)
                 elif to_delete:                self.marked_for_deletion.update(to_delete)
-            elif delete:                       self.delete(to_delete, cycle=False)
+            elif delete:
+                if isinstance(to_delete, str): self.delete(to_delete, cycle=False)
+                elif to_delete:                self.delete(*to_delete, cycle=False)
             #elif replacing_original:                       # TODO add setting for this behavior?
             #    temp_name = add_path_suffix(video, '_original', unique=True)
             #    os.rename(video, temp_name)
@@ -4906,7 +4911,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_time() - start_time:.1f} SECONDS: {format_exc()}')
 
 
-    def cancel_all(self, *args, wait: bool = False):
+    def cancel_all(self, *, wait: bool = False):
         ''' Cancels all edits in progress. If `wait` is True, this method
             blocks until the offending `Edit` objects are no longer in
             `self.edits_in_progress`, while ignoring any edits started
@@ -5050,7 +5055,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         refresh_title()                                             # refresh title to hide progress percentage
 
 
-    def set_trim_start(self, *args, force: bool = False):
+    def set_trim_start(self, *, force: bool = False):
         ''' Validates a start-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
         if not self.video:       return self.buttonTrimStart.setChecked(False)
@@ -5077,7 +5082,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.sliderProgress.clamp_minimum = False
 
 
-    def set_trim_end(self, *args, force: bool = False):
+    def set_trim_end(self, *, force: bool = False):
         ''' Validates an end-point marker and updates the UI accordingly.
             If `force` is True, `self.buttonTrimEnd` is forcibly checked. '''
         if not self.video:       return self.buttonTrimEnd.setChecked(False)
@@ -5119,7 +5124,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 button.setToolTip(constants.TRIM_BUTTON_TOOLTIP_BASE.replace('?mode', 'fade'))
 
 
-    def concatenate(self, action: QtW.QAction = None, files: list = None):
+    def concatenate(self, action: QtW.QAction = None, files: list[str] = None):
         ''' Opens a separate dialog for concatenation with `files` included by
             default. Behavior changes depending on which `action` is passed:
 
@@ -5499,7 +5504,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def _concatenate(
         self,
-        files: list,
+        files: list[str],
         dest: str,
         encode: bool = False,
         open: bool = False,
@@ -5675,7 +5680,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     # TODO: doing this on an audio file is somewhat unstable
     # TODO: add option to toggle "shortest" setting?
-    def add_audio(self, *args, path: str = None, save: bool = True, caption: str = None) -> bool:
+    def add_audio(self, *, path: str = None, save: bool = True, caption: str = None) -> bool:
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
         try:
@@ -5757,7 +5762,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dialog.exec()
 
 
-    def replace_audio(self, *args, path: str = None):
+    def replace_audio(self, *, path: str = None):
         if not self.video:            return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'image': return self.add_audio(path=path)
@@ -5783,7 +5788,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     # https://superuser.com/questions/268985/remove-audio-from-video-file-with-ffmpeg
-    def isolate_track(self, *args, audio: bool = True):
+    def isolate_track(self, *, audio: bool = True):
         if not self.video:            return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if self.mime_type == 'audio': return show_on_statusbar('Track removal for audio files is not supported yet.', 10000)
@@ -5820,7 +5825,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     def browse_for_directory(
         self,
-        *args,
+        *,
         lineEdit: QtW.QLineEdit = None,
         noun: str = None,
         default_path: str = None
@@ -5838,11 +5843,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def browse_for_save_file(
         self,
-        *args,
+        *,
         lineEdit: QtW.QLineEdit = None,
         noun: str = None,
         filter: str = 'All files (*)',
-        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        valid_extensions: tuple[str] = constants.ALL_MEDIA_EXTENSIONS,
         ext_hint: str = None,
         default_path: str = None,
         unique_default: bool = True,
@@ -5935,7 +5940,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return path                             # could be None if cancel was selected
 
 
-    def browse_for_subtitle_files(self, *args, urls: tuple = None) -> None:
+    def browse_for_subtitle_files(self, *, urls: tuple[QtCore.QUrl] = None) -> None:
         if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
         if urls is None:
             urls, cfg.lastdir = qthelpers.browseForFiles(
@@ -6058,7 +6063,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         gc.collect(generation=2)
 
 
-    def show_timestamp_dialog(self, *args, file: str = None):   # *args to capture unused signal args
+    def show_timestamp_dialog(self, *, file: str = None):       # * to capture unused signal args
         from bin.window_timestamp import Ui_timestampDialog
         dialog = qthelpers.getDialogFromUiClass(
             Ui_timestampDialog,
@@ -6362,7 +6367,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         finally: cfg.trimmodeselected = True                        # set this to True no matter what (_save is waiting on this)
 
 
-    def show_delete_prompt(self, *args, exiting: bool = False) -> QtW.QDialogButtonBox.StandardButton:     # *args to capture unused signal args
+    def show_delete_prompt(self, *, exiting: bool = False) -> QtW.QDialogButtonBox.StandardButton:
         ''' Creates and shows a dialog for deleting marked files. Dialog
             consists of a `QGroupBox` containing a `QCheckBox` for each file,
             with Yes/No/Cancel buttons at the bottom. Returns the button chosen,
@@ -6414,7 +6419,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.exec()
 
             if dialog.choice == QtW.QDialogButtonBox.Yes:
-                self.delete(marked)
+                self.delete(*marked)
             elif dialog.choice == QtW.QDialogButtonBox.No:
                 for file in unmarked:
                     self.mark_for_deletion(False, file)
@@ -6611,10 +6616,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def get_output(
         self,
         text: str = None,
-        valid_extensions: tuple = constants.ALL_MEDIA_EXTENSIONS,
+        valid_extensions: tuple[str] = constants.ALL_MEDIA_EXTENSIONS,
         ext_hint: str = None,
         unique: bool = False
-    ) -> tuple:
+    ) -> tuple[str]:
         ''' Returns `new_name` or `self.lineOutput.text()` as a `unique`, valid,
             sanitized, absolute path, along with its extensionless basename and
             extension (as determined by `valid_extensions`, with `ext_hint`
@@ -6700,7 +6705,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         return hotkey_string
 
 
-    def get_new_file_timestamps(self, *sources: str, dest: str) -> tuple:
+    def get_new_file_timestamps(self, *sources: str, dest: str) -> tuple[float, float]:
         ''' Returns a tuple of floats containing the new creation time and
             modified time to use when saving `sources` to `dest`, based on
             the various settings the user has checked/unchecked. If more than
@@ -6716,7 +6721,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # multiple sources -> use concat settings to figure out what times to use
         else:
-            def get_extremes() -> tuple:
+            def get_extremes() -> tuple[tuple[str, os.stat_result, float]]:
                 ''' Returns a tuple of tuples. The outer tuple consists of the
                     four extremes - oldest/newest ctime/mtime. Each inner tuple
                     contains the source file, its stat result, and the actual
@@ -7476,7 +7481,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         )
 
 
-    def handle_cycle_buttons(self, *args, next: bool = True):
+    def handle_cycle_buttons(self, *, next: bool = True):
         ''' Handles what to do when a cycle button is clicked, depending on what
             keyboard modifiers are held down and whether `next` is True. '''
         mod = app.keyboardModifiers()
@@ -7724,7 +7729,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
-    def convert_snapshot_to_jpeg(self, path: str = None, image_data=None, quality: int = None):
+    def convert_snapshot_to_jpeg(self, path: str = None, image_data=None, quality: int = None) -> str:
         ''' Saves `path` or `image_data` as a JPEG file with the desired
             `quality` using PIL. If `quality` is None, the preset quality
             in the user's settings is used. If provided, assumes that `path`

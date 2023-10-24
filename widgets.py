@@ -4,6 +4,8 @@
 
     thisismy-github '''
 
+from __future__ import annotations
+
 from PyQt5 import QtGui, QtCore  # QtMultimedia, QtMultimediaWidgets
 from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets as QtW
@@ -1763,7 +1765,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             )
             self.refresh_thumbnail_outlines()
 
-        def set_output_part(*args, filename: bool = True):
+        def set_output_part(*, filename: bool = True):
             output = self.parent().output
             old_path = output.text().strip()
             if filename:                    # replace filename
@@ -1798,7 +1800,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         context.exec(event.globalPos())
 
 
-    def add(self, *args, files: tuple = None, index: int = None):
+    def add(self, *, files: str | tuple[str] = None, index: int = None):
         ''' Adds a list/tuple of `files` as `QVideoListItemWidget`'s. If `files`
             is a string, it will be interpreted as the sole element of a tuple.
             If `index` is specified, `files` will be inserted at that spot. '''
@@ -1892,7 +1894,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         else:         self.parent().setWindowTitle(f'{count} videos to concatenate')
 
 
-    def move(self, *args, down: bool = False):
+    def move(self, *, down: bool = False):
         ''' Moves all selected items up or `down`, while maintaining selection.
             Achieved by duplicating selected items and inserting them one index
             away, before deleting the original items. '''
@@ -2074,7 +2076,7 @@ class QWidgetPassthrough(QtW.QWidget):
         alpha: bool = True,
         punctuation: bool = True,
         numeric: bool = False,
-        ignored: tuple = tuple(),
+        ignored: tuple[int] = tuple(),
         **kwargs
     ):
         super().__init__(*args, **kwargs)   # normally these kwargs are True, False, False, False
@@ -2102,7 +2104,7 @@ class QWidgetPassthrough(QtW.QWidget):
         self._proxyWidget = widget
         self._proxyWidgetIsParent = widget is self.parent()
 
-    def setParent(self, parent):
+    def setParent(self, parent: QtW.QWidget):
         ''' Captures setParent and sets `proxyWidget` to the new `parent`
             if our proxy widget and parent are expected to be linked. '''
         super().setParent(parent)
@@ -2119,7 +2121,7 @@ class QWidgetPassthrough(QtW.QWidget):
     def setIgnoreAlpha(self, ignore: bool): self.ignoreAlpha = ignore
     def setIgnorePunctuation(self, ignore: bool): self.ignorePunctuation = ignore
     def setIgnoreNumeric(self, ignore: bool): self.ignoreNumeric = ignore
-    def setIgnoredKeys(self, *args): self.ignoredKeys = args
+    def setIgnoredKeys(self, *args: int): self.ignoredKeys = args
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> QtGui.QKeyEvent:
         key = event.key()                   # V esc (clear/pass focus)
