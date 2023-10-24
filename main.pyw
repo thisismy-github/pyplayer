@@ -509,7 +509,7 @@ class Edit:
     def give_priority(self, update_others: bool = True, ignore_lock: bool = False, conditional: bool = False):
         ''' Refreshes progress bar/taskbar to this edit's values if we've been
             given priority over updating the progress bar. If `update_others`
-            is True, all other edits in `gui.saves_in_progress` will set their
+            is True, all other edits in `gui.edits_in_progress` will set their
             `has_priority` property to False. This method returns immediately
             if `gui.lock_edit_priority` is True and `ignore_lock` is False,
             or if `conditional` is True and any other edit has priority. '''
@@ -518,14 +518,14 @@ class Edit:
         if gui.lock_edit_priority and not ignore_lock:
             return
         if conditional:
-            for save in gui.saves_in_progress:
-                if save.has_priority:
+            for edit in gui.edits_in_progress:
+                if edit.has_priority:
                     return
 
         # ensure priority is disabled on everything else
         if update_others:
-            for save in gui.saves_in_progress:
-                save.has_priority = False
+            for edit in gui.edits_in_progress:
+                edit.has_priority = False
 
         self.has_priority = True
         if self.frame == 0:                 # assume we haven't parsed any output yet
@@ -550,7 +550,7 @@ class Edit:
             return self.text
         else:
             percent_format = self.percent_format
-            save_count = len(gui.saves_in_progress)
+            save_count = len(gui.edits_in_progress)
             if save_count > 1:
                 text = f'{save_count} edits in progress - {self.text}'
             else:
@@ -610,7 +610,7 @@ class Edit:
 
             NOTE: This method will only update the progress bar if this edit
             has priority. Priority may change mid-operation and is gained
-            whenever `len(gui.saves_in_progress) == 1`.
+            whenever `len(gui.edits_in_progress) == 1`.
 
             `Edit.frame_rate` is a hint for the progress bar as to what frame
             rate to use when normal frame-output from FFmpeg is not available
@@ -659,7 +659,7 @@ class Edit:
             self.percent_format = percent_format
 
         # prepare the progress bar/taskbar/titlebar if no other edits are active
-        had_priority = len(gui.saves_in_progress) == 1
+        had_priority = len(gui.edits_in_progress) == 1
         if had_priority:
             self.has_priority = True                    # we must set the value to 0 to actually show the progress bar
             gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
@@ -737,7 +737,7 @@ class Edit:
 
                 # check if this thread should automatically start controlling the progress bar
                 if not self.has_priority:
-                    if len(gui.saves_in_progress) == 1:
+                    if len(gui.edits_in_progress) == 1:
                         had_priority = True
                         self.give_priority()
 
@@ -969,7 +969,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.open_in_progress = False
         self._open_main_in_progress = False
         self._open_cleanup_in_progress = False
-        self.saves_in_progress = []             # NOTE: a list of `SaveParameters` objects
+        self.edits_in_progress = []             # NOTE: a list of `SaveParameters` objects
 
         self.current_file_is_autoplay = False
         self.shuffle_folder = ''
@@ -2034,59 +2034,59 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def editProgressBarContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the edit progress bar,
-            allowing you to see, display, and cancel all active saves. '''
+            allowing you to see, display, and cancel all active edits. '''
         context = QtW.QMenu(self)
         context.setToolTipsVisible(True)
 
         # workarounds for python bug/oddity involving creating lambdas in iterables
         # (needed for the actions to actually remember which edit they belong to)
-        get_cancel_lambda =   lambda save: lambda: save.cancel()
-        get_pause_lambda =    lambda save: lambda: save.pause(paused=True)
-        get_resume_lambda =   lambda save: lambda: save.pause(paused=False)
-        get_priority_lambda = lambda save: lambda: save.give_priority()
+        get_cancel_lambda =   lambda edit: lambda: edit.cancel()
+        get_pause_lambda =    lambda edit: lambda: edit.pause(paused=True)
+        get_resume_lambda =   lambda edit: lambda: edit.pause(paused=False)
+        get_priority_lambda = lambda edit: lambda: edit.give_priority()
 
         # this + the above workarounds (edit: now just the four) took like two hours to get working
         # NOTE: this loop could be much shorter, but this is way easier to read
-        total_edits = len(self.saves_in_progress)
-        for save in self.saves_in_progress:
+        total_edits = len(self.edits_in_progress)
+        for edit in self.edits_in_progress:
 
             # set edit's menu title with text, operation count, and (operation) progress
             if total_edits > 1:
-                submenu = QtW.QMenu(save.get_progress_text(simple=True), context)
+                submenu = QtW.QMenu(edit.get_progress_text(simple=True), context)
                 context.addMenu(submenu)
             else:
                 submenu = context          # for just one edit, show the submenu directly
 
             # resume/pause selected edit
-            if not save._is_paused:
+            if not edit._is_paused:
                 action_suspend = submenu.addAction('Pause')
-                action_suspend.triggered.connect(get_pause_lambda(save))
+                action_suspend.triggered.connect(get_pause_lambda(edit))
             else:
                 action_suspend = submenu.addAction('Resume')
-                action_suspend.triggered.connect(get_resume_lambda(save))
+                action_suspend.triggered.connect(get_resume_lambda(edit))
 
             # cancel selected edit
             action_cancel = submenu.addAction('Cancel')
-            action_cancel.triggered.connect(get_cancel_lambda(save))
+            action_cancel.triggered.connect(get_cancel_lambda(edit))
             submenu.addSeparator()                          # show separator after suspend/cancel actions
 
             # give priority to selected edit (if possible)
             if total_edits > 1:
                 action_priority = submenu.addAction('Display')
-                if save.has_priority:
+                if edit.has_priority:
                     action_priority.setEnabled(False)
                 else:
-                    action_priority.triggered.connect(get_priority_lambda(save))
+                    action_priority.triggered.connect(get_priority_lambda(edit))
 
             # show dest's basename as disabled action so edits can be distinguished
-            if save.dest:
-                action_outfile = submenu.addAction(os.path.basename(save.dest))
+            if edit.dest:
+                action_outfile = submenu.addAction(os.path.basename(edit.dest))
                 action_outfile.setEnabled(False)
-                if save.temp_dest == save.dest:             # show full path(s) as tooltip
-                    action_outfile.setToolTip(save.dest)
+                if edit.temp_dest == edit.dest:             # show full path(s) as tooltip
+                    action_outfile.setToolTip(edit.dest)
                 else:
-                    action_outfile.setToolTip(f'Final destination:\t {save.dest}\n'
-                                              f'Temp destination:\t {save.temp_dest}')
+                    action_outfile.setToolTip(f'Final destination:\t {edit.dest}\n'
+                                              f'Temp destination:\t {edit.temp_dest}')
 
         # add "Pause/Resume/Cancel all" actions, if appropriate
         if total_edits > 1:
@@ -2102,7 +2102,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles clicking (and releasing) over the edit progress bar. Cycles
             which edit currently has priority on left-click, toggles pause-state
             for the current edit with priority on middle-click. '''
-        if len(self.saves_in_progress) > 1 and event.button() == Qt.LeftButton:
+        if len(self.edits_in_progress) > 1 and event.button() == Qt.LeftButton:
             self.cycle_edit_priority()
         elif event.button() == Qt.MiddleButton:
             edit = self.get_edit_with_priority()
@@ -4277,7 +4277,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             edit.operation_count = len(operations)
             if op_trim_start and op_trim_end:                           # account for trimming taking up two keys
                 edit.operation_count -= 1
-            self.saves_in_progress.append(edit)
+            self.edits_in_progress.append(edit)
 
             # static images are cached and can be deleted independant of pyplayer
             # if this happens, take the cached QPixmap and save it to a temporary file
@@ -4499,7 +4499,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             successful = False
             self.cleanup_edit_exception(error, dest, start_time, 'Save')
         finally:
-            self.saves_in_progress.remove(edit)
+            self.edits_in_progress.remove(edit)
 
         # --- Post-edit cleanup & opening our newly edited media ---
         try:
@@ -4821,7 +4821,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return False
 
             # next part takes a while so show a new message on the progress bar
-            if not self.saves_in_progress:
+            if not self.edits_in_progress:
                 self.set_save_progress_format_signal.emit('Cleaning up...')
 
             # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
@@ -4909,23 +4909,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def cancel_all(self, *args, wait: bool = False):
         ''' Cancels all edits in progress. If `wait` is True, this method
             blocks until the offending `Edit` objects are no longer in
-            `self.saves_in_progress`, while ignoring any edits started
+            `self.edits_in_progress`, while ignoring any edits started
             after this method is called. '''
 
         # NOTE: this method works on the assumption a cancelled edit isn't removed from...
-        # ...`self.saves_in_progress` until its FFmpeg process is confirmed to be killed
+        # ...`self.edits_in_progress` until its FFmpeg process is confirmed to be killed
         logging.info('Cancelling all active edits...')
-        if wait: to_cancel = self.saves_in_progress.copy()
-        else:    to_cancel = self.saves_in_progress
+        if wait: to_cancel = self.edits_in_progress.copy()
+        else:    to_cancel = self.edits_in_progress
 
-        for save in to_cancel:
-            save.cancel()
+        for edit in to_cancel:
+            edit.cancel()
 
         if wait:
             while True:
                 sleep(0.1)
-                for save in to_cancel:
-                    if save in self.saves_in_progress:
+                for edit in to_cancel:
+                    if edit in self.edits_in_progress:
                         continue
                 break
             log_on_statusbar('All edits cancelled, killed, and cleaned up.')
@@ -4934,31 +4934,31 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def pause_all(self, paused: bool = True):
         verb = 'Pausing' if paused else 'Resuming'
         logging.info(verb + ' all active edits...')
-        for save in self.saves_in_progress:
-            save.pause(paused=paused)
+        for edit in self.edits_in_progress:
+            edit.pause(paused=paused)
 
 
     def get_edit_with_priority(self) -> Edit:
-        ''' Returns the `Edit` object in `self.saves_in_progress` that currently
+        ''' Returns the `Edit` object in `self.edits_in_progress` that currently
             has priority. Only returns the first one found. '''
-        for save in self.saves_in_progress:
-            if save.has_priority:
-                return save
+        for edit in self.edits_in_progress:
+            if edit.has_priority:
+                return edit
 
 
     def cycle_edit_priority(self):
-        ''' Gives priority to the edit at `self.saves_in_progress`'s next index,
+        ''' Gives priority to the `Edit` at `self.edits_in_progress`'s next index,
             wrapping if necessary. Updates the progress bar immediately. '''
-        saves = self.saves_in_progress
-        for new_index, save in enumerate(saves, start=1):
+        edits = self.edits_in_progress
+        for new_index, save in enumerate(edits, start=1):
             if save.has_priority:
                 save.has_priority = False
-                saves[new_index % len(saves)].give_priority()
+                edits[new_index % len(edits)].give_priority()
                 break
 
 
     def reset_edit_priority(self, _paranoia: bool = False):
-        ''' Sets priority to the `Edit` in `self.saves_in_progress` closest
+        ''' Sets priority to the `Edit` in `self.edits_in_progress` closest
             to completion, preferring an unpaused one if possible. If 20+
             edits are running, the first unpaused edit is used instead.
             If they're all paused, index 0 is used instead. If no edits
@@ -4970,28 +4970,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # TODO: we should probably calculate ETAs and use those instead (and display them somewhere)
         try:
             sleep(0.05)                         # sleep to absolutely ensure we don't double-switch priority
-            saves = self.saves_in_progress
-            if saves:
+            edits = self.edits_in_progress
+            if edits:
 
                 # 1 edit, switch priority immediately
-                if len(saves) == 1:
-                    saves[0].give_priority(ignore_lock=True, conditional=True)
+                if len(edits) == 1:
+                    edits[0].give_priority(ignore_lock=True, conditional=True)
 
                 # 2-19 edits, switch to edit closest to completion
-                elif len(saves) < 20:
+                elif len(edits) < 20:
                     highest_edit = None
                     highest_unpaused_edit = None
                     highest_value = -1
                     highest_unpaused_value = -1
-                    for save in saves:
-                        percent = save.value
+                    for edit in edits:
+                        percent = edit.value
                         if percent > highest_value:
                             highest_value = percent
-                            highest_edit = save
-                        if not save._is_paused:
+                            highest_edit = edit
+                        if not edit._is_paused:
                             if percent > highest_unpaused_value:
                                 highest_unpaused_value = percent
-                                highest_unpaused_edit = save
+                                highest_unpaused_edit = edit
 
                     # switch to highest unpaused edit if one exists, otherwise fallback to paused ones
                     if highest_unpaused_edit:
@@ -5001,20 +5001,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # 20+ edits in progress, just change priority fast
                 else:
-                    for save in saves:
-                        if not save._is_paused:
-                            save.give_priority(ignore_lock=True, conditional=True)
+                    for edit in edits:
+                        if not edit._is_paused:
+                            edit.give_priority(ignore_lock=True, conditional=True)
                             break
                     else:                       # we didn't break the for-loop (they're all paused)
-                        saves[0].give_priority(ignore_lock=True, conditional=True)
+                        edits[0].give_priority(ignore_lock=True, conditional=True)
 
                 # make sure something actually got priority
                 if self.get_edit_with_priority() is None:
                     if not _paranoia:           # somehow, nothing got set. try again?
                         logging.warning('(!) Edit priority auto-update somehow accomplished nothing, resorting to emergency measures.')
                         self.reset_edit_priority(_paranoia=True)
-                    elif saves:                 # nothing got set AGAIN? just try and brute-force the first edit
-                        saves[0].give_priority(ignore_lock=True, update_others=True)
+                    elif edits:                 # nothing got set AGAIN? just try and brute-force the first edit
+                        edits[0].give_priority(ignore_lock=True, update_others=True)
                     else:                       # failed repeatedly, yet there aren't even any edits. just hide everything
                         self.hide_edit_progress()
 
@@ -5025,11 +5025,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # uh oh spaghettios
         except:
             logging.warning(f'(!) Edit priority auto-update is failing, trying last-ditch effort: {format_exc()}')
-            if not saves:                       # likely failed because all edits finished while this method was executing
+            if not edits:                       # likely failed because all edits finished while this method was executing
                 self.hide_edit_progress()
             else:
                 try:                            # failed because... huh? try and set priority one more time
-                    saves[0].give_priority(ignore_lock=True, update_others=True)
+                    edits[0].give_priority(ignore_lock=True, update_others=True)
                 except:                         # getting here basically requires several consecutive race conditions
                     log_on_statusbar(f'(!) Edit priority auto-update failed BADLY: {format_exc()}')
         finally:
@@ -5548,7 +5548,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             edit = Edit(final_dest)
             edit.frame_rate = frame_rate_hint
             edit.frame_count = frame_count_hint
-            self.saves_in_progress.append(edit)
+            self.edits_in_progress.append(edit)
 
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
@@ -5605,7 +5605,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 self.cleanup_edit_exception(error, dest, start_time, 'Concatenation')
         finally:
-            self.saves_in_progress.remove(edit)
+            self.edits_in_progress.remove(edit)
 
         # --- Post-concat cleanup & opening/exploring our newly edited media ---
         try:
@@ -7352,12 +7352,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             ratio = '0:0'
 
         # add progress percentage if it should be visible
-        if self.saves_in_progress:
+        if self.edits_in_progress:
             avg_value = 0
             total_operations = 0
-            for save in self.saves_in_progress:                 # get average across all operations in all edits
-                total_operations += save.operation_count
-                avg_value += save.value + ((save.operations_started - 1) * 100)
+            for edit in self.edits_in_progress:                 # get average across all operations in all edits
+                total_operations += edit.operation_count
+                avg_value += edit.value + ((edit.operations_started - 1) * 100)
             avg_value /= total_operations                       # divide-by-zero SHOULD be impossible here
             title = f'[{max(0, avg_value):.0f}%] {settings.lineWindowTitleFormat.text()}'
         else:
