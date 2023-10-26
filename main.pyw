@@ -4529,13 +4529,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if operations and successful:
                     mark =   delete_after_save == MARK_DELETE
                     delete = delete_after_save == FULL_DELETE
-                    if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, video):
+                    true_dest = self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, video)
+                    if not true_dest:
                         return
 
                     # only open edited video if user hasn't opened something else TODO make this a setting
                     if self.video == video:
                         self.open_from_thread(
-                            file=final_dest,
+                            file=true_dest,
                             focus_window=settings.checkFocusOnEdit.isChecked(),
                             remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
                         )                                       # gifs will often just... pause themselves after an edit
@@ -4544,8 +4545,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                     # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
                     elif settings.checkTextOnSave.isChecked():
-                        show_on_player(f'Changes saved to {final_dest}.')
-                    log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
+                        show_on_player(f'Changes saved to {true_dest}.')
+                    log_on_statusbar(f'Changes saved to {true_dest} after {get_time() - start_time:.1f} seconds.')
 
                 # log our lack of changes
                 elif successful:
@@ -4817,26 +4818,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         delete: bool = False,
         to_delete: str | tuple[str] = None,
         noun: str = 'Media'
-    ) -> bool:
-        ''' Ensures `temp_dest` exists, is not empty, can be probed, and doesn't
-            return an empty probe (in that order). If unsuccessful, False is
-            returned, the specific failure is logged (referring to the file as
-            `noun`), and `temp_dest` is deleted. Once validated, `temp_dest` is
-            renamed to `final_dest` with its timestamps set to `ctime`/`mtime`.
-            If `mark` is True, `to_delete` (which may be either a string or an
-            iterable) is marked for deletion. If `delete` is True, `to_delete`
-            is deleted/recycled outright.
+    ) -> str:
+        ''' Ensures `temp_dest` exists, isn't empty, and produces a valid probe.
+            If unsuccessful, an empty string is returned, the specific failure
+            is logged (referring to the file as `noun`), and `temp_dest` is
+            deleted. Once validated, `temp_dest` is renamed to `final_dest`
+            with its timestamps set to `ctime`/`mtime`. If `mark` is True,
+            `to_delete` (which may be either a string or an iterable) is marked
+            for deletion. If `delete` is True, `to_delete` is deleted/recycled
+            outright. If everything is valid but `temp_dest` cannot be renamed,
+            a popup is shown and `temp_dest` is returned. Otherwise, returns
+            `final_dest`.
 
-            NOTE: If `dest` is valid, this function is relatively "slow"
+            NOTE: If `temp_dest` is valid, this function is relatively "slow"
             as we must wait for a fresh probe file to be created. '''
         try:
             if not exists(temp_dest):
                 log_on_statusbar(f'(!) {noun} saved without error, but never actually appeared. Possibly an FFmpeg error. No changes have been made.')
-                return False
+                return ''
             if os.stat(temp_dest).st_size == 0:
                 log_on_statusbar(f'(!) {noun} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
                 delete_temp_path(temp_dest, 'FFmpeg file')
-                return False
+                return ''
 
             # next part takes a while so show a new message on the progress bar
             if not self.edits_in_progress:
@@ -4845,14 +4848,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
             # ... but cleanup is 100x easier if we do this now rather than later
             new_probe = probe_files(temp_dest, refresh=True, write=False)
-            if not new_probe:                                   # no probe returned
+            if not new_probe:                   # no probe returned
                 log_on_statusbar(f'(!) {noun} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
                 delete_temp_path(temp_dest, 'FFmpeg file')
-                return False
-            elif not new_probe[temp_dest]:                      # empty probe returned
+                return ''
+            elif not new_probe[temp_dest]:      # empty probe returned
                 log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
                 delete_temp_path(temp_dest, 'FFmpeg file')
-                return False
+                return ''
 
             # handle deletion behavior
             if mark:
@@ -4861,15 +4864,35 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif delete:
                 if isinstance(to_delete, str): self.delete(to_delete, cycle=False)
                 elif to_delete:                self.delete(*to_delete, cycle=False)
-            #elif replacing_original:                       # TODO add setting for this behavior?
+            #elif replacing_original:           # TODO add setting for this behavior?
             #    temp_name = add_path_suffix(video, '_original', unique=True)
             #    os.rename(video, temp_name)
             #    video = temp_name
 
             # rename `dest` back to `final_dest`
-            if self.video == final_dest: self.stop()        # stop player if necessary
-            if exists(final_dest): os.replace(temp_dest, final_dest)
-            else: os.rename(temp_dest, final_dest)
+            if self.video == final_dest:
+                self.stop()        # stop player if necessary
+            try:
+                if exists(final_dest):
+                    os.replace(temp_dest, final_dest)
+                else:
+                    os.rename(temp_dest, final_dest)
+            except PermissionError:
+                dirname = os.path.dirname(temp_dest)
+                temp_filename = os.path.basename(temp_dest)
+                final_filename = os.path.basename(final_dest)
+                header = 'Unable to rename our temporary file to our final output path.'
+                body = f'\n\nFolder: {dirname}\n---\nFilenames: "{temp_filename}" -> "{final_filename}"\n\n'
+                footer = 'Either the output path or the temporary file is currently being used by another process. The temporary file has not be renamed.'
+                self.popup_signal.emit(
+                    dict(
+                        title='Output is in use!',
+                        text=f'{header}{body}{footer}',
+                        icon='warning',
+                        **self.get_popup_kwargs()
+                    )
+                )
+                final_dest = temp_dest
 
             # update `final_dest`'s ctime/mtime if necessary
             self.set_file_timestamps(
@@ -4880,11 +4903,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # delete `final_dest`'s probe file in rare event it becomes stale (size & mtime/ctime were not altered)
             self.open_probe_file(file=final_dest, delete=True, verbose=False)
-            return True
+            return final_dest
         except:
             log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
-            return False
-        finally:                                            # make sure `temp_dest` does not actually have a probe file
+            return ''
+        finally:                                # make sure `temp_dest` does not actually have a probe file
             self.open_probe_file(file=temp_dest, delete=True, verbose=False)
 
 
@@ -5687,15 +5710,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             try:
                 if successful:              # confirm/validate/cleanup our output
-                    if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
+                    true_dest = self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation')
+                    if not true_dest:
                         return
                     if open:
-                        self.open_from_thread(file=final_dest, focus_window=settings.checkFocusOnEdit.isChecked())
+                        self.open_from_thread(file=true_dest, focus_window=settings.checkFocusOnEdit.isChecked())
                     if explore:
-                        qthelpers.openPath(final_dest, explore=True)
+                        qthelpers.openPath(true_dest, explore=True)
 
                     # log our success
-                    log_on_statusbar(f'Concatenation saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
+                    log_on_statusbar(f'Concatenation saved to {true_dest} after {get_time() - start_time:.1f} seconds.')
             except:
                 log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
             finally:
