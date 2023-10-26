@@ -4028,6 +4028,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             See `save()` for more details. '''
 
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.is_safe_to_edit(self.video):
+            return show_on_statusbar('Save cancelled (source media is set to be overwritten).', 10000)
         if not default_path:
             default_path, _, _ = self.get_output(
                 valid_extensions=valid_extensions,
@@ -4076,6 +4078,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         video = self.video
         if not video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.is_safe_to_edit(video):                     # check if media is locked right right away before `dest` is confirmed
+            return show_on_statusbar('Save cancelled (source media is set to be overwritten).', 10000)
 
         operations = self.operations.copy()
         if self.actionCrop.isChecked():      operations['crop'] = True
@@ -4142,9 +4146,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not splitext_media(dest, valid_extensions)[-1]:
                 dest += ext_hint or old_ext
         logging.info(f'Destination extension is "{ext}"')
+        dest = abspath(dest)                                    # clean up destination one more time, just in case
 
-        # clean up destination one more time, just in case
-        dest = abspath(dest)
+        # check for common reasons we might not be allowed to use `dest`
+        if not self.is_safe_to_edit(dest=dest):                 # NOTE: we already checked `self.video` above
+            return self.save_as(noun=noun, filter=filter, default_path=dest, unique_default=True)
 
         # no operations -> check if video was renamed and return without starting a new thread
         if not operations:
@@ -4253,18 +4259,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.debug(f'temp-dest={dest}, video={video} delete_after_save={delete_after_save} operations={operations}')
 
         # lock source file from being played if we're replacing it OR it's being immediately deleted
-        self.locked_files.add(dest)                                     # ensure destination is also locked
-        if replacing_original or delete_after_save == FULL_DELETE:
-            self.locked_files.add(video)
-            logging.info(f'File locked during edits: {video}')
-
-            # ignore deletion setting if we're replacing the original file
-            if replacing_original:
-                delete_after_save = NO_DELETE
-
-        # stop player if we've reached this point. it's our last chance to do so safely (without theoretically disrupting the user)
-        self.stop()
-        emit_update_progress_signal(0)                                  # update UI to frame 0
+        self.locked_files.add(dest)                                     # ensure temp destination is locked
+        self.locked_files.add(final_dest)                               # ensure final destination is locked
+        if replacing_original:                                          # ignore deletion setting if we're replacing the original file
+            delete_after_save = NO_DELETE
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
         new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=final_dest)
@@ -4327,6 +4325,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     while not cfg.trimmodeselected:
                                         sleep(0.1)
                                     if self.trim_mode_selection_cancelled:          # user hit X on the trim dialog
+                                        successful = False
                                         return log_on_statusbar('Trim cancelled.')
 
                                 start_time = get_time()                             # reset start_time to undo time spent waiting for dialog
@@ -4469,6 +4468,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 vwidth -= left
                                 vheight -= top
                         except:
+                            successful = False
                             return log_on_statusbar(f'(!) Failed to crop image that isn\'t divisible by 2: {format_exc()}')
                     edit.frame_count = int(get_audio_duration(audio) * 25)          # ffmpeg defaults to using 25fps for this
                     cmd = f'-loop 1 -i %in -i "{audio}" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest'
@@ -4501,49 +4501,49 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         except Exception as error:
             successful = False
             self.cleanup_edit_exception(error, dest, start_time, 'Save')
-        finally:
-            self.edits_in_progress.remove(edit)
 
         # --- Post-edit cleanup & opening our newly edited media ---
-        try:
-            # clean up temp paths if we have any
-            for path in temp_paths:
-                if exists(path):
-                    delete_temp_path(path, 'edit-path')
-
-            # confirm/validate/cleanup our operations
-            if operations and successful:
-                mark =   delete_after_save == MARK_DELETE
-                delete = delete_after_save == FULL_DELETE
-                if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, video):
-                    return
-
-                # only open edited video if user hasn't opened something else TODO make this a setting
-                if self.video == video:
-                    self.open_from_thread(
-                        file=final_dest,
-                        focus_window=settings.checkFocusOnEdit.isChecked(),
-                        remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
-                    )
-                    if is_gif:                                  # gifs will often just... pause themselves after an edit
-                        self.force_pause_signal.emit(False)     # -> this is the only way i've found to fix it
-
-                # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
-                elif settings.checkTextOnSave.isChecked():
-                    show_on_player(f'Changes saved to {final_dest}.')
-                log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
-
-            # log our lack of changes
-            elif successful:
-                return log_on_statusbar('No changes have been made.')
-        except:
-            log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
         finally:
-            self.locked_files.discard(video)                    # unlock source file
-            self.locked_files.discard(dest)                     # unlock destination
-            self.setFocus(True)                                 # restore keyboard focus so we can use hotkeys again
-            self.reset_edit_priority()                          # set priority to next edit or reset the statusbar/titlebar/taskbar
-            logging.info(f'Remaining locked files after edit: {self.locked_files}')
+            try:
+                # clean up temp paths if we have any
+                for path in temp_paths:
+                    if exists(path):
+                        delete_temp_path(path, 'edit-path')
+
+                # confirm/validate/cleanup our operations
+                if operations and successful:
+                    mark =   delete_after_save == MARK_DELETE
+                    delete = delete_after_save == FULL_DELETE
+                    if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, video):
+                        return
+
+                    # only open edited video if user hasn't opened something else TODO make this a setting
+                    if self.video == video:
+                        self.open_from_thread(
+                            file=final_dest,
+                            focus_window=settings.checkFocusOnEdit.isChecked(),
+                            remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
+                        )                                       # gifs will often just... pause themselves after an edit
+                        if is_gif:                              # -> this is the only way i've found to fix it
+                            self.force_pause_signal.emit(False)
+
+                    # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
+                    elif settings.checkTextOnSave.isChecked():
+                        show_on_player(f'Changes saved to {final_dest}.')
+                    log_on_statusbar(f'Changes saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
+
+                # log our lack of changes
+                elif successful:
+                    return log_on_statusbar('No changes have been made.')
+            except:
+                log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
+            finally:
+                self.locked_files.discard(dest)                 # unlock temp destination
+                self.locked_files.discard(final_dest)           # unlock final destination
+                self.setFocus(True)                             # restore keyboard focus so we can use hotkeys again
+                self.edits_in_progress.remove(edit)             # remove `Edit` object
+                self.reset_edit_priority()                      # set priority to next edit or reset the statusbar/titlebar/taskbar
+                logging.info(f'Remaining locked files after edit: {self.locked_files}')
 
 
     def update_gif_progress(self, frame: int):
@@ -4909,6 +4909,82 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else:
             if not start_time: log_on_statusbar(f'(!) {noun.upper()} FAILED: {format_exc()}')
             else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_time() - start_time:.1f} SECONDS: {format_exc()}')
+
+
+    def is_safe_to_edit(self, *infiles: str, dest: str = None, popup: bool = True) -> bool:
+        ''' Returns True if `dest` and `infiles` are safe to use for FFmpeg
+            operations. If not and `popup` is True, a detailed warning is shown.
+            Checks if `dest`/`infiles` are in `self.locked_files` and tries
+            renaming `dest` to itself to ensure no handles exist. Stops the
+            player before the rename-check if `dest` is `self.video`. '''
+        msg = ''
+        if dest in infiles:                     # check if we're overwriting `dest`
+            infiles = [file for file in infiles if file != dest]
+
+        # check if our files were explicitly locked
+        locked_files = self.locked_files
+        output_locked = dest in locked_files
+        locked = [(i, f) for i, f in enumerate(infiles) if f in locked_files]
+        if locked or output_locked:
+            logging.info(f'(?) Files to be concatenated and/or the output are locked, cancelling: {locked}')
+
+            # generate an appropriate title, body, and list of offending files depending on how many...
+            # ...files were provided, how many are invalid, and if both the output AND input files were bad
+            if not popup:
+                header = ''
+                footer = ''
+            elif output_locked:
+                if len(locked) > 1:
+                    title = 'Output and input files are in use!'
+                    header = 'The output path and the files at the following indexes are set to be overwritten by different edit(s):'
+                    footer = f'Output: {dest}\n' + '\n'.join(f'{index + 1}. {file}' for index, file in locked)
+                elif len(locked) == 1:
+                    title = 'Output and input file are both in use!'
+                    if len(infiles) > 1:
+                        header = 'The output path and the file at the following index are set to be overwritten by different edit(s):'
+                        footer = '\n'.join(f'{index + 1}. {file}' for index, file in locked)
+                    else:
+                        header = 'The output path and input file are set to be overwritten by different edit(s):'
+                        footer = f'Output: {dest}\nInput: {infiles[0]}'
+                else:
+                    title = 'Output is in use!'
+                    header = 'The output path is set to be overwritten by a different edit:'
+                    footer = dest
+            else:
+                if len(locked) == 1:
+                    title = 'Input file is in use!'
+                    if len(infiles) > 1:
+                        header = 'The file at the following index is set to be overwritten by a different edit:'
+                        footer = '\n'.join(f'{index + 1}. {file}' for index, file in locked)
+                    else:
+                        header = 'The input file is set to be overwritten by a different edit:'
+                        footer = infiles[0]
+                else:
+                    title = 'Input files are in use!'
+                    header = 'The files at the following indexes are set to be overwritten by different edit(s):'
+                    footer = '\n'.join(f'{index + 1}. {file}' for index, file in locked)
+            msg = f'{header}\n\n{footer}'
+
+        # check if we might not be able to write to our `dest` when the edit is finished
+        elif dest and exists(dest):
+            try:
+                if dest == self.video:          # stop player to make sure nothing else is using our destination
+                    self.stop()
+                os.rename(dest, dest)           # rename file to itself as a simple access-check
+            except PermissionError:             # the path still cannot be written to
+                title = 'Output is in use!'
+                msg = f'The output path is currently being used by another process:\n\n{dest}'
+
+        if msg:
+            if popup:
+                qthelpers.getPopup(             # TODO: add the signal version too if we need it
+                    title=title,
+                    text=msg,
+                    icon='warning',
+                    **self.get_popup_kwargs()
+                ).exec()
+            return False
+        return True
 
 
     def cancel_all(self, *, wait: bool = False):
@@ -5444,28 +5520,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif no_output:                         # no output -> default to first file's name + "_concatenated"
                         output = add_path_suffix(files[0], '_concatenated', unique=True)
 
-                    # check if `output` or any of our `files` are locked -> re-loop if so
-                    # this allows as many concat dialogs to be open as we want, anytime we want
-                    locked_files = self.locked_files
-                    output_locked = output in locked_files
-                    locked = [(i, f) for i, f in enumerate(files) if f in locked_files]
-                    if locked or output_locked:
-                        logging.info(f'(?) Files to be concatenated and/or the output are locked, cancelling: {locked}')
-                        locked_string = '\n'.join(f'{index + 1}. {file}' for index, file in locked)
-                        if output_locked:
-                            if len(locked) > 1:    header = 'The output path and the files at the following indexes are already being worked on:\n\n'
-                            elif len(locked) == 1: header = 'The output path and the file at the following index are already being worked on:\n\n'
-                            else:                  header = 'The output path is already being worked on.'
-                        else:
-                            if locked:             header = 'The file at the following index is already being worked on:\n\n'
-                            else:                  header = 'The files at the following indexes are already being worked on:\n\n'
-                        qthelpers.getPopup(
-                            title='Concatenation cancelled!',
-                            text=header + locked_string,
-                            icon='warning',
-                            **self.get_popup_kwargs()
-                        ).exec()
-                        continue                            # re-loop if any files were locked
+                    # check for common reasons we might not be allowed to use our output or input
+                    if not self.is_safe_to_edit(*files, dest=output):
+                        continue
                     break                                   # we have our files, we have our name -> break loop
 
             logging.info(f'Concatenation dialog files to {output}: {files}')
@@ -5538,13 +5595,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # lock all files and destination
         locked_files = self.locked_files
-        locked_files.update(files)
         locked_files.add(dest)
-
-        # stop player if we're deleting the current media or saving to its path
-        if self.video == dest or (delete and self.video in files):
-            self.stop()
-            emit_update_progress_signal(0)                  # update UI to frame 0
+        locked_files.add(final_dest)
 
         # calculate timestamps for final output based on our input files
         new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
@@ -5609,29 +5661,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # do normal edit exception handling
             else:
                 self.cleanup_edit_exception(error, dest, start_time, 'Concatenation')
-        finally:
-            self.edits_in_progress.remove(edit)
 
         # --- Post-concat cleanup & opening/exploring our newly edited media ---
-        try:
-            if successful:                                  # confirm/validate/cleanup our output
-                if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
-                    return
-                if open:
-                    self.open_from_thread(file=final_dest, focus_window=settings.checkFocusOnEdit.isChecked())
-                if explore:
-                    qthelpers.openPath(final_dest, explore=True)
-
-                # log our success
-                log_on_statusbar(f'Concatenation saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
-        except:
-            log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
         finally:
-            locked_files.discard(dest)
-            locked_files.discard(final_dest)
-            locked_files.difference_update(files)
-            self.reset_edit_priority()      # set priority to next edit or reset the statusbar/titlebar/taskbar
-            logging.info(f'Remaining locked files after concatenation: {self.locked_files}')
+            try:
+                if successful:              # confirm/validate/cleanup our output
+                    if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
+                        return
+                    if open:
+                        self.open_from_thread(file=final_dest, focus_window=settings.checkFocusOnEdit.isChecked())
+                    if explore:
+                        qthelpers.openPath(final_dest, explore=True)
+
+                    # log our success
+                    log_on_statusbar(f'Concatenation saved to {final_dest} after {get_time() - start_time:.1f} seconds.')
+            except:
+                log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
+            finally:
+                locked_files.discard(dest)
+                locked_files.discard(final_dest)
+                self.edits_in_progress.remove(edit)
+                self.reset_edit_priority()  # set priority to next edit or reset the statusbar/titlebar/taskbar
+                logging.info(f'Remaining locked files after concatenation: {self.locked_files}')
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
