@@ -607,9 +607,7 @@ class Edit:
         text: str = None,
         start_text: str = None,
         percent_format: str = None,
-        text_override: str = None,
-        cleanup: bool = False,
-        lock: bool = False
+        text_override: str = None
     ) -> str:
         ''' Executes an FFmpeg `cmd` on `infile` and outputs to `outfile`,
             showing a progress bar on both the statusbar and the taskbar icon
@@ -647,14 +645,8 @@ class Edit:
             `percent_format`, and `start_text` are all ignored, no other
             information is added, and `Edit.override_text` is set to True.
 
-            If `cleanup` is True, `gui.save_progress_bar` will be hidden and
-            have its maximum value reset upon completion.
-
-            If `lock` is True, both `infile` and `outfile` (as well as any
-            temporary paths that are created) will be automatically added to
-            `gui.locked_files` and subsequently removed upon completion.
-            NOTE: Temporary paths will be locked/unlocked regardless if
-            `infile` is already locked when you call this method.
+            NOTE: Temporary paths will be locked/unlocked if `infile` is
+            already locked when you call this method.
 
             Returns the actual final output path. '''
 
@@ -705,12 +697,6 @@ class Edit:
                     temp_infile = infile
             else:                                       # no infile provided at all, so no temp path either
                 temp_infile = ''
-
-            # lock files if desired to prevent them from being opened/edited
-            if lock:
-                locked_files.add(infile)
-                locked_files.add(outfile)
-                locked_files.add(temp_infile)
 
             # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
             if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
@@ -831,16 +817,11 @@ class Edit:
             raise                                       # raise exception anyway (we'll still go to the finally-statement)
 
         finally:
-            if lock:                                    # unlock all files involved, if desired
-                locked_files.discard(infile)
-                locked_files.discard(outfile)
-            try:
-                if editing_in_place:                    # always unlock our temporary path if necessary
+            if editing_in_place:                    # always unlock our temporary path if necessary
+                try:
                     locked_files.discard(temp_infile)
-            except:
-                pass
-            if cleanup:                                 # set priority to next edit or reset the statusbar/titlebar/taskbar
-                gui.reset_edit_priority()
+                except:
+                    pass
 
 
 # ---------------------
@@ -3714,6 +3695,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         new_name, basename_no_ext, ext = self.get_output(new_name)
         if not new_name:                            # output was invalid, blank, or the default
             return
+        if old_name in self.locked_files:
+            return show_on_statusbar('Current file cannot be renamed because it is set to be overwritten.')
+        if new_name in self.locked_files:           # NOTE: you can't really get this far if this is True
+            return show_on_statusbar('New name cannot be used because it is set to be overwritten.')
 
         # see if we're currently paused then stop the player
         was_paused = self.is_paused
@@ -3731,7 +3716,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:
                     return log_on_statusbar(f'Current file no longer exists at {old_name}.')
             except PermissionError:
-                return log_on_statusbar(f'(!) Permission error while renaming: file is in use by another program ({old_name}).')
+                return log_on_statusbar('File cannot be renamed because it is in use by another process.')
             except OSError as error:                # show specific message for OSError 17
                 if 'disk drive' in str(error):
                     return log_on_statusbar('Renaming across drives is not supported yet.')
@@ -4036,9 +4021,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             as...", before saving to the user-selected path, if any.
             See `save()` for more details. '''
 
-        if not self.video: return show_on_statusbar('No media is playing.', 10000)
-        if not self.is_safe_to_edit(self.video):
-            return show_on_statusbar('Save cancelled (source media is set to be overwritten).', 10000)
+        video = self.video
+        if not video: return show_on_statusbar('No media is playing.', 10000)
+        if not self.is_safe_to_edit(video): return show_on_statusbar('Save cancelled (source media is set to be overwritten).', 10000)
         if not default_path:
             default_path, _, _ = self.get_output(
                 valid_extensions=valid_extensions,
@@ -4052,7 +4037,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 filter=filter,
                 valid_extensions=valid_extensions,
                 ext_hint=ext_hint,
-                default_path=default_path or self.video,
+                default_path=default_path or video,
                 unique_default=unique_default
             )
 
@@ -4087,8 +4072,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         video = self.video
         if not video: return show_on_statusbar('No media is playing.', 10000)
-        if not self.is_safe_to_edit(video):                     # check if media is locked right right away before `dest` is confirmed
-            return show_on_statusbar('Save cancelled (source media is set to be overwritten).', 10000)
+        if not self.is_safe_to_edit(video): return show_on_statusbar('Save cancelled (source media is set to be overwritten).', 10000)
 
         operations = self.operations.copy()
         if self.actionCrop.isChecked():      operations['crop'] = True
@@ -4125,7 +4109,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # NOTE: `exists(output_text)` only applies to OTHER files, not `self.video`
             unchanged = not output_text
             if unchanged or exists(output_text):
-                if ext_hint and unchanged:                  # invalid/unchanged output -> use `ext_hint` if possible but still show prompt
+                if ext_hint and unchanged:                      # invalid/unchanged output -> use `ext_hint` if possible but still show prompt
                     output_text = old_base + ext_hint
 
                 if settings.checkSaveAsForceOnNoName.isChecked():
@@ -4219,8 +4203,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # quick pre-operation checks
         if op_crop:
-            if mime == 'audio':                                         # NOTE: this shouldn't be possible, but just in case
-                log_on_statusbar('Crop mode on audio files is designed for cropping cover art.')
+            if mime == 'audio':                                         # don't disable crop, but ignore it as an operation for audio
+                log_on_statusbar('Crop mode on audio files is designed for cropping cover art through snapshots/image copying.')
                 del operations['crop']                                  # remove operation key
                 op_crop = False
             crop_selection = tuple(self.vlc.factor_point(point) for point in self.vlc.selection)
@@ -4260,22 +4244,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.show_ffmpeg_warning_signal.emit(self)
             return marquee('You don\'t have FFmpeg installed!')
 
-        # log data and create some strings for temporary paths we'll be needing
-        logging.info(f'Saving file to "{dest}"')
-        intermediate_file = video           # the path to the file that will be receiving all changes between operations
-        final_dest = dest                   # save the original dest so we can rename our temporary dest back later
-        dest = add_path_suffix(dest, '_temp', unique=True)              # add _temp to dest, in case dest is the same as our base video
+        # get the new ctime/mtime to set out output file to (0 means don't change)
+        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
+
+        # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
+        intermediate_file = video                               # the path to the file that will be receiving all changes between operations
+        final_dest = dest                                       # save the original dest so we can rename our temporary dest back later
+        dest = add_path_suffix(dest, '_temp', unique=True)      # add _temp to dest, in case dest is the same as our base video
+
         temp_paths = []
+        logging.info(f'Saving file to "{final_dest}"')
         logging.debug(f'temp-dest={dest}, video={video} delete_after_save={delete_after_save} operations={operations}')
 
-        # lock source file from being played if we're replacing it OR it's being immediately deleted
-        self.locked_files.add(dest)                                     # ensure temp destination is locked
-        self.locked_files.add(final_dest)                               # ensure final destination is locked
-        if replacing_original:                                          # ignore deletion setting if we're replacing the original file
+        # lock both temporary and actual destination
+        self.locked_files.add(dest)
+        self.locked_files.add(final_dest)
+        if replacing_original:                                  # ignore deletion setting if we're replacing the original file
             delete_after_save = NO_DELETE
-
-        # get the new ctime/mtime to set out output file to (0 means don't change)
-        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=final_dest)
 
         # open handle to our destination
         dest_handle = open(final_dest, 'a')
@@ -4289,7 +4274,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             edit.frame_rate = frame_rate
             edit.frame_count = frame_count_raw
             edit.operation_count = len(operations)
-            if op_trim_start and op_trim_end:                           # account for trimming taking up two keys
+            if op_trim_start and op_trim_end:                   # account for trimming taking up two keys
                 edit.operation_count -= 1
             self.edits_in_progress.append(edit)
 
@@ -4319,7 +4304,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if maximum < frame_count: cmd += f'-to {maximum / frame_rate} '
 
                     else:
-                        if mime == 'audio':                                         # audio re-encoding should probably be an option in the future
+                        if mime == 'audio':                     # audio re-encoding should probably be an option in the future
                             precise = False
 
                         else:
@@ -4337,11 +4322,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     self.show_trim_dialog_signal.emit()
                                     while not cfg.trimmodeselected:
                                         sleep(0.1)
-                                    if self.trim_mode_selection_cancelled:          # user hit X on the trim dialog
-                                        successful = False
+                                    if self.trim_mode_selection_cancelled:
+                                        successful = False      # user hit X on the trim dialog
                                         return log_on_statusbar('Trim cancelled.')
 
-                                start_time = get_time()                             # reset start_time to undo time spent waiting for dialog
+                                start_time = get_time()         # reset start_time to undo time spent waiting for dialog
                                 requires_precision = extension in constants.SPECIAL_TRIM_EXTENSIONS and mime != 'audio'
                                 precise = requires_precision or self.trim_mode_action_group.checkedAction() is self.actionTrimPrecise
                                 if not precise: log_on_statusbar('Imprecise trim requested.')
@@ -4518,8 +4503,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # --- Post-edit cleanup & opening our newly edited media ---
         finally:
-            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             try:
+                # close handle to destination and delete temp file if needed
+                close_handle(dest_handle, not dest_already_exists)
+
                 # clean up temp paths if we have any
                 for path in temp_paths:
                     if exists(path):
@@ -4539,8 +4526,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             file=true_dest,
                             focus_window=settings.checkFocusOnEdit.isChecked(),
                             remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
-                        )                                       # gifs will often just... pause themselves after an edit
-                        if is_gif:                              # -> this is the only way i've found to fix it
+                        )                               # gifs will often just... pause themselves after an edit
+                        if is_gif:                      # -> this is the only way i've found to fix it
                             self.force_pause_signal.emit(False)
 
                     # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
@@ -4554,11 +4541,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except:
                 log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
             finally:
-                self.locked_files.discard(dest)                 # unlock temp destination
-                self.locked_files.discard(final_dest)           # unlock final destination
-                self.setFocus(True)                             # restore keyboard focus so we can use hotkeys again
-                self.edits_in_progress.remove(edit)             # remove `Edit` object
-                self.reset_edit_priority()                      # set priority to next edit or reset the statusbar/titlebar/taskbar
+                self.locked_files.discard(dest)         # unlock temp destination
+                self.locked_files.discard(final_dest)   # unlock final destination
+                self.setFocus(True)                     # restore keyboard focus so we can use hotkeys again
+                self.edits_in_progress.remove(edit)     # remove `Edit` object
+                self.reset_edit_priority()              # set priority to next edit or reset the statusbar/titlebar/taskbar
                 logging.info(f'Remaining locked files after edit: {self.locked_files}')
 
 
@@ -4567,9 +4554,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             the GIF when outside the designated trim markers. '''
         if self.is_gif:
             if self.minimum <= frame <= self.maximum:
-                update_progress(frame)                          # HACK: literally, forcibly repaint to stop slider from...
-                if frame != self.minimum:                       # ...eventually freezing on animated GIFs in fullscreen...
-                    self.sliderProgress.repaint()               # ...(no idea why it happens)
+                update_progress(frame)                  # HACK: literally, forcibly repaint to stop slider from...
+                if frame != self.minimum:               # ...eventually freezing on animated GIFs in fullscreen...
+                    self.sliderProgress.repaint()       # ...(no idea why it happens)
             else:
                 set_and_update_progress(self.minimum)
 
@@ -4933,7 +4920,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                    '\n • Reinstall FFmpeg'
                    '\n • Pray'
                    '\n\nNo changes have been made. Feel free to try again.')
-            self.popup_signal.emit(                         # TODO it *might* be nice to have retry/cancel options
+            self.popup_signal.emit(             # TODO it *might* be nice to have retry/cancel options
                 dict(
                     title='FFmpeg error',
                     text=msg,
@@ -5628,17 +5615,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         successful = True
         dest_already_exists = exists(dest)
 
+        # calculate timestamps for final output based on our input files
+        new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
+
         # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
         final_dest = dest
         dest = add_path_suffix(dest, '_temp', unique=True)
 
-        # lock all files and destination
-        locked_files = self.locked_files
-        locked_files.add(dest)
-        locked_files.add(final_dest)
-
-        # calculate timestamps for final output based on our input files
-        new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
+        # lock both temporary and actual destination
+        self.locked_files.add(dest)
+        self.locked_files.add(final_dest)
 
         # open handle to our destination
         dest_handle = open(final_dest, 'a')
@@ -5681,13 +5667,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except: pass
 
         except Exception as error:
-            successful = False
-            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
+            successful = False                              # ↓ close handle to destination and delete temp file if needed
+            close_handle(dest_handle, not dest_already_exists)
 
             # handle videos with different dimensions (if we got this far, assume FFprobe isn't available)
             if 'do not match the corresponding output link' in str(error):
                 delete_temp_path(dest, 'FFmpeg file')
-                self.concatenate_signal.emit(None, files)       # reopen concat dialog with previous files (NOTE: state won't be fully restored)
+                self.concatenate_signal.emit(None, files)   # reopen concat dialog with previous files (NOTE: state won't be fully restored)
 
                 header = ('All files must have the same dimensions for re-encoded concatenation.\n'
                           'You\'ll need to crop or resize the offending files individually.')
@@ -5696,7 +5682,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         title='Concatenation cancelled!',
                         text=header,
                         icon='warning',
-                        flags=Qt.WindowStaysOnTopHint,          # needed so it appears over the concat dialog
+                        flags=Qt.WindowStaysOnTopHint,      # needed so it appears over the concat dialog
                         **self.get_popup_kwargs()
                     )
                 )
@@ -5707,9 +5693,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # --- Post-concat cleanup & opening/exploring our newly edited media ---
         finally:
-            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             try:
-                if successful:              # confirm/validate/cleanup our output
+                # close handle to destination and delete temp file if needed
+                close_handle(dest_handle, not dest_already_exists)
+
+                # confirm/validate/cleanup our output
+                if successful:
                     true_dest = self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation')
                     if not true_dest:
                         return
@@ -5723,8 +5712,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except:
                 log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
             finally:
-                locked_files.discard(dest)
-                locked_files.discard(final_dest)
+                self.locked_files.discard(dest)
+                self.locked_files.discard(final_dest)
                 self.edits_in_progress.remove(edit)
                 self.reset_edit_priority()  # set priority to next edit or reset the statusbar/titlebar/taskbar
                 logging.info(f'Remaining locked files after concatenation: {self.locked_files}')
