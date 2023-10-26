@@ -426,6 +426,15 @@ def delete_temp_path(path: str, noun: str = 'file', retry_delay: float = 0.5, re
         return False
 
 
+def close_handle(handle, delete: bool):
+    ''' Closes a file-like object `handle` and
+        attempts to `delete` its associated path. '''
+    handle.close()
+    if delete:
+        try: os.remove(handle.name)
+        except: logging.warning(f'(!) Failed to delete dummy file at final destination ({handle.name}): {format_exc()}')
+
+
 #def correct_misaligned_formats(audio, video) -> str:                # this barely works
 #    _, vext = os.path.splitext(video)
 #    abase, aext = os.path.splitext(audio)
@@ -4178,6 +4187,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         frame_rate, duration = self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
         audio_tracks = player.audio_get_track_count()
+        dest_already_exists = exists(dest)
         replacing_original = video == dest
 
         # min/max are usually offset in ffmpeg for some reason, so adjust if necessary
@@ -4266,6 +4276,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
         new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=final_dest)
+
+        # open handle to our destination
+        dest_handle = open(final_dest, 'a')
 
     # --- Apply operations to media ---
         # TODO: GIFs should probably use Pillow for their operations
@@ -4500,10 +4513,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except Exception as error:
             successful = False
+            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             self.cleanup_edit_exception(error, dest, start_time, 'Save')
 
         # --- Post-edit cleanup & opening our newly edited media ---
         finally:
+            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             try:
                 # clean up temp paths if we have any
                 for path in temp_paths:
@@ -5588,6 +5603,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         start_time = get_time()
         successful = True
+        dest_already_exists = exists(dest)
 
         # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
         final_dest = dest
@@ -5600,6 +5616,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # calculate timestamps for final output based on our input files
         new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=final_dest)
+
+        # open handle to our destination
+        dest_handle = open(final_dest, 'a')
 
         try:
             edit = Edit(final_dest)
@@ -5640,6 +5659,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except Exception as error:
             successful = False
+            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
 
             # handle videos with different dimensions (if we got this far, assume FFprobe isn't available)
             if 'do not match the corresponding output link' in str(error):
@@ -5664,6 +5684,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # --- Post-concat cleanup & opening/exploring our newly edited media ---
         finally:
+            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             try:
                 if successful:              # confirm/validate/cleanup our output
                     if not self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation'):
