@@ -83,38 +83,6 @@ def foreground_is_fullscreen() -> bool:
     return rects_are_equal(screen_rect, window_rect)
 
 
-def get_unique_path(path: str, start: int = 2, key: str = None, zeros: int = 0, strict: bool = False) -> str:
-    ''' Returns a unique `path`. If `path` already exists, version-numbers
-        starting from `start` are added. If a keyword `key` is provided and
-        is a substring within `path`, it is replaced with the version number
-        with `zeros` padded zeros. Otherwise, Windows-style naming is used
-        with no padding: "(base) (version).(ext)". `strict` forces paths
-        with non-Windows-style naming to always include a version number,
-        even if `path` was unique to begin with. '''
-    # TODO: add ignore_extensions parameter that uses os.path.splitext and glob(basepath.*)
-    version = start
-    if key and key in path:                     # if key and key exists in path -> replace key in path with padded version number
-        print(f'Replacing key "{key}" in path: {path}')
-        key_path = path
-        if strict:                              # if strict, replace key with first version number
-            path = key_path.replace(key, str(version).zfill(zeros if version >= 0 else zeros + 1))  # +1 zero if version is negative
-            version += 1                        # increment version here to avoid checking this first path twice when we start looping
-        else: path = key_path.replace(key, '')  # if not strict, replace key with nothing first to see if original name is unique
-        while os.path.exists(path):
-            path = key_path.replace(key, str(version).zfill(zeros if version >= 0 else zeros + 1))
-            version += 1
-    else:                                       # no key -> use windows-style unique paths
-        base, ext = os.path.splitext(path)
-        if os.path.exists(path):                # if path exists, check if it's already using window-style names
-            parts = base.split()
-            if parts[-1][0] == '(' and parts[-1][-1] == ')' and parts[-1][1:-1].isnumeric():
-                base = ' '.join(parts[:-1])     # path is using window-style names, remove pre-existing version string from basename
-            while os.path.exists(path):
-                path = f'{base} ({version}){ext}'
-                version += 1
-    return path
-
-
 def get_from_PATH(filename: str) -> str:        # i learned about `shutil.which()` way too late. oh well, this works
     ''' Returns the full path to a `filename` if it exists in
         the user's PATH, otherwise returns an empty string. '''
@@ -123,7 +91,8 @@ def get_from_PATH(filename: str) -> str:        # i learned about `shutil.which(
         try:
             if filename in os.listdir(path):
                 return os.path.join(path, filename)
-        except: pass
+        except:
+            pass
     return ''
 
 
@@ -135,14 +104,6 @@ def get_hms(seconds: float) -> tuple[int, int, int, int]:
     s = int(h_remainder % 60)
     ms = int(round((seconds - int(seconds)) * 100, 4))  # round to account for floating point imprecision
     return h, m, s, ms
-
-
-def get_aspect_ratio(width: int, height: int) -> str:
-    ''' Calculates the ratio between two numbers. https://gist.github.com/Integralist/4ca9ff94ea82b0e407f540540f1d8c6c '''
-    if width == 0: return '0:0'
-    gcd = lambda w, h: w if h == 0 else gcd(h, w % h)   # GCD is the highest number that evenly divides both W and H
-    r = gcd(width, height)
-    return f'{int(width / r)}:{int(height / r)}'
 
 
 def get_PIL_Image():
@@ -228,6 +189,69 @@ def get_PIL_Image():
             logger.critical('\n\n  WARNING -- You may need to reinstall PyPlayer to restore snapshotting capabilities.'
                             '\n             If you cannot find the PIL folder within your installation, please report '
                             '\n             this error (along with this log file) on Github.\n')
+
+
+def get_ratio_string(width: int, height: int) -> str:
+    ''' Calculates the ratio between two numbers.
+        https://gist.github.com/Integralist/4ca9ff94ea82b0e407f540540f1d8c6c '''
+    if width == 0:
+        return '0:0'
+    gcd = lambda w, h: w if h == 0 else gcd(h, w % h)   # GCD is the highest number that evenly divides both W and H
+    r = gcd(width, height)
+    return f'{int(width / r)}:{int(height / r)}'
+
+
+def get_unique_path(path: str, start: int = 2, key: str = None, zeros: int = 0, strict: bool = False) -> str:
+    ''' Returns a unique `path`. If `path` already exists, version-numbers
+        starting from `start` are added. If a keyword `key` is provided and
+        is a substring within `path`, it is replaced with the version number
+        with `zeros` padded zeros. Otherwise, Windows-style naming is used
+        with no padding: "(base) (version).(ext)". `strict` forces paths
+        with non-Windows-style naming to always include a version number,
+        even if `path` was unique to begin with. '''
+    # TODO: add ignore_extensions parameter that uses os.path.splitext and glob(basepath.*)
+    version = start
+    if key and key in path:                     # if key and key exists in path -> replace key in path with padded version number
+        print(f'Replacing key "{key}" in path: {path}')
+        key_path = path
+        if strict:                              # if strict, replace key with first version number
+            path = key_path.replace(key, str(version).zfill(zeros if version >= 0 else zeros + 1))  # +1 zero if version is negative
+            version += 1                        # increment version here to avoid checking this first path twice when we start looping
+        else:
+            path = key_path.replace(key, '')    # if not strict, replace key with nothing first to see if original name is unique
+        while os.path.exists(path):
+            path = key_path.replace(key, str(version).zfill(zeros if version >= 0 else zeros + 1))
+            version += 1
+    else:                                       # no key -> use windows-style unique paths
+        base, ext = os.path.splitext(path)
+        if os.path.exists(path):                # if path exists, check if it's already using window-style names
+            parts = base.split()
+            if parts[-1][0] == '(' and parts[-1][-1] == ')' and parts[-1][1:-1].isnumeric():
+                base = ' '.join(parts[:-1])     # path is using window-style names, remove pre-existing version string from basename
+            while os.path.exists(path):
+                path = f'{base} ({version}){ext}'
+                version += 1
+    return path
+
+
+def get_verbose_timestamp(seconds: float) -> str:
+    ''' - Example: "3 hours, 12 minutes, and 57 seconds"
+        - Example: "15 minutes, 1 second"
+        - Example: "5.3 seconds" '''
+    if seconds < 10.0:
+        seconds = round(seconds, 1)
+        int_seconds = int(seconds)
+        if seconds == int_seconds:
+            return f'{int_seconds} second{"s" if int_seconds != 1 else ""}'
+        return f'{seconds:.1f} second{"s" if seconds != 1 else ""}'
+    else:
+        h, m, s, _ = get_hms(seconds)
+        deltaFormat = []
+        if h: deltaFormat.append(f'{h} hour{"s" if h > 1 else ""}')
+        if m: deltaFormat.append(f'{m} minute{"s" if m > 1 else ""}')
+        if s: deltaFormat.append(f'{s} second{"s" if s > 1 else ""}')
+        if len(deltaFormat) == 3: deltaFormat.insert(-1, 'and')
+        return ', '.join(deltaFormat).replace('and,', 'and')
 
 
 def sanitize(filename: str, allow_reserved_words: bool = True, default: str = '') -> str:

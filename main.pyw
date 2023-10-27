@@ -181,8 +181,8 @@ from bin.window_pyplayer import Ui_MainWindow           # ^ direct import time-s
 from bin.window_settings import Ui_settingsDialog
 from util import (
     add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen,
-    get_unique_path, get_hms, get_aspect_ratio, get_PIL_Image, sanitize,
-    scale, setctime, suspend_process, kill_process, file_is_hidden
+    get_hms, get_PIL_Image, get_ratio_string, get_unique_path, get_verbose_timestamp,
+    sanitize, scale, setctime, suspend_process, kill_process, file_is_hidden
 )
 
 import os
@@ -576,7 +576,7 @@ class Edit:
             pause = ' [𝗜𝗜] ' if self._is_paused else ' '
             text = f'{text}{pause}{percent_format}'
 
-        # return with `QProgressBar` variables manually replaced
+        # return with `QProgressBar` variables manually replaced TODO: never used, no plans -> why even bother?
         return text.replace('%v', str(frame)).replace('%m', str(self.frame_count or '?'))
 
 
@@ -587,7 +587,7 @@ class Edit:
         if value is None:
             value = int((frame / max(1, self.frame_count)) * 100)
         self.value = value
-        self.frame = frame
+        self.frame = frame or self.frame
 
         # update progress bar, taskbar, and titlebar with our current value/text
         if self.has_priority:
@@ -795,7 +795,7 @@ class Edit:
                     os.renames(temp_infile, infile)
                     logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
 
-            log_on_statusbar(f'FFmpeg operation succeeded after {get_time() - start:.1f} seconds.')
+            log_on_statusbar(f'FFmpeg operation succeeded after {get_verbose_timestamp(get_time() - start)}.')
             return outfile
 
         except Exception as error:
@@ -807,7 +807,7 @@ class Edit:
                 log_on_statusbar('Cancelling...')
                 logging.info(f'FFmpeg operation cancelled after {get_time() - start:.1f} seconds. Cleaning up...')
             else:
-                log_on_statusbar(f'(!) FFmpeg operation failed after {get_time() - start:.1f} seconds: {format_exc()}')
+                log_on_statusbar(f'(!) FFmpeg operation failed after {get_verbose_timestamp(get_time() - start)}: {format_exc()}')
 
             # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
             # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in normal edit cleanup)
@@ -2872,7 +2872,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                                     self.vwidth = int(stream['width'])
                                     self.vheight = int(stream['height'])
-                                    self.ratio = stream.get('display_aspect_ratio', get_aspect_ratio(self.vwidth, self.vheight))
+                                    self.ratio = stream.get('display_aspect_ratio', get_ratio_string(self.vwidth, self.vheight))
                                     break
                             else:                   # the rare for-else-loop ("else" only happens if we don't break)
                                 mime = 'audio'      # audio streams usually report 0/0
@@ -2901,7 +2901,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.frame_rate_rounded = round(fps)
                     self.delay = 1 / fps
                     self.vwidth, self.vheight = player.video_get_size()
-                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                    self.ratio = get_ratio_string(self.vwidth, self.vheight)
                     logging.info('VLC parsed faster than FFprobe.')
                 elif probe_data == {}:
                     raise AssertionError('video probe returned no data')
@@ -2974,7 +2974,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.frame_rate = 20                # TODO we only set to 20 to not deal with laggy hover-fades
                 self.frame_rate_rounded = 20
                 self.delay = 0.05
-                self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                self.ratio = get_ratio_string(self.vwidth, self.vheight)
 
         # >>> images <<<
             elif mime == 'image':
@@ -3004,7 +3004,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.frame_rate_rounded = round(self.frame_rate)
                         self.vwidth = image_player.gifSize.width()
                         self.vheight = image_player.gifSize.height()
-                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                    self.ratio = get_ratio_string(self.vwidth, self.vheight)
                 else:   # TODO: other formats have EXIF data but .getexif() is slow for images without EXIF data (except for jpegs)
                     if extension == 'jpeg':                         # use PIL to get EXIF data from jpegs
                         with get_PIL_Image().open(file) as image:   # opening with PIL is fast if we don't do any operations
@@ -3029,7 +3029,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.frame_rate = 1
                     self.frame_rate_rounded = 1
                     self.delay = 0.2                # run update_slider_thread only 5 times/second
-                    self.ratio = get_aspect_ratio(self.vwidth, self.vheight)
+                    self.ratio = get_ratio_string(self.vwidth, self.vheight)
 
             assert self.duration != 0, 'invalid duration'
         except AssertionError as error:
@@ -4533,7 +4533,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
                     elif settings.checkTextOnSave.isChecked():
                         show_on_player(f'Changes saved to {true_dest}.')
-                    log_on_statusbar(f'Changes saved to {true_dest} after {get_time() - start_time:.1f} seconds.')
+                    log_on_statusbar(f'Changes saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
 
                 # log our lack of changes
                 elif successful:
@@ -4930,10 +4930,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             )
         elif text == 'Cancelled.':
             if not start_time: log_on_statusbar(f'{noun} cancelled.')
-            else: log_on_statusbar(f'{noun} cancelled after {get_time() - start_time:.1f} seconds.')
+            else: log_on_statusbar(f'{noun} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
         else:
             if not start_time: log_on_statusbar(f'(!) {noun.upper()} FAILED: {format_exc()}')
-            else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_time() - start_time:.1f} SECONDS: {format_exc()}')
+            else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
 
 
     def is_safe_to_edit(self, *infiles: str, dest: str = None, popup: bool = True) -> bool:
@@ -5708,7 +5708,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         qthelpers.openPath(true_dest, explore=True)
 
                     # log our success
-                    log_on_statusbar(f'Concatenation saved to {true_dest} after {get_time() - start_time:.1f} seconds.')
+                    log_on_statusbar(f'Concatenation saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
             except:
                 log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
             finally:
