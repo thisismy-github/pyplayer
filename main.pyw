@@ -4276,7 +4276,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             edit.operation_count = len(operations)
             if op_trim_start and op_trim_end:                   # account for trimming taking up two keys
                 edit.operation_count -= 1
-            self.edits_in_progress.append(edit)
+            self.add_edit(edit)
 
             # static images are cached and can be deleted independant of pyplayer
             # if this happens, take the cached QPixmap and save it to a temporary file
@@ -4544,8 +4544,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.locked_files.discard(dest)         # unlock temp destination
                 self.locked_files.discard(final_dest)   # unlock final destination
                 self.setFocus(True)                     # restore keyboard focus so we can use hotkeys again
-                self.edits_in_progress.remove(edit)     # remove `Edit` object
-                self.reset_edit_priority()              # set priority to next edit or reset the statusbar/titlebar/taskbar
+                self.remove_edit(edit)                  # remove `Edit` object and update priority
                 logging.info(f'Remaining locked files after edit: {self.locked_files}')
 
 
@@ -5038,10 +5037,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def pause_all(self, paused: bool = True):
+        ''' Sets the pause-state of all edits to `paused`. '''
         verb = 'Pausing' if paused else 'Resuming'
         logging.info(verb + ' all active edits...')
         for edit in self.edits_in_progress:
             edit.pause(paused=paused)
+
+
+    def add_edit(self, edit: Edit):
+        ''' Adds an `edit` to `self.edits_in_progress` and manually
+            refreshes the progress bar in case the current edit is paused. '''
+        self.edits_in_progress.append(edit)
+        priority_edit = self.get_edit_with_priority()
+        if priority_edit:
+            priority_edit.set_progress_bar(value=priority_edit.value)
+
+
+    def remove_edit(self, edit: Edit):
+        ''' Removes an `edit` from `self.edits_in_progress` and updates edit
+            priority if `edit` was the priority edit (or hides edit progress
+            altogether if there are no edits remaining), otherwise refreshes
+            the progress bar in case the actual priority edit is paused. '''
+        self.edits_in_progress.remove(edit)
+        if edit.has_priority or not self.edits_in_progress:
+            self.reset_edit_priority()
+        else:
+            priority_edit = self.get_edit_with_priority()
+            if priority_edit:
+                priority_edit.set_progress_bar(value=priority_edit.value)
 
 
     def get_edit_with_priority(self) -> Edit:
@@ -5633,7 +5656,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             edit = Edit(final_dest)
             edit.frame_rate = frame_rate_hint
             edit.frame_count = frame_count_hint
-            self.edits_in_progress.append(edit)
+            self.add_edit(edit)
 
             # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
             if encode:
@@ -5714,8 +5737,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             finally:
                 self.locked_files.discard(dest)
                 self.locked_files.discard(final_dest)
-                self.edits_in_progress.remove(edit)
-                self.reset_edit_priority()  # set priority to next edit or reset the statusbar/titlebar/taskbar
+                self.remove_edit(edit)      # remove `Edit` object and update priority
                 logging.info(f'Remaining locked files after concatenation: {self.locked_files}')
 
 
