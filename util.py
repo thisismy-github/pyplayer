@@ -53,6 +53,7 @@ def ffmpeg_async(cmd: str) -> subprocess.Popen:
     logger.info('FFmpeg command: ' + cmd)
     return subprocess.Popen(
         cmd,
+        bufsize=1,                              # line-by-line buffering (helps us with parsing in batches)
         startupinfo=startupinfo,                # hides command prompt that appears if called while compiled
         start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
         stdout=subprocess.PIPE,                 # pipes stdout so that we can read the output in real time

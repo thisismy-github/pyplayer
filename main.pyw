@@ -652,6 +652,7 @@ class Edit:
 
         start = get_time()
         locked_files = gui.locked_files
+        edits_in_progress = gui.edits_in_progress
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
         # set text-format-related properties based on parameters and existing values
@@ -662,7 +663,7 @@ class Edit:
             self.percent_format = percent_format
 
         # prepare the progress bar/taskbar/titlebar if no other edits are active
-        had_priority = len(gui.edits_in_progress) == 1
+        had_priority = len(edits_in_progress) == 1
         if had_priority:
             self.has_priority = True                    # we must set the value to 0 to actually show the progress bar
             gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
@@ -732,17 +733,41 @@ class Edit:
                     had_priority = True
                     self.give_priority()
 
-                # check if this thread should automatically start controlling the progress bar
-                if not self.has_priority:
-                    if len(gui.edits_in_progress) == 1:
-                        had_priority = True
-                        self.give_priority()
+                # check if this thread should automatically start controlling the progress bar, then...
+                # ...sleep before parsing output -> sleep longer (update less frequently) while not visible
+                if self.has_priority:
+                    sleep(0.5)
+                elif len(edits_in_progress) == 1:                   # NOTE: this doesn't actually get reached anymore i think
+                    logging.info('(?) Old auto-priority-update code reached. This probably shouldn\'t be possible.')
+                    had_priority = True
+                    self.give_priority()
+                    sleep(0.5)
+                else:
+                    sleep(0.5)                                      # split non-priority sleep into two parts so users can...
+                    if not self.has_priority:                       # ...switch priority w/o too much delay before updates resume
+                        sleep(0.5)
 
-                # loop over stdout until we get to the line(s) we want, letting us...
-                # ...sleep between loops without falling behind, saving a lot of resources
-                sleep(0.2 if self.has_priority and not self._is_paused else 0.5)
-                while True:                                                 # ^ update less frequently while paused/not visible
-                    progress_text = process.stdout.readline().strip()       # this line naturally stalls if we're paused
+                # seek to end of current stdout output then back again to calculate how much data...
+                # ...we'll need to read (we have to do it this way to get around pipe buffering)
+                start_index = process.stdout.tell()
+                process.stdout.seek(0, 2)
+                end_index = process.stdout.tell()
+                try:
+                    process.stdout.seek(start_index, 0)             # seeking back sometimes throws an error?
+                except OSError:
+                    logging.warning(f'(!) Failed to seek backwards from index {end_index} to index {start_index} in FFmpeg\'s stdout pipe, retrying...')
+                    continue
+
+                # if we're paused, continue sleeping but refresh title every second if necessary
+                while self._is_paused:
+                    sleep(1.0)
+                    if len(edits_in_progress) > 1 and self.has_priority:
+                        refresh_title()
+
+                # loop over new stdout output without waiting for buffer so we can read output in...
+                # ...batches and sleep between loops without falling behind, saving a lot of resources
+                new_frame = last_frame
+                for progress_text in process.stdout.read(end_index - start_index).split('\n'):
                     lines_read += 1
                     new_lines.append(f'FFmpeg output line #{lines_read}: {progress_text}')
                     if not progress_text:
@@ -763,19 +788,20 @@ class Edit:
                             use_backup_lines = True                         # ...for these scenarios, we should ignore frame output
                         else:
                             use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
-                            self.set_progress_bar(frame)
-                        last_frame = frame
-                        break
+                            new_frame = frame
 
                     # ffmpeg usually uses "out_time_ms" for audio files
                     elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
                         try:
                             seconds = int(progress_text.strip()[12:-6])
-                            frame = min(int(seconds * frame_rate), self.frame_count)
-                            self.set_progress_bar(frame)
-                            break
+                            new_frame = min(int(seconds * frame_rate), self.frame_count)
                         except ValueError:
                             pass
+
+                # update progress bar to latest new frame (so we don't spam updates while parsing)
+                if new_frame != last_frame:
+                    self.set_progress_bar(new_frame)
+                last_frame = new_frame
 
                 # batch-log all our newly read lines at once
                 if new_lines:
@@ -4827,8 +4853,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 delete_temp_path(temp_dest, 'FFmpeg file')
                 return ''
 
-            # next part takes a while so show a new message on the progress bar
-            if not self.edits_in_progress:
+            # next part takes a while so show text on the progress bar if this is the last edit
+            if len(self.edits_in_progress) == 1:
                 self.set_save_progress_format_signal.emit('Cleaning up...')
 
             # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
