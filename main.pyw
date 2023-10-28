@@ -700,9 +700,14 @@ class Edit:
                 temp_infile = ''
 
             # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
-            if '%out' not in cmd: cmd += ' %out'        # ensure %out is present so we have a spot to insert `outfile`
-            try: process: subprocess.Popen = ffmpeg_async(cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'))
-            except: return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
+            if '%out' not in cmd:                       # ensure %out is present so we have a spot to insert `outfile`
+                cmd += ' %out'
+            try:
+                process: subprocess.Popen = ffmpeg_async(
+                    cmd=cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'),
+                )
+            except:
+                return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
 
             self.process = process
             self.temp_dest = outfile
@@ -711,13 +716,13 @@ class Edit:
             # update progress bar using the 'frame=???' lines from ffmpeg's stdout until ffmpeg is finished
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
             # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
-            frame_rate = max(1, self.frame_rate or gui.frame_rate)          # used when ffmpeg provides `out_time_ms` instead of `frame`
+            frame_rate = max(1, self.frame_rate or gui.frame_rate)  # used when ffmpeg provides `out_time_ms` instead of `frame`
             use_backup_lines = True
             lines_read = 0
             last_frame = 0
             new_lines = []
             while True:
-                if process.poll() is not None:                              # returns None if process hasn't terminated yet
+                if process.poll() is not None:                      # returns None if process hasn't terminated yet
                     break
 
                 # edit cancelled -> kill this thread's ffmpeg process and cleanup
@@ -775,19 +780,19 @@ class Edit:
                         break
 
                     # check for common errors
-                    if progress_text[-6:] == 'failed':                      # "malloc of size ___ failed"
+                    if progress_text[-6:] == 'failed':              # "malloc of size ___ failed"
                         if 'malloc of size' in progress_text:
                             raise AssertionError(progress_text)
                     elif 'do not match the corresponding output link' in progress_text:
-                        raise AssertionError(progress_text)                 # ^ concating videos with different dimensions
+                        raise AssertionError(progress_text)         # ^ concating videos with different dimensions
 
                     # normal videos will have a "frame=" progress string
                     if progress_text[:6] == 'frame=':
                         frame = min(int(progress_text[6:].strip()), self.frame_count)
-                        if last_frame == frame and frame == 1:              # specific edits will constantly spit out "frame=1"...
-                            use_backup_lines = True                         # ...for these scenarios, we should ignore frame output
+                        if last_frame == frame and frame == 1:      # specific edits will constantly spit out "frame=1"...
+                            use_backup_lines = True                 # ...for these scenarios, we should ignore frame output
                         else:
-                            use_backup_lines = False                        # if we ARE using frames, don't use "out_time_ms" (less accurate)
+                            use_backup_lines = False                # if we ARE using frames, don't use "out_time_ms" (less accurate)
                             new_frame = frame
 
                     # ffmpeg usually uses "out_time_ms" for audio files
@@ -798,7 +803,7 @@ class Edit:
                         except ValueError:
                             pass
 
-                # update progress bar to latest new frame (so we don't spam updates while parsing)
+                # update progress bar to latest new frame (so we don't spam updates while parsing stdout)
                 if new_frame != last_frame:
                     self.set_progress_bar(new_frame)
                 last_frame = new_frame
@@ -814,10 +819,10 @@ class Edit:
             except: pass
 
             # cleanup temp file, if needed (editing in place means we had to rename `infile`)
-            if editing_in_place:                                            # NOTE: NEVER true for edits called through `gui._save()`
-                if exists(infile):                                          # if `infile` was externally replaced while we were working,...
-                    delete_temp_path(temp_infile, 'FFmpeg file')            # ...just delete the temp file. TODO does that make sense...?
-                else:                                                       # otherwise, rename `temp_path` back to `infile`
+            if editing_in_place:                                    # NOTE: NEVER true for edits called through `gui._save()`
+                if exists(infile):                                  # if `infile` was externally replaced while we were working,...
+                    delete_temp_path(temp_infile, 'FFmpeg file')    # ...just delete the temp file. TODO does that make sense...?
+                else:                                               # otherwise, rename `temp_path` back to `infile`
                     os.renames(temp_infile, infile)
                     logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
 
@@ -837,13 +842,13 @@ class Edit:
 
             # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
             # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in normal edit cleanup)
-            kill_process(process)                       # aggressively terminate ffmpeg process in case it's still running
+            kill_process(process)               # aggressively terminate ffmpeg process in case it's still running
             if editing_in_place:
                 delete_temp_path(temp_infile, 'FFmpeg file')
-            raise                                       # raise exception anyway (we'll still go to the finally-statement)
+            raise                               # raise exception anyway (we'll still go to the finally-statement)
 
         finally:
-            if editing_in_place:                    # always unlock our temporary path if necessary
+            if editing_in_place:                # always unlock our temporary path if necessary
                 try:
                     locked_files.discard(temp_infile)
                 except:
@@ -882,11 +887,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         super().__init__(*args, **kwargs)
         self.app = app
         self.setupUi(self)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # this allows easier clicking off of lineEdits
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)             # this allows easier clicking off of lineEdits
         self.save_progress_bar = QtW.QProgressBar(self.statusbar)
         self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog, app=app)
         self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
-        if not constants.IS_WINDOWS:                     # settings dialog was designed around Windows UI
+        if not constants.IS_WINDOWS:                                # settings dialog was designed around Windows UI
             self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width(),
                                         self.dialog_settings.height())
         self.icons = {
@@ -3185,7 +3190,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     probe_data = None
                     probe_process = subprocess.Popen(
                         f'"{FFPROBE}" -show_format -show_streams -of json "{file}" > "{probe_file}"',
-                        shell=True,
+                        shell=True                          # needed so we can easily write the output to a file
                     )
             else:
                 probe_file = None                           # no FFprobe -> no probe file (even if one exists already)
@@ -7080,14 +7085,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             or not and restore the window accordingly. '''
         self.dockControls.setFloating(fullscreen)       # FramelessWindowHint and WindowStaysOnTopHint not needed
         if fullscreen:  # TODO: figure out why dockControls won't resize in fullscreen mode -> strange behavior when showing/hiding control-frames
-            current_screen = app.screenAt(self.mapToGlobal(self.rect().center()))       # fullscreen destination is based on center of window
+            current_screen = app.screenAt(self.mapToGlobal(self.rect().center()))   # fullscreen destination is based on center of window
             screen_size = current_screen.size()
             screen_geometry = current_screen.geometry()
 
             width_factor = settings.spinFullScreenWidth.value() / 100
             width = int(screen_size.width() * width_factor)
             height = sum(frame.height() for frame in (self.frameProgress, self.frameAdvancedControls) if frame.isVisible())
-            x = int(screen_geometry.right() - ((screen_size.width() + width) / 2))      # adjust x/y values for screen's actual global position
+            x = int(screen_geometry.right() - ((screen_size.width() + width) / 2))  # adjust x/y values for screen's actual global position
             y = screen_geometry.bottom() - height
 
             self.dockControls.resize(width, height)
@@ -7164,9 +7169,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return self.actionShowMenuBar.setChecked(False)
         self.menubar.setVisible(visible)
         self.actionShowMenuBar.setChecked(visible)
-        if not self.isMaximized() and not self.isFullScreen() and self.first_video_fully_loaded:    # do not resize until a video is loaded
+        if not self.isMaximized() and not self.isFullScreen():                      # resize window to preserve player size
             height = self.menubar.height()
-            self.resize(self.width(), self.height() + (height if visible else -height))             # resize window to preserve player size
+            self.resize(self.width(), self.height() + (height if visible else -height))
 
 
     # https://video.stackexchange.com/questions/4563/how-can-i-crop-a-video-with-ffmpeg
@@ -7174,7 +7179,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             mime = self.mime_type
             is_gif = self.is_gif
-            if not self.video or self.is_audio_without_cover_art:                                   # reset crop mode if there's nothing to crop
+            if not self.video or self.is_audio_without_cover_art:                   # reset crop mode if there's nothing to crop
                 return self.actionCrop.trigger() if on else None
 
             if not on:
