@@ -1875,9 +1875,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # actions for force-setting start/end times (disabled when no/useless media is playing)
         set_start_action = QtW.QAction('Set &start to current position', self)
-        set_start_action.triggered.connect(lambda: self.set_trim_start(force=True))
+        set_start_action.triggered.connect(lambda: self.set_trim_start(enabled=True))
         set_end_action = QtW.QAction('Set &end to current position', self)
-        set_end_action.triggered.connect(lambda: self.set_trim_end(force=True))
+        set_end_action.triggered.connect(lambda: self.set_trim_end(enabled=True))
         if not self.video or self.is_static_image:
             set_start_action.setEnabled(False)
             set_end_action.setEnabled(False)
@@ -3444,8 +3444,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # reset UI to frame 0 while `self._open_cleanup_in_progress` is True
             update_progress(0)
 
-            # NOTE: `sliderProgress.setMaximum` expects the raw count (i.e. 9000 for a 9000-frame...
-            #       ...video instead of 8999) and will adjust and enable/disable accordingly
+            # NOTE: `sliderProgress.setMaximum` has an override -> it expects the raw count (i.e. 9000 for...
+            #       ...a 9000-frame video instead of 8999) and will adjust and enable/disable accordingly
             sliderProgress = self.sliderProgress
             sliderProgress.setMaximum(self.frame_count_raw)
             self.minimum = 0
@@ -4201,19 +4201,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         frame_count, frame_count_raw = self.frame_count, self.frame_count_raw
         frame_rate, duration = self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
+        minimum, maximum = self.minimum, self.maximum
         audio_tracks = player.audio_get_track_count()
         dest_already_exists = exists(dest)
         replacing_original = video == dest
-
-        # min/max are usually offset in ffmpeg for some reason, so adjust if necessary
-        # NOTE: the audio will never be truly correct. might require audio re-encoding
-        minimum = self.minimum
-        maximum = self.maximum
-        if mime == 'audio':
-            maximum = min(frame_count, maximum + 3)
-        else:
-            minimum = max(0, minimum - 2)
-            maximum = maximum if maximum == frame_count else (maximum - 1)
 
         # what will we do to the media file after saving? (0, 1, or 2)
         delete_after_save = self.checkDeleteOriginal.checkState()
@@ -4232,7 +4223,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         op_trim_end =      operations.get('trim end', None)             # represents both trimming and fading
         op_crop =          operations.get('crop', None)
 
-        # quick pre-operation checks
+        # quick pre-operation checks (we do this here instead of being the...
+        # ...thread because it's kinda slow + we reuse some of these variables)
         if op_crop:
             if mime == 'audio':                                         # don't disable crop, but ignore it as an operation for audio
                 log_on_statusbar('Crop mode on audio files is designed for cropping cover art through snapshots/image copying.')
@@ -4252,14 +4244,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 del operations['crop']                                  # remove operation key
                 op_crop = False
         if op_trim_start or op_trim_end:
-            if minimum == 0 and maximum == frame_count:
-                log_on_statusbar('It\'s not really a "trim" if your trim is the entire duration of the file, is it?')
+            if is_static_image:                                         # NOTE: shouldn't be possible, but just in case
+                log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
                 del operations['trim start']                            # remove operation keys
                 del operations['trim end']
                 op_trim_start = False
                 op_trim_end = False
-            if is_static_image:                                         # NOTE: shouldn't be possible, but just in case
-                log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
+            elif minimum == 0 and maximum == frame_count:
+                log_on_statusbar('It\'s not really a "trim" if you end up with the entire duration of the file, is it?')
+                del operations['trim start']                            # remove operation keys
+                del operations['trim end']
+                op_trim_start = False
+                op_trim_end = False
+            elif minimum == maximum:
+                log_on_statusbar('If you want to trim off 100% of the file, you might as well just delete it.')
                 del operations['trim start']                            # remove operation keys
                 del operations['trim end']
                 op_trim_start = False
@@ -4268,6 +4266,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # check if we still have work to do after the above checks
         if not operations:
             return logging.info('(?) Pre-operation checks failed, nothing left to do.')
+
+        # min/max are usually offset in ffmpeg for some reason, so adjust if necessary
+        # NOTE: audio-only will never be truly correct. might require audio re-encoding
+        if mime == 'audio':
+            maximum = min(frame_count, maximum + 3)
+        else:
+            minimum = max(0, minimum - 2)
+            maximum = maximum if maximum == frame_count else (maximum - 1)
 
         # ffmpeg is required after this point, so check that it's actually present, and because...
         # ...we're in a thread, we skip the warning and display it separately through a signal
@@ -4583,12 +4589,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Updates animated GIF progress by manually looping
             the GIF when outside the designated trim markers. '''
         if self.is_gif:
+            slider = self.sliderProgress
             if self.minimum <= frame <= self.maximum:
                 update_progress(frame)                  # HACK: literally, forcibly repaint to stop slider from...
                 if frame != self.minimum:               # ...eventually freezing on animated GIFs in fullscreen...
-                    self.sliderProgress.repaint()       # ...(no idea why it happens)
-            else:
-                set_and_update_progress(self.minimum)
+                    slider.repaint()                    # ...(no idea why it happens)
+            elif not slider.grabbing_clamp_minimum and not slider.grabbing_clamp_maximum:
+                set_and_update_progress(self.minimum)   # reset to minimum if we're not dragging the markers
 
 
     def update_progress(self, frame: int):
@@ -5210,58 +5217,56 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         refresh_title()                                             # refresh title to hide progress percentage
 
 
-    def set_trim_start(self, *, force: bool = False):
-        ''' Validates a start-point marker and updates the UI accordingly.
-            If `force` is True, `self.buttonTrimStart` is forcibly checked. '''
+    def set_trim_start(self, enabled: bool):
+        ''' Sets the start-point marker's check-state to `enabled`, sets it to
+            the current frame, validates it, and updates the UI accordingly. '''
         if not self.video:       return self.buttonTrimStart.setChecked(False)
         if self.is_static_image: return self.buttonTrimStart.setChecked(False)
 
-        # force-check trim button, typically used from context menu
-        if force:
-            self.buttonTrimStart.setChecked(True)
+        self.buttonTrimStart.setChecked(enabled)
+        self.sliderProgress.clamp_minimum = enabled
 
-        if self.buttonTrimStart.isChecked():
+        if enabled:
             desired_minimum = get_ui_frame()
-            if desired_minimum >= self.maximum:
-                self.buttonTrimStart.setChecked(False)
-                return log_on_statusbar('You cannot set the start of your trim after the end of it.')
-            self.minimum = desired_minimum
+            if desired_minimum > self.maximum:
+                set_and_update_progress(self.maximum)
+                self.minimum = self.maximum
+                show_on_statusbar('You cannot set the start of your trim after the end of it.')
+            else:
+                self.minimum = desired_minimum
 
-            h, m, s, ms = get_hms(self.current_time)     # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)                # use cleaner format for time-strings on videos > 1 hour
             if self.duration_rounded < 3600: self.buttonTrimStart.setText(f'{m}:{s:02}.{ms:02}')
             else:                            self.buttonTrimStart.setText(f'{h}:{m:02}:{s:02}')
-            self.sliderProgress.clamp_minimum = True
         else:
             self.minimum = self.sliderProgress.minimum()
             self.buttonTrimStart.setText('Start' if self.is_trim_mode() else ' Fade to ')
-            self.sliderProgress.clamp_minimum = False
 
 
-    def set_trim_end(self, *, force: bool = False):
-        ''' Validates an end-point marker and updates the UI accordingly.
-            If `force` is True, `self.buttonTrimEnd` is forcibly checked. '''
+    def set_trim_end(self, enabled: bool):
+        ''' Sets the end-point marker's check-state to `enabled`, sets it to
+            the current frame, validates it, and updates the UI accordingly. '''
         if not self.video:       return self.buttonTrimEnd.setChecked(False)
         if self.is_static_image: return self.buttonTrimEnd.setChecked(False)
 
-        # force-check trim button, typically used from context menu
-        if force:
-            self.buttonTrimEnd.setChecked(True)
+        self.buttonTrimEnd.setChecked(enabled)
+        self.sliderProgress.clamp_maximum = enabled
 
-        if self.buttonTrimEnd.isChecked():
+        if enabled:
             desired_maximum = get_ui_frame()
-            if desired_maximum <= self.minimum:
-                self.buttonTrimEnd.setChecked(False)
-                return log_on_statusbar('You cannot set the end of your trim before the start of it.')
-            self.maximum = desired_maximum
+            if desired_maximum < self.minimum:
+                set_and_update_progress(self.minimum)
+                self.maximum = self.minimum
+                show_on_statusbar('You cannot set the end of your trim before the start of it.')
+            else:
+                self.maximum = desired_maximum
 
-            h, m, s, ms = get_hms(self.current_time)     # use cleaner format for time-strings on videos > 1 hour
+            h, m, s, ms = get_hms(self.current_time)                # use cleaner format for time-strings on videos > 1 hour
             if self.duration_rounded < 3600: self.buttonTrimEnd.setText(f'{m}:{s:02}.{ms:02}')
             else:                            self.buttonTrimEnd.setText(f'{h}:{m:02}:{s:02}')
-            self.sliderProgress.clamp_maximum = True
         else:
             self.maximum = self.sliderProgress.maximum()
             self.buttonTrimEnd.setText('End' if self.is_trim_mode() else ' Fade from ')
-            self.sliderProgress.clamp_maximum = False
 
 
     def set_trim_mode(self, action: QtW.QAction):

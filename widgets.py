@@ -1305,11 +1305,12 @@ class QVideoSlider(QtW.QSlider):
 
         self.last_mouseover_time = 0
         self.last_mouseover_pos = None
-        self.clamp_minimum = False
+        self.clamp_minimum = False          # NOTE: essentially aliases for gui.buttonTrimXXX.isChecked()
         self.clamp_maximum = False
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
         self.scrubbing = False
+        self.scrub_start_frame = 0
 
         self.hover_font_color: QtGui.QColor = None
         self.colors: list[Color] = None
@@ -1517,20 +1518,20 @@ class QVideoSlider(QtW.QSlider):
             frame = self.pixelPosToRangeValue(pos)
             if gui.minimum < frame < gui.maximum:
                 gui.set_and_adjust_and_update_progress(frame, 0.075)
+            self.scrub_start_frame = frame
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
             if self.clamp_minimum or self.clamp_maximum:        # ^ alternate solution by finding points inside QPolygons
                 radius = 12                                     # 12 pixel radius for the handle
+                self.grabbing_clamp_minimum = False
+                self.grabbing_clamp_maximum = False
                 if self.clamp_minimum:
                     min_pos = self.rangeValueToPixelPos(gui.minimum)
                     if min_pos - radius < pos.x() < min_pos + radius:
                         self.grabbing_clamp_minimum = True
-                        self.grabbing_clamp_maximum = False
-                        return                                  # return to skip repeating process for maximum
                 if self.clamp_maximum:
                     max_pos = self.rangeValueToPixelPos(gui.maximum)
                     if max_pos - radius < pos.x() < max_pos + radius:
-                        self.grabbing_clamp_minimum = False
                         self.grabbing_clamp_maximum = True
             #if abs(delta) > 0.025:                             # only change if difference between new/old positions is greater than 2.5%
             #    self.setValue(new_value)
@@ -1549,11 +1550,25 @@ class QVideoSlider(QtW.QSlider):
         # handle dragging
         else:
             frame = self.pixelPosToRangeValue(event.pos())      # get frame
-            gui.set_and_update_progress(frame)                  # "grab" handle
             gui.player.set_pause(True)                          # pause player while scrubbing
+            gui.gifPlayer.gif.setPaused(True)                   # pause GIF player while scrubbing
+            if self.grabbing_clamp_maximum:
+                gui.set_and_update_progress(frame)
+                if self.grabbing_clamp_minimum:                 # grabbing both markers -> choose marker by which direction we drag
+                    if frame > self.scrub_start_frame:
+                        self.grabbing_clamp_minimum = False
+                        gui.set_trim_end(True)
+                    elif frame < self.scrub_start_frame:
+                        self.grabbing_clamp_maximum = False
+                        gui.set_trim_start(True)
+                else:
+                    gui.set_trim_end(True)
+            elif self.grabbing_clamp_minimum:
+                gui.set_and_update_progress(frame)
+                gui.set_trim_start(True)
+            else:                                               # not grabbing markers -> only update progress between markers
+                gui.set_and_update_progress(min(gui.maximum, max(gui.minimum, frame)))
             self.last_mouseover_time = 0                        # reset last mouseover time to stop drawing timestamp immediately
-            if self.grabbing_clamp_minimum: gui.set_trim_start()
-            elif self.grabbing_clamp_maximum: gui.set_trim_end()
             self.scrubbing = True                               # mark that we're scrubbing
 
 
@@ -1585,7 +1600,9 @@ class QVideoSlider(QtW.QSlider):
                     gui.force_pause(False)                      # auto-unpause after restart
                     gui.restarted = False
             else:
-                gui.player.set_pause(False or gui.is_paused)    # stay paused if we were paused
+                paused = False or gui.is_paused                 # stay paused if we were paused
+                gui.player.set_pause(paused)
+                gui.gifPlayer.gif.setPaused(paused)
 
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
