@@ -12,8 +12,12 @@ from PyQt5 import QtWidgets as QtW
 from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from PyQt5.QtCore import Qt
 import os
+import logging
 import platform
 import subprocess
+
+# logger
+logger = logging.getLogger('qthelpers.py')
 
 
 # ----------------------
@@ -44,6 +48,32 @@ def openPath(path: str, explore: bool = False, fallback_to_parent: bool = None) 
     except:                                 # error or system wasn't detected (Linux)...
         pass                                # ... -> allow Qt to open the path normally
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
+
+
+def deleteTempPath(path: str, noun: str = 'file', retry_delay: float = 0.5, retry_attempts: int = 2) -> bool:
+    ''' Repeatedly tries to delete `path` once every `retry_delay` seconds,
+        `retry_attempts` times (if provided) using `QTimer.singleShot()`. Logs
+        it as a "temporary `noun`". Returns True if successful, otherwise False
+        if the first attempt fails and multiple attempts are needed. '''
+    try:
+        logger.info(f'Deleting temporary {noun}: {path}')
+        os.remove(path)
+        return True
+    except FileNotFoundError:               # `path` doesn't exist anymore
+        return True
+    except:
+        if retry_attempts > 0 and retry_delay > 0:
+            sec = '1 second' if retry_delay == 1.0 else f'{retry_delay} seconds'
+            att = '1 attempt' if retry_attempts == 1 else f'{retry_attempts} attempts'
+            logger.warning(f'(?) Failed to delete temporary {noun}, retrying in {sec} ({att} remaining)...')
+            QtCore.QTimer.singleShot(
+                retry_delay * 1000,
+                Qt.CoarseTimer,
+                lambda: deleteTempPath(path, noun, retry_delay, retry_attempts - 1)
+            )
+        else:
+            logger.warning(f'(!) Failed to delete temporary {noun}. Giving up.')
+        return False
 
 
 def clampToScreen(

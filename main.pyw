@@ -414,29 +414,6 @@ def splitext_media(
     return base, ext[1:]
 
 
-def delete_temp_path(path: str, noun: str = 'file', retry_delay: float = 0.5, retry_attempts: int = 2) -> bool:
-    ''' Safely deletes `path` and logs it as a "temporary `noun`". Returns True
-        on success. Otherwise, `QTimer.singleShot()` is used every `retry_delay`
-        seconds `retry_attempts` times, if provided (still returns False). '''
-    try:
-        logging.info(f'Deleting temporary {noun}: {path}')
-        os.remove(path)
-        return True
-    except:
-        if retry_attempts > 0 and retry_delay > 0:
-            sec = '1 second' if retry_delay == 1.0 else f'{retry_delay} seconds'
-            att = '1 attempt' if retry_attempts == 1 else f'{retry_attempts} attempts'
-            logging.warning(f'(?) Failed to delete temporary {noun}, retrying in {sec} ({att} remaining)...')
-            QtCore.QTimer.singleShot(
-                retry_delay * 1000,
-                Qt.CoarseTimer,
-                lambda: delete_temp_path(path, noun, retry_delay, retry_attempts - 1)
-            )
-        else:
-            logging.warning(f'(!) Failed to delete temporary {noun}. Giving up.')
-        return False
-
-
 def close_handle(handle, delete: bool):                 # i know they're not really handles but whatever
     ''' Closes a file-object `handle` and attempts
         to `delete` its associated path. '''
@@ -877,7 +854,7 @@ class Edit:
             # TODO: add setting to NOT delete `temp_infile` on error? (here + `self.cleanup_edit_exception()`)
             kill_process(process)               # aggressively terminate ffmpeg process in case it's still running
             if editing_in_place:
-                delete_temp_path(temp_infile, 'FFmpeg file')
+                qthelpers.deleteTempPath(temp_infile, 'FFmpeg file')
             raise                               # raise exception anyway (we'll still go to the finally-statement)
 
         finally:
@@ -2856,7 +2833,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 log_on_statusbar(f'Cropped image data for "{os.path.basename(path)}" copied to clipboard.{temp_string}')
 
             if snapshot_needed or delete_path_anyway:
-                delete_temp_path(path, 'snapshot')
+                qthelpers.deleteTempPath(path, 'snapshot')
         except:
             log_on_statusbar(f'(!) Image copying failed: {format_exc()}')
         finally:                                    # restore pause-state before leaving
@@ -4579,7 +4556,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # clean up temp paths if we have any
                 for path in temp_paths:
                     if exists(path):
-                        delete_temp_path(path, 'edit-path')
+                        qthelpers.deleteTempPath(path, 'edit-path')
 
                 # confirm/validate/cleanup our operations
                 if operations and successful:
@@ -4894,7 +4871,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 return ''
             if os.stat(temp_dest).st_size == 0:
                 log_on_statusbar(f'(!) {noun} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
-                delete_temp_path(temp_dest, 'FFmpeg file')
+                qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
                 return ''
 
             # next part takes a while so show text on the progress bar if this is the last edit
@@ -4906,11 +4883,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             new_probe = probe_files(temp_dest, refresh=True, write=False)
             if not new_probe:                   # no probe returned
                 log_on_statusbar(f'(!) {noun} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
-                delete_temp_path(temp_dest, 'FFmpeg file')
+                qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
                 return ''
             elif not new_probe[temp_dest]:      # empty probe returned
                 log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
-                delete_temp_path(temp_dest, 'FFmpeg file')
+                qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
                 return ''
 
             # handle deletion behavior
@@ -4971,7 +4948,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles an `error`. Safely deletes `temp_dest`, checks for common
             errors, and logs the failure appropriately (using `start_time` if
             provided and referring to the operation(s) as a `noun`). '''
-        delete_temp_path(temp_dest, 'FFmpeg file')
+        qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
 
         text = str(error)
         if 'malloc of size' in text:
@@ -5762,7 +5739,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # handle videos with different dimensions (if we got this far, assume FFprobe isn't available)
             if 'do not match the corresponding output link' in str(error):
-                delete_temp_path(dest, 'FFmpeg file')
+                qthelpers.deleteTempPath(dest, 'FFmpeg file')
                 self.concatenate_signal.emit(None, files)   # reopen concat dialog with previous files (NOTE: state won't be fully restored)
 
                 header = ('All files must have the same dimensions for re-encoded concatenation.\n'
