@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import platform
+import subprocess
 
 # ---------------------
 
@@ -41,6 +42,14 @@ PID_PATH = f'{TEMP_DIR}{_sep}{os.getpid()}.pid'
 for _dir in (TEMP_DIR, PROBE_DIR, THUMBNAIL_DIR, THEME_DIR):
     try: os.makedirs(_dir)
     except: continue
+
+# ---------------------
+
+if IS_WINDOWS:
+    STARTUPINFO = startupinfo = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+else:
+    STARTUPINFO = None
 
 # ---------------------
 

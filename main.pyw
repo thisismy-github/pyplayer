@@ -253,6 +253,11 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
     probes = {}
     processes = []
 
+    is_windows = constants.IS_WINDOWS
+    if not is_windows:
+        import shlex                                            # have to pass commands as list for linux/macos (stupid)
+        cmd_parts = shlex.split(f'"{FFPROBE}" -show_format -show_streams -of json "output"')
+
     # begin probe-process for each file and immediately jump to the next file
     for file in files:
         if file in probes or not exists(file):
@@ -278,13 +283,19 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
                         probe_exists = False
 
         if not probe_exists:
+            if is_windows:
+                cmd = f'"{FFPROBE}" -show_format -show_streams -of json "{file}"'
+            else:                                               # ^ do NOT use ">" here since we need to read stdout
+                cmd = cmd_parts[:]                              # copy list and replace final element with our destination
+                cmd[-1] = file                                  # do NOT put quotes around this
             processes.append(
                 (
                     file,
                     probe_file,
-                    subprocess.Popen(                           # ↓ do NOT use ">" here since we need to read stdout
-                        f'"{FFPROBE}" -show_format -show_streams -of json "{file}"',
-                        stdout=subprocess.PIPE,                 # don't use `shell=True` either
+                    subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,                 # don't use `shell=True` either for the same reason
+                        startupinfo=constants.STARTUPINFO       # hides command prompt that appears w/o `shell=True`
                     )
                 )
             )
@@ -514,7 +525,10 @@ class Edit:
         ''' Cancels this edit by killing its current FFmpeg process.
             Resumes process first if it was previously suspended. '''
         self._is_cancelled = True
-        self.pause(paused=False)
+        if constants.IS_WINDOWS:
+            self._is_paused = False         # don't have to actually unpause unless we rely on stdout buffering
+        else:
+            self.pause(paused=False)
 
 
     def give_priority(self, update_others: bool = True, ignore_lock: bool = False, conditional: bool = False):
@@ -653,6 +667,8 @@ class Edit:
         start = get_time()
         locked_files = gui.locked_files
         edits_in_progress = gui.edits_in_progress
+        had_priority = len(edits_in_progress) == 1
+        is_windows = constants.IS_WINDOWS
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
         # set text-format-related properties based on parameters and existing values
@@ -663,13 +679,12 @@ class Edit:
             self.percent_format = percent_format
 
         # prepare the progress bar/taskbar/titlebar if no other edits are active
-        had_priority = len(edits_in_progress) == 1
         if had_priority:
             self.has_priority = True                    # we must set the value to 0 to actually show the progress bar
             gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
             gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
             gui.set_save_progress_visible_signal.emit(True)
-            if constants.IS_WINDOWS and settings.checkTaskbarProgressEdit.isChecked():
+            if is_windows and settings.checkTaskbarProgressEdit.isChecked():
                 gui.taskbar_progress.reset()
             refresh_title()
 
@@ -717,13 +732,19 @@ class Edit:
             # https://stackoverflow.com/questions/67386981/ffmpeg-python-tracking-transcoding-process/67409107#67409107
             # TODO: 'total_size=', time spent, and operations remaining could also be shown (save_progress_bar.setFormat())
             frame_rate = max(1, self.frame_rate or gui.frame_rate)  # used when ffmpeg provides `out_time_ms` instead of `frame`
-            use_backup_lines = True
-            lines_read = 0
+            use_outtime = True
             last_frame = 0
-            new_lines = []
+            lines_read = 0
+            lines_to_log = []
             while True:
                 if process.poll() is not None:                      # returns None if process hasn't terminated yet
                     break
+
+                # if we're paused, continue sleeping but refresh title every second if necessary
+                while self._is_paused:
+                    sleep(1.0)
+                    if len(edits_in_progress) > 1 and self.has_priority:
+                        refresh_title()
 
                 # edit cancelled -> kill this thread's ffmpeg process and cleanup
                 if self._is_cancelled:
@@ -754,51 +775,57 @@ class Edit:
 
                 # seek to end of current stdout output then back again to calculate how much data...
                 # ...we'll need to read (we have to do it this way to get around pipe buffering)
-                start_index = process.stdout.tell()
-                process.stdout.seek(0, 2)
-                end_index = process.stdout.tell()
-                try:
-                    process.stdout.seek(start_index, 0)             # seeking back sometimes throws an error?
-                except OSError:
-                    logging.warning(f'(!) Failed to seek backwards from index {end_index} to index {start_index} in FFmpeg\'s stdout pipe, retrying...')
-                    continue
+                if is_windows:
+                    start_index = process.stdout.tell()
+                    process.stdout.seek(0, 2)
+                    end_index = process.stdout.tell()
+                    try:
+                        process.stdout.seek(start_index, 0)         # seeking back sometimes throws an error?
+                    except OSError:
+                        logging.warning(f'(!) Failed to seek backwards from index {end_index} to index {start_index} in FFmpeg\'s stdout pipe, retrying...')
+                        continue
+                    progress_lines = process.stdout.read(end_index - start_index).split('\n')
 
-                # if we're paused, continue sleeping but refresh title every second if necessary
-                while self._is_paused:
-                    sleep(1.0)
-                    if len(edits_in_progress) > 1 and self.has_priority:
-                        refresh_title()
+                # can't seek in streams on linux -> call & measure readline()'s delay until it buffers
+                # NOTE: this is WAY less efficient and updates noticably slower when sleeping for the same duration. too bad lol
+                else:
+                    progress_lines = []
+                    while process.poll() is None:                   # ensure we don't try to read a new line if process already ended
+                        line_read_start = get_time()
+                        progress_lines.append(process.stdout.readline().strip())
+                        if not progress_lines[-1] or get_time() - line_read_start > 0.05:
+                            break
 
                 # loop over new stdout output without waiting for buffer so we can read output in...
                 # ...batches and sleep between loops without falling behind, saving a lot of resources
                 new_frame = last_frame
-                for progress_text in process.stdout.read(end_index - start_index).split('\n'):
+                for progress_line in progress_lines:
                     lines_read += 1
-                    new_lines.append(f'FFmpeg output line #{lines_read}: {progress_text}')
-                    if not progress_text:
+                    lines_to_log.append(f'FFmpeg output line #{lines_read}: {progress_line}')
+                    if not progress_line:
                         logging.info('FFmpeg output a blank progress line to STDOUT, leaving progress loop...')
                         break
 
                     # check for common errors
-                    if progress_text[-6:] == 'failed':              # "malloc of size ___ failed"
-                        if 'malloc of size' in progress_text:
-                            raise AssertionError(progress_text)
-                    elif 'do not match the corresponding output link' in progress_text:
-                        raise AssertionError(progress_text)         # ^ concating videos with different dimensions
+                    if progress_line[-6:] == 'failed':              # "malloc of size ___ failed"
+                        if 'malloc of size' in progress_line:
+                            raise AssertionError(progress_line)
+                    elif 'do not match the corresponding output link' in progress_line:
+                        raise AssertionError(progress_line)         # ^ concating videos with different dimensions
 
                     # normal videos will have a "frame=" progress string
-                    if progress_text[:6] == 'frame=':
-                        frame = min(int(progress_text[6:].strip()), self.frame_count)
+                    if progress_line[:6] == 'frame=':
+                        frame = min(int(progress_line[6:].strip()), self.frame_count)
                         if last_frame == frame and frame == 1:      # specific edits will constantly spit out "frame=1"...
-                            use_backup_lines = True                 # ...for these scenarios, we should ignore frame output
+                            use_outtime = True                      # ...for these scenarios, we should ignore frame output
                         else:
-                            use_backup_lines = False                # if we ARE using frames, don't use "out_time_ms" (less accurate)
+                            use_outtime = False                     # if we ARE using frames, don't use "out_time_ms" (less accurate)
                             new_frame = frame
 
                     # ffmpeg usually uses "out_time_ms" for audio files
-                    elif use_backup_lines and progress_text[:12] == 'out_time_ms=':
+                    elif use_outtime and progress_line[:12] == 'out_time_ms=':
                         try:
-                            seconds = int(progress_text.strip()[12:-6])
+                            seconds = int(progress_line.strip()[12:-6])
                             new_frame = min(int(seconds * frame_rate), self.frame_count)
                         except ValueError:
                             pass
@@ -809,10 +836,10 @@ class Edit:
                 last_frame = new_frame
 
                 # batch-log all our newly read lines at once
-                if new_lines:
-                    lines = '\n'.join(new_lines)
-                    logging.info(f'New FFmpeg output from {self}:\n{lines}')
-                    new_lines.clear()
+                if lines_to_log:
+                    progress_lines = '\n'.join(lines_to_log)
+                    logging.info(f'New FFmpeg output from {self}:\n{progress_lines}')
+                    lines_to_log.clear()
 
             # terminate process just in case ffmpeg got locked up
             try: process.terminate()
@@ -830,9 +857,9 @@ class Edit:
             return outfile
 
         except Exception as error:
-            if new_lines:
-                lines = '\n'.join(new_lines)
-                logging.info(f'Final FFmpeg output leading up to error {self}:\n{lines}')
+            if lines_to_log:
+                progress_lines = '\n'.join(lines_to_log)
+                logging.info(f'Final FFmpeg output leading up to error {self}:\n{progress_lines}')
 
             if str(error) == 'Cancelled.':
                 log_on_statusbar('Cancelling...')

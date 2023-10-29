@@ -36,28 +36,33 @@ def add_path_suffix(path: str, suffix: str, unique: bool = False) -> str:
 
 # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
 def ffmpeg(cmd: str) -> None:
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
+    if not constants.IS_WINDOWS:
+        import shlex
+        cmd = shlex.split(cmd)                  # w/o `shell=True`, linux will try to read the entire `cmd` like a file
+
     subprocess.run(
         cmd,
-        startupinfo=startupinfo                 # hides command prompt that appears if called while compiled
+        startupinfo=constants.STARTUPINFO       # hides command prompt that appears w/o `shell=True`
     )
 
 
 def ffmpeg_async(cmd: str) -> subprocess.Popen:
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    # handle command formatting and startupinfo parameter
     cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
+    if not constants.IS_WINDOWS:
+        import shlex
+        cmd = shlex.split(cmd)                  # w/o `shell=True`, linux will try to read the entire `cmd` like a file
+
     return subprocess.Popen(
         cmd,
         bufsize=1,                              # line-by-line buffering (helps us with parsing in batches)
-        startupinfo=startupinfo,                # hides command prompt that appears if called while compiled
-        start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
         stdout=subprocess.PIPE,                 # pipes stdout so that we can read the output in real time
         stderr=subprocess.STDOUT,               # pipes errors to stdout so we can read both (keeping them separate is hard)
+        startupinfo=constants.STARTUPINFO,      # hides command prompt that appears w/o `shell=True`
+        start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
         text=True                               # turns stdout into easily parsible lines of text rather than a byte stream
     )
 
@@ -416,12 +421,10 @@ def kill_process(process: subprocess.Popen, wait: bool = True, wait_after: float
         `wait_after` seconds afterwards to allow any handles to be released. '''
     try:
         if constants.IS_WINDOWS:                # why bother with signals when you can just nuke it from orbit?
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             subprocess.call(
                 f'taskkill /F /T /PID {process.pid}',
-                startupinfo=startupinfo         # hides command prompt that appears if called while compiled
-            )
+                startupinfo=constants.STARTUPINFO
+            )                                   # ^ hides command prompt that appears if called while compiled
         else:
             try:
                 import signal
