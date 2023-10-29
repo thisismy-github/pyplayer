@@ -13,7 +13,7 @@ from PyQt5 import QtWidgets as QtW
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg, get_unique_path, get_hms, get_PIL_Image
+from util import ffmpeg, get_hms, get_PIL_Image, get_unique_path
 
 import os
 import time
@@ -895,8 +895,8 @@ class QVideoPlayerLabel(QtW.QLabel):
         if gif:
             self.clear()
             self.gif.setFileName(file)
-            if self.gif.frameCount() > 1:               # only treat GIF as animated if it has more than 1 frame
-                try:                                    # open gif in PIL to get its native size (fast)
+            if self.gif.frameCount() > 1:   # only treat GIF as animated if it has more than 1 frame
+                try:                        # open gif in PIL to get its native size (fast)
                     with get_PIL_Image().open(file) as image:
                         size = image.size
                         self.gifSize.setWidth(size[0])
@@ -915,7 +915,7 @@ class QVideoPlayerLabel(QtW.QLabel):
                 self.setPixmap(self.art)
                 logger.info('Static GIF detected.')
             self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        else:                                           # static image. if `file` is bytes, it's cover art
+        else:                               # static image. if `file` is bytes, it's cover art
             isBytes = self.isCoverArt = isinstance(file, bytes)
             if isBytes: self.art.loadFromData(file)
             else:       self.art.load(file)
@@ -952,9 +952,9 @@ class QVideoPlayerLabel(QtW.QLabel):
         ''' Updates the scaling mode for animated GIFs. '''
         if not gui.actionCrop.isChecked() or force:
             logger.debug(f'Updating gif scale to mode {index}')
-            self._gifScale = index + 1                  # FIXME: +1 is temporary until gifs properly support dynamic fit
-            if self.movie():                            # FIXME: ^^^ this is set manually in qtstart!!!!!
-                if self.zoomed:                         # FIXME: ^^^ it's also set in main.set_crop_mode!!!!
+            self._gifScale = index + 1      # FIXME: +1 is temporary until gifs properly support dynamic fit
+            if self.movie():                # FIXME: ^^^ this is set manually in qtstart!!!!!
+                if self.zoomed:             # FIXME: ^^^ it's also set in main.set_crop_mode!!!!
                     self.setZoom(self.zoom, force=True)
                 else:
                     self._resetMovieSize()
@@ -1019,9 +1019,12 @@ class QVideoPlayerLabel(QtW.QLabel):
         if self.movie():
             fitZoom = round(self.gif.scaledSize().width() / self.gifSize.width(), 4)
             scale = self._gifScale
-            if scale == ZOOM_NO_SCALING: zoom = 1.0
-            elif scale == ZOOM_FILL:     zoom = round(self.width() / self.gifSize.width(), 4)
-            else:                        zoom = fitZoom
+            if scale == ZOOM_NO_SCALING:
+                zoom = 1.0
+            elif scale == ZOOM_FILL:
+                zoom = round(self.width() / self.gifSize.width(), 4)
+            else:                           # ZOOM_DYNAMIC_FIT (fit if media is smaller than window)
+                zoom = fitZoom
 
         # image/cover art
         elif self.pixmap():
@@ -1033,7 +1036,7 @@ class QVideoPlayerLabel(QtW.QLabel):
                 zoom = round(self.width() / self.art.width(), 4)
             elif scale == ZOOM_FIT or self.width() < self.art.width() or self.height() < self.art.height():
                 zoom = fitZoom
-            else:                                       # ZOOM_DYNAMIC_FIT (fit if image is smaller than window)
+            else:                           # ZOOM_DYNAMIC_FIT (fit if image is smaller than window)
                 zoom = 1.0
 
         # invalid mime-type, don't worry about zoom levels
@@ -1085,10 +1088,11 @@ class QVideoPlayerLabel(QtW.QLabel):
                 self.gif.setScaledSize(newSize)
                 self._resetMovieCache()     # you can smooth zoom without freezing, but it's SLOWER than spam-resetting
         else:
-            if globalPos: pos = self.mapFromGlobal(globalPos)
+            if globalPos:
+                pos = self.mapFromGlobal(globalPos)
             if pos:
                 if willSmooth:
-                    self._smoothZoomPos = pos                           # set pos for smooth zoom to re-use
+                    self._smoothZoomPos = pos                   # set pos for smooth zoom to re-use
                 elif settings.checkZoomPrecise.isChecked():
                     newSize = QtCore.QSizeF(self.art.size()) * zoom
                     oldSize = QtCore.QSizeF(self.art.size()) * self.zoom
@@ -1096,8 +1100,8 @@ class QVideoPlayerLabel(QtW.QLabel):
                     xOffset = ((pos.x() - oldPos.x()) / oldSize.width()) * newSize.width()
                     yOffset = ((pos.y() - oldPos.y()) / oldSize.height()) * newSize.height()
                     self.pixmapPos = pos - QtCore.QPointF(xOffset, yOffset)
-                    if not _smooth:
-                        self._draggingOffset = pos - self.pixmapPos     # drag + zoom is bad unless it's a smooth zoom
+                    if not _smooth:                             # drag + zoom is bad unless it's a smooth zoom
+                        self._draggingOffset = pos - self.pixmapPos
                 else:
                     newSize = self.art.size() * zoom
                     oldSize = self.art.size() * self.zoom
@@ -1105,8 +1109,8 @@ class QVideoPlayerLabel(QtW.QLabel):
                     xOffset = ((pos.x() - oldPos.x()) / oldSize.width()) * newSize.width()
                     yOffset = ((pos.y() - oldPos.y()) / oldSize.height()) * newSize.height()
                     self.pixmapPos = pos - QtCore.QPoint(xOffset, yOffset)
-                    if not _smooth:
-                        self._draggingOffset = pos - self.pixmapPos     # drag + zoom is bad unless it's a smooth zoom
+                    if not _smooth:                             # drag + zoom is bad unless it's a smooth zoom
+                        self._draggingOffset = pos - self.pixmapPos
 
         if not willSmooth:
             self.zoom = zoom
@@ -1145,7 +1149,7 @@ class QVideoPlayerLabel(QtW.QLabel):
             and our `QPixmap`'s local position. '''
         if event.button() == Qt.LeftButton and not gui.actionCrop.isChecked():
             self._draggingOffset = event.pos() - self.pixmapPos
-        return super().mousePressEvent(event)               # QLabel will pass event to underlying widgets (needed for cropping)
+        return super().mousePressEvent(event)                   # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
@@ -1155,26 +1159,26 @@ class QVideoPlayerLabel(QtW.QLabel):
             if crop mode is disabled. Otherwise, `QVideoPlayer.mouseMoveEvent()`
             is called to handle cropping. '''
         if not gui.actionCrop.isChecked():
-            if event.buttons() == Qt.LeftButton:            # why doesn't `event.button()` work here?
+            if event.buttons() == Qt.LeftButton:                # why doesn't `event.button()` work here?
                 self.pixmapPos = event.pos() - self._draggingOffset
                 self._dragging = True
-                self.update()                               # manually update
+                self.update()                                   # manually update
             if settings.checkHideIdleCursor.isChecked() and gui.video:
                 gui.vlc.idle_timeout_time = time.time() + settings.spinHideIdleCursorDuration.value()
             else:
-                gui.vlc.idle_timeout_time = 0.0             # 0 locks the cursor/UI
+                gui.vlc.idle_timeout_time = 0.0                 # 0 locks the cursor/UI
         else:
-            return super().mouseMoveEvent(event)            # QLabel will pass event to underlying widgets (needed for cropping)
+            return super().mouseMoveEvent(event)                # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         ''' Disables drag-mode on releasing a mouse button. If left-clicking
             and drag-mode was never enabled, then zoom-mode is disabled. '''
         if event.button() == Qt.LeftButton:
-            if not (self.movie() or self._dragging):        # reset QVideoPlayerLabel's zoom if we click without dragging
+            if not (self.movie() or self._dragging):            # reset QVideoPlayerLabel's zoom if we click without dragging
                 self.disableZoom()
         self._dragging = False
-        return super().mouseReleaseEvent(event)             # QLabel will pass event to underlying widgets (needed for cropping)
+        return super().mouseReleaseEvent(event)                 # QLabel will pass event to underlying widgets (needed for cropping)
 
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
@@ -1185,7 +1189,7 @@ class QVideoPlayerLabel(QtW.QLabel):
     def wheelEvent(self, event: QtGui.QWheelEvent):
         ''' Increments the zoom factor by 1/6th of its current value if we're
             not cropping. Ctrl zooms twice as much. Shift, half as much. '''
-        event.accept()                                      # accept the wheelEvent or QLabel will pass it through no matter what
+        event.accept()                                          # accept event or QLabel will pass it through no matter what
         if gui.actionCrop.isChecked() or not gui.video: return
 
         add = event.angleDelta().y() > 0
@@ -1194,7 +1198,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         if not mod:                    factor = settings.spinZoomIncrement.value()
         elif mod & Qt.ShiftModifier:   factor = settings.spinZoomShiftIncrement.value()
         elif mod & Qt.ControlModifier: factor = settings.spinZoomCtrlIncrement.value()
-        else: return                                        # don't zoom while alt/other modifiers are pressed
+        else: return                                            # don't zoom while alt/other modifiers are pressed
 
         increment = (zoom / factor)
         self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
@@ -1218,13 +1222,13 @@ class QVideoPlayerLabel(QtW.QLabel):
             self._resetMovieCache()
 
 
-    def timerEvent(self, event: QtCore.QTimerEvent):        # TODO why is zooming out so slow at lower smoothZoomFactors??
+    def timerEvent(self, event: QtCore.QTimerEvent):            # TODO why is zooming out so slow at lower smoothZoomFactors??
         if self._smoothZoomTimerID is not None:
             currentZoom = self.zoom
             if self._targetZoom == currentZoom:
                 self._smoothZoomTimerID = self.killTimer(self._smoothZoomTimerID)
                 self.setZoom(self._targetZoom, pos=self._smoothZoomPos, _smooth=True)
-                #if self.movie(): self._resetMovieCache()    # only reset gif cache after smooth zoom is finished
+                #if self.movie(): self._resetMovieCache()       # only reset gif cache after smooth zoom is finished
             else:
                 digits = 4 - (int(math.log10(self._targetZoom)) + 1)                        # smaller zoom, round to more digits
                 newZoom = round(currentZoom + (self._targetZoom - currentZoom) * self._smoothZoomFactor, digits)
@@ -1234,7 +1238,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         return super().timerEvent(event)
 
 
-    def paintEvent(self, event: QtGui.QPaintEvent):         # TODO very close to figuring out how to handle GIFs in here
+    def paintEvent(self, event: QtGui.QPaintEvent):             # TODO very close to figuring out how to handle GIFs in here
         #if True:
         if self.pixmap():
             painter = QtGui.QPainter(self)
@@ -1300,12 +1304,12 @@ class QVideoPlayerLabel(QtW.QLabel):
 class QVideoSlider(QtW.QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setAcceptDrops(True)           # TODO is having stuff like this here better than in the .ui file?
+        self.setAcceptDrops(True)                               # TODO is having stuff like this here better than in the .ui file?
         self.setMouseTracking(True)
 
         self.last_mouseover_time = 0
         self.last_mouseover_pos = None
-        self.clamp_minimum = False          # NOTE: essentially aliases for gui.buttonTrimXXX.isChecked()
+        self.clamp_minimum = False                              # NOTE: essentially aliases for gui.buttonTrimXXX.isChecked()
         self.clamp_maximum = False
         self.grabbing_clamp_minimum = False
         self.grabbing_clamp_maximum = False
@@ -1335,7 +1339,7 @@ class QVideoSlider(QtW.QSlider):
         ''' If enabled, paints a timestamp under the mouse corresponding with
             its position over the slider relative to the current media, and
             paints a rainbow effect around trim-boundaries, if present. '''
-        super().paintEvent(event)           # perform built-in paint immediately so we can paint on top
+        super().paintEvent(event)                               # perform built-in paint immediately so we can paint on top
 
         # handle QVideoPlayer's fullscreen controls/idle cursor timeout
         try:
@@ -1403,7 +1407,7 @@ class QVideoSlider(QtW.QSlider):
                         next_index = 0
                     self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
                     self.color_index = next_index
-                if now > self.last_color_change_time + 0.05:                    # update color at a MAX of 20fps
+                if now > self.last_color_change_time + 0.05:    # update color at a MAX of 20fps
                     color = QtGui.QColor(self.colors.pop().get_hex())
                     self.last_color_change_time = now
                 else:
@@ -1444,22 +1448,22 @@ class QVideoSlider(QtW.QSlider):
             #    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 0), QtCore.QPoint(x, self.height()), QtCore.QPoint(x + 4, self.height() / 2)]))
 
             # hover timestamps
-            if settings.groupHover.isChecked():
-                fade_time = max(0.05, settings.spinHoverFadeDuration.value())   # 0.05 looks instant but avoids flickers
+            if settings.groupHover.isChecked():                 # ↓ 0.05 looks instant but avoids flickers
+                fade_time = max(0.05, settings.spinHoverFadeDuration.value())
                 if now <= self.last_mouseover_time + fade_time:
-                    if self.underMouse():                                       # reset fade timer if we're still hovering
-                        pos = self.mapFromGlobal(QtGui.QCursor().pos())         # get position relative to widget
-                        self.last_mouseover_time = now
-                        self.last_mouseover_pos = pos                           # save last mouse position within slider
+                    if self.underMouse():                       # ↓ get position relative to widget
+                        pos = self.mapFromGlobal(QtGui.QCursor().pos())
+                        self.last_mouseover_time = now          # reset fade timer if we're still hovering
+                        self.last_mouseover_pos = pos           # save last mouse position within slider
                     else:
-                        pos = self.last_mouseover_pos                           # use last position if mouse is outside the slider
+                        pos = self.last_mouseover_pos           # use last position if mouse is outside the slider
 
                     frame = self.pixelPosToRangeValue(pos)
                     h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
                     text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
 
-                    size = settings.spinHoverFontSize.value()
-                    font = settings.comboHoverFont.currentFont()                # TODO use currentFontChanged signals + more for performance? not needed?
+                    size = settings.spinHoverFontSize.value()   # TODO use currentFontChanged signals + more for performance? not needed?
+                    font = settings.comboHoverFont.currentFont()
                     font.setPointSize(size)
                     #font.setPixelSize(size)
                     p.setFont(font)
@@ -1513,6 +1517,7 @@ class QVideoSlider(QtW.QSlider):
             instead allowing it to move freely until the mouse is moved,
             ensuring a snappier experience when clicking the progress bar.
             Does not emit the `sliderPressed` signal. '''
+
         if event.button() == Qt.LeftButton:
             pos = event.pos()
             frame = self.pixelPosToRangeValue(pos)
@@ -1522,7 +1527,7 @@ class QVideoSlider(QtW.QSlider):
 
             # https://stackoverflow.com/questions/40100733/finding-if-a-qpolygon-contains-a-qpoint-not-giving-expected-results
             if self.clamp_minimum or self.clamp_maximum:        # ^ alternate solution by finding points inside QPolygons
-                radius = 12                                     # 12 pixel radius for the handle
+                radius = 12                                     # 12 pixel radius for the handles
                 self.grabbing_clamp_minimum = False
                 self.grabbing_clamp_maximum = False
                 if self.clamp_minimum:
@@ -1585,8 +1590,8 @@ class QVideoSlider(QtW.QSlider):
         # (only apply if we were scrubbing, or the progress will jump back a few frames)
         elif self.scrubbing:
             if gui.is_pitch_sensitive_audio and not gui.is_paused:
-                gui.vlc.player.set_media(gui.vlc.media)
-                gui.vlc.player.play()
+                gui.player.set_media(gui.vlc.media)
+                gui.player.play()
                 gui.set_and_adjust_and_update_progress(frame)
             elif frame == gui.frame_count:
                 just_restarted = True
@@ -1637,15 +1642,15 @@ class QVideoSlider(QtW.QSlider):
                 new_position = raw_position.y() - slider_min
 
             return QtW.QStyle.sliderValueFromPosition(
-                self.minimum(),             # min
-                self.maximum(),             # max
-                new_position,               # position
-                slider_max - slider_min,    # span
-                opt.upsideDown              # upsideDown
+                self.minimum(),                                 # min
+                self.maximum(),                                 # max
+                new_position,                                   # position
+                slider_max - slider_min,                        # span
+                opt.upsideDown                                  # upsideDown
             )
         except:
             logger.warning(f'(!) Unexpected error in pixelPosToRangeValue - {format_exc()}')
-            return 0                        # return 0 as a failsafe
+            return 0                                            # return 0 as a failsafe
 
 
     def rangeValueToPixelPos(self, value: int) -> int:
@@ -1667,11 +1672,11 @@ class QVideoSlider(QtW.QSlider):
             slider_max = groove_rect.bottom() - handle_rect.height() + 1
 
         raw_position = QtW.QStyle.sliderPositionFromValue(
-            self.minimum(),                 # min
-            self.maximum(),                 # max
-            value,                          # position
-            slider_max - slider_min,        # span
-            opt.upsideDown                  # upsideDown
+            self.minimum(),                                     # min
+            self.maximum(),                                     # max
+            value,                                              # position
+            slider_max - slider_min,                            # span
+            opt.upsideDown                                      # upsideDown
         )
 
         # TODO test this on vertical
@@ -1683,7 +1688,7 @@ class QVideoSlider(QtW.QSlider):
 # ------------------------------------------
 # Concatenation Widgets
 # ------------------------------------------
-class QVideoListItemWidget(QtW.QWidget):    # TODO this likely does not get garbage collected
+class QVideoListItemWidget(QtW.QWidget):                        # TODO this likely does not get garbage collected
     ''' An item representing a media file within a
         `QVideoList`, within the concatenation menu. '''
     def __init__(
@@ -1695,7 +1700,7 @@ class QVideoListItemWidget(QtW.QWidget):    # TODO this likely does not get garb
     ):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self.layout = QtW.QHBoxLayout()     # ^ required for dragging to work
+        self.layout = QtW.QHBoxLayout()                         # ^ required for dragging to work
         self.setLayout(self.layout)
 
         self.thumbnail = QtW.QLabel(self)
@@ -1725,7 +1730,7 @@ class QVideoListItemWidget(QtW.QWidget):    # TODO this likely does not get garb
 
 
 
-class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any garbage collection
+class QVideoList(QtW.QListWidget):                              # TODO this likely is not doing any garbage collection
     ''' A list of interactable media files represented by
         `QVideoListItemWidget`'s within the concatenation menu. '''
     def __init__(self, *args, **kwargs):
@@ -1757,7 +1762,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
 
         # if no files were dropped, assume we did an internal drag/drop -> fix Qt bug
         if not files:
-            event.ignore()                  # ignoring the event prevents original item from getting deleted
+            event.ignore()                                      # ignoring the event prevents original item from getting deleted
             for item in qthelpers.listGetAllItems(self):        # cycle through items and
                 if item not in old_items:                       # look for "new" item that appeared
                     garbage = self.takeItem(self.row(item))     # delete corrupted item
@@ -1768,8 +1773,8 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         ''' Creates a context menu for the `QListWidgetItem` underneath
             the mouse, if any. This could alternatively be accomplished
             through the `itemClicked` signal. '''
-        item = self.itemAt(event.pos())     # get item under mouse to work with
-        if not item: return                 # no item under mouse, return
+        item = self.itemAt(event.pos())                         # get item under mouse to work with
+        if not item: return                                     # no item under mouse, return
         path = item.toolTip()
 
         def play_and_refresh():
@@ -1785,12 +1790,12 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
         def set_output_part(*, filename: bool = True):
             output = self.parent().output
             old_path = output.text().strip()
-            if filename:                    # replace filename
+            if filename:                                        # replace filename
                 dirname = os.path.dirname(old_path)
                 if dirname:
                     dirname += '/'
                 output.setText(os.path.normpath(dirname + os.path.basename(path)))
-            else:                           # replace dirname
+            else:                                               # replace dirname
                 filename = os.path.basename(old_path)
                 new_path = os.path.normpath(f'{os.path.dirname(path)}/{filename}')
                 if not filename:
@@ -1852,7 +1857,7 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             # create and setup QListWidgetItem as the base for our QVideoListItemWidget with our file and QLabel
             if index is None:
                 item_base = QtW.QListWidgetItem(self)
-            else:                           # {index} is used exclusively for moving items (which requires the workaround too)
+            else:
                 item_base = QtW.QListWidgetItem()
                 self.insertItem(index, item_base)
             item_base.setToolTip(file)
@@ -1920,8 +1925,8 @@ class QVideoList(QtW.QListWidget):          # TODO this likely is not doing any 
             new_index = old_index + (1 if down else -1)
             new_index = min(self.count() - 1, max(0, new_index))
             if old_index != new_index:
-                self.add(files=self.takeItem(old_index).toolTip(), index=new_index)  # same corrupted item bug affects moving items
-                self.item(new_index).setSelected(True)
+                self.add(files=self.takeItem(old_index).toolTip(), index=new_index)
+                self.item(new_index).setSelected(True)          # ^ same corrupted item bug affects moving items
 
 
     def reverse(self):
@@ -2009,9 +2014,9 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
             after Esc is pressed. If `self.singleSequence` is set, sequences
             are truncated to their last sequence, and ", ..." is stripped from
             the underlying `QLineEdit` (`self.lineEdit`). '''
-        if event.key() == Qt.Key_Escape:                                # clear text/focus on Esc
+        if event.key() == Qt.Key_Escape:                        # clear text/focus on Esc
             if self.escClearsSequence: self.clear()
-            if self.escClearsFocus: return self.clearFocus()            # do NOT use event.ignore() here
+            if self.escClearsFocus: return self.clearFocus()    # do NOT use event.ignore() here
 
         if self.singleSequence:             # single sequence only
             super().keyPressEvent(event)    # run built-in keyPressEvent first (this emits keySequenceChanged)
@@ -2053,12 +2058,12 @@ class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):
         ''' Finishes the reimplementation of `QKeySequenceEdit`'s
             edit-finished-timer for custom `self.editDelay` values.
             This doesn't fire if `self.singleSequence` is set. '''
-        if self._timerID is not None:                                   # timerID means a custom timer active
-            self.keySequenceChanged.emit(self.keySequence())            # emit second keySequenceChanged signal
+        if self._timerID is not None:                           # timerID means a custom timer active
+            self.keySequenceChanged.emit(self.keySequence())    # emit second keySequenceChanged signal
             self.editingFinished.emit()
-            self._timerID = self.killTimer(self._timerID)               # kill timer and remove ID
-            self.lineEdit.setText(self.keySequence().toString())        # strip ", ..." from underlying QLineEdit
-        return super().timerEvent(event)
+            self._timerID = self.killTimer(self._timerID)       # kill timer and remove ID
+            self.lineEdit.setText(self.keySequence().toString())
+        return super().timerEvent(event)                        # ^ strip ", ..." from underlying QLineEdit
 
 
     def toString(

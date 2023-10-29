@@ -177,9 +177,9 @@ import widgets
 import qtstart
 import constants
 import qthelpers
-from bin.window_pyplayer import Ui_MainWindow           # ^ direct import time-sensitive utils for a very small optimization
+from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
-from util import (
+from util import (                                      # direct import time-sensitive utils for a very small optimization
     add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen,
     get_hms, get_PIL_Image, get_ratio_string, get_unique_path, get_verbose_timestamp,
     sanitize, scale, setctime, suspend_process, kill_process, file_is_hidden
@@ -255,7 +255,7 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
 
     is_windows = constants.IS_WINDOWS
     if not is_windows:
-        import shlex                                            # have to pass commands as list for linux/macos (stupid)
+        import shlex                                    # have to pass commands as list for linux/macos (stupid)
         cmd_parts = shlex.split(f'"{FFPROBE}" -show_format -show_streams -of json "output"')
 
     # begin probe-process for each file and immediately jump to the next file
@@ -267,8 +267,8 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
         probe_file = f'{constants.PROBE_DIR}{sep}{os.path.basename(file)}_{stat.st_mtime}_{stat.st_size}.txt'
         probe_exists = exists(probe_file)
         if probe_exists:
-            if refresh:                                         # NOTE: if `refresh` is True and `write` is False, existing...
-                try: os.remove(probe_file)                      # ...probe files will be deleted without being replaced
+            if refresh:                                 # NOTE: if `refresh` is True and `write` is False, existing...
+                try: os.remove(probe_file)              # ...probe files will be deleted without being replaced
                 except: logging.warning('(!) FAILED TO DELETE UNWANTED PROBE FILE: ' + format_exc())
                 probe_exists = False
             else:
@@ -285,18 +285,18 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
         if not probe_exists:
             if is_windows:
                 cmd = f'"{FFPROBE}" -show_format -show_streams -of json "{file}"'
-            else:                                               # ^ do NOT use ">" here since we need to read stdout
-                cmd = cmd_parts[:]                              # copy list and replace final element with our destination
-                cmd[-1] = file                                  # do NOT put quotes around this
+            else:                                       # ^ do NOT use ">" here since we need to read stdout
+                cmd = cmd_parts[:]                      # copy list and replace final element with our destination
+                cmd[-1] = file                          # do NOT put quotes around this
             processes.append(
                 (
                     file,
                     probe_file,
                     subprocess.Popen(
                         cmd,
-                        stdout=subprocess.PIPE,                 # don't use `shell=True` either for the same reason
-                        startupinfo=constants.STARTUPINFO       # hides command prompt that appears w/o `shell=True`
-                    )
+                        stdout=subprocess.PIPE,         # don't use `shell=True` either for the same reason
+                        startupinfo=constants.STARTUPINFO
+                    )                                   # ^ hides command prompt that appears w/o `shell=True`
                 )
             )
 
@@ -306,7 +306,7 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
         out, err = process.communicate()
         try:
             probes[file] = json.loads(out)
-            if write:                                           # manually write probe to file
+            if write:                                   # manually write probe to file
                 with open(probe_file, 'w') as f:
                     f.write(out)
         except:
@@ -319,12 +319,12 @@ def get_audio_duration(file: str) -> float:
     ''' Lightweight way of getting the duration of an audio `file`.
         Used for instances where we need ONLY the duration. '''
     try:
-        try:                                                    # https://pypi.org/project/tinytag/0.18.0/
+        try:                                            # https://pypi.org/project/tinytag/0.18.0/
             return TinyTag.get(file, tags=False).duration
-        except:                                                 # TinyTag is lightweight but cannot handle everything
-            import music_tag                                    # only import music_tag if we absolutely need to
+        except:                                         # TinyTag is lightweight but cannot handle everything
+            import music_tag                            # only import music_tag if we absolutely need to
             return music_tag.load_file(file)['#length'].value
-    except:                                                     # this is to handle things that wrongly report as audio, like .ogv files
+    except:                                             # this is to handle things that wrongly report as audio, like .ogv files
         log_on_statusbar('(?) File could not be read as an audio file (not recognized by TinyTag or music_tag)')
         return 0.0
 
@@ -437,23 +437,23 @@ def delete_temp_path(path: str, noun: str = 'file', retry_delay: float = 0.5, re
         return False
 
 
-def close_handle(handle, delete: bool):
-    ''' Closes a file-like object `handle` and
-        attempts to `delete` its associated path. '''
+def close_handle(handle, delete: bool):                 # i know they're not really handles but whatever
+    ''' Closes a file-object `handle` and attempts
+        to `delete` its associated path. '''
     handle.close()
-    if delete:
+    if delete and exists(handle.name):
         try: os.remove(handle.name)
         except: logging.warning(f'(!) Failed to delete dummy file at final destination ({handle.name}): {format_exc()}')
 
 
-#def correct_misaligned_formats(audio, video) -> str:                # this barely works
+#def correct_misaligned_formats(audio, video) -> str:    # this barely works
 #    _, vext = os.path.splitext(video)
 #    abase, aext = os.path.splitext(audio)
-#    if vext != aext and not (vext == '.mp4' and aext == '.mp3'):    # audio is not the same format as video
-#        new_audio = f'{abase}{vext}'                                # create new audio filename
+#    if vext != aext and not (vext == '.mp4' and aext == '.mp3'):
+#        new_audio = f'{abase}{vext}'                    # create new audio filename if extensions don't match
 #        logging.info(f'Formats misaligned between audio "{audio}" and video "{video}". Correcting audio to "{new_audio}"')
-#        ffmpeg(None, f'-i "{audio}" "{new_audio}"')                 # convert audio to video's format
-#        audio = new_audio                                           # replace bad audio filename
+#        ffmpeg(None, f'-i "{audio}" "{new_audio}"')     # convert audio to video's format
+#        audio = new_audio                               # replace bad audio filename
 #    else: logging.info(f'Formats aligned between audio "{audio}" and video "{video}".')
 #    return audio
 
@@ -661,6 +661,9 @@ class Edit:
 
             NOTE: Temporary paths will be locked/unlocked if `infile` is
             already locked when you call this method.
+            NOTE: This method used to optionally handle locking/unlocking and
+            cleanup, but these features have since been removed. Please handle
+            these things before/after calling this method (see: `gui._save()`).
 
             Returns the actual final output path. '''
 
@@ -680,7 +683,7 @@ class Edit:
 
         # prepare the progress bar/taskbar/titlebar if no other edits are active
         if had_priority:
-            self.has_priority = True                    # we must set the value to 0 to actually show the progress bar
+            self.has_priority = True                                # ↓ must set value to actually show the progress bar
             gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
             gui.set_save_progress_max_signal.emit(100 if self.frame_count else 0)
             gui.set_save_progress_visible_signal.emit(True)
@@ -688,34 +691,33 @@ class Edit:
                 gui.taskbar_progress.reset()
             refresh_title()
 
-        # see if a valid `infile` was actually provided. it's okay if it wasn't, as long as `outfile` is valid
-        try: infile_provided = infile and exists(infile)
-        except: infile_provided = False
-        if not outfile:
-            if infile_provided:
+        # validate `infile` if it was provided
+        if infile:
+            assert exists(infile), f'`infile` "{infile}" does not exist.'
+            if not outfile:
                 outfile = infile
                 logging.info(f'`outfile` not provided, setting to `infile`: {infile}')
-            else:
-                raise TypeError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
+        elif not outfile:
+            raise AssertionError('Both `infile` and `outfile` are invalid. This FFmpeg command is impossible.')
 
         try:
             # create temp file if `infile` and `outfile` are the same (ffmpeg can't edit files in-place)
             editing_in_place = False
-            if infile_provided:
-                if infile == outfile:                   # NOTE: this never happens if called through `gui._save()`
+            if infile:
+                if infile == outfile:                               # NOTE: this happens in `gui._save()` w/ multiple operations
                     editing_in_place = True
                     temp_infile = add_path_suffix(infile, '_temp', unique=True)
-                    if infile in locked_files:          # if `infile` is already locked, lock the temp...
-                        locked_files.add(temp_infile)   # ...path too, regardless of our `lock` parameter
-                    os.renames(infile, temp_infile)     # rename `infile` to our temporary name
+                    if infile in locked_files:                      # if `infile` is already locked, lock the temp...
+                        locked_files.add(temp_infile)               # ...path too, regardless of our `lock` parameter
+                    os.rename(infile, temp_infile)                  # rename `infile` to our temporary name
                     logging.info(f'Renamed "{infile}" to temporary FFmpeg file "{temp_infile}"')
                 else:
                     temp_infile = infile
-            else:                                       # no infile provided at all, so no temp path either
+            else:                                                   # no infile provided at all, so no temp path either
                 temp_infile = ''
 
             # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
-            if '%out' not in cmd:                       # ensure %out is present so we have a spot to insert `outfile`
+            if '%out' not in cmd:                                   # ensure %out is present so we have a spot to insert `outfile`
                 cmd += ' %out'
             try:
                 process: subprocess.Popen = ffmpeg_async(
@@ -846,12 +848,16 @@ class Edit:
             except: pass
 
             # cleanup temp file, if needed (editing in place means we had to rename `infile`)
-            if editing_in_place:                                    # NOTE: NEVER true for edits called through `gui._save()`
-                if exists(infile):                                  # if `infile` was externally replaced while we were working,...
-                    delete_temp_path(temp_infile, 'FFmpeg file')    # ...just delete the temp file. TODO does that make sense...?
-                else:                                               # otherwise, rename `temp_path` back to `infile`
-                    os.renames(temp_infile, infile)
-                    logging.info(f'Renamed temporary FFmpeg file "{temp_infile}" back to "{infile}"')
+            if editing_in_place:
+                try:
+                    logging.info(f'Renaming temporary FFmpeg file "{temp_infile}" back to "{infile}"')
+                    if exists(infile):
+                        os.replace(temp_infile, infile)
+                    else:
+                        os.rename(temp_infile, infile)
+                except PermissionError:
+                    logging.warning(f'(!) Rename failed, returning temporary file instead ({temp_infile})')
+                    outfile = temp_infile
 
             log_on_statusbar(f'FFmpeg operation succeeded after {get_verbose_timestamp(get_time() - start)}.')
             return outfile
@@ -867,8 +873,8 @@ class Edit:
             else:
                 log_on_statusbar(f'(!) FFmpeg operation failed after {get_verbose_timestamp(get_time() - start)}: {format_exc()}')
 
-            # TODO is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
-            # TODO add setting to NOT delete `temp_infile` on errors? (NOTE: do it here AND in normal edit cleanup)
+            # TODO: is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
+            # TODO: add setting to NOT delete `temp_infile` on error? (here + `self.cleanup_edit_exception()`)
             kill_process(process)               # aggressively terminate ffmpeg process in case it's still running
             if editing_in_place:
                 delete_temp_path(temp_infile, 'FFmpeg file')
@@ -4562,7 +4568,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except Exception as error:
             successful = False
-            close_handle(dest_handle, not dest_already_exists)  # close handle to destination and delete temp file if needed
             self.cleanup_edit_exception(error, dest, start_time, 'Save')
 
         # --- Post-edit cleanup & opening our newly edited media ---
@@ -5753,8 +5758,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     except: pass
 
         except Exception as error:
-            successful = False                              # ↓ close handle to destination and delete temp file if needed
-            close_handle(dest_handle, not dest_already_exists)
+            successful = False
 
             # handle videos with different dimensions (if we got this far, assume FFprobe isn't available)
             if 'do not match the corresponding output link' in str(error):

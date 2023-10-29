@@ -16,9 +16,9 @@ import platform
 import subprocess
 
 
-# ---------------------
+# ----------------------
 # Misc
-# ---------------------
+# ----------------------
 def openPath(path: str, explore: bool = False, fallback_to_parent: bool = None) -> None:
     ''' Attempts to open `path` with an appropriate application. If `explore`
         is True, `path`'s parent directory is opened in a file explorer with
@@ -38,106 +38,12 @@ def openPath(path: str, explore: bool = False, fallback_to_parent: bool = None) 
             else:
                 return -1
         elif explore:                       # open in explorer with file/directory pre-selected
-            system = platform.system()      # couldn't find a way to pre-select files in Linux
+            system = platform.system()      # FIXME: couldn't find a way to pre-select files in Linux
             if system == 'Windows':  return subprocess.Popen(f'explorer /select, "{path}"')
-            elif system == 'Darwin': return subprocess.Popen(f'open -R "{path}"')
-    except:
-        pass    # error or system wasn't detected (Linux) -> use Qt to open the path normally
+            elif system == 'Darwin': return subprocess.Popen(['open', '-R', path])
+    except:                                 # error or system wasn't detected (Linux)...
+        pass                                # ... -> allow Qt to open the path normally
     QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
-
-
-def showWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
-    ''' Shows, raises, and activates a `window`. If `aggressive` is True, a
-        different technique for focusing is used that prevents Windows from
-        blocking focus (no effect on other platforms). NOTE: `window` is
-        expected to have properties named `last_window_size`, `last_window_pos`,
-        and `close_was_spontaneous` as Qt's geometry tracking is inconsistent.
-        Use `qthelpers.focusWindow` for a more general implementation. '''
-    if not window.isVisible():
-        if window.was_maximized:
-            if window.close_was_spontaneous:
-                window.resize(window.last_window_size)
-                window.move(window.last_window_pos)
-            window.showMaximized()
-        else: window.show()
-    elif window.isMinimized() and window.was_maximized: window.showMaximized()
-    window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
-    window.raise_()
-    # use COM to send input to window -> this tricks Windows into thinking "the calling...
-    # ...process received the last input event", and thus allows PyPlayer to take focus
-    # https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.sendkeys
-    if aggressive and platform.system() == 'Windows':
-        try:                                # https://stackoverflow.com/a/61180328
-            import win32com.client          # '+' actually represents a SHIFT press
-            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
-        except:
-            pass
-    window.activateWindow()                 # focus with Qt
-
-
-def focusWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
-    ''' Shows, raises, and activates a `window`. If `aggressive` is True, a
-        different technique for focusing is used that prevents Windows from
-        blocking focus (no effect on other platforms). This implementation
-        works, but tends to restore windows and save geometry inconsistently.
-        Use `qthelpers.showWindow` for a more complete implementation. '''
-    if not window.isVisible():
-        window.show()
-    window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
-    window.raise_()
-    if aggressive and platform.system() == 'Windows':
-        try:                                # https://stackoverflow.com/a/61180328
-            import win32com.client          # '+' actually represents a SHIFT press
-            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
-        except:
-            pass
-    window.activateWindow()                 # focus with Qt
-
-
-def flashWindow(
-    window: QtW.QWidget,
-    count: int = -1,
-    interval: int = 0,
-    duration: int = 0,
-    hold: bool = False
-) -> None:
-    ''' Flashes a `window`'s taskbar icon every `interval` milliseconds `count`
-        times, or for `duration` milliseconds. If `hold` is True, `window` will
-        not actually flash, but instead stay a solid orange, regardless of
-        `count`. If `count` is -1, `window` flashes indefinitely until it's
-        in focus (`duration` cannot be used in this case). If `count` is 0
-        and `hold` is False, `qthelpers.stopFlashingWindow` is called. If
-        `interval` is 0, the default cursor blink rate is used.
-        NOTE: `duration` is clamped to a minimum of 1100.
-        https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-flashwinfo '''
-    if platform.system() != 'Windows': return
-    import win32gui
-    import win32con
-    hwnd = window.winId()
-    win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
-    if count == 0 and not hold:             # ^ stop flashing to avoid potential conflicts
-        return
-    elif hold:
-        win32gui.FlashWindow(hwnd, True)
-    else:
-        flags = win32con.FLASHW_TRAY
-        if count == -1:
-            if duration: flags |= win32con.FLASHW_TIMER
-            else:        flags |= win32con.FLASHW_TIMERNOFG
-        win32gui.FlashWindowEx(hwnd, flags, count, interval)
-    if duration and (hold or count != -1):
-        QtCore.QTimer.singleShot(
-            max(1100, duration),
-            lambda: win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
-        )
-
-
-def stopFlashingWindow(window: QtW.QWidget) -> None:
-    ''' Stops flashing `window` if it hasn't already. '''
-    if platform.system() != 'Windows': return
-    import win32gui
-    import win32con
-    win32gui.FlashWindowEx(window.winId(), win32con.FLASHW_STOP, 0, 0)
 
 
 def clampToScreen(
@@ -159,11 +65,13 @@ def clampToScreen(
         `returnScreen` is True, the final screen is returned, otherwise
         `window`'s final QRect is returned. If `strict` is True, clamping
         occurs even if `window` is maximized or in fullscreen mode. '''
+
     if not strict and (window.isMaximized() or window.isFullScreen()): return
     isRect = isinstance(window, QtCore.QRect)
     windowRect = window if isRect else window.frameGeometry()
     if screen is None:
         screen = getScreenForRect(windowRect, mouseFallback=mouseFallback)
+
     screenRect = screen.availableGeometry()                 # availableGeometry excludes the taskbar
     if not screenRect.contains(windowRect):                 # .contains for entire rect, .intersects for partial rect
         if resize and not isRect:
@@ -187,16 +95,18 @@ def getScreenForRect(
     mouseFallback: bool = False,
     strict: bool = False
 ) -> QtGui.QScreen:
-    ''' WARNING: If you're checking a window, pass in geometry(), NOT rect().
-        Returns the QScreen that `rect` is touching, if any. Tests the center
+    ''' WARNING: For window rects, pass in `.geometry()`, NOT `.rect()`.
+        Returns the `QScreen` that `rect` is touching, if any. Tests the center
         of `rect` first unless `defaultPos` is given, then tests its corners.
         If `rect` is not touching any screen and `strict` is True, ValueError
         is raised. Otherwise if `mouseFallback` is True, the screen the mouse
         is on (if any) is returned. Otherwise, or if neither are True, the
         primary screen is returned. '''
+
     if defaultPos is None: pos = rect.center()
     else: pos = defaultPos
     qscreen = QtW.QApplication.screenAt(pos)
+
     if not qscreen:         # check if rect's center/corners are on a screen (unless defaultPos was None)
         if defaultPos is None: points = (rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)
         else: points = (rect.center, rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)
@@ -225,6 +135,7 @@ def center(
         are True, `widget` is centered over the mouse's screen. `widget` is
         clamped to its new screen if possible. `strict` controls whether or
         not to raise errors when `target` is believed to be invalid. '''
+
     pos = target
     targetRect = None
     if isinstance(target, QtW.QWidget):
@@ -290,9 +201,115 @@ def hideCursor(app: QtGui.QGuiApplication) -> None:
     app.setOverrideCursor(QtCore.Qt.BlankCursor)
 
 
-# ---------------------
+# ----------------------
+# Window focus/flashing
+# ----------------------
+def showWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
+    ''' Shows, raises, and activates a `window`. If `aggressive` is True, a
+        different technique for focusing is used that prevents Windows from
+        blocking focus (no effect on other platforms). NOTE: `window` is
+        expected to have properties named `last_window_size`, `last_window_pos`,
+        and `close_was_spontaneous` as Qt's geometry tracking is inconsistent.
+        Use `qthelpers.focusWindow` for a more general implementation. '''
+
+    if not window.isVisible():
+        if window.was_maximized:
+            if window.close_was_spontaneous:
+                window.resize(window.last_window_size)
+                window.move(window.last_window_pos)
+            window.showMaximized()
+        else:
+            window.show()
+    elif window.isMinimized() and window.was_maximized:
+        window.showMaximized()
+    window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
+    window.raise_()
+
+    # use COM to send input to window -> this tricks Windows into thinking "the calling...
+    # ...process received the last input event", and thus allows PyPlayer to take focus
+    # https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.sendkeys
+    if aggressive and platform.system() == 'Windows':
+        try:                                # https://stackoverflow.com/a/61180328
+            import win32com.client          # '+' actually represents a SHIFT press
+            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
+        except:
+            pass
+    window.activateWindow()                 # focus with Qt
+
+
+def focusWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
+    ''' Shows, raises, and activates a `window`. If `aggressive` is True, a
+        different technique for focusing is used that prevents Windows from
+        blocking focus (no effect on other platforms). This implementation
+        works, but tends to restore windows and save geometry inconsistently.
+        Use `qthelpers.showWindow` for a more complete implementation. '''
+
+    if not window.isVisible():
+        window.show()
+    window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
+    window.raise_()
+    if aggressive and platform.system() == 'Windows':
+        try:                                # https://stackoverflow.com/a/61180328
+            import win32com.client          # '+' actually represents a SHIFT press
+            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
+        except:
+            pass
+    window.activateWindow()                 # focus with Qt
+
+
+def flashWindow(
+    window: QtW.QWidget,
+    count: int = -1,
+    interval: int = 0,
+    duration: int = 0,
+    hold: bool = False
+) -> None:
+    ''' Flashes a `window`'s taskbar icon every `interval` milliseconds `count`
+        times, or for `duration` milliseconds. If `hold` is True, `window` will
+        not actually flash, but instead stay a solid orange, regardless of
+        `count`. If `count` is -1, `window` flashes indefinitely until it's
+        in focus (`duration` cannot be used in this case). If `count` is 0
+        and `hold` is False, `qthelpers.stopFlashingWindow` is called. If
+        `interval` is 0, the default cursor blink rate is used.
+        NOTE: `duration` is clamped to a minimum of 1100.
+        https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-flashwinfo '''
+
+    if platform.system() != 'Windows': return
+    import win32gui
+    import win32con
+
+    hwnd = window.winId()
+    win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
+    if count == 0 and not hold:             # ^ stop flashing to avoid potential conflicts
+        return
+    elif hold:                              # hold orange highlight indefinitely
+        win32gui.FlashWindow(hwnd, True)
+    else:                                   # flash window `count` times
+        flags = win32con.FLASHW_TRAY
+        if count == -1:                     # flash indefinitely until focused
+            if duration: flags |= win32con.FLASHW_TIMER
+            else:        flags |= win32con.FLASHW_TIMERNOFG
+        win32gui.FlashWindowEx(hwnd, flags, count, interval)
+
+    # hold orange highlight for `duration` ms
+    if duration and (hold or count != -1):
+        QtCore.QTimer.singleShot(
+            max(1100, duration),            # any faster than 1100ms and it just won't work
+            lambda: win32gui.FlashWindowEx(hwnd, win32con.FLASHW_STOP, 0, 0)
+        )
+
+
+def stopFlashingWindow(window: QtW.QWidget) -> None:
+    ''' Stops flashing `window` if it hasn't already. '''
+    if platform.system() != 'Windows': return
+    import win32gui
+    import win32con
+    win32gui.FlashWindowEx(window.winId(), win32con.FLASHW_STOP, 0, 0)
+
+
+# ----------------------
 # Generic dialogs
-# ---------------------
+# ----------------------
 def getPopup(
     title: str,
     text: str,
@@ -615,9 +632,9 @@ def saveFile(
     return (None, '', lastdir) if returnFilter else (None, lastdir)
 
 
-# ---------------------
+# ----------------------
 # QListWidget
-# ---------------------
+# ----------------------
 # Note -- lists can be cleared with listWidget.clear()
 def listGetAllItems(listWidget: QtW.QListWidget):
     for i in range(listWidget.count()):
@@ -633,9 +650,9 @@ def listRemoveSelected(listWidget: QtW.QListWidget, fromShortcut: bool = False) 
         del garbage                                         # delete items manually
 
 
-# ---------------------
+# ----------------------
 # QComboBox
-# ---------------------
+# ----------------------
 def comboRenameItem(comboBox: QtW.QComboBox, lineEdit: QtW.QLineEdit) -> None:
     if not lineEdit.isVisible():                            # rename started
         lineEdit.show()                                     # show `lineEdit` to rename
@@ -672,9 +689,9 @@ def comboMoveItem(comboBox: QtW.QComboBox, direction: str) -> None:
         pass
 
 
-# ---------------------
+# ----------------------
 # QTableWidget
-# ---------------------
+# ----------------------
 #def tableGetAllItems(table: QtW.QTableWidget):
     #return [(item := table.item(*pos)).text() for pos in itertools.product(range(table.rowCount()), range(table.columnCount())) if item]
     #items = []
@@ -697,9 +714,9 @@ def tableGetAllRows(tableWidget: QtW.QTableWidget):
             yield items
 
 
-# ---------------------
+# ----------------------
 # QTreeWidget
-# ---------------------
+# ----------------------
 def treeGetItems(treeWidget: QtW.QTreeWidget):
     treeIter = QtW.QTreeWidgetItemIterator(treeWidget)
     while treeIter.value():
@@ -741,9 +758,9 @@ def treeSetTopLevelItemIndex(treeWidget: QtW.QTreeWidget, new_index: int = 0, it
     treeWidget.insertTopLevelItem(new_index, treeWidget.takeTopLevelItem(old_index))
 
 
-# ---------------------
+# ----------------------
 # QLayout
-# ---------------------
+# ----------------------
 def layoutGetItems(layout: QtW.QLayout, start: int = 0, end: int = 0):
     index = start
     if end == 0: end = layout.count()
