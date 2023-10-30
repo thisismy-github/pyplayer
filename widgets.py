@@ -13,7 +13,7 @@ from PyQt5 import QtWidgets as QtW
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg, get_hms, get_PIL_Image, get_unique_path
+from util import ffmpeg, ffmpeg_async, get_hms, get_PIL_Image, get_unique_path
 
 import os
 import time
@@ -1866,13 +1866,13 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
 
             # check if thumbnail actually existed or not
             if not os.path.exists(thumbnail_path):              # check if thumbnail existed or not
-                thumbnails_needed.append((thumbnail_path, file, item_widget))
+                thumbnails_needed.append((file, thumbnail_path, item_widget))
 
         # ensure thumbnail folder exists, then create threads to generate thumbnails
         if not os.path.exists(constants.THUMBNAIL_DIR):
             os.makedirs(constants.THUMBNAIL_DIR)
-        for thumbnail_args in thumbnails_needed:                # TODO: there needs to be some way of cancelling these threads
-            Thread(target=self.get_thumbnail, args=thumbnail_args, daemon=True).start()
+        if thumbnails_needed:
+            Thread(target=self.generate_thumbnails, args=thumbnails_needed, daemon=True).start()
 
         # refresh titlebar to show number of QVideoListItemWidgets
         self.refresh_title()
@@ -1884,22 +1884,66 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
         self.refresh_title()
 
 
-    def get_thumbnail(
-        self,
-        thumbnail_path: str,
-        video: str,
-        item_widget: QVideoListItemWidget
-    ):
-        ''' Generates/saves a thumbnail for `video` to `thumbnail_path`, passing
-            it to `item_widget` from `QVideoListItemWidget` with the thumbnail.
-            `constants.FFMPEG` is assumed to be already be verified/valid. '''
-        temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
-        ffmpeg(f'-ss 3 -i "{video}" -vframes 1 "{temp_path}"')                      # generate thumbnail from 3 seconds in
-        ffmpeg(f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"')              # resize thumbnail
-        logger.info(f'Generating thumbnail for "{video}" to "{temp_path}"')
-        item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
-        try: os.remove(temp_path)
-        except Exception as error: logger.warning(f'Could not delete temporary thumbnail {temp_path} - {error}')
+    def generate_thumbnails(self, *args: tuple[str, str, QVideoListItemWidget], _delete: list = None):
+        ''' Generates/saves thumbnails for an indeterminate number of tuples
+            consisting of the vide to generate the thumbnail from, a path to
+            save the thumbnail to, and the `QVideoListItemWidget` to apply the
+            thumbnail to. Thumbnails are generated concurrently, but only 16
+            at a time. `constants.FFMPEG` is assumed to be valid. '''
+
+        logging.info(f'Getting thumbnails for {len(args)} file(s)')
+        thumbnail_args = args[:16]                              # only do 16 at a time
+        excess = args[16:]
+        stage1 = []
+        stage2 = []
+        to_delete = _delete or []
+
+        # begin ffmpeg process for each file and immediately jump to the next file
+        # generate thumbnail from 3 seconds into each file
+        for file, thumbnail_path, item_widget in thumbnail_args:
+            temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
+            stage1.append(
+                (
+                    temp_path,
+                    thumbnail_path,
+                    item_widget,
+                    ffmpeg_async(f'-ss 3 -i "{file}" -vframes 1 "{temp_path}"')
+                )
+            )
+
+        # wait for each process and then repeat
+        # this time we're resizing the thumbnails we just generated
+        for temp_path, thumbnail_path, item_widget, process in stage1:
+            process.communicate()
+            stage2.append(
+                (
+                    temp_path,
+                    thumbnail_path,
+                    item_widget,
+                    ffmpeg_async(f'-i "{temp_path}" -vf scale=-1:56 "{thumbnail_path}"')
+                )
+            )
+
+        # wait once again and apply the thumbnail to its associated widget
+        for temp_path, thumbnail_path, item_widget, process in stage2:
+            process.communicate()
+            item_widget.thumbnail.setPixmap(QtGui.QPixmap(thumbnail_path))
+            to_delete.append(temp_path)
+
+        # recursively generate 16 thumbnails at a time until finished
+        if excess:
+            return self.generate_thumbnails(*excess, _delete=to_delete)
+
+        # delete all temporary files. keep trying for 1.5 seconds if necessary
+        attempts = 3
+        while to_delete and attempts > 0:
+            for index in range(len(to_delete) - 1, -1, -1):
+                try: os.remove(to_delete[index])
+                except FileNotFoundError: pass
+                except: continue
+                to_delete.pop(index)
+            attempts -= 1
+            time.sleep(0.5)
 
 
     def refresh_thumbnail_outlines(self):
