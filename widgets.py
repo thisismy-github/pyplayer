@@ -1022,7 +1022,16 @@ class QVideoPlayerLabel(QtW.QLabel):
             if scale == ZOOM_NO_SCALING:
                 zoom = 1.0
             elif scale == ZOOM_FILL:
-                zoom = round(self.width() / self.gifSize.width(), 4)
+                w = self.width()
+                h = self.height()
+                vw = self.gifSize.width()
+                vh = self.gifSize.height()
+                ratio = vw / vh             # native gif aspect ratio
+                widget_ratio = w / h        # aspect ratio of QVideoPlayerLabel
+                if widget_ratio < ratio:    # gif is stretched vertically (there would be black bars top/bottom)
+                    zoom = round(h / vh, 4)
+                else:                       # gif is stretched horizontally (there would be black bars left/right)
+                    zoom = round(w / vw, 4)
             else:                           # ZOOM_DYNAMIC_FIT (fit if media is smaller than window)
                 zoom = fitZoom
 
@@ -1033,7 +1042,16 @@ class QVideoPlayerLabel(QtW.QLabel):
 
             scale = self._artScale if self.isCoverArt else self._imageScale
             if scale == ZOOM_FILL:
-                zoom = round(self.width() / self.art.width(), 4)
+                w = self.width()
+                h = self.height()
+                vw = self.art.width()
+                vh = self.art.height()
+                ratio = vw / vh             # native image aspect ratio
+                widget_ratio = w / h        # aspect ratio of QVideoPlayerLabel
+                if widget_ratio < ratio:    # image is stretched vertically (there would be black bars top/bottom)
+                    zoom = round(h / vh, 4)
+                else:                       # image is stretched horizontally (there would be black bars left/right)
+                    zoom = round(w / vw, 4)
             elif scale == ZOOM_FIT or self.width() < self.art.width() or self.height() < self.art.height():
                 zoom = fitZoom
             else:                           # ZOOM_DYNAMIC_FIT (fit if image is smaller than window)
