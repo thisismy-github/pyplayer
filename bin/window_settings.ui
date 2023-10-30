@@ -74,8 +74,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>345</width>
-        <height>2694</height>
+        <width>344</width>
+        <height>2733</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1781,8 +1781,13 @@ add each file played to the recent files list like normal.</string>
            </item>
            <item>
             <widget class="QGroupBox" name="groupBox_7">
+             <property name="toolTip">
+              <string>If checked, scrolling over images/GIFs will be inverted.
+
+Note: To scroll images/GIFs, hold Alt or right-click while scrolling</string>
+             </property>
              <property name="title">
-              <string>Zooming</string>
+              <string>Zooming/Panning</string>
              </property>
              <layout class="QFormLayout" name="formLayout_10">
               <property name="horizontalSpacing">
@@ -1800,17 +1805,11 @@ add each file played to the recent files list like normal.</string>
               <property name="bottomMargin">
                <number>6</number>
               </property>
-              <item row="0" column="0" colspan="2">
+              <item row="2" column="0" colspan="2">
                <widget class="QCheckBox" name="checkZoomPrecise">
                 <property name="toolTip">
-                 <string>If checked, the position being zoomed in on will be far more precise.
-Normally, calculations for position, size, and zoom use QRect, QSize,
-and QPoint, which lack floating point precision. This forces QRectF,
-QSizeF, and QPointF to be used instead, which massively increases
-precision at the cost of being far more resource intensive. Low-end
-systems will see noticable lag.
-
-NOTE: This setting is far more intense with smooth zooming enabled.</string>
+                 <string>If checked, scrolling over images/GIFs with Alt or right-click will be inverted.
+Note: Holding shift to pan horizontally will also be inverted.</string>
                 </property>
                 <property name="text">
                  <string>Precise zooming (resource intensive)</string>
@@ -1820,7 +1819,7 @@ NOTE: This setting is far more intense with smooth zooming enabled.</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
+              <item row="3" column="0">
                <widget class="QCheckBox" name="checkZoomSmooth">
                 <property name="minimumSize">
                  <size>
@@ -1839,7 +1838,7 @@ NOTE: This setting is far more intense with smooth zooming enabled.</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="1">
+              <item row="3" column="1">
                <widget class="QSpinBox" name="spinZoomSmoothFactor">
                 <property name="toolTip">
                  <string>The speed at which the smooth zooming effect takes place.
@@ -1866,7 +1865,7 @@ animation types added in the future.</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
+              <item row="4" column="0">
                <widget class="QLabel" name="label_62">
                 <property name="toolTip">
                  <string>The value used when incrementing the zoom.
@@ -1883,8 +1882,8 @@ zoom, the larger the jump.</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
-               <widget class="QSpinBox" name="spinZoomIncrement">
+              <item row="4" column="1">
+               <widget class="QSpinBox" name="spinZoomIncrement1">
                 <property name="suffix">
                  <string> the current zoom</string>
                 </property>
@@ -1902,11 +1901,11 @@ zoom, the larger the jump.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="5" column="0">
                <widget class="QLabel" name="label_63">
                 <property name="toolTip">
                  <string>The value used when incrementing the zoom
-while holding Ctrl. A higher denominator
+while holding Alt. A higher denominator
 means smaller jumps between levels.
 
 The increment is relative to the current zoom
@@ -1915,12 +1914,12 @@ jump between zoom levels: the larger the
 zoom, the larger the jump.</string>
                 </property>
                 <property name="text">
-                 <string>Ctrl-Zoom increment</string>
+                 <string>Alt-Zoom increment</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
-               <widget class="QSpinBox" name="spinZoomCtrlIncrement">
+              <item row="5" column="1">
+               <widget class="QSpinBox" name="spinZoomIncrement2">
                 <property name="suffix">
                  <string> the current zoom</string>
                 </property>
@@ -1938,7 +1937,7 @@ zoom, the larger the jump.</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="6" column="0">
                <widget class="QLabel" name="label_64">
                 <property name="toolTip">
                  <string>The value used when incrementing the zoom
@@ -1956,8 +1955,8 @@ here means smaller jumps between levels.</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="1">
-               <widget class="QSpinBox" name="spinZoomShiftIncrement">
+              <item row="6" column="1">
+               <widget class="QSpinBox" name="spinZoomIncrement3">
                 <property name="suffix">
                  <string> the current zoom</string>
                 </property>
@@ -1975,7 +1974,7 @@ here means smaller jumps between levels.</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
+              <item row="7" column="0">
                <widget class="QLabel" name="label_61">
                 <property name="toolTip">
                  <string>The minimum zoom factor allowed for media,
@@ -1986,7 +1985,7 @@ relative to the current size of your window.</string>
                 </property>
                </widget>
               </item>
-              <item row="5" column="1">
+              <item row="7" column="1">
                <widget class="QDoubleSpinBox" name="spinZoomMinimumFactor">
                 <property name="suffix">
                  <string>x the current window size</string>
@@ -2005,7 +2004,7 @@ relative to the current size of your window.</string>
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
+              <item row="8" column="1">
                <widget class="QCheckBox" name="checkZoomAutoDisable1x">
                 <property name="enabled">
                  <bool>false</bool>
@@ -2024,7 +2023,7 @@ re-centers the media and stops you from dragging it around).</string>
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
+              <item row="9" column="1">
                <widget class="QCheckBox" name="checkZoomForceMinimum">
                 <property name="toolTip">
                  <string>If checked, and the minimum zoom factor cannot actually be reached
@@ -2039,6 +2038,28 @@ min. zoom cannot be reached</string>
                 </property>
                 <property name="checked">
                  <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkZoomPanByDefault">
+                <property name="toolTip">
+                 <string>If checked, scrolling will pan by default unless you hold
+Ctrl or right-click. Otherwise, scrolling will zoom by default.</string>
+                </property>
+                <property name="text">
+                 <string>Hold Ctrl (or right-click) while scrolling to zoom</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2">
+               <widget class="QCheckBox" name="checkZoomPanInvertScroll">
+                <property name="toolTip">
+                 <string>If checked, panning images/GIFs while scrolling or using page down/up will be inverted.
+Note: Holding shift to pan horizontally will also be inverted.</string>
+                </property>
+                <property name="text">
+                 <string>Invert panning directions (&quot;natural scroll&quot;)</string>
                 </property>
                </widget>
               </item>

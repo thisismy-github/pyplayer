@@ -275,6 +275,9 @@ def update_migration(self, old_version: str) -> None:
         settings.checkTrayResetFirstFileOnRestore.setChecked(config.cfg.loadFrom('settings', 'checkfirstfiletrayreset', True))
         settings.checkSaveAsForceOnNoName.setChecked(config.cfg.loadFrom('settings', 'checkalwayssaveas', True))
         settings.spinScrollVolume.setValue(config.cfg.loadFrom('settings', 'spinvolumescroll', 10))
+        settings.spinZoomIncrement1.setValue(config.cfg.loadFrom('settings', 'spinzoomincrement', 6))
+        settings.spinZoomIncrement2.setValue(config.cfg.loadFrom('settings', 'spinzoomctrlincrement', 3))
+        settings.spinZoomIncrement3.setValue(config.cfg.loadFrom('settings', 'spinzoomshiftincrement', 24))
         try:
             try: self.resize(*config.cfg.load('size', '871,588', ',', int, tuple))
             except: pass

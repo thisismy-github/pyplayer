@@ -648,20 +648,20 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             if (self.dragging is None and not gui.actionCrop.isChecked()) or self.dragging == -1:
                 gui.pause()
 
-        # right-click released -> reset cursor to default for context menu
+        # right-click released -> prepare cursor/properties for context menu if necessary
         if event.button() == Qt.RightButton:
-            self.setCursor(Qt.ArrowCursor)              # HACK: reset base cursor as well to...
-            self.unsetCursor()                          # ...fix obscure drag-and-drop cursor bugs
-            while app.overrideCursor():
-                app.restoreOverrideCursor()
-
             # NOTE: this event happens before contextMenuEvent, which might not fire at all.
             # -> use a timer so contextMenuEvent has a chance to see the flag is set while...
             # ...guaranteeing the flag gets reset even if contextMenuEvent never fires
-            if gui.ignore_next_right_click:
+            if gui.ignore_next_right_click:             # not actually opening context menu
                 def reset():
                     gui.ignore_next_right_click = False
                 QtCore.QTimer.singleShot(50, Qt.CoarseTimer, reset)
+            else:
+                self.setCursor(Qt.ArrowCursor)          # HACK: reset base cursor as well to...
+                self.unsetCursor()                      # ...fix obscure drag-and-drop cursor bugs
+                while app.overrideCursor():
+                    app.restoreOverrideCursor()
 
         # left-click released and we're not dragging the crop region/points/edges
         elif self.dragging is not None:                 # refresh crop cursor if we were just dragging
@@ -1162,6 +1162,28 @@ class QVideoPlayerLabel(QtW.QLabel):
         return self._calculateBaseZoom()
 
 
+    def pan(self, direction: QtCore.QPoint, mod: int = None):
+        ''' Pans `self.pixmapPos` in `direction`, using `mod` modifiers. If
+            `Shift` is held down, `direction` is transposed. If `Alt` is held
+            down, `direction` is tripled. '''
+        if mod is None:
+            mod = app.keyboardModifiers()
+        offset = direction
+
+        # shift held -> scroll horizontally, alt held -> scroll 3x as far
+        if mod & Qt.ShiftModifier:
+            offset = offset.transposed()
+        if mod & Qt.AltModifier:
+            gui.ignore_next_alt = True
+            offset = direction.transposed() * 3.0               # alt swaps horizontal/vertical scroll for some reason
+        if settings.checkZoomPanInvertScroll.isChecked():
+            offset *= -1
+
+        self.pixmapPos += offset
+        self.zoomed = True
+        self.update()
+
+
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         ''' Sets the offset between the cursor
             and our `QPixmap`'s local position. '''
@@ -1205,19 +1227,37 @@ class QVideoPlayerLabel(QtW.QLabel):
 
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
-        ''' Increments the zoom factor by 1/6th of its current value if we're
-            not cropping. Ctrl zooms twice as much. Shift, half as much. '''
+        ''' Increments the zoom factor or pans `self.pixmapPos` depending
+            on what modifiers and mouse buttons are held down. '''
         event.accept()                                          # accept event or QLabel will pass it through no matter what
         if gui.actionCrop.isChecked() or not gui.video: return
 
-        add = event.angleDelta().y() > 0
+        # see if we want the secondary action and what our secondary action is
         mod = event.modifiers()
-        zoom = self._targetZoom if settings.checkZoomSmooth.isChecked() else self.zoom
-        if not mod:                    factor = settings.spinZoomIncrement.value()
-        elif mod & Qt.ShiftModifier:   factor = settings.spinZoomShiftIncrement.value()
-        elif mod & Qt.ControlModifier: factor = settings.spinZoomCtrlIncrement.value()
-        else: return                                            # don't zoom while alt/other modifiers are pressed
+        secondary_pans = not settings.checkZoomPanByDefault.isChecked()
+        if event.buttons() == Qt.RightButton:
+            use_secondary = True
+            gui.ignore_next_right_click = True
+        else:
+            use_secondary = mod & Qt.ControlModifier
 
+        # pan the media around instead of zooming if desired
+        if (use_secondary and secondary_pans) or (not use_secondary and not secondary_pans):
+            return self.pan(event.angleDelta(), mod)
+
+        # otherwise, calculate the factor with which to change our zoom
+        add = event.angleDelta().y() > 0
+        if mod & Qt.ShiftModifier:
+            factor = settings.spinZoomIncrement3.value()    # shift -> #3
+        elif mod & Qt.AltModifier:
+            factor = settings.spinZoomIncrement2.value()    # alt -> #2
+            add = event.angleDelta().x() > 0                # alt swaps horizontal/vertical scroll for some reason
+            gui.ignore_next_alt = True
+        else:
+            factor = settings.spinZoomIncrement1.value()    # default -> #1
+
+        # calculate and apply our new zoom level
+        zoom = self._targetZoom if settings.checkZoomSmooth.isChecked() else self.zoom
         increment = (zoom / factor)
         self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
 

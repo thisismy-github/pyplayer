@@ -1715,6 +1715,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif mod & Qt.AltModifier:
                 if key == 81:                                               # alt + q (exit)
                     self.actionExit.trigger()
+
+        if key == 16777239:                             # page down (pan image)
+            if self.is_static_image or self.is_gif:
+                image_player.pan(QtCore.QPoint(0, -500))
+        elif key == 16777238:                           # page up (pan image)
+            if self.is_static_image or self.is_gif:
+                image_player.pan(QtCore.QPoint(0, 500))
+
         logging.debug(f'PRESSED key={key} mod={int(mod)} text="{event.text()}"')
 
 
