@@ -40,7 +40,7 @@ logger = logging.getLogger('widgets.py')
 # Aliases (set in main.pyw)
 # ------------------------------------------
 gui: QtW.QMainWindow = None
-app: QtW.QApplication = None
+app = QtW.qApp
 cfg = None
 settings = None
 ZOOM_DYNAMIC_FIT = 0
@@ -504,6 +504,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
             self.last_invalid_snap_state_time = time.time()
 
         # set timer to resize window to fit player (if no file has been played yet, do not set timers on resize)
+        # TODO: this does not work correctly on Linux!!! see `gui.timerEvent()` for more details
         elif (
             not gui.timer_id_resize_snap
             and time.time() - self.last_invalid_snap_state_time > 0.35

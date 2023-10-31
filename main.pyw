@@ -11,14 +11,13 @@ r'''  >>> thisismygithub - 10/31/21 <<<
 icon sources/inspirations https://www.pinclipart.com/maxpin/hxThoo/ + https://www.hiclipart.com/free-transparent-background-png-clipart-vuclz
 https://youtu.be/P1qMAupb2_Y?t=2461 VLC devs talk about Qt problems -> making two windows actually behave as one?
 TODO: need a way to deal with VLC registry edits
-TODO: move show_color_picker and other browse dialogs + indeterminate_progress decorator + setCursor(app) and resetCursor(app) to qthelpers/util?
+TODO: move show_color_picker and other browse dialogs + indeterminate_progress decorator to qthelpers/util?
 TODO: better/more fleshed-out themes
 TODO: can't change themes while minimized to system tray (warn with tray icon?)
 TODO: live-themes option? (button that auto-refreshes themes every half-second for theme-editing)
 TODO: make more "modern" looking icon like VLC's ios app icon?
 TODO: event_manager -> "no signature found for builtin <built-in method emit of PyQt5.QtCore.pyqtBoundSignal object"
 TODO: getting the padding of the QSlider groove
-TODO: better/more fleshed out sliderVolume (dedicated subclass?)
 TODO: cropping finally finished. potential improvements:
         - ctrl-drag for square crops (not finished right now, especially near edges)
         - draw text on the QFrames, not on player (requires own paintEvent, ideally)
@@ -62,12 +61,12 @@ TODO: use "rotate" metadata to have a live preview of rotations (might cause too
 TODO: custom rotate angle option (possibly difficult, ffmpeg has bizarre syntax for it)
 TODO: more secure way of locking videos during editing? like with an actual file lock (QtCore.QLockFile)
 optimization: identify the length of time required for each part of the startup process
-optimization: quick-snapshot, snapshot... too many QActions and lambdas?
+optimization: are there too many QActions and lambdas?
 optimization: use direct libvlc functions
 optimization: remove translate flags from .ui file? maybe not a good idea
 TODO: use qtawesome icons/fonts? https://pypi.org/project/QtAwesome/ <- qta-browser
 TODO: enhanced playback speed option (context menu/menubar)?
-TODO: playlists + shuffle (including a smart shuffle that plays playlist to completion without repeats)
+TODO: playlists (adapt smart shuffle to them too)
 TODO: playing online media like VLC
 TODO: video_set_aspect_ratio and video_set_scale (this is for "zooming")
 TODO: add setting to make total duration label show the remaining time instead
@@ -77,7 +76,7 @@ TODO: finish marquee settings: drop shadow (VLC can control this, but I have no 
         - fade durations aren't working very well, I was forced to put arbitrary limits on the settings
 TODO: vlc settings to add
         - video/audio dependent raise/focus settings
-        - settings for allowing multiple instances
+        - settings for allowing multiple instances? (you can already sorta do this)
         - "enable time-stretching audio" -> fixes audio pitch changing with playback speed
         - --start-paused, --no-start-paused
 TODO: gstreamer | ffpyplayer https://matham.github.io/ffpyplayer/player.html
@@ -85,7 +84,7 @@ TODO: https://wiki.videolan.org/Documentation:Modules/alphamask/
 TODO: WA_PaintUnclipped https://doc.qt.io/qt-5/qt.html#WidgetAttribute-enum
 TODO: app.primaryScreenChanged.connect()
 TODO: is there a way to add/modify libvlc options like "--gain" post-launch? media.add_option() is very limited
-TODO: make logo in about window link to somewhere
+TODO: make logo in about window clickable and link to somewhere
 TODO: "add subtitle file" but for video/audio tracks? (audio tracks supported, but VLC chooses not to use this)
 TODO: formats that still don't trim correctly after save() rewrite: 3gp, ogv, mpg (used to trim inaccurately, now doesn't trim at all)
         - trimming likely needs to not use libx264 and aac for every format
@@ -95,7 +94,6 @@ TODO: ram usage
         - QWIDGETMAX is locked behind a pointless 4mb ram library
         - transition to lazy loading instead of loading everything all at once (about/cat dialogs finished)
         - themes take up nearly 2mb of ram (is loading the logo the biggest issue? only 14kb size)
-        - removing 90% of qthelpers reduced ram by ~0.5mb (not worth it or even realistic)
 TODO: editing feature changes:
         - text overlay (this would be awesome)
         - "replace/add audio" -> add prompt to change volume of incoming file (always? as separate action? while holding modifier?)
@@ -112,21 +110,21 @@ TODO: MEDIUM PRIORITY:
 DPI/scaling support
 ffmpeg audio replacement/addition sometimes cuts out the audio 1 second short. keyframe related? corrupted streams (not vlc-specific)?
 further polish cropping
-increase stability/add re-encoding ability to concatenation (currently fails/corrupts if you combine different formats/corrupted streams)
 confirm/increase stability for videos > 60fps (not yet tested)
 trimming-support for more obscure formats
 implement filetype associations
-far greater UI customization
+system tray icon's menu is just blank on linux
 high-precision progress bar on non-1x speeds
 
 TODO: LOW PRIORITY:
-replace VLC with QMediaPlayer (maybe)
+resize-snapping does not work on linux
 implement the "concatenate" edit for audio-only files
 further reduce RAM usage
 "Restore Defaults" button in settings window
 see update change logs before installing
 add way to distinguish base and forked repos
 ability to skip updates
+far greater UI customization
 figure out the smallest feasible ffmpeg executable we can use without sacrificing major edit features (ffmpeg.dll?)
 create "lite" version on github that doesn't include ffmpeg or vlc files?
 ability to continue playing media while minimized to system tray
@@ -137,10 +135,9 @@ dropping files over taskbar button doesn't work
 
 
 KNOWN ISSUES:
-    Non-serious:
-        cursor idle timeout applies to music and images (good thing?)
     Likely unfixable:
         frame-seeking near the very end of a video rarely works (set_time()/set_position()/next_frame() make no difference)
+        NOTE: ^ this was greatly improved (but not fully fixed) in libvlc 3.0.19
     Low priority:
         manually entering single %'s in config file for path names somehow ignores all nested folders
         partially corrupt videos have unusual behavior when frame-seeking corrupted parts <- use player.next_frame()?
@@ -153,14 +150,13 @@ KNOWN ISSUES:
     Medium priority:
         resizing an audio file rarely stalls forever with no error (works upon retry)
         rotating/flipping video rarely fails for no reason (works upon retry)
-        videos with replace/added audio tracks longer than the video themselves do NOT concatenate correctly (audio track freaks ffmpeg out)
-        concatenting sometimes freezes an explorer window if drag/dropping from it into the concatenation dialog
+        videos with replaced/added audio tracks longer than the video themselves do NOT concatenate correctly (audio track freaks ffmpeg out)
         repeatedly going into fullscreen on a higher DPI/scaled monitor results ruins the controls (general DPI/scaling support is high priority)
     Moderately high priority:
-        spamming the cycle buttons will eventually crash to desktop with no error
-        volume gain suddenly changes after extended use
         .3gp, .ogv, and .mpg files do not trim correctly
     Cannot reproduce consistently:
+        volume gain suddenly changes after extended use
+        spamming the cycle buttons will eventually either crash to desktop with no error or leave the UI in a severely broken state
         player's current visible frame doesn't change when navigating (<- and ->) after video finishes until it's unpaused (used to never happen)
         scrubbing slider and sharply moving mouse out of window while releasing causes video to not unpause until scrubbed again (rare)
         clicking on the progress bar will update the video without moving the progress bar (very rare, may be bottlenecking issue)
@@ -222,7 +218,6 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -->                 app.screens(), app.primaryScreen(), app.primaryScreenChanged.connect()
 # Qt.KeyboardModifiers | QApplication.keyboardModifiers() | QApplication.queryKeyboardModifiers()
 # QColor F suffix is Float -> values are represented from 0-1. (getRgb() becomes getRgbF())
-# QWidget.saveGeometry() | QWidget.restoreGeometry()
 # self.childAt(x, y) | self.underMouse() -> bool
 # NOTE: QtWidgets.QToolTip.hideText/showText/setPalette/setFont (showText is laggy)
 # NOTE: app.setQuitOnLastWindowClosed(False) -> app.quit() (app.aboutToQuit.connect)
@@ -899,10 +894,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)             # this allows easier clicking off of lineEdits
         self.save_progress_bar = QtW.QProgressBar(self.statusbar)
-        self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog, app=app)
-        self.dialog_settings.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.dialog_settings = qthelpers.getDialogFromUiClass(Ui_settingsDialog, flags=Qt.WindowStaysOnTopHint)
         if not constants.IS_WINDOWS:                                # settings dialog was designed around Windows UI
-            self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width(),
+            self.dialog_settings.resize(self.dialog_settings.tabWidget.sizeHint().width() + 32,
                                         self.dialog_settings.height())
         self.icons = {
             'window':            QtGui.QIcon(f'{constants.RESOURCE_DIR}{os.sep}logo.ico'),
@@ -1596,9 +1590,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def timerEvent(self, event: QtCore.QTimerEvent):
         ''' The base timeout event, used for adjusting the window's aspect
             ratio after a resize. Started by `QVideoPlayer.resizeEvent()`. '''
+
+        # TODO: on Linux, app.mouseButtons() never returns anything when we're clicking outside the window...
+        # ...(i.e. the window's border), so the player just flails around inside the window until we let go
         if self.timer_id_resize_snap is not None and app.mouseButtons() != Qt.LeftButton:
             self.timer_id_resize_snap = self.killTimer(self.timer_id_resize_snap)
-            if get_time() - self.last_move_time < 1:
+
+            # TODO: what is this for?? is it protecting against some super obscure edge-case? all...
+            # ...it seems to do is cause problems on Linux when dragging from the left or top edge
+            if get_time() - self.last_move_time < 1:    # of all the things to not be commented, it had to be this
                 return super().timerEvent(event)
 
             # get keyboard modifiers -> shift shinks, ctrl inverts current media type's behavior
@@ -3139,7 +3139,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         flash_window: bool = True,
         update_recent_list: bool = True,
         update_raw_last_file: bool = True,
-        remember_old_file: bool = False,
+        update_original_video_path: bool = True,
         mime: str = None,
         extension: str = None,
         _from_cycle: bool = False,
@@ -3151,10 +3151,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             If no `mime` or `extension` are provided, they will be detected
             automatically. If `focus_window` is None, the window will focus
             depending on its current state, the media type, and user settings.
-            If `update_recent_list` is False, `self.recent_files` will not be
-            changed. If `remember_old_file` is True, `self.original_video_path`
-            will not be updated. If `_from_cycle` is True, validity checks are
-            skipped. `self.current_file_is_autoplay` is set to `_from_autoplay`.
+
+            - `update_recent_list` - updates `self.recent_files`
+            - `update_raw_last_file` - updates `self.last_video`
+            - `update_original_video_path` - updates `self.original_video_path`
+
+            If `_from_cycle` is True, validity checks are skipped.
+            `self.current_file_is_autoplay` is set to `_from_autoplay`.
 
             Current iteration: IV '''
 
@@ -3408,7 +3411,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 set_marquee_int(VideoMarqueeOption.Y,    int(height * vlc.text_y_percent))
 
             # update original path and literal last video if this is a new file and not an edit
-            if not remember_old_file or not self.video_original_path:
+            if update_original_video_path or not self.video_original_path:
                 self.video_original_path = file
                 if update_raw_last_file:
                     self.last_video = old_file
@@ -4579,7 +4582,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.open_from_thread(
                             file=true_dest,
                             focus_window=settings.checkFocusOnEdit.isChecked(),
-                            remember_old_file=settings.checkCycleRememberOriginalPath.checkState() == 2
+                            update_original_video_path=settings.checkCycleRememberOriginalPath.checkState() != 2
                         )                               # gifs will often just... pause themselves after an edit
                         if is_gif:                      # -> this is the only way i've found to fix it
                             self.force_pause_signal.emit(False)
@@ -4930,7 +4933,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         title='Output is in use!',
                         text=f'{header}{body}{footer}',
                         icon='warning',
-                        **self.get_popup_kwargs()
+                        **self.get_popup_location_kwargs()
                     )
                 )
                 final_dest = temp_dest
@@ -4979,7 +4982,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     title='FFmpeg error',
                     text=msg,
                     icon='warning',
-                    **self.get_popup_kwargs()
+                    **self.get_popup_location_kwargs()
                 )
             )
         elif text == 'Cancelled.':
@@ -5060,7 +5063,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     title=title,
                     text=msg,
                     icon='warning',
-                    **self.get_popup_kwargs()
+                    **self.get_popup_location_kwargs()
                 ).exec()
             return False
         return True
@@ -5388,9 +5391,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # NOTE: originally if we only had 2 files and already knew their order, we'd skip the...
             # ...dialog and use preset settings, but I think it's better to always use the dialog
             from bin.window_cat import Ui_catDialog
-            dialog = qthelpers.getDialogFromUiClass(Ui_catDialog, **self.get_popup_kwargs())
+            dialog = qthelpers.getDialogFromUiClass(
+                Ui_catDialog,
+                deleteOnClose=False,                # TODO: this really should be True especially since there's a...
+                flags=Qt.WindowStaysOnTopHint,      # ...memory leak later but i just don't feel like handling it
+                **self.get_popup_location_kwargs()
+            )
 
-            dialog.setWindowFlags(Qt.WindowStaysOnTopHint)
             dialog.checkOpen.setChecked(cfg.concatenate.open)
             dialog.checkExplore.setChecked(cfg.concatenate.explore)
             dialog.buttonEncode.setChecked(cfg.concatenate.encode)
@@ -5512,7 +5519,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         title='Concatenation cancelled!',   # ...the popup and goes away, but it should...
                         text=header + missing_string,       # ...really give "discard" and "ignore" options
                         icon='warning',
-                        **self.get_popup_kwargs()
+                        **self.get_popup_location_kwargs()
                     ).exec()
 
                 elif len(files) < 2:
@@ -5568,7 +5575,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
-                                    **self.get_popup_kwargs()
+                                    **self.get_popup_location_kwargs()
                                 ).exec()
                                 continue
                             else:
@@ -5580,7 +5587,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
-                                    **self.get_popup_kwargs()
+                                    **self.get_popup_location_kwargs()
                                 )
                                 if popup.exec() == QtW.QMessageBox.Cancel:
                                     continue
@@ -5758,7 +5765,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         text=header,
                         icon='warning',
                         flags=Qt.WindowStaysOnTopHint,      # needed so it appears over the concat dialog
-                        **self.get_popup_kwargs()
+                        **self.get_popup_location_kwargs()
                     )
                 )
 
@@ -5895,7 +5902,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
             preferred_extensions = None
 
-        dialog = qthelpers.getDialog(title='Amplify Audio', **self.get_popup_kwargs(), fixedSize=(125, 105), flags=Qt.Tool)
+        dialog = qthelpers.getDialog(title='Amplify Audio', fixedSize=(125, 105), flags=Qt.Tool, **self.get_popup_location_kwargs())
         layout = QtW.QVBoxLayout(dialog)
         label = QtW.QLabel('Input desired volume \n(applies on save):', dialog)
         spin = QtW.QSpinBox(dialog)
@@ -6120,9 +6127,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         max_time_string = self.labelMaxTime.text()
         dialog = qthelpers.getDialog(
             title='Input desired ' + 'size' if dimensions else 'length',
-            **self.get_popup_kwargs(),
             fixedSize=(0, 0),
-            flags=Qt.Tool
+            flags=Qt.Tool,
+            **self.get_popup_location_kwargs()
         )
 
         if dimensions:
@@ -6204,9 +6211,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         from bin.window_about import Ui_aboutDialog
         dialog = qthelpers.getDialogFromUiClass(
             Ui_aboutDialog,
-            **self.get_popup_kwargs(),
             modal=True,
-            deleteOnClose=True
+            deleteOnClose=True,
+            **self.get_popup_location_kwargs()
         )
 
         dialog.labelLogo.setPixmap(QtGui.QPixmap(f'{constants.RESOURCE_DIR}{sep}logo_filled.png'))
@@ -6226,9 +6233,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         from bin.window_timestamp import Ui_timestampDialog
         dialog = qthelpers.getDialogFromUiClass(
             Ui_timestampDialog,
-            **self.get_popup_kwargs(),
             modal=False,
-            deleteOnClose=True
+            deleteOnClose=True,
+            **self.get_popup_location_kwargs()
         )
 
 
@@ -6464,10 +6471,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.force_pause(True)
             dialog = qthelpers.getDialog(
                 title='Choose default trim mode',
-                **self.get_popup_kwargs(),
                 modal=True,
                 deleteOnClose=True,
-                flags=Qt.Tool
+                flags=Qt.Tool,
+                **self.get_popup_location_kwargs()
             )
             dialog.setMinimumSize(427, 220)
             dialog.resize(0, 0)
@@ -6540,7 +6547,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         logging.info('Opening deletion prompt...')
         try:
-            dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_kwargs())
+            dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_location_kwargs())
             recycle = settings.checkRecycleBin.isChecked()
             marked = []
             unmarked = []
@@ -6700,11 +6707,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             if results:     # display relevant popups. if `results` is empty, skip the popups and only do cleanup
                 if 'failed' in results:
-                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_kwargs()).exec()
+                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location_kwargs()).exec()
 
                 # did not fail, and update is available. on windows -> auto-updater popup (TODO: cross-platform autoupdating)
                 if constants.IS_COMPILED and constants.IS_WINDOWS:
-                    choice = qthelpers.getPopup(**popup_kwargs, **self.get_popup_kwargs()).exec()
+                    choice = qthelpers.getPopup(**popup_kwargs, **self.get_popup_location_kwargs()).exec()
                     if choice == QtW.QMessageBox.Yes:
                         import update
                         name = constants.VERSION.split()[0]
@@ -6715,8 +6722,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         download_url = f'{latest_version_url.replace("/tag/", "/download/")}/{filename}'
                         download_path = f'{constants.TEMP_DIR}{sep}{filename}'
                         update.download_update(self, latest_version, download_url, download_path)
-                else:
-                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_kwargs()).exec()  # non-windows version of popup
+                else:                                   # non-windows version of popup
+                    return qthelpers.getPopup(**popup_kwargs, **self.get_popup_location_kwargs()).exec()
         finally:
             self.checking_for_updates = False
             settings.buttonCheckForUpdates.setText('Check for updates')
@@ -6830,9 +6837,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             os.chdir(old_oscwd)                         # reset os module's CWD before returning
 
 
-    def get_popup_kwargs(self) -> dict:
-        ''' Returns keyword arguments as a dictionary for the center-parameters
-            of popups and dialogs. Includes the `app` parameter as well. '''
+    def get_popup_location_kwargs(self) -> dict[str, str, str]:
+        ''' Returns the center-parameters of popups/dialogs as a dictionary. '''
         index = settings.comboDialogPosition.currentIndex()
         if index:
             widget = None
@@ -6844,7 +6850,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             widget = (x, y)
         else:                                           # use VLC window if it's big enough
             widget = self.vlc if self.vlc.height() >= 20 else self.frameGeometry()
-        return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2, 'app': app}
+        return {'centerWidget': widget, 'centerScreen': index == 1, 'centerMouse': index == 2}
 
 
     def get_hotkey_full_string(self, hotkey: str) -> str:
@@ -7918,7 +7924,7 @@ if __name__ == "__main__":
     try:
         logging.info(f'PyPlayer opened at {constants.SCRIPT_PATH} with executable {sys.executable}')
         logging.info('Creating QApplication and GUI...')
-        app = widgets.app = QtW.QApplication(sys.argv)  # init qt
+        app = QtW.QApplication(sys.argv)                # init qt
         gui = widgets.gui = GUI_Instance(app)           # init empty GUI instance
         gui.setup()                                     # setup gui's variables, widgets, and threads (0.3mb)
 

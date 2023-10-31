@@ -206,26 +206,26 @@ def center(
                 widget.move(widgetRect.topLeft())           # .setGeometry() is sometimes wrong
 
 
-def setCursor(
-    app: QtGui.QGuiApplication,
-    cursor: QtGui.QCursor | QtCore.Qt.CursorShape = QtCore.Qt.ArrowCursor
-) -> None:
-    ''' Clears `app`'s cursor-stack and sets its top-level cursor to `cursor`,
+def setCursor(cursor: QtGui.QCursor | QtCore.Qt.CursorShape = QtCore.Qt.ArrowCursor) -> None:
+    ''' Clears the cursor-stack and sets the top-level cursor to `cursor`,
         which can be a `QCursor` object or a `Qt.CursorShape` enum. '''
+    app = QtW.qApp
     while app.overrideCursor():
         app.restoreOverrideCursor()
     app.setOverrideCursor(cursor)
 
 
-def resetCursor(app: QtGui.QGuiApplication) -> None:
-    ''' Resets `app`'s overridden cursor by clearing its cursor-stack. '''
+def resetCursor() -> None:
+    ''' Clears the cursor-stack to reset an overridden cursor. '''
+    app = QtW.qApp
     while app.overrideCursor():
         app.restoreOverrideCursor()
 
 
-def hideCursor(app: QtGui.QGuiApplication) -> None:
-    ''' Clears `app`'s cursor-stack then sets its
-        top-level cursor to `Qt.BlankCursor`, hiding it. '''
+def hideCursor() -> None:
+    ''' Clears the cursor-stack then sets the top-level
+        cursor to `Qt.BlankCursor`, hiding it. '''
+    app = QtW.qApp
     while app.overrideCursor():
         app.restoreOverrideCursor()
     app.setOverrideCursor(QtCore.Qt.BlankCursor)
@@ -357,7 +357,7 @@ def getPopup(
     opacity: float = 1.0,
     windowIcon=None,
     flags: int = None,
-    app: QtGui.QGuiApplication = None,
+    cursor: QtGui.QCursor | QtCore.Qt.CursorShape = None,
     parent: QtW.QWidget = None
 ) -> QMessageBox:
 
@@ -378,10 +378,13 @@ def getPopup(
             center(msg, target=target, screen=screen, mouse=mouse)
 
     def enterEvent(event: QtGui.QEnterEvent) -> None:
-        ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
-        if app:
-            while app.overrideCursor():
-                app.restoreOverrideCursor()
+        ''' Resets the cursor-stack upon mousing over the popup, then
+            sets the top-level cursor to `cursor` if provided. '''
+        app = QtW.qApp
+        while app.overrideCursor():
+            app.restoreOverrideCursor()
+        if cursor:
+            app.setOverrideCursor(cursor)
 
     msg = QMessageBox(parent, icon=icon)
     msg.showEvent = showEvent
@@ -416,31 +419,37 @@ def getPopupRetryCancel(*args, **kwargs): return getPopup(*args, buttons=QMessag
 def getPopupAbortRetryIgnore(*args, **kwargs): return getPopup(*args, buttons=QMessageBox.Abort | QMessageBox.Retry | QMessageBox.Ignore, **kwargs)
 
 
-def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW.QWidget = None, **kwargs) -> QtW.QDialog:
+def getDialogFromUiClass(
+    uiClass,
+    parent: QtW.QWidget = None,
+    centerWidget: QtW.QWidget = None,
+    centerScreen: bool = False,
+    centerMouse: bool = False,
+    modal: bool = False,
+    opacity: float = 1.0,
+    sound: bool = False,
+    deleteOnClose: bool = False,
+    flags: int = Qt.WindowCloseButtonHint,
+    cursor: QtGui.QCursor | QtCore.Qt.CursorShape = None
+) -> QtW.QDialog:
     ''' Returns a persistent dialog based on a `uiClass`, likely provided by
-        a converted Qt Designer file. Can be used repeatedly, as a persistent
-        dialog. Accepts `modal`, `deleteOnClose/delete`, and
-        `centerWidget/centerScreen/centerMouse` keyword parameters. '''
+        a converted Qt Designer file. Can be used repeatedly. '''
 
     class QPersistentDialog(QtW.QDialog, uiClass):
-        def __init__(self, parent, **kwargs):
-            super().__init__(parent)
-            if 'delete' in kwargs:                          # accept both 'delete' & 'deleteOnClose', 'modal' & 'blocking'
-                kwargs['deleteOnClose'] = kwargs['delete']
-            if not (kwargs.get('modal', False) or kwargs.get('blocking', False)):
+        def __init__(self):
+            super().__init__(parent, flags)
+            if not modal:
                 self.setWindowModality(Qt.WindowModal)      # invert modality for Qt bug(?) -> Qt.WindowModal = NOT modal
-            self.setAttribute(Qt.WA_DeleteOnClose, kwargs.get('deleteOnClose', False))
+            self.setAttribute(Qt.WA_DeleteOnClose, deleteOnClose)
+            self.setWindowOpacity(opacity)
             self.setParent(parent)
             self.setupUi(self)
 
         def showEvent(self, event: QtGui.QShowEvent) -> None:
             ''' Plays default OS sound and centers
                 dialog before showing (if desired). '''
-            if kwargs.get('sound', False):
+            if sound:
                 QtW.QApplication.beep()
-            centerWidget = kwargs.get('centerWidget', None)
-            centerScreen = kwargs.get('centerScreen', False)
-            centerMouse =  kwargs.get('centerMouse', False)
             if centerWidget or centerScreen or centerMouse:
                 target = centerWidget or None
                 screen = centerScreen or False
@@ -449,16 +458,18 @@ def getDialogFromUiClass(uiClass, app: QtGui.QGuiApplication = None, parent: QtW
             return super().showEvent(event)
 
         def enterEvent(self, event: QtGui.QEnterEvent) -> None:
-            ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
-            if app:
-                while app.overrideCursor():
-                    app.restoreOverrideCursor()
+            ''' Resets the cursor-stack upon mousing over the dialog, then
+                sets the top-level cursor to `cursor` if provided. '''
+            app = QtW.qApp
+            while app.overrideCursor():
+                app.restoreOverrideCursor()
+            if cursor:
+                app.setOverrideCursor(cursor)
 
-    return QPersistentDialog(parent, **kwargs)
+    return QPersistentDialog()
 
 
 def getDialog(
-    app: QtGui.QGuiApplication = None,
     parent: QtW.QWidget = None,
     title: str = 'Dialog',
     icon: str | int = 'SP_MessageBoxInformation',
@@ -471,7 +482,8 @@ def getDialog(
     opacity: float = 1.0,
     sound: bool = False,
     deleteOnClose: bool = True,
-    flags: int = Qt.WindowCloseButtonHint
+    flags: int = Qt.WindowCloseButtonHint,
+    cursor: QtGui.QCursor | QtCore.Qt.CursorShape = None
 ) -> QtW.QDialog:
     ''' Returns a temporary dialog, designed to be finished manually.
         Uses an on-the-fly subclass called `QDialogHybrid` which serves
@@ -517,10 +529,13 @@ def getDialog(
             return super().showEvent(event)
 
         def enterEvent(self, event: QtGui.QEnterEvent) -> None:
-            ''' Resets `app`'s cursor stack upon mousing over the dialog. '''
-            if app:
-                while app.overrideCursor():
-                    app.restoreOverrideCursor()
+            ''' Resets the cursor-stack upon mousing over the dialog, then
+                sets the top-level cursor to `cursor` if provided. '''
+            app = QtW.qApp
+            while app.overrideCursor():
+                app.restoreOverrideCursor()
+            if cursor:
+                app.setOverrideCursor(cursor)
 
     dialog = QDialogHybrid(parent)
     dialog.setWindowFlags(flags)
