@@ -3459,7 +3459,7 @@ the currently playing media's height.</string>
              <property name="verticalSpacing">
               <number>2</number>
              </property>
-             <item row="0" column="0">
+             <item row="1" column="0">
               <widget class="QLabel" name="label_2">
                <property name="toolTip">
                 <string notr="true">When saving an edited video without specifying a folder in
@@ -3472,7 +3472,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </property>
               </widget>
              </item>
-             <item row="0" column="1">
+             <item row="1" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_45">
                <property name="spacing">
                 <number>2</number>
@@ -3505,7 +3505,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
-             <item row="1" column="0" colspan="2">
+             <item row="2" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRenameMissingImages">
                <property name="toolTip">
                 <string>If checked, renaming an image file that doesn't
@@ -3523,7 +3523,7 @@ doesn't exist anymore will do nothing.</string>
                </property>
               </widget>
              </item>
-             <item row="2" column="0" colspan="2">
+             <item row="3" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsForceOnNoName">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -3541,7 +3541,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="0" colspan="2">
+             <item row="4" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default to the current
@@ -3556,7 +3556,7 @@ the most recently accessed folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="0" colspan="2">
+             <item row="5" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -3580,6 +3580,93 @@ next file that will play will still be file #6.</string>
                <property name="tristate">
                 <bool>true</bool>
                </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_14">
+               <property name="toolTip">
+                <string notr="true">What priority level FFmpeg processes should have while running.
+Higher levels allow FFmpeg to finish marginally faster at the cost of
+slowing down your system, whereas lower levels allow your system
+to run more smoothly while FFmpeg finishes marginally slower.
+
+You should give FFmpeg &quot;Low&quot; priority if you want to do intensive
+tasks (such as play video games) while waiting for edits to finish.
+Note: FFmpeg will still fight for resources even at &quot;Low&quot; priority,
+causing CPU-bound tasks to suffer slightly.
+
+For Linux, each priority level represents a &quot;niceness&quot; value:
+- High: -10 (requires root)
+- Above normal: -5 (requires root)
+- Normal: 0
+- Below normal: 5
+- Low: 10
+
+Note: This setting has no effect on macOS.
+Note: Negative niceness values (high/above normal) require root.
+Otherwise, they will default to 0.
+Note: Changing this setting will not affect FFmpeg processes that
+were already started.</string>
+               </property>
+               <property name="text">
+                <string notr="true">FFmpeg priority level</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QComboBox" name="comboFFmpegPriority">
+               <property name="toolTip">
+                <string>What priority level FFmpeg processes should have while running.
+Higher levels allow FFmpeg to finish marginally faster at the cost of
+slowing down your system, whereas lower levels allow your system
+to run more smoothly while FFmpeg finishes marginally slower.
+
+You should give FFmpeg &quot;Low&quot; priority if you want to do intensive
+tasks (such as play video games) while waiting for edits to finish.
+Note: FFmpeg will still fight for resources even at &quot;Low&quot; priority,
+causing CPU-bound tasks to suffer slightly.
+
+For Linux, each priority level represents a &quot;niceness&quot; value:
+- High: -10 (requires root)
+- Above normal: -5 (requires root)
+- Normal: 0
+- Below normal: 5
+- Low: 10
+
+Note: This setting has no effect on macOS.
+Note: Negative niceness values (high/above normal) require root.
+Otherwise, they will default to 0.
+Note: Changing this setting will not affect FFmpeg processes that
+were already started.</string>
+               </property>
+               <property name="currentIndex">
+                <number>4</number>
+               </property>
+               <item>
+                <property name="text">
+                 <string>High</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Above normal</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Normal</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Below normal</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Low</string>
+                </property>
+               </item>
               </widget>
              </item>
             </layout>

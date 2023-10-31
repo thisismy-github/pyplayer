@@ -1026,7 +1026,7 @@ class Ui_settingsDialog(object):
 "Leave blank to always save unspecified videos to their source folder.")
         self.label_2.setText("Default output path")
         self.label_2.setObjectName("label_2")
-        self.formLayout_18.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_2)
+        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_2)
         self.horizontalLayout_45 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_45.setSpacing(2)
         self.horizontalLayout_45.setObjectName("horizontalLayout_45")
@@ -1041,24 +1041,58 @@ class Ui_settingsDialog(object):
         self.buttonBrowseDefaultOutputPath.setText("...")
         self.buttonBrowseDefaultOutputPath.setObjectName("buttonBrowseDefaultOutputPath")
         self.horizontalLayout_45.addWidget(self.buttonBrowseDefaultOutputPath)
-        self.formLayout_18.setLayout(0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_45)
+        self.formLayout_18.setLayout(1, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_45)
         self.checkRenameMissingImages = QtWidgets.QCheckBox(self.tabEditing)
         self.checkRenameMissingImages.setChecked(True)
         self.checkRenameMissingImages.setObjectName("checkRenameMissingImages")
-        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
+        self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
         self.checkSaveAsForceOnNoName = QtWidgets.QCheckBox(self.tabEditing)
         self.checkSaveAsForceOnNoName.setChecked(True)
         self.checkSaveAsForceOnNoName.setObjectName("checkSaveAsForceOnNoName")
-        self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsForceOnNoName)
+        self.formLayout_18.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsForceOnNoName)
         self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabEditing)
         self.checkSaveAsUseMediaFolder.setChecked(True)
         self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
-        self.formLayout_18.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
+        self.formLayout_18.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabEditing)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout_18.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout_18.setWidget(5, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.label_14 = QtWidgets.QLabel(self.tabEditing)
+        self.label_14.setToolTip("What priority level FFmpeg processes should have while running.\n"
+"Higher levels allow FFmpeg to finish marginally faster at the cost of\n"
+"slowing down your system, whereas lower levels allow your system\n"
+"to run more smoothly while FFmpeg finishes marginally slower.\n"
+"\n"
+"You should give FFmpeg \"Low\" priority if you want to do intensive\n"
+"tasks (such as play video games) while waiting for edits to finish.\n"
+"Note: FFmpeg will still fight for resources even at \"Low\" priority,\n"
+"causing CPU-bound tasks to suffer slightly.\n"
+"\n"
+"For Linux, each priority level represents a \"niceness\" value:\n"
+"- High: -10 (requires root)\n"
+"- Above normal: -5 (requires root)\n"
+"- Normal: 0\n"
+"- Below normal: 5\n"
+"- Low: 10\n"
+"\n"
+"Note: This setting has no effect on macOS.\n"
+"Note: Negative niceness values (high/above normal) require root.\n"
+"Otherwise, they will default to 0.\n"
+"Note: Changing this setting will not affect FFmpeg processes that\n"
+"were already started.")
+        self.label_14.setText("FFmpeg priority level")
+        self.label_14.setObjectName("label_14")
+        self.formLayout_18.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_14)
+        self.comboFFmpegPriority = QtWidgets.QComboBox(self.tabEditing)
+        self.comboFFmpegPriority.setObjectName("comboFFmpegPriority")
+        self.comboFFmpegPriority.addItem("")
+        self.comboFFmpegPriority.addItem("")
+        self.comboFFmpegPriority.addItem("")
+        self.comboFFmpegPriority.addItem("")
+        self.comboFFmpegPriority.addItem("")
+        self.formLayout_18.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.comboFFmpegPriority)
         self.verticalLayout_19.addLayout(self.formLayout_18)
         self.groupBox_16 = QtWidgets.QGroupBox(self.tabEditing)
         self.groupBox_16.setObjectName("groupBox_16")
@@ -2039,6 +2073,7 @@ class Ui_settingsDialog(object):
         self.comboSnapshotShift.setCurrentIndex(5)
         self.comboSnapshotAlt.setCurrentIndex(7)
         self.comboSnapshotFormat.setCurrentIndex(1)
+        self.comboFFmpegPriority.setCurrentIndex(4)
         self.comboPlayerDoubleClick.setCurrentIndex(2)
         self.comboPlayerMiddleClick.setCurrentIndex(4)
         self.comboNumKeysPrimary.setCurrentIndex(1)
@@ -2881,6 +2916,33 @@ class Ui_settingsDialog(object):
 "file #5, but then rename it so that it becomes file #1, the\n"
 "next file that will play will still be file #6."))
         self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
+        self.comboFFmpegPriority.setToolTip(_translate("settingsDialog", "What priority level FFmpeg processes should have while running.\n"
+"Higher levels allow FFmpeg to finish marginally faster at the cost of\n"
+"slowing down your system, whereas lower levels allow your system\n"
+"to run more smoothly while FFmpeg finishes marginally slower.\n"
+"\n"
+"You should give FFmpeg \"Low\" priority if you want to do intensive\n"
+"tasks (such as play video games) while waiting for edits to finish.\n"
+"Note: FFmpeg will still fight for resources even at \"Low\" priority,\n"
+"causing CPU-bound tasks to suffer slightly.\n"
+"\n"
+"For Linux, each priority level represents a \"niceness\" value:\n"
+"- High: -10 (requires root)\n"
+"- Above normal: -5 (requires root)\n"
+"- Normal: 0\n"
+"- Below normal: 5\n"
+"- Low: 10\n"
+"\n"
+"Note: This setting has no effect on macOS.\n"
+"Note: Negative niceness values (high/above normal) require root.\n"
+"Otherwise, they will default to 0.\n"
+"Note: Changing this setting will not affect FFmpeg processes that\n"
+"were already started."))
+        self.comboFFmpegPriority.setItemText(0, _translate("settingsDialog", "High"))
+        self.comboFFmpegPriority.setItemText(1, _translate("settingsDialog", "Above normal"))
+        self.comboFFmpegPriority.setItemText(2, _translate("settingsDialog", "Normal"))
+        self.comboFFmpegPriority.setItemText(3, _translate("settingsDialog", "Below normal"))
+        self.comboFFmpegPriority.setItemText(4, _translate("settingsDialog", "Low"))
         self.groupBox_16.setTitle(_translate("settingsDialog", "File timestamps"))
         self.checkEditCtimeOnNew.setToolTip(_translate("settingsDialog", "If checked, the current media\'s creation time will be\n"
 "applied to any new files that are saved. Otherwise,\n"

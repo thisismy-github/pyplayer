@@ -48,20 +48,62 @@ def ffmpeg(cmd: str) -> None:
     )
 
 
-def ffmpeg_async(cmd: str) -> subprocess.Popen:
-    # handle command formatting and startupinfo parameter
+def ffmpeg_async(cmd: str, priority: int = None, niceness: int = None) -> subprocess.Popen:
+    ''' Valid `priority` level aliases and their associated nice value on Unix:
+        - 0 - High (-10)
+        - 1 - Above normal (-5)
+        - 2 - Normal (0)
+        - 3 - Below normal (5)
+        - 4 - Low (10)
+
+        On Windows, `priority` > 4 is treated as an actual Windows constant,
+        and on Linux `niceness` is treated as a raw niceness value.
+
+        NOTE: From what I've read, "niceness" does literally nothing on Mac.
+        NOTE: Negative niceness requires root. Otherwise, 0 is used. '''
+
+    # handle command formatting and startupinfo/creationflags parameters
     cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
-    if not constants.IS_WINDOWS:
+
+    # set priority on Windows
+    if constants.IS_WINDOWS:
+        if priority is not None:
+            if priority < 5:                    # <5 means we want to use it like an index (0-4)
+                priority = (                    # otherwise it might be a raw value, like 64
+                    subprocess.HIGH_PRIORITY_CLASS,
+                    subprocess.ABOVE_NORMAL_PRIORITY_CLASS,
+                    subprocess.NORMAL_PRIORITY_CLASS,
+                    subprocess.BELOW_NORMAL_PRIORITY_CLASS,
+                    subprocess.IDLE_PRIORITY_CLASS,
+                )[priority]
+        else:
+            priority = 0
+
+    # split `cmd` and calculate priority ("niceness") on Linux
+    else:
         import shlex
         cmd = shlex.split(cmd)                  # w/o `shell=True`, linux will try to read the entire `cmd` like a file
 
+        # calculate priority
+        if niceness is not None:                # raw `niceness` value was provided, just use that
+            priority = niceness
+        elif priority is not None:              # no `niceness` -> calculate it from `priority`
+            priority = -10 + (priority * 5)     # 0 = -10, 1 = -5, 2 = 0, 3 = 5, 4 = 10
+
+        # prepend niceness command to our ffmpeg command (doesn't do anything on macOS apparently)
+        if constants.IS_LINUX and priority:     # who's really gonna use PyPlayer on a Mac anyways?
+            cmd = ['nice', '-n', str(priority)] + cmd
+        priority = 0                            # creationflags must be 0, not None
+
+    # open process
     return subprocess.Popen(
         cmd,
         bufsize=1,                              # line-by-line buffering (helps us with parsing in batches)
         stdout=subprocess.PIPE,                 # pipes stdout so that we can read the output in real time
         stderr=subprocess.STDOUT,               # pipes errors to stdout so we can read both (keeping them separate is hard)
         startupinfo=constants.STARTUPINFO,      # hides command prompt that appears w/o `shell=True`
+        creationflags=priority,                 # sets the priority level ffmpeg will start with
         start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
         text=True                               # turns stdout into easily parsible lines of text rather than a byte stream
     )

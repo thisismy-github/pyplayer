@@ -694,6 +694,7 @@ class Edit:
             try:
                 process: subprocess.Popen = ffmpeg_async(
                     cmd=cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'),
+                    priority=settings.comboFFmpegPriority.currentIndex()
                 )
             except:
                 return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
