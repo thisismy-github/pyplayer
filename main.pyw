@@ -438,9 +438,9 @@ class Edit:
 
     __slots__ = (
         'dest', 'temp_dest', 'process', '_is_paused', '_is_cancelled',
-        'has_priority', 'frame_rate', 'frame_count', 'operation_count',
-        'operations_started', 'frame', 'value', 'text', 'percent_format',
-        'start_text', 'override_text'
+        '_threads', 'has_priority', 'frame_rate', 'frame_count',
+        'operation_count', 'operations_started', 'frame', 'value',
+        'text', 'percent_format', 'start_text', 'override_text'
     )
 
     def __init__(self, dest: str = ''):
@@ -449,6 +449,7 @@ class Edit:
         self.process: subprocess.Popen = None
         self._is_paused = False
         self._is_cancelled = False
+        self._threads = 0
         self.has_priority = False
         self.frame_rate = 0.0
         self.frame_count = 0
@@ -599,10 +600,13 @@ class Edit:
             showing a progress bar on both the statusbar and the taskbar icon
             (on Windows) by parsing FFmpeg's output. "%in" and "%out" will be
             replaced within `cmd` if provided. If `outfile` is specified, "%out"
-            will be appended to the end of `cmd` if needed. `infile` and "%in"
-            do not necessarily need to be included, but you should not include
-            "%in" if you are not providing `infile`.
+            will be appended to the end of `cmd` if needed.
 
+            NOTE: `infile` and "%in" do not necessarily need to be included, but
+            if you don't providing `infile`, you shouldn't provide "%in" either.
+            NOTE: If `outfile` is not provided, the output path in `cmd` MUST be
+            surrounded by quotes for `util.ffmpeg_async()` to properly apply the
+            "-threads" parameter when necessary.
             NOTE: This method will only update the progress bar if this edit
             has priority. Priority may change mid-operation and is gained
             whenever `len(gui.edits_in_progress) == 1`.
@@ -692,12 +696,15 @@ class Edit:
             if '%out' not in cmd:                                   # ensure %out is present so we have a spot to insert `outfile`
                 cmd += ' %out'
             try:
+                self._threads = settings.spinFFmpegThreads.value() if settings.checkFFmpegThreadOverride.isChecked() else 0
                 process: subprocess.Popen = ffmpeg_async(
                     cmd=cmd.replace('%in', f'"{temp_infile}"').replace('%out', f'"{outfile}"'),
-                    priority=settings.comboFFmpegPriority.currentIndex()
+                    priority=settings.comboFFmpegPriority.currentIndex(),
+                    threads=self._threads
                 )
             except:
-                return logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
+                logging.error(f'(!) FFMPEG FAILED TO OPEN: {format_exc()}')
+                raise                                               # raise anyway so cleanup can occur
 
             self.process = process
             self.temp_dest = outfile
@@ -848,7 +855,8 @@ class Edit:
 
             # TODO: is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
             # TODO: add setting to NOT delete `temp_infile` on error? (here + `self.cleanup_edit_exception()`)
-            kill_process(process)               # aggressively terminate ffmpeg process in case it's still running
+            if self.process:
+                kill_process(process)           # aggressively terminate ffmpeg process in case it's still running
             if editing_in_place:
                 qthelpers.deleteTempPath(temp_infile, 'FFmpeg file')
             raise                               # raise exception anyway (we'll still go to the finally-statement)
@@ -2129,6 +2137,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:
                     action_outfile.setToolTip(f'Final destination:\t {edit.dest}\n'
                                               f'Temp destination:\t {edit.temp_dest}')
+
+            # show "-threads" override if one was used
+            if edit._threads:
+                text = f'Using {edit._threads} thread{"s" if edit._threads != 1 else ""}'
+                submenu.addAction(text).setEnabled(False)
 
         # add "Pause/Resume/Cancel all" actions, if appropriate
         if total_edits > 1:

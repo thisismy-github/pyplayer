@@ -3454,12 +3454,12 @@ the currently playing media's height.</string>
            <item>
             <layout class="QFormLayout" name="formLayout_18">
              <property name="horizontalSpacing">
-              <number>12</number>
+              <number>6</number>
              </property>
              <property name="verticalSpacing">
               <number>2</number>
              </property>
-             <item row="1" column="0">
+             <item row="0" column="0">
               <widget class="QLabel" name="label_2">
                <property name="toolTip">
                 <string notr="true">When saving an edited video without specifying a folder in
@@ -3472,7 +3472,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
+             <item row="0" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_45">
                <property name="spacing">
                 <number>2</number>
@@ -3505,84 +3505,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
-             <item row="2" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkRenameMissingImages">
-               <property name="toolTip">
-                <string>If checked, renaming an image file that doesn't
-exist anymore will save the currently cached
-image as a new file with your desired name.
-
-If not checked, renaming an image file that
-doesn't exist anymore will do nothing.</string>
-               </property>
-               <property name="text">
-                <string>Renaming missing image files creates a new one</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkSaveAsForceOnNoName">
-               <property name="toolTip">
-                <string>If checked, saving an edit with no name specified in the
-output box at the bottom of the window will bring up
-the &quot;Save as...&quot; prompt.
-
-If not checked, the edited file will have the same name
-name as the source file, with &quot;_edited&quot; appended to it.</string>
-               </property>
-               <property name="text">
-                <string>Use &quot;Save as...&quot; prompt when saving without a name</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
-               <property name="toolTip">
-                <string>If checked, the &quot;Save as...&quot; prompt will default to the current
-media's folder if possible. Otherwise, the prompt will open to
-the most recently accessed folder from any dialog.</string>
-               </property>
-               <property name="text">
-                <string>&quot;Save as...&quot; prompt defaults to current media's folder</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="5" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
-               <property name="toolTip">
-                <string>Tristate:
-
-Fully checked: media that is renamed and/or edited will act
-as if it were in its original place when attempting to cycle to
-the next or previous media media file in the current folder.
-
-Partially checked: ditto, but only for renaming, not editing.
-
-Example: If there are 10 files in a folder, and you're playing
-file #5, but then rename it so that it becomes file #1, the
-next file that will play will still be file #6.</string>
-               </property>
-               <property name="text">
-                <string>Cycle media based on file's original filepath (tristate)</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-               <property name="tristate">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
+             <item row="1" column="0">
               <widget class="QLabel" name="label_14">
                <property name="toolTip">
                 <string notr="true">What priority level FFmpeg processes should have while running.
@@ -3593,7 +3516,7 @@ to run more smoothly while FFmpeg finishes marginally slower.
 You should give FFmpeg &quot;Low&quot; priority if you want to do intensive
 tasks (such as play video games) while waiting for edits to finish.
 Note: FFmpeg will still fight for resources even at &quot;Low&quot; priority,
-causing CPU-bound tasks to suffer slightly.
+so combining this with a thread override may be more optimal.
 
 For Linux, each priority level represents a &quot;niceness&quot; value:
 - High: -10 (requires root)
@@ -3613,7 +3536,7 @@ were already started.</string>
                </property>
               </widget>
              </item>
-             <item row="0" column="1">
+             <item row="1" column="1">
               <widget class="QComboBox" name="comboFFmpegPriority">
                <property name="toolTip">
                 <string>What priority level FFmpeg processes should have while running.
@@ -3624,7 +3547,7 @@ to run more smoothly while FFmpeg finishes marginally slower.
 You should give FFmpeg &quot;Low&quot; priority if you want to do intensive
 tasks (such as play video games) while waiting for edits to finish.
 Note: FFmpeg will still fight for resources even at &quot;Low&quot; priority,
-causing CPU-bound tasks to suffer slightly.
+so combining this with a thread override may be more optimal.
 
 For Linux, each priority level represents a &quot;niceness&quot; value:
 - High: -10 (requires root)
@@ -3667,6 +3590,130 @@ were already started.</string>
                  <string>Low</string>
                 </property>
                </item>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QCheckBox" name="checkFFmpegThreadOverride">
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>If checked, allows you to override how many threads are allotted
+to FFmpeg processes. See the spinbox's tooltip for more details.
+
+Note: Don't use this if you don't know what you're doing.</string>
+               </property>
+               <property name="text">
+                <string>FFmpeg threads</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QSpinBox" name="spinFFmpegThreads">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="toolTip">
+                <string>How many threads should be allotted to FFmpeg. Fewer threads
+will limit FFmpeg's CPU usage at the cost of finishing drastically
+slower. However, too many threads may reduce FFmpeg's
+overall performance anyway despite the increased CPU usage.
+
+Setting this override carefully can be more effective than
+the priority setting, or can potentially improve FFmpeg's
+performance over its default behavior.
+
+Note: Don't use this if you don't know what you're doing.</string>
+               </property>
+               <property name="specialValueText">
+                <string>Automatic (recommended)</string>
+               </property>
+               <property name="suffix">
+                <string> threads</string>
+               </property>
+               <property name="maximum">
+                <number>1024</number>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkRenameMissingImages">
+               <property name="toolTip">
+                <string>If checked, renaming an image file that doesn't
+exist anymore will save the currently cached
+image as a new file with your desired name.
+
+If not checked, renaming an image file that
+doesn't exist anymore will do nothing.</string>
+               </property>
+               <property name="text">
+                <string>Renaming missing image files creates a new one</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkSaveAsForceOnNoName">
+               <property name="toolTip">
+                <string>If checked, saving an edit with no name specified in the
+output box at the bottom of the window will bring up
+the &quot;Save as...&quot; prompt.
+
+If not checked, the edited file will have the same name
+name as the source file, with &quot;_edited&quot; appended to it.</string>
+               </property>
+               <property name="text">
+                <string>Use &quot;Save as...&quot; prompt when saving without a name</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
+               <property name="toolTip">
+                <string>If checked, the &quot;Save as...&quot; prompt will default to the current
+media's folder if possible. Otherwise, the prompt will open to
+the most recently accessed folder from any dialog.</string>
+               </property>
+               <property name="text">
+                <string>&quot;Save as...&quot; prompt defaults to current media's folder</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
+               <property name="toolTip">
+                <string>Tristate:
+
+Fully checked: media that is renamed and/or edited will act
+as if it were in its original place when attempting to cycle to
+the next or previous media media file in the current folder.
+
+Partially checked: ditto, but only for renaming, not editing.
+
+Example: If there are 10 files in a folder, and you're playing
+file #5, but then rename it so that it becomes file #1, the
+next file that will play will still be file #6.</string>
+               </property>
+               <property name="text">
+                <string>Cycle media based on file's original filepath (tristate)</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <property name="tristate">
+                <bool>true</bool>
+               </property>
               </widget>
              </item>
             </layout>
@@ -6496,12 +6543,12 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>95</x>
-     <y>-231</y>
+     <x>98</x>
+     <y>180</y>
     </hint>
     <hint type="destinationlabel">
-     <x>316</x>
-     <y>-231</y>
+     <x>321</x>
+     <y>180</y>
     </hint>
    </hints>
   </connection>
@@ -6512,12 +6559,12 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>103</x>
-     <y>1983</y>
+     <x>115</x>
+     <y>1686</y>
     </hint>
     <hint type="destinationlabel">
-     <x>311</x>
-     <y>1984</y>
+     <x>316</x>
+     <y>1687</y>
     </hint>
    </hints>
   </connection>
@@ -6528,12 +6575,28 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>166</x>
-     <y>1322</y>
+     <x>168</x>
+     <y>1030</y>
     </hint>
     <hint type="destinationlabel">
-     <x>308</x>
-     <y>1322</y>
+     <x>313</x>
+     <y>1030</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkFFmpegThreadOverride</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinFFmpegThreads</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>97</x>
+     <y>116</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>218</x>
+     <y>123</y>
     </hint>
    </hints>
   </connection>

@@ -48,7 +48,7 @@ def ffmpeg(cmd: str) -> None:
     )
 
 
-def ffmpeg_async(cmd: str, priority: int = None, niceness: int = None) -> subprocess.Popen:
+def ffmpeg_async(cmd: str, priority: int = None, niceness: int = None, threads: int = 0) -> subprocess.Popen:
     ''' Valid `priority` level aliases and their associated nice value on Unix:
         - 0 - High (-10)
         - 1 - Above normal (-5)
@@ -60,9 +60,16 @@ def ffmpeg_async(cmd: str, priority: int = None, niceness: int = None) -> subpro
         and on Linux `niceness` is treated as a raw niceness value.
 
         NOTE: From what I've read, "niceness" does literally nothing on Mac.
-        NOTE: Negative niceness requires root. Otherwise, 0 is used. '''
+        NOTE: Negative niceness requires root. Otherwise, 0 is used.
+        NOTE: `threads` expects `cmd` to end with a quoted output path.
+        NOTE: `threads` will be ignored if "-threads" is already in `cmd`. '''
 
-    # handle command formatting and startupinfo/creationflags parameters
+    # add "-threads" parameter just before `cmd`'s output path if desired
+    if threads and cmd[-1] == '"' and ' -threads ' not in cmd:
+        output_index = cmd.rfind(' "', 0, -1)
+        cmd = f'{cmd[:output_index]} -threads {threads} {cmd[output_index:]}'
+
+    # add extra supplemental parameters to formatting, piping, and overwriting
     cmd = f'"{constants.FFMPEG}" -y {cmd} -progress pipe:1 -hide_banner -loglevel warning'.replace('""', '"')
     logger.info('FFmpeg command: ' + cmd)
 
