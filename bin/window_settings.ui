@@ -75,7 +75,7 @@
         <x>0</x>
         <y>0</y>
         <width>344</width>
-        <height>2733</height>
+        <height>2754</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -620,7 +620,7 @@ disabling it will have no effect until PyPlayer restarts.</string>
                   <item>
                    <widget class="QGroupBox" name="groupBox_12">
                     <property name="title">
-                     <string>Focus window on open</string>
+                     <string>Focus window on open...</string>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_11">
                      <property name="spacing">
@@ -781,7 +781,7 @@ allows you to use keyboard shortcuts right away.</string>
                   <item>
                    <widget class="QGroupBox" name="groupBox_13">
                     <property name="title">
-                     <string>Ignore focus settings</string>
+                     <string>Ignore focus settings...</string>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_12">
                      <property name="spacing">
@@ -803,10 +803,10 @@ allows you to use keyboard shortcuts right away.</string>
                       <widget class="QCheckBox" name="checkFocusIgnoreFullscreen">
                        <property name="toolTip">
                         <string>If checked, the window will never be raised or focused if
-the current foreground window is fullscreen (i.e. a game).</string>
+the current foreground window is fullscreen (e.g. a game).</string>
                        </property>
                        <property name="text">
-                        <string>When foreground is fullscreen (Windows only)</string>
+                        <string>When foreground is fullscreen (Windows-only)</string>
                        </property>
                        <property name="checked">
                         <bool>true</bool>
@@ -814,12 +814,37 @@ the current foreground window is fullscreen (i.e. a game).</string>
                       </widget>
                      </item>
                      <item>
+                      <layout class="QVBoxLayout" name="verticalLayout_21">
+                       <property name="spacing">
+                        <number>0</number>
+                       </property>
+                       <property name="leftMargin">
+                        <number>20</number>
+                       </property>
+                       <item>
+                        <widget class="QCheckBox" name="checkFocusIgnoreFullscreenEditsOnly">
+                         <property name="toolTip">
+                          <string>If checked, the window won't be raised or focused if the
+current foreground window is fullscreen (e.g. a game),
+but only for newly saved files being auto-opened.</string>
+                         </property>
+                         <property name="text">
+                          <string>Only for edits</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
                       <widget class="QCheckBox" name="checkFocusIgnoreAutoplay">
                        <property name="toolTip">
                         <string>If checked, files that are opened through autoplay will never raise or focus the window.</string>
                        </property>
                        <property name="text">
-                        <string>When Autoplay is on</string>
+                        <string>When Autoplay opens a new file</string>
                        </property>
                        <property name="checked">
                         <bool>true</bool>
@@ -829,10 +854,11 @@ the current foreground window is fullscreen (i.e. a game).</string>
                      <item>
                       <widget class="QCheckBox" name="checkFocusIgnoreAudio">
                        <property name="toolTip">
-                        <string>If checked, audio files will never raise or focus the window.</string>
+                        <string>If checked, audio files will never raise or focus the window,
+(not including audio files that are auto-opened after an edit).</string>
                        </property>
                        <property name="text">
-                        <string>When playing audio files</string>
+                        <string>When opening audio files (excluding edits)</string>
                        </property>
                       </widget>
                      </item>
@@ -3716,6 +3742,73 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
+             <item row="8" column="0" colspan="2">
+              <widget class="QGroupBox" name="groupBox_10">
+               <property name="title">
+                <string>If focus is not given after auto-opening an edit...</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayout_52">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>2</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QCheckBox" name="checkEditFocusRejectedPause">
+                  <property name="toolTip">
+                   <string>If checked, edits that automatically open after finishing but
+don't give PyPlayer focus will immediately pause the player.
+
+The typical scenarios for this would be having edit-focusing
+disabled or having fullscreen applications (like games) ignore
+your focus settings, and then having the player pause itself
+to avoid distracting you after an edit finishes.</string>
+                  </property>
+                  <property name="text">
+                   <string>Pause player</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkEditFocusRejectedBeep">
+                  <property name="toolTip">
+                   <string>If checked, edits that automatically open after finishing but
+don't give PyPlayer focus will play a notification sound.
+
+The typical scenarios for this would be having edit-focusing
+disabled or having fullscreen applications (like games) ignore
+your focus settings, and instead using the notification sound
+as an audio cue that your edit has finished.</string>
+                  </property>
+                  <property name="text">
+                   <string>Play beep</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="7" column="0" colspan="2">
+              <widget class="QCheckBox" name="checkEditOpenRejectedBeep">
+               <property name="toolTip">
+                <string>If checked, a notification sound will play if an
+edit finishes but is not automatically opened.</string>
+               </property>
+               <property name="text">
+                <string>Play beep if a newly saved edit is not auto-opened</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
            <item>
@@ -6505,6 +6598,54 @@ mime type as the current media (video, audio, or image).</string>
  <resources/>
  <connections>
   <connection>
+   <sender>checkMinimizePause</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkMinimizeRestore</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>168</x>
+     <y>514</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>313</x>
+     <y>514</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkFFmpegThreadOverride</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinFFmpegThreads</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>102</x>
+     <y>-496</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>120</x>
+     <y>-496</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkZoomSmooth</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinZoomSmoothFactor</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>127</x>
+     <y>1170</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>316</x>
+     <y>1171</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
    <receiver>settingsDialog</receiver>
@@ -6543,60 +6684,12 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>98</x>
-     <y>180</y>
+     <x>104</x>
+     <y>-357</y>
     </hint>
     <hint type="destinationlabel">
      <x>321</x>
-     <y>180</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkZoomSmooth</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>spinZoomSmoothFactor</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>115</x>
-     <y>1686</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>316</x>
-     <y>1687</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkMinimizePause</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>checkMinimizeRestore</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>168</x>
-     <y>1030</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>313</x>
-     <y>1030</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkFFmpegThreadOverride</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>spinFFmpegThreads</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>97</x>
-     <y>116</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>218</x>
-     <y>123</y>
+     <y>-357</y>
     </hint>
    </hints>
   </connection>

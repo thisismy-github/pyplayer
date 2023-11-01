@@ -3167,13 +3167,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         file: str = None,
         focus_window: bool = None,
         flash_window: bool = True,
+        pause_if_focus_rejected: bool = False,
+        beep_if_focus_rejected: bool = False,
         update_recent_list: bool = True,
         update_raw_last_file: bool = True,
         update_original_video_path: bool = True,
         mime: str = None,
         extension: str = None,
         _from_cycle: bool = False,
-        _from_autoplay: bool = False
+        _from_autoplay: bool = False,
+        _from_edit: bool = False
     ) -> int:
         ''' Opens, parses, and plays a media `file`. Returns -1 if unsuccessful.
 
@@ -3181,6 +3184,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             If no `mime` or `extension` are provided, they will be detected
             automatically. If `focus_window` is None, the window will focus
             depending on its current state, the media type, and user settings.
+            If the window remains unfocused, a notification sound will play if
+            `beep_if_focus_rejected` is True and the player will start paused
+            if `pause_if_focus_rejected` is True (does not apply to GIFs).
 
             - `update_recent_list` - updates `self.recent_files`
             - `update_raw_last_file` - updates `self.last_video`
@@ -3401,11 +3407,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # NOTE: it is very rare but possible for "video" mime types to be mutated into "audio"...
             #       ...during parsing which happens immediately AFTER we focus the window. i'd...
             #       ...still rather focus first. it's rare enough that i think it's probably fine
-            if (
-                not self.isActiveWindow()
-                and not (_from_cycle and settings.checkFocusIgnoreAutoplay.isChecked())
-                and not (mime == 'audio' and settings.checkFocusIgnoreAudio.isChecked())
-            ):
+            if not self.isActiveWindow():
+                if _from_cycle and settings.checkFocusIgnoreAutoplay.isChecked():
+                    focus_window = False
+                elif not _from_edit and mime == 'audio' and settings.checkFocusIgnoreAudio.isChecked():
+                    focus_window = False
+
                 if focus_window is None:
                     if self.isMinimized():
                         if was_minimzed_to_tray: focus_window = settings.checkFocusOnMinimizedTray.isChecked()
@@ -3414,17 +3421,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     elif self.isMaximized():     focus_window = settings.checkFocusOnMaximized.isChecked()
                     else:                        focus_window = settings.checkFocusOnNormal.isChecked()
                 if focus_window and settings.checkFocusIgnoreFullscreen.isChecked():
-                    focus_window = not foreground_is_fullscreen()
+                    if _from_edit or not settings.checkFocusIgnoreFullscreenEditsOnly.isChecked():
+                        focus_window = not foreground_is_fullscreen()
                 if focus_window:
                     qthelpers.showWindow(
                         window=self,
                         aggressive=settings.checkFocusAggressive.isChecked()
                     )
-                elif flash_window and constants.IS_WINDOWS:
-                    flash_count = (0, 1, 2, -1)[settings.comboTaskbarFlash.currentIndex()]
-                    if flash_count == 1:    qthelpers.flashWindow(self, duration=1100, hold=True)
-                    elif flash_count == -1: qthelpers.flashWindow(self, flash_count)
-                    else:                   qthelpers.flashWindow(self, flash_count, interval=500, duration=1250 * flash_count)
+                else:
+                    if pause_if_focus_rejected:
+                        self.force_pause(True)
+                    if beep_if_focus_rejected:
+                        app.beep()
+                    if flash_window and constants.IS_WINDOWS:
+                        flash_count = (0, 1, 2, -1)[settings.comboTaskbarFlash.currentIndex()]
+                        if flash_count == 1:    qthelpers.flashWindow(self, duration=1100, hold=True)
+                        elif flash_count == -1: qthelpers.flashWindow(self, flash_count)
+                        else:                   qthelpers.flashWindow(self, flash_count, interval=500, duration=1250 * flash_count)
 
             # if presumed to be a video -> finish parsing (done as late as possible to minimize downtime)
             if mime == 'video' and not parsed:
@@ -4611,15 +4624,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     if self.video == video:
                         self.open_from_thread(
                             file=true_dest,
+                            _from_edit=True,
                             focus_window=settings.checkFocusOnEdit.isChecked(),
+                            pause_if_focus_rejected=settings.checkEditFocusRejectedPause.isChecked(),
+                            beep_if_focus_rejected=settings.checkEditFocusRejectedBeep.isChecked(),
                             update_original_video_path=settings.checkCycleRememberOriginalPath.checkState() != 2
                         )                               # gifs will often just... pause themselves after an edit
                         if is_gif:                      # -> this is the only way i've found to fix it
                             self.force_pause_signal.emit(False)
 
                     # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
-                    elif settings.checkTextOnSave.isChecked():
-                        show_on_player(f'Changes saved to {true_dest}.')
+                    else:
+                        if settings.checkEditOpenRejectedBeep.isChecked():
+                            app.beep()
+                        if settings.checkTextOnSave.isChecked():
+                            show_on_player(f'Changes saved to {true_dest}.')
                     log_on_statusbar(f'Changes saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
 
                 # log our lack of changes
@@ -5816,8 +5835,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     true_dest = self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation')
                     if not true_dest:
                         return
+
                     if open:
-                        self.open_from_thread(file=true_dest, focus_window=settings.checkFocusOnEdit.isChecked())
+                        self.open_from_thread(
+                            file=true_dest,
+                            _from_edit=True,
+                            focus_window=settings.checkFocusOnEdit.isChecked(),
+                            pause_if_focus_rejected=True
+                        )
+                    elif settings.checkEditOpenRejectedBeep.isChecked():
+                        app.beep()
                     if explore:
                         qthelpers.openPath(true_dest, explore=True)
 

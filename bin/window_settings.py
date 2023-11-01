@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 2733))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 2754))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -228,6 +228,15 @@ class Ui_settingsDialog(object):
         self.checkFocusIgnoreFullscreen.setChecked(True)
         self.checkFocusIgnoreFullscreen.setObjectName("checkFocusIgnoreFullscreen")
         self.verticalLayout_12.addWidget(self.checkFocusIgnoreFullscreen)
+        self.verticalLayout_21 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_21.setContentsMargins(20, -1, -1, -1)
+        self.verticalLayout_21.setSpacing(0)
+        self.verticalLayout_21.setObjectName("verticalLayout_21")
+        self.checkFocusIgnoreFullscreenEditsOnly = QtWidgets.QCheckBox(self.groupBox_13)
+        self.checkFocusIgnoreFullscreenEditsOnly.setChecked(True)
+        self.checkFocusIgnoreFullscreenEditsOnly.setObjectName("checkFocusIgnoreFullscreenEditsOnly")
+        self.verticalLayout_21.addWidget(self.checkFocusIgnoreFullscreenEditsOnly)
+        self.verticalLayout_12.addLayout(self.verticalLayout_21)
         self.checkFocusIgnoreAutoplay = QtWidgets.QCheckBox(self.groupBox_13)
         self.checkFocusIgnoreAutoplay.setChecked(True)
         self.checkFocusIgnoreAutoplay.setObjectName("checkFocusIgnoreAutoplay")
@@ -1102,6 +1111,23 @@ class Ui_settingsDialog(object):
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
         self.formLayout_18.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.groupBox_10 = QtWidgets.QGroupBox(self.tabEditing)
+        self.groupBox_10.setObjectName("groupBox_10")
+        self.horizontalLayout_52 = QtWidgets.QHBoxLayout(self.groupBox_10)
+        self.horizontalLayout_52.setContentsMargins(-1, 2, 0, 4)
+        self.horizontalLayout_52.setSpacing(0)
+        self.horizontalLayout_52.setObjectName("horizontalLayout_52")
+        self.checkEditFocusRejectedPause = QtWidgets.QCheckBox(self.groupBox_10)
+        self.checkEditFocusRejectedPause.setChecked(True)
+        self.checkEditFocusRejectedPause.setObjectName("checkEditFocusRejectedPause")
+        self.horizontalLayout_52.addWidget(self.checkEditFocusRejectedPause)
+        self.checkEditFocusRejectedBeep = QtWidgets.QCheckBox(self.groupBox_10)
+        self.checkEditFocusRejectedBeep.setObjectName("checkEditFocusRejectedBeep")
+        self.horizontalLayout_52.addWidget(self.checkEditFocusRejectedBeep)
+        self.formLayout_18.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.groupBox_10)
+        self.checkEditOpenRejectedBeep = QtWidgets.QCheckBox(self.tabEditing)
+        self.checkEditOpenRejectedBeep.setObjectName("checkEditOpenRejectedBeep")
+        self.formLayout_18.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkEditOpenRejectedBeep)
         self.verticalLayout_19.addLayout(self.formLayout_18)
         self.groupBox_16 = QtWidgets.QGroupBox(self.tabEditing)
         self.groupBox_16.setObjectName("groupBox_16")
@@ -2087,12 +2113,12 @@ class Ui_settingsDialog(object):
         self.comboPlayerMiddleClick.setCurrentIndex(4)
         self.comboNumKeysPrimary.setCurrentIndex(1)
         self.comboNumKeysSecondary.setCurrentIndex(2)
+        self.checkMinimizePause.toggled['bool'].connect(self.checkMinimizeRestore.setEnabled) # type: ignore
+        self.checkFFmpegThreadOverride.toggled['bool'].connect(self.spinFFmpegThreads.setEnabled) # type: ignore
+        self.checkZoomSmooth.toggled['bool'].connect(self.spinZoomSmoothFactor.setEnabled) # type: ignore
         self.buttonBox.accepted.connect(settingsDialog.accept) # type: ignore
         self.buttonBox.rejected.connect(settingsDialog.reject) # type: ignore
         self.checkHideIdleCursor.toggled['bool'].connect(self.spinHideIdleCursorDuration.setEnabled) # type: ignore
-        self.checkZoomSmooth.toggled['bool'].connect(self.spinZoomSmoothFactor.setEnabled) # type: ignore
-        self.checkMinimizePause.toggled['bool'].connect(self.checkMinimizeRestore.setEnabled) # type: ignore
-        self.checkFFmpegThreadOverride.toggled['bool'].connect(self.spinFFmpegThreads.setEnabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(settingsDialog)
         settingsDialog.setTabOrder(self.comboThemes, self.buttonRefreshThemes)
         settingsDialog.setTabOrder(self.buttonRefreshThemes, self.lineWindowTitleFormat)
@@ -2384,7 +2410,7 @@ class Ui_settingsDialog(object):
 "Note: This setting can be enabled during a session, but\n"
 "disabling it will have no effect until PyPlayer restarts."))
         self.checkFocusAggressive.setText(_translate("settingsDialog", "Aggressive focus (Windows-only, requires restart)"))
-        self.groupBox_12.setTitle(_translate("settingsDialog", "Focus window on open"))
+        self.groupBox_12.setTitle(_translate("settingsDialog", "Focus window on open..."))
         self.checkFocusOnNormal.setToolTip(_translate("settingsDialog", "If checked, opening media while the window is open in a normal,\n"
 "non-maximized/fullscreen state will raise the window and give it\n"
 "focus. This brings the window to the foreground and allows you\n"
@@ -2429,14 +2455,19 @@ class Ui_settingsDialog(object):
 "and give it focus. This brings the window to the foreground and\n"
 "allows you to use keyboard shortcuts right away."))
         self.checkFocusOnEdit.setText(_translate("settingsDialog", "After saving an edit"))
-        self.groupBox_13.setTitle(_translate("settingsDialog", "Ignore focus settings"))
+        self.groupBox_13.setTitle(_translate("settingsDialog", "Ignore focus settings..."))
         self.checkFocusIgnoreFullscreen.setToolTip(_translate("settingsDialog", "If checked, the window will never be raised or focused if\n"
-"the current foreground window is fullscreen (i.e. a game)."))
-        self.checkFocusIgnoreFullscreen.setText(_translate("settingsDialog", "When foreground is fullscreen (Windows only)"))
+"the current foreground window is fullscreen (e.g. a game)."))
+        self.checkFocusIgnoreFullscreen.setText(_translate("settingsDialog", "When foreground is fullscreen (Windows-only)"))
+        self.checkFocusIgnoreFullscreenEditsOnly.setToolTip(_translate("settingsDialog", "If checked, the window won\'t be raised or focused if the\n"
+"current foreground window is fullscreen (e.g. a game),\n"
+"but only for newly saved files being auto-opened."))
+        self.checkFocusIgnoreFullscreenEditsOnly.setText(_translate("settingsDialog", "Only for edits"))
         self.checkFocusIgnoreAutoplay.setToolTip(_translate("settingsDialog", "If checked, files that are opened through autoplay will never raise or focus the window."))
-        self.checkFocusIgnoreAutoplay.setText(_translate("settingsDialog", "When Autoplay is on"))
-        self.checkFocusIgnoreAudio.setToolTip(_translate("settingsDialog", "If checked, audio files will never raise or focus the window."))
-        self.checkFocusIgnoreAudio.setText(_translate("settingsDialog", "When playing audio files"))
+        self.checkFocusIgnoreAutoplay.setText(_translate("settingsDialog", "When Autoplay opens a new file"))
+        self.checkFocusIgnoreAudio.setToolTip(_translate("settingsDialog", "If checked, audio files will never raise or focus the window,\n"
+"(not including audio files that are auto-opened after an edit)."))
+        self.checkFocusIgnoreAudio.setText(_translate("settingsDialog", "When opening audio files (excluding edits)"))
         self.groupBox_2.setTitle(_translate("settingsDialog", "Auto-resizing"))
         self.checkSnapVideos.setText(_translate("settingsDialog", "Videos"))
         self.checkSnapGifs.setText(_translate("settingsDialog", "GIFs"))
@@ -2970,6 +3001,26 @@ class Ui_settingsDialog(object):
 "file #5, but then rename it so that it becomes file #1, the\n"
 "next file that will play will still be file #6."))
         self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
+        self.groupBox_10.setTitle(_translate("settingsDialog", "If focus is not given after auto-opening an edit..."))
+        self.checkEditFocusRejectedPause.setToolTip(_translate("settingsDialog", "If checked, edits that automatically open after finishing but\n"
+"don\'t give PyPlayer focus will immediately pause the player.\n"
+"\n"
+"The typical scenarios for this would be having edit-focusing\n"
+"disabled or having fullscreen applications (like games) ignore\n"
+"your focus settings, and then having the player pause itself\n"
+"to avoid distracting you after an edit finishes."))
+        self.checkEditFocusRejectedPause.setText(_translate("settingsDialog", "Pause player"))
+        self.checkEditFocusRejectedBeep.setToolTip(_translate("settingsDialog", "If checked, edits that automatically open after finishing but\n"
+"don\'t give PyPlayer focus will play a notification sound.\n"
+"\n"
+"The typical scenarios for this would be having edit-focusing\n"
+"disabled or having fullscreen applications (like games) ignore\n"
+"your focus settings, and instead using the notification sound\n"
+"as an audio cue that your edit has finished."))
+        self.checkEditFocusRejectedBeep.setText(_translate("settingsDialog", "Play beep"))
+        self.checkEditOpenRejectedBeep.setToolTip(_translate("settingsDialog", "If checked, a notification sound will play if an\n"
+"edit finishes but is not automatically opened."))
+        self.checkEditOpenRejectedBeep.setText(_translate("settingsDialog", "Play beep if a newly saved edit is not auto-opened"))
         self.groupBox_16.setTitle(_translate("settingsDialog", "File timestamps"))
         self.checkEditCtimeOnNew.setToolTip(_translate("settingsDialog", "If checked, the current media\'s creation time will be\n"
 "applied to any new files that are saved. Otherwise,\n"
