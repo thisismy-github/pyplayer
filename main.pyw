@@ -1468,6 +1468,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         minimize_to_tray = settings.groupTray.isChecked() and settings.checkTrayClose.isChecked()
         force_close = (event.spontaneous() and not minimize_to_tray) or self.tray_icon is None
 
+        # show deletion prompt if we still have files to delete
         if self.marked_for_deletion:
             logging.info(f'The following files are still marked for deletion, opening prompt: {self.marked_for_deletion}')
             choice = self.show_delete_prompt(exiting=force_close or not event.spontaneous())
@@ -1475,6 +1476,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.close_cancel_selected = True       # required in case .close() was called from qtstart.exit()
                 logging.info('Close cancelled.')
                 return event.ignore()
+
+        # show popup if we still have edits in progress -> cancel all if accepted
+        if self.edits_in_progress and (force_close or not event.spontaneous()):
+            words = ('this', 'edit') if len(self.edits_in_progress) == 1 else ('these', 'edits')
+            choice = qthelpers.getPopupOkCancel(
+                title=f'{words[1].capitalize()} still in progress!',
+                text=(f'You still have {len(self.edits_in_progress)} {words[1]} in progress.\n'
+                      f'Exiting will cancel {words[0]} {words[1]}. Continue?'),
+                **self.get_popup_location_kwargs()
+            ).exec()
+            if choice == QtW.QMessageBox.Cancel:
+                self.close_cancel_selected = True       # required in case .close() was called from qtstart.exit()
+                logging.info('Close cancelled.')
+                return event.ignore()
+            self.cancel_all(wait=True)
 
         self.stop()                                     # stop player
         settings.close()                                # close settings dialog
@@ -5091,21 +5107,23 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # NOTE: this method works on the assumption a cancelled edit isn't removed from...
         # ...`self.edits_in_progress` until its FFmpeg process is confirmed to be killed
-        logging.info('Cancelling all active edits...')
+        log_on_statusbar('Cancelling all active edits...')
         if wait: to_cancel = self.edits_in_progress.copy()
         else:    to_cancel = self.edits_in_progress
 
         for edit in to_cancel:
             edit.cancel()
 
-        if wait:
+        if wait and to_cancel:                  # don't wait if we never had anything to cancel
+            app.processEvents()                 # process events so our statusbar message shows up
             while True:
                 sleep(0.1)
                 for edit in to_cancel:
                     if edit in self.edits_in_progress:
-                        continue
-                break
-            log_on_statusbar('All edits cancelled, killed, and cleaned up.')
+                        break
+                else:                           # else in a for-loop means we didn't break
+                    log_on_statusbar('All edits cancelled, killed, and cleaned up.')
+                    return
 
 
     def pause_all(self, paused: bool = True):
