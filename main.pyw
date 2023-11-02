@@ -846,7 +846,7 @@ class Edit:
                 log_on_statusbar(f'(!) FFmpeg operation failed after {get_verbose_timestamp(get_time() - start)}: {format_exc()}')
 
             # TODO: is there ever a scenario we DON'T want to kill ffmpeg here? doing this lets us delete `temp_infile`
-            # TODO: add setting to NOT delete `temp_infile` on error? (here + `self.cleanup_edit_exception()`)
+            # TODO: add setting to NOT delete `temp_infile` on error? (here + `self._save()`)
             if self.process:
                 kill_process(process)           # aggressively terminate ffmpeg process in case it's still running
             if editing_in_place:
@@ -4244,9 +4244,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def _save(self, dest: str = None, operations: dict = {}):
-        ''' Do not call this directly. Use `save()` instead. Iteration: VI '''
+        ''' Do not call this directly. Use `save()` instead. Iteration: VII '''
         start_time = get_time()
         successful = True
+        noun = ''
 
         # save copies of critical properties that could potentially change while we're saving
         video = self.video.strip()
@@ -4262,13 +4263,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dest_already_exists = exists(dest)
         replacing_original = video == dest
 
-        # what will we do to the media file after saving? (0, 1, or 2)
-        delete_after_save = self.checkDeleteOriginal.checkState()
-        NO_DELETE =   0
-        MARK_DELETE = 1
-        FULL_DELETE = 2
+        # what will we do to our output and original files after saving?
+        open_after_save = None                                          # None means we'll decide after the edit finishes
+        explore_after_save = False
+        delete_after_save = self.checkDeleteOriginal.checkState()       # 0, 1, or 2
 
         # operation aliases
+        op_concat =        operations.get('concatenate', None)          # see `self.concatenate()` for details
         op_replace_audio = operations.get('replace audio', None)        # path to audio track
         op_add_audio =     operations.get('add audio', None)            # path to audio track
         op_isolate_track = operations.get('isolate track', None)        # track to isolate
@@ -4338,7 +4339,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return marquee('You don\'t have FFmpeg installed!')
 
         # get the new ctime/mtime to set out output file to (0 means don't change)
-        new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
+        if not op_concat:                                       # NOTE: concatenation provides its own files
+            new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
 
         # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
         intermediate_file = video                               # the path to the file that will be receiving all changes between operations
@@ -4353,7 +4355,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.locked_files.add(dest)
         self.locked_files.add(final_dest)
         if replacing_original:                                  # ignore deletion setting if we're replacing the original file
-            delete_after_save = NO_DELETE
+            delete_after_save = 0
 
         # open handle to our destination
         dest_handle = open(final_dest, 'a')
@@ -4380,6 +4382,47 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 intermediate_file = temp_image_path
                 with get_PIL_Image().fromqpixmap(image_player.art) as image:
                     image.save(temp_image_path)
+
+            # the code block formerly known as `self._concatenate()`
+            if op_concat:
+                noun = 'Concatenation'
+                files = op_concat['files']
+                open_after_save = op_concat['open']
+                explore_after_save = op_concat['open']
+                delete_after_save = op_concat['delete_mode']
+
+                new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
+                edit.frame_rate = op_concat['frame_rate_hint']
+                edit.frame_count = op_concat['frame_count_hint']
+                if op_concat['encode']:
+                    if not FFPROBE:                             # couldn't probe files -> use special text and indeterminate progress
+                        edit.percent_format = '(re-encode requested, this will take a while)'
+                        self.set_save_progress_max_signal.emit(0)
+
+                    inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
+                    funnysquares = ''.join(f'[{i}:v:0][{i}:a:0]' for i in range(len(files)))
+                    filtercmd = f'-filter_complex "{funnysquares}concat=n={len(files)}:v=1:a=1[outv][outa]"'
+                    cmd = f'{inputs}" {filtercmd} -map "[outv]" -map "[outa]" -vsync 2 %out'
+                    edit.ffmpeg(None, cmd, dest, 'Concatenating')
+
+                # no re-encoding, concatenate (almost instantly) using stream copying
+                else:
+                    intermediate_files = []
+                    for file in files:
+                        temp_filename = file.replace(':', '').replace('/', '').replace('\\', '') + '.ts'
+                        intermediate_file = f'{constants.TEMP_DIR}{sep}{temp_filename}'
+                        try: os.remove(intermediate_file)
+                        except: pass
+                        intermediate_files.append(intermediate_file)
+                        ffmpeg(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
+
+                    # concatentate with ffmpeg
+                    if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{dest}"'
+                    else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{dest}"'
+                    ffmpeg(cmd)
+                    for intermediate_file in intermediate_files:
+                        try: os.remove(intermediate_file)
+                        except: pass
 
             # trimming and fading (controlled using the same start/end points)
             # TODO: there are scenarios where cropping and/or resizing first is better
@@ -4532,7 +4575,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Rotating')
                 if op_rotate_video == 'transpose=clock' or op_rotate_video == 'transpose=cclock':
-                    vwidth, vheight = vheight, vwidth                               # update dimensions
+                    vwidth, vheight = vheight, vwidth           # update dimensions
 
             # replace audio track
             if op_replace_audio is not None:
@@ -4589,9 +4632,62 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 cmd = f'-i %in -filter:a "volume={op_amplify_audio}"'
                 intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Amplifying audio')
 
+        # the code block formerly known as `self.cleanup_edit_exception()`
         except Exception as error:
             successful = False
-            self.cleanup_edit_exception(error, dest, start_time, 'Save')
+            qthelpers.deleteTempPath(dest, 'FFmpeg file')
+
+            # ffmpeg had a memory error
+            text = str(error)
+            if 'malloc of size' in text:
+                start_index = text.find('malloc of size') + 14
+                size = int(text[start_index:text.find('failed', start_index)])
+                if size < 1048576:      size_label = f'{size / 1024:.0f}kb'
+                elif size < 1073741824: size_label = f'{size / 1048576:.2f}mb'
+                else:                   size_label = f'{size / 1073741824:.2f}gb'
+                msg = (f'FFmpeg failed to allocate {size_label} of RAM. Rarely, this'
+                       '\nmay happen even when plenty of free RAM is available.'
+                       '\n\nIf the issue persists, try the following:'
+                       '\n • Check if the issue happens with other files'
+                       '\n • Restart PyPlayer'
+                       '\n • Restart your computer'
+                       '\n • Reinstall FFmpeg'
+                       '\n • Pray'
+                       '\n\nNo changes have been made. Feel free to try again.')
+                self.popup_signal.emit(                         # TODO it *might* be nice to have retry/cancel options
+                    dict(
+                        title='FFmpeg error',
+                        text=msg,
+                        icon='warning',
+                        **self.get_popup_location_kwargs()
+                    )
+                )
+
+            # we tried to concat videos with different dimensions (if we got this far, assume FFprobe isn't available)
+            # -> start by reopening concat dialog with previous files (NOTE: state won't be fully restored)
+            elif 'do not match the corresponding output link' in text:
+                self.concatenate_signal.emit(None, op_concat['files'])
+                header = ('All files must have the same dimensions for re-encoded concatenation.\n'
+                          'You\'ll need to crop or resize the offending files individually.')
+                self.popup_signal.emit(
+                    dict(
+                        title='Concatenation cancelled!',
+                        text=header,
+                        icon='warning',
+                        flags=Qt.WindowStaysOnTopHint,          # needed so it appears over the concat dialog
+                        **self.get_popup_location_kwargs()
+                    )
+                )
+
+            # edit was intentionally cancelled by the user
+            elif text == 'Cancelled.':
+                if not start_time: log_on_statusbar(f'{noun or "Save"} cancelled.')
+                else: log_on_statusbar(f'{noun or "Save"} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
+
+            # edit failed for an unknown reason
+            else:
+                if not start_time: log_on_statusbar(f'(!) {noun.upper() or "SAVE"} FAILED: {format_exc()}')
+                else: log_on_statusbar(f'(!) {noun.upper() or "SAVE"} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
 
         # --- Post-edit cleanup & opening our newly edited media ---
         finally:
@@ -4606,44 +4702,50 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                 # confirm/validate/cleanup our operations
                 if operations and successful:
-                    mark =   delete_after_save == MARK_DELETE
-                    delete = delete_after_save == FULL_DELETE
-                    true_dest = self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, video)
+                    to_delete = video if not op_concat else op_concat['files']
+                    true_dest = self._cleanup_edit_output(dest, final_dest, new_ctime, new_mtime, delete_after_save, to_delete, noun)
                     if not true_dest:
+                        qthelpers.deleteTempPath(dest, 'FFmpeg file')
                         return
 
-                    # only open edited video if user hasn't opened something else TODO make this a setting
-                    if self.video == video:
+                    # auto-open output if desired
+                    if open_after_save if open_after_save is not None else (self.video == video):
+                        remember_old_file = not op_concat and settings.checkCycleRememberOriginalPath.checkState() == 2
                         self.open_from_thread(
                             file=true_dest,
                             _from_edit=True,
                             focus_window=settings.checkFocusOnEdit.isChecked(),
                             pause_if_focus_rejected=settings.checkEditFocusRejectedPause.isChecked(),
                             beep_if_focus_rejected=settings.checkEditFocusRejectedBeep.isChecked(),
-                            update_original_video_path=settings.checkCycleRememberOriginalPath.checkState() != 2
+                            update_original_video_path=not remember_old_file
                         )                               # gifs will often just... pause themselves after an edit
                         if is_gif:                      # -> this is the only way i've found to fix it
                             self.force_pause_signal.emit(False)
 
-                    # log our success, showing on the player too if desired (and the new file wasn't auto-opened)
+                    # handle what to do if the newly edited file is not auto-opened
                     else:
                         if settings.checkEditOpenRejectedBeep.isChecked():
                             app.beep()
                         if settings.checkTextOnSave.isChecked():
-                            show_on_player(f'Changes saved to {true_dest}.')
-                    log_on_statusbar(f'Changes saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
+                            show_on_player(f'{noun or "Changes"} saved to {true_dest}.')
 
-                # log our lack of changes
-                elif successful:
+                    # open output in explorer if desired
+                    if explore_after_save:
+                        qthelpers.openPath(true_dest, explore=True)
+
+                    # log our changes or lack thereof
+                    log_on_statusbar(f'{noun or "Changes"} saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
+                elif successful:                        # log our lack of changes
                     return log_on_statusbar('No changes have been made.')
+
             except:
-                log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
+                log_on_statusbar(f'(!) Post-{noun.lower() or "save"} cleanup failed: {format_exc()}')
             finally:
                 self.locked_files.discard(dest)         # unlock temp destination
                 self.locked_files.discard(final_dest)   # unlock final destination
                 self.setFocus(True)                     # restore keyboard focus so we can use hotkeys again
                 self.remove_edit(edit)                  # remove `Edit` object and update priority
-                logging.info(f'Remaining locked files after edit: {self.locked_files}')
+                logging.info(f'Remaining locked files after {noun.lower() or "edit"}: {self.locked_files}')
 
 
     def update_gif_progress(self, frame: int):
@@ -4893,38 +4995,35 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     # ---------------------
     # >>> FFMPEG <<<
     # ---------------------
-    def cleanup_edit(
+    def _cleanup_edit_output(
         self,
         temp_dest: str,
         final_dest: str,
         ctime: float,
         mtime: float,
-        mark: bool = False,
-        delete: bool = False,
+        delete_mode: int = 0,
         to_delete: str | tuple[str] = None,
-        noun: str = 'Media'
-    ) -> str:
+        noun: str = ''
+    ) -> str | None:
         ''' Ensures `temp_dest` exists, isn't empty, and produces a valid probe.
-            If unsuccessful, an empty string is returned, the specific failure
-            is logged (referring to the file as `noun`), and `temp_dest` is
-            deleted. Once validated, `temp_dest` is renamed to `final_dest`
-            with its timestamps set to `ctime`/`mtime`. If `mark` is True,
-            `to_delete` (which may be either a string or an iterable) is marked
-            for deletion. If `delete` is True, `to_delete` is deleted/recycled
-            outright. If everything is valid but `temp_dest` cannot be renamed,
-            a popup is shown and `temp_dest` is returned. Otherwise, returns
-            `final_dest`.
+            If unsuccessful, None is returned, the specific failure is logged
+            (referring to the file as `noun`), and `temp_dest` is deleted.
+            Once validated, `temp_dest` is renamed to `final_dest` with its
+            timestamps set to `ctime`/`mtime`.
+
+            - `delete_mode=1` - `to_delete` is marked for deletion
+            - `delete_mode=2` - `to_delete` is deleted/recycled outright
+
+            If everything is valid but `temp_dest` cannot be renamed, a popup is
+            shown and `temp_dest` is returned. Otherwise, returns `final_dest`.
 
             NOTE: If `temp_dest` is valid, this function is relatively "slow"
             as we must wait for a fresh probe file to be created. '''
         try:
             if not exists(temp_dest):
-                log_on_statusbar(f'(!) {noun} saved without error, but never actually appeared. Possibly an FFmpeg error. No changes have been made.')
-                return ''
+                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but never actually appeared. Possibly an FFmpeg error. No changes have been made.')
             if os.stat(temp_dest).st_size == 0:
-                log_on_statusbar(f'(!) {noun} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
-                qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
-                return ''
+                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
 
             # next part takes a while so show text on the progress bar if this is the last edit
             if len(self.edits_in_progress) == 1:
@@ -4934,19 +5033,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # ... but cleanup is 100x easier if we do this now rather than later
             new_probe = probe_files(temp_dest, refresh=True, write=False)
             if not new_probe:                   # no probe returned
-                log_on_statusbar(f'(!) {noun} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
-                qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
-                return ''
+                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
             elif not new_probe[temp_dest]:      # empty probe returned
-                log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
-                qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
-                return ''
+                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
 
             # handle deletion behavior
-            if mark:
+            if delete_mode == 1:                # 1 -> mark for deletion
                 if isinstance(to_delete, str): self.marked_for_deletion.add(to_delete)
                 elif to_delete:                self.marked_for_deletion.update(to_delete)
-            elif delete:
+            elif delete_mode == 2:              # 2 -> recycle/delete outright
                 if isinstance(to_delete, str): self.delete(to_delete, cycle=False)
                 elif to_delete:                self.delete(*to_delete, cycle=False)
             #elif replacing_original:           # TODO add setting for this behavior?
@@ -4954,14 +5049,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             #    os.rename(video, temp_name)
             #    video = temp_name
 
-            # rename `dest` back to `final_dest`
-            if self.video == final_dest:
-                self.stop()        # stop player if necessary
+            # rename `dest` back to `final_dest` if possible
+            if self.video == final_dest:        # stop player if necessary
+                self.stop()
             try:
-                if exists(final_dest):
-                    os.replace(temp_dest, final_dest)
-                else:
-                    os.rename(temp_dest, final_dest)
+                if exists(final_dest): os.replace(temp_dest, final_dest)
+                else:                  os.rename(temp_dest, final_dest)
             except PermissionError:
                 dirname = os.path.dirname(temp_dest)
                 temp_filename = os.path.basename(temp_dest)
@@ -4990,48 +5083,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.open_probe_file(file=final_dest, delete=True, verbose=False)
             return final_dest
         except:
-            log_on_statusbar(f'(!) Post-save cleanup failed: {format_exc()}')
-            return ''
+            return log_on_statusbar(f'(!) Post-{noun.lower() or "save"} destination cleanup failed: {format_exc()}')
         finally:                                # make sure `temp_dest` does not actually have a probe file
             self.open_probe_file(file=temp_dest, delete=True, verbose=False)
-
-
-    def cleanup_edit_exception(self, error: Exception, temp_dest: str, start_time: float = 0.0, noun: str = 'Save'):
-        ''' Handles an `error`. Safely deletes `temp_dest`, checks for common
-            errors, and logs the failure appropriately (using `start_time` if
-            provided and referring to the operation(s) as a `noun`). '''
-        qthelpers.deleteTempPath(temp_dest, 'FFmpeg file')
-
-        text = str(error)
-        if 'malloc of size' in text:
-            start_index = text.find('malloc of size') + 14
-            size = int(text[start_index:text.find('failed', start_index)])
-            if size < 1048576:      size_label = f'{size / 1024:.0f}kb'
-            elif size < 1073741824: size_label = f'{size / 1048576:.2f}mb'
-            else:                   size_label = f'{size / 1073741824:.2f}gb'
-            msg = (f'FFmpeg failed to allocate {size_label} of RAM. Rarely, this'
-                   '\nmay happen even when plenty of free RAM is available.'
-                   '\n\nIf the issue persists, try the following:'
-                   '\n • Check if the issue happens with other files'
-                   '\n • Restart PyPlayer'
-                   '\n • Restart your computer'
-                   '\n • Reinstall FFmpeg'
-                   '\n • Pray'
-                   '\n\nNo changes have been made. Feel free to try again.')
-            self.popup_signal.emit(             # TODO it *might* be nice to have retry/cancel options
-                dict(
-                    title='FFmpeg error',
-                    text=msg,
-                    icon='warning',
-                    **self.get_popup_location_kwargs()
-                )
-            )
-        elif text == 'Cancelled.':
-            if not start_time: log_on_statusbar(f'{noun} cancelled.')
-            else: log_on_statusbar(f'{noun} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
-        else:
-            if not start_time: log_on_statusbar(f'(!) {noun.upper()} FAILED: {format_exc()}')
-            else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
 
 
     def is_safe_to_edit(self, *infiles: str, dest: str = None, popup: bool = True) -> bool:
@@ -5679,18 +5733,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     break                                   # we have our files, we have our name -> break loop
 
             logging.info(f'Concatenation dialog files to {output}: {files}')
-            CAT_OPEN = dialog.checkOpen.isChecked()
-            CAT_EXPLORE = dialog.checkExplore.isChecked()
-            CAT_MARK = dialog.checkDelete.checkState() == 1
-            CAT_DELETE = dialog.checkDelete.checkState() == 2
-            CAT_ENCODE = dialog.buttonEncode.isChecked()
+            operations = {
+                'concatenate': {
+                    'files': files,
+                    'encode': dialog.buttonEncode.isChecked(),
+                    'open': dialog.checkOpen.isChecked(),
+                    'explore': dialog.checkExplore.isChecked(),
+                    'delete_mode': dialog.checkDelete.checkState(),
+                    'frame_rate_hint': FRAME_RATE_HINT,
+                    'frame_count_hint': FRAME_COUNT_HINT
+                }
+            }
 
         # >>> concatenate and cleanup <<<
-            Thread(
-                target=self._concatenate,
-                args=(files, output, CAT_ENCODE, CAT_OPEN, CAT_EXPLORE, CAT_MARK, CAT_DELETE, FRAME_RATE_HINT, FRAME_COUNT_HINT),
-                daemon=True
-            ).start()
+            Thread(target=self._save, args=(output, operations), daemon=True).start()
 
         except:
             log_on_statusbar(f'(!) Concatenation preparation failed: {format_exc()}')
@@ -5710,147 +5766,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # reset cursor idle timeout
             self.vlc.idle_timeout_time = get_time() + settings.spinHideIdleCursorDuration.value()
-
-
-    def _concatenate(
-        self,
-        files: list[str],
-        dest: str,
-        encode: bool = False,
-        open: bool = False,
-        explore: bool = False,
-        mark: bool = False,
-        delete: bool = False,
-        frame_rate_hint: float = 0.0,
-        frame_count_hint: int = 0
-    ):
-        ''' Concatenates `files` together in the order they are provided
-            using FFmpeg, saving to `dest`. Re-encodes (with a progress
-            bar using `frame_rate_hint` and `frame_count_hint` hints) if
-            `encode` is True, otherwise stream copying is attempted.
-
-            - `open`    - Opens `dest` after saving, if successful.
-            - `explore` - Opens `dest` in explorer after saving, if successful.
-            - `mark`    - Marks `files` for deletion after saving, if successful.
-            - `delete`  - Deletes/recycles `files` after saving, if successful.
-
-            NOTE: `mark` has priority over `delete`.
-            NOTE: Unlike `self._save()`, this is safe to call independently of
-            `self.concatenate()`, but like `self._save()`, this should only be
-            done through a thread (or the GUI will freeze while encoding). '''
-
-        start_time = get_time()
-        successful = True
-        dest_already_exists = exists(dest)
-
-        # calculate timestamps for final output based on our input files
-        new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
-
-        # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
-        final_dest = dest
-        dest = add_path_suffix(dest, '_temp', unique=True)
-
-        # lock both temporary and actual destination
-        self.locked_files.add(dest)
-        self.locked_files.add(final_dest)
-
-        # open handle to our destination
-        dest_handle = open(final_dest, 'a')
-
-        try:
-            edit = Edit(final_dest)
-            edit.frame_rate = frame_rate_hint
-            edit.frame_count = frame_count_hint
-            self.add_edit(edit)
-
-            # re-encode concatenation (like "precise" trimming) using filter_complex, in a separate thread
-            if encode:
-                if not FFPROBE:                             # couldn't probe files -> use special text and indeterminate progress
-                    edit.percent_format = '(re-encode requested, this will take a while)'
-                    self.set_save_progress_max_signal.emit(0)
-
-                inputs = '-i "' + '" -i "'.join(files)      # ↓ "[0:v:0][0:a:0][1:v:0][1:a:0]", etc.
-                funnysquares = ''.join(f'[{i}:v:0][{i}:a:0]' for i in range(len(files)))
-                filtercmd = f'-filter_complex "{funnysquares}concat=n={len(files)}:v=1:a=1[outv][outa]"'
-                cmd = f'{inputs}" {filtercmd} -map "[outv]" -map "[outa]" -vsync 2 %out'
-                edit.ffmpeg(None, cmd, dest, 'Concatenating')
-
-            # no re-encoding, concatenate (almost instantly) using stream copying
-            else:
-                intermediate_files = []
-                for file in files:
-                    temp_filename = file.replace(':', '').replace('/', '').replace('\\', '') + '.ts'
-                    intermediate_file = f'{constants.TEMP_DIR}{sep}{temp_filename}'
-                    try: os.remove(intermediate_file)
-                    except: pass
-                    intermediate_files.append(intermediate_file)
-                    ffmpeg(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
-
-                # concatentate with ffmpeg
-                if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{dest}"'
-                else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{dest}"'
-                ffmpeg(cmd)
-                for intermediate_file in intermediate_files:
-                    try: os.remove(intermediate_file)
-                    except: pass
-
-        except Exception as error:
-            successful = False
-
-            # handle videos with different dimensions (if we got this far, assume FFprobe isn't available)
-            if 'do not match the corresponding output link' in str(error):
-                qthelpers.deleteTempPath(dest, 'FFmpeg file')
-                self.concatenate_signal.emit(None, files)   # reopen concat dialog with previous files (NOTE: state won't be fully restored)
-
-                header = ('All files must have the same dimensions for re-encoded concatenation.\n'
-                          'You\'ll need to crop or resize the offending files individually.')
-                self.popup_signal.emit(
-                    dict(
-                        title='Concatenation cancelled!',
-                        text=header,
-                        icon='warning',
-                        flags=Qt.WindowStaysOnTopHint,      # needed so it appears over the concat dialog
-                        **self.get_popup_location_kwargs()
-                    )
-                )
-
-            # do normal edit exception handling
-            else:
-                self.cleanup_edit_exception(error, dest, start_time, 'Concatenation')
-
-        # --- Post-concat cleanup & opening/exploring our newly edited media ---
-        finally:
-            try:
-                # close handle to destination and delete temp file if needed
-                close_handle(dest_handle, not dest_already_exists)
-
-                # confirm/validate/cleanup our output
-                if successful:
-                    true_dest = self.cleanup_edit(dest, final_dest, new_ctime, new_mtime, mark, delete, files, 'Concatenation')
-                    if not true_dest:
-                        return
-
-                    if open:
-                        self.open_from_thread(
-                            file=true_dest,
-                            _from_edit=True,
-                            focus_window=settings.checkFocusOnEdit.isChecked(),
-                            pause_if_focus_rejected=True
-                        )
-                    elif settings.checkEditOpenRejectedBeep.isChecked():
-                        app.beep()
-                    if explore:
-                        qthelpers.openPath(true_dest, explore=True)
-
-                    # log our success
-                    log_on_statusbar(f'Concatenation saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
-            except:
-                log_on_statusbar(f'(!) Post-concatenation cleanup failed: {format_exc()}')
-            finally:
-                self.locked_files.discard(dest)
-                self.locked_files.discard(final_dest)
-                self.remove_edit(edit)      # remove `Edit` object and update priority
-                logging.info(f'Remaining locked files after concatenation: {self.locked_files}')
 
 
     def resize_media(self):                 # https://ottverse.com/change-resolution-resize-scale-video-using-ffmpeg/ TODO this should probably have an advanced crf option
