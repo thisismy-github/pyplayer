@@ -1014,8 +1014,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.player = self.vlc.player                                        # NOTE: this is a secondary alias for other files to use
         self.is_trim_mode = lambda: self.trim_mode_action_group.checkedAction() in (self.actionTrimAuto, self.actionTrimPrecise)
         self.menuRecent.setToolTipsVisible(True)
-        self.menuAudio.insertMenu(self.actionAmplifyVolume, self.menuTrimMode)
-        self.menuAudio.addAction(self.actionResize)
+        self.menuAudio.insertMenu(self.menuAudio.actions()[2], self.menuTrimMode)
+        self.menuAudio.insertAction(self.menuAudio.actions()[-1], self.actionResize)
         self.dockControls.setTitleBarWidget(QtW.QWidget(self.dockControls))  # disables QDockWidget's unique titlebar
         self.lineOutput.setIgnoreAll(False)
         self.frameAdvancedControls.setDragTarget(self)
@@ -6010,8 +6010,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def isolate_track(self, *, audio: bool = True):
         if not self.video:            return show_on_statusbar('No media is playing.', 10000)
         if self.mime_type == 'image': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
-        if self.mime_type == 'audio': return show_on_statusbar('Track removal for audio files is not supported yet.', 10000)
-        if player.audio_get_track_count() == 0:
+
+        track_count = player.audio_get_track_count()
+        if self.mime_type == 'audio':
+            if track_count == 1: return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
+            else:                return show_on_statusbar('Track removal for audio files is not supported yet.', 10000)
+        elif track_count == 0:
             if audio: return show_on_statusbar('There are no audio tracks. If you want to remove the video too, you might as well just close your eyes.', 10000)
             else:     return show_on_statusbar('There are no audio tracks left to remove.', 10000)
 
@@ -6214,10 +6218,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else:
             label = QtW.QLabel('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.', dialog)
             wline = QtW.QLineEdit(max_time_string, dialog)
-            wbutton = QtW.QPushButton('Length:', dialog)
+            wbutton = QtW.QPushButton('Duration:', dialog)
             wbutton.clicked.connect(lambda: wline.setText(max_time_string))
-            wbutton.setToolTip(f'Reset length to native length ({max_time_string}).')
-            wbutton.setMaximumWidth(50)
+            wbutton.setToolTip(f'Reset to native duration ({max_time_string}).')
+            wbutton.setMaximumWidth(58)
 
         label.setAlignment(Qt.AlignCenter)
         wline.selectAll()                       # start with text in width lineEdit selected, for quicker editing

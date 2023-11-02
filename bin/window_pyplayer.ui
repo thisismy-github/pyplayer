@@ -186,14 +186,15 @@
     </property>
     <widget class="QMenu" name="menuAudioTracks">
      <property name="title">
-      <string>Audio &amp;Tracks</string>
+      <string>Au&amp;dio Tracks</string>
      </property>
     </widget>
     <addaction name="menuAudioTracks"/>
     <addaction name="separator"/>
-    <addaction name="actionAmplifyVolume"/>
-    <addaction name="actionReplaceAudio"/>
     <addaction name="actionAddAudioTrack"/>
+    <addaction name="actionIsolateVideo"/>
+    <addaction name="actionReplaceAudio"/>
+    <addaction name="actionAmplifyVolume"/>
     <addaction name="actionIsolateAudio"/>
    </widget>
    <widget class="QMenu" name="menuVideo">
@@ -254,7 +255,6 @@
     <addaction name="menuConcatenate"/>
     <addaction name="menuRotate"/>
     <addaction name="menuTrimMode"/>
-    <addaction name="actionIsolateVideo"/>
     <addaction name="actionResize"/>
     <addaction name="actionCrop"/>
    </widget>
@@ -1313,12 +1313,12 @@ Right-click for more options.</string>
   </action>
   <action name="actionIsolateVideo">
    <property name="text">
-    <string>&amp;Isolate video</string>
+    <string>Re&amp;move audio</string>
    </property>
   </action>
   <action name="actionIsolateAudio">
    <property name="text">
-    <string>&amp;Isolate audio track</string>
+    <string>E&amp;xtract audio track</string>
    </property>
   </action>
   <action name="actionReplaceAudio">
@@ -1366,7 +1366,7 @@ Right-click for more options.</string>
   </action>
   <action name="actionAddAudioTrack">
    <property name="text">
-    <string>A&amp;dd audio track</string>
+    <string>Add aud&amp;io</string>
    </property>
   </action>
   <action name="actionCrop">
