@@ -420,30 +420,31 @@ def suspend_process(process: subprocess.Popen, suspend: bool = True) -> int:
         process.send_signal(signal.SIGSTOP if suspend else signal.SIGCONT)
         return 0
 
+    # NOTE: this is all just security theater and could reduced to 7 lines, but whatever
     from ctypes import wintypes, WinDLL
 
-    # dll and function definitions
-    ntdll = WinDLL("ntdll", use_last_error=True)
-    kernel32 = WinDLL("kernel32", use_last_error=True)
-    CloseHandle = kernel32.CloseHandle
-    OpenProcess = kernel32.OpenProcess
-
-    # defining return/argument types for the above functions for type-safety
-    CloseHandle.restype = wintypes.LONG
-    CloseHandle.argtypes = (wintypes.HANDLE,)
-    OpenProcess.restype = wintypes.HANDLE
-    OpenProcess.argtypes = (
-        wintypes.DWORD,
-        wintypes.BOOL,
-        wintypes.DWORD,
-    )
-
-    # open limited handle to process using its pid (closed in the finally-statement)
-    access_flags = 2048 | 4096      # PROCESS_SUSPEND_RESUME | PROCESS_QUERY_LIMITED_INFORMATION
-    process_handle = OpenProcess(access_flags, False, process.pid)
-
-    # define and call either ntdll.NtSuspendProcess or ntdll.NtResumeProcess
     try:
+        # dll and function definitions
+        ntdll = WinDLL("ntdll", use_last_error=True)
+        kernel32 = WinDLL("kernel32", use_last_error=True)
+        CloseHandle = kernel32.CloseHandle
+        OpenProcess = kernel32.OpenProcess
+
+        # defining return/argument types for the above functions for type-safety
+        CloseHandle.restype = wintypes.LONG
+        CloseHandle.argtypes = (wintypes.HANDLE,)
+        OpenProcess.restype = wintypes.HANDLE
+        OpenProcess.argtypes = (
+            wintypes.DWORD,
+            wintypes.BOOL,
+            wintypes.DWORD,
+        )
+
+        # open limited handle to process using its pid (closed in the finally-statement)
+        access_flags = 2048 | 4096      # PROCESS_SUSPEND_RESUME | PROCESS_QUERY_LIMITED_INFORMATION
+        process_handle = OpenProcess(access_flags, False, process.pid)
+
+        # define and call either ntdll.NtSuspendProcess or ntdll.NtResumeProcess
         if suspend:
             logger.info(f'Suspending process {process} at handle {process_handle}...')
             NtSuspendProcess = ntdll.NtSuspendProcess

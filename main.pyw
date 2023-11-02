@@ -823,21 +823,13 @@ class Edit:
                     logging.info(f'New FFmpeg output from {self}:\n{progress_lines}')
                     lines_to_log.clear()
 
-            # terminate process just in case ffmpeg got locked up
+            # terminate process just in case ffmpeg got locked up at the end
             try: process.terminate()
             except: pass
 
             # cleanup temp file, if needed (editing in place means we had to rename `infile`)
             if editing_in_place:
-                try:
-                    logging.info(f'Renaming temporary FFmpeg file "{temp_infile}" back to "{infile}"')
-                    if exists(infile):
-                        os.replace(temp_infile, infile)
-                    else:
-                        os.rename(temp_infile, infile)
-                except PermissionError:
-                    logging.warning(f'(!) Rename failed, returning temporary file instead ({temp_infile})')
-                    outfile = temp_infile
+                qthelpers.deleteTempPath(temp_infile)
 
             log_on_statusbar(f'FFmpeg operation succeeded after {get_verbose_timestamp(get_time() - start)}.')
             return outfile
@@ -5599,6 +5591,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 show_on_statusbar('(!) Not enough RAM to probe files before concatenation. Going in blind.')
                                 probes = {}
 
+                        # get dimensions, total frame count, and average FPS of all `files`
                         if probes:
                             for file, probe_data in probes.items():
                                 for stream in probe_data['streams']:
@@ -5610,8 +5603,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                         fps_parts = stream['avg_frame_rate'].split('/')
                                         fps = int(fps_parts[0]) / int(fps_parts[1])
                                         duration = float(probe_data['format']['duration'])
-                                        new_frame_total += math.ceil(duration * fps)
-                                        fps_sum += fps      # ↓ the average FPS of all `files`
+                                        occurances = files.count(file)
+                                        new_frame_total += (math.ceil(duration * fps) * occurances)
+                                        fps_sum += fps * occurances
                             FRAME_RATE_HINT = fps_sum / len(probes)
                             FRAME_COUNT_HINT = new_frame_total
 
@@ -6185,7 +6179,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
         dialog = qthelpers.getDialog(
-            title='Input desired ' + 'size' if dimensions else 'length',
+            title='Input desired ' + ('size' if dimensions else 'duration'),
             fixedSize=(0, 0),
             flags=Qt.Tool,
             **self.get_popup_location_kwargs()
@@ -6221,7 +6215,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             label = QtW.QLabel('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.', dialog)
             wline = QtW.QLineEdit(max_time_string, dialog)
             wbutton = QtW.QPushButton('Length:', dialog)
-            wbutton.clicked.connect(max_time_string)
+            wbutton.clicked.connect(lambda: wline.setText(max_time_string))
             wbutton.setToolTip(f'Reset length to native length ({max_time_string}).')
             wbutton.setMaximumWidth(50)
 

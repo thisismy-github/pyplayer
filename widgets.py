@@ -13,7 +13,7 @@ from PyQt5 import QtWidgets as QtW
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg, ffmpeg_async, get_hms, get_PIL_Image, get_unique_path
+from util import ffmpeg_async, get_hms, get_PIL_Image, get_unique_path
 
 import os
 import time
@@ -1813,8 +1813,8 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
         if files:
             self.add(files=files)
 
-        # reset cursor so it doesn't get erroneously hidden
-        qthelpers.resetCursor(app)
+        # reset and force arrow cursor so it doesn't get erroneously hidden
+        qthelpers.setCursor(Qt.ArrowCursor)
 
         # run QWidget's built-in behavior
         super().dropEvent(event)
