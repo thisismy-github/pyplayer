@@ -285,15 +285,13 @@ and vice versa.</string>
              <item row="4" column="0">
               <widget class="QLabel" name="label_58">
                <property name="toolTip">
-                <string>The number of files to remember between sessions
-after being played.
+                <string>The number of opened files to remember between sessions.
 
-NOTE: Setting this to 0 will not clear the existing list
-unless you manually clear it or restart PyPlayer.
+Note: At 25 or less, recent files are validated on launch to
+make sure they still exist. Otherwise, they're loaded as-is.
 
-NOTE: At greater than 25, files will be loaded as-is
-each session, even if some of the files no longer exist.
-Otherwise, the recent files are validated on launch.</string>
+Note: Lowering this value will not remove files
+from the existing list until you play a new file.</string>
                </property>
                <property name="text">
                 <string>Recent files to track</string>
@@ -302,6 +300,15 @@ Otherwise, the recent files are validated on launch.</string>
              </item>
              <item row="4" column="1">
               <widget class="QSpinBox" name="spinRecentFiles">
+               <property name="toolTip">
+                <string>The number of opened files to remember between sessions.
+
+Note: At 25 or less, recent files are validated on launch to
+make sure they still exist. Otherwise, they're loaded as-is.
+
+Note: Lowering this value will not remove files
+from the existing list until you play a new file.</string>
+               </property>
                <property name="specialValueText">
                 <string>Do not track recent files</string>
                </property>
@@ -3531,7 +3538,7 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
-             <item row="1" column="0">
+             <item row="2" column="0">
               <widget class="QLabel" name="label_14">
                <property name="toolTip">
                 <string notr="true">What priority level FFmpeg processes should have while running.
@@ -3562,7 +3569,7 @@ were already started.</string>
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
+             <item row="2" column="1">
               <widget class="QComboBox" name="comboFFmpegPriority">
                <property name="toolTip">
                 <string>What priority level FFmpeg processes should have while running.
@@ -3618,7 +3625,7 @@ were already started.</string>
                </item>
               </widget>
              </item>
-             <item row="2" column="0">
+             <item row="3" column="0">
               <widget class="QCheckBox" name="checkFFmpegThreadOverride">
                <property name="minimumSize">
                 <size>
@@ -3637,7 +3644,7 @@ Note: Don't use this if you don't know what you're doing.</string>
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
+             <item row="3" column="1">
               <widget class="QSpinBox" name="spinFFmpegThreads">
                <property name="enabled">
                 <bool>false</bool>
@@ -3665,7 +3672,7 @@ Note: Don't use this if you don't know what you're doing.</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="0" colspan="2">
+             <item row="4" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRenameMissingImages">
                <property name="toolTip">
                 <string>If checked, renaming an image file that doesn't
@@ -3683,7 +3690,7 @@ doesn't exist anymore will do nothing.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="0" colspan="2">
+             <item row="5" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsForceOnNoName">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -3701,7 +3708,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0" colspan="2">
+             <item row="6" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default to the current
@@ -3716,7 +3723,7 @@ the most recently accessed folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -3743,6 +3750,49 @@ next file that will play will still be file #6.</string>
               </widget>
              </item>
              <item row="8" column="0" colspan="2">
+              <widget class="QGroupBox" name="groupBox_11">
+               <property name="title">
+                <string>If a newly saved edit is not auto-opened...</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayout_53">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>2</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>4</number>
+                </property>
+                <item>
+                 <widget class="QCheckBox" name="checkEditOpenRejectedAddToRecents">
+                  <property name="toolTip">
+                   <string>If checked, edits that do not automatically open after finishing will
+instead add themselves to your recent files list for easy access.</string>
+                  </property>
+                  <property name="text">
+                   <string>Add to recent files list</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="checkEditOpenRejectedBeep">
+                  <property name="toolTip">
+                   <string>If checked, a notification sound will play if an
+edit finishes but is not automatically opened.</string>
+                  </property>
+                  <property name="text">
+                   <string>Play beep</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="9" column="0" colspan="2">
               <widget class="QGroupBox" name="groupBox_10">
                <property name="title">
                 <string>If focus is not given after auto-opening an edit...</string>
@@ -3798,14 +3848,47 @@ as an audio cue that your edit has finished.</string>
                </layout>
               </widget>
              </item>
-             <item row="7" column="0" colspan="2">
-              <widget class="QCheckBox" name="checkEditOpenRejectedBeep">
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_15">
                <property name="toolTip">
-                <string>If checked, a notification sound will play if an
-edit finishes but is not automatically opened.</string>
+                <string notr="true">The number of output paths to remember during a session.
+These can be accessed by right-clicking the statusbar.
+
+Note: Setting this to 0 will hide the &quot;Recent edits&quot; submenu.
+
+Note: Lowering this value will not remove edits from the
+existing list until you save a new edit.</string>
                </property>
                <property name="text">
-                <string>Play beep if a newly saved edit is not auto-opened</string>
+                <string notr="true">Recent edits to track</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QSpinBox" name="spinRecentEdits">
+               <property name="toolTip">
+                <string>The number of output paths to remember during a session.
+These can be accessed by right-clicking the statusbar.
+
+Note: Setting this to 0 will hide the &quot;Recent edits&quot; submenu.
+
+Note: Lowering this value will not remove edits from the
+existing list until you save a new edit.</string>
+               </property>
+               <property name="specialValueText">
+                <string>Do not track recent edits</string>
+               </property>
+               <property name="suffix">
+                <string> edit(s)</string>
+               </property>
+               <property name="prefix">
+                <string>The last </string>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>25</number>
                </property>
               </widget>
              </item>

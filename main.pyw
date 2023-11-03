@@ -950,9 +950,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.video = ''
         self.video_original_path = ''
         self.locked_files: set[str] = set()
+        self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
         self.last_video = ''                    # NOTE: the actual last non-edited file played
         self.recent_files: list[str] = []       # NOTE: the user-friendly list of recent files
-        self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
+        self.recent_edits: list[str] = []       # NOTE: a list of recent edit output destinations
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
         self.extension_label = '?'
@@ -1060,7 +1061,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.frameVolume.mousePressEvent = self.frameVolumeMousePressEvent
         self.buttonPause.contextMenuEvent = self.buttonPauseContextMenuEvent
         self.buttonPause.mousePressEvent = self.buttonPauseMousePressEvent
-        self.save_progress_bar.contextMenuEvent = self.editProgressBarContextMenuEvent
+        self.statusbar.contextMenuEvent = self.editProgressBarContextMenuEvent
         self.save_progress_bar.mouseReleaseEvent = self.editProgressBarMouseReleaseEvent
 
         # set default icons for various buttons
@@ -2096,6 +2097,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context = QtW.QMenu(self)
         context.setToolTipsVisible(True)
 
+        # add recent edits submenu + separator to top of menu if desired
+        if settings.spinRecentEdits.value():
+            menu_recent = QtW.QMenu('Recent edits', context)
+            menu_recent.setToolTipsVisible(True)
+            if self.recent_edits:
+                menu_recent.triggered.connect(lambda action: self.open_recent_file(action.toolTip(), update=True, edits=True))
+                for path in reversed(self.recent_edits):
+                    menu_recent.addAction(os.path.basename(path)).setToolTip(path)
+            else:
+                menu_recent.addAction('No edits this session').setEnabled(False)
+            context.addMenu(menu_recent)
+            context.addSeparator()
+
+        # return early if no edits are actually active
+        total_edits = len(self.edits_in_progress)
+        if not total_edits:
+            context.addAction('No edits in progress').setEnabled(False)
+            context.exec(event.globalPos())                 # NOTE: !!! EXTREMELY IMPORTANT -> do NOT return this directly...
+            return                                          # ...or the `self.open()` actions above will crash??????
+
         # workarounds for python bug/oddity involving creating lambdas in iterables
         # (needed for the actions to actually remember which edit they belong to)
         get_cancel_lambda =   lambda edit: lambda: edit.cancel()
@@ -2105,7 +2126,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # this + the above workarounds (edit: now just the four) took like two hours to get working
         # NOTE: this loop could be much shorter, but this is way easier to read
-        total_edits = len(self.edits_in_progress)
         for edit in self.edits_in_progress:
 
             # set edit's menu title with text, operation count, and (operation) progress
@@ -2542,31 +2562,43 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.open_recent_file(path, update=False)
 
 
-    def open_recent_file(self, path: str, update: bool, open: bool = True):
-        ''' Opens `path` from `self.recent_files` if possible. If `open` and
-            `update` are both True, `path` is opened and moved to the top of the
-            recent list, otherwise it retains its current position. If `open` is
-            False, `path` is moved to the top of the recent list without opening,
-            regardless of `update`. If `path` doesn't exist, it is removed from
-            the recent list, regardless of `update`. '''
+    def open_recent_file(self, path: str, update: bool, open: bool = True, edits: bool = False):
+        ''' Opens `path` from `self.recent_files` (or `self.recent_edits` if
+            `edits` is True) if it exists, even if it's not actually in the
+            list. If `path` doesn't exist and IS in the list, it is removed.
+
+            - `update` - Move `path` to the top of `self.recent_files`
+                         (regardless of `edits`).
+            - `open`   - Open `path`. If False, `path` is moved to the top of
+                         its associated list (regardless of `update`). '''
         try:
-            recent_files = self.recent_files
+            if edits:
+                recents = self.recent_edits
+                open = True
+                noun = 'edit'
+            else:
+                recents = self.recent_files
+                noun = 'file'
+
             if path in self.locked_files:           # recent file is locked (it's actively being edited)
-                log_on_statusbar(f'Recent file {path} is currently being worked on.')
+                log_on_statusbar(f'Recent {noun} {path} is currently being worked on.')
             elif os.path.isfile(path):
                 if open:
                     if self.open(path, update_recent_list=update) != -1:
-                        log_on_statusbar(f'Opened recent file #{len(recent_files) - recent_files.index(path)}: {path}')
+                        log_on_statusbar(f'Opened recent file #{len(recents) - recents.index(path)}: {path}')
                     else:
                         log_on_statusbar(f'Recent file {path} could not be opened.')
-                        recent_files.remove(path)
+                        recents.remove(path)
                 else:                               # don't open, just move file to top
-                    recent_files.append(recent_files.pop(recent_files.index(path)))
+                    recents.append(recents.pop(recents.index(path)))
             else:
-                log_on_statusbar(f'Recent file {path} no longer exists.')
-                recent_files.remove(path)
-        except ValueError: pass                     # ValueError -> path was not actually in recent_files
-        finally: self.refresh_recent_menu()
+                log_on_statusbar(f'Recent {noun} {path} no longer exists.')
+                recents.remove(path)
+        except ValueError:                          # ValueError -> path was not actually in recent_files/edits
+            pass
+        finally:
+            if not edits:
+                self.refresh_recent_menu()
 
 
     def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True) -> str:
@@ -4726,12 +4758,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     else:
                         if settings.checkEditOpenRejectedBeep.isChecked():
                             app.beep()
+                        if settings.checkEditOpenRejectedAddToRecents.isChecked():
+                            recent_files = self.recent_files
+                            if true_dest in recent_files:
+                                recent_files.append(recent_files.pop(recent_files.index(true_dest)))
+                            else:                       # ^ move pre-existing recent file to front
+                                recent_files.append(true_dest)
+                                max_len = settings.spinRecentFiles.value()
+                                self.recent_files = recent_files[-max_len:]
                         if settings.checkTextOnSave.isChecked():
                             show_on_player(f'{noun or "Changes"} saved to {true_dest}.')
 
                     # open output in explorer if desired
                     if explore_after_save:
                         qthelpers.openPath(true_dest, explore=True)
+
+                    # add our successful edit to our recent list (max of 25)
+                    recent_edits = self.recent_edits
+                    if true_dest in recent_edits:       # move pre-existing recent file to front
+                        recent_edits.append(recent_edits.pop(recent_edits.index(true_dest)))
+                    else:
+                        recent_edits.append(true_dest)
+                        max_len = settings.spinRecentEdits.value()
+                        self.recent_edits = recent_edits[-max_len:]
 
                     # log our changes or lack thereof
                     log_on_statusbar(f'{noun or "Changes"} saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')

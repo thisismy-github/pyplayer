@@ -1076,7 +1076,7 @@ class Ui_settingsDialog(object):
 "were already started.")
         self.label_14.setText("FFmpeg priority level")
         self.label_14.setObjectName("label_14")
-        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_14)
+        self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_14)
         self.comboFFmpegPriority = QtWidgets.QComboBox(self.tabEditing)
         self.comboFFmpegPriority.setObjectName("comboFFmpegPriority")
         self.comboFFmpegPriority.addItem("")
@@ -1084,33 +1084,46 @@ class Ui_settingsDialog(object):
         self.comboFFmpegPriority.addItem("")
         self.comboFFmpegPriority.addItem("")
         self.comboFFmpegPriority.addItem("")
-        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.comboFFmpegPriority)
+        self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.comboFFmpegPriority)
         self.checkFFmpegThreadOverride = QtWidgets.QCheckBox(self.tabEditing)
         self.checkFFmpegThreadOverride.setMinimumSize(QtCore.QSize(100, 0))
         self.checkFFmpegThreadOverride.setObjectName("checkFFmpegThreadOverride")
-        self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.checkFFmpegThreadOverride)
+        self.formLayout_18.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.checkFFmpegThreadOverride)
         self.spinFFmpegThreads = QtWidgets.QSpinBox(self.tabEditing)
         self.spinFFmpegThreads.setEnabled(False)
         self.spinFFmpegThreads.setMaximum(1024)
         self.spinFFmpegThreads.setObjectName("spinFFmpegThreads")
-        self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinFFmpegThreads)
+        self.formLayout_18.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.spinFFmpegThreads)
         self.checkRenameMissingImages = QtWidgets.QCheckBox(self.tabEditing)
         self.checkRenameMissingImages.setChecked(True)
         self.checkRenameMissingImages.setObjectName("checkRenameMissingImages")
-        self.formLayout_18.setWidget(3, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
+        self.formLayout_18.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.checkRenameMissingImages)
         self.checkSaveAsForceOnNoName = QtWidgets.QCheckBox(self.tabEditing)
         self.checkSaveAsForceOnNoName.setChecked(True)
         self.checkSaveAsForceOnNoName.setObjectName("checkSaveAsForceOnNoName")
-        self.formLayout_18.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsForceOnNoName)
+        self.formLayout_18.setWidget(5, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsForceOnNoName)
         self.checkSaveAsUseMediaFolder = QtWidgets.QCheckBox(self.tabEditing)
         self.checkSaveAsUseMediaFolder.setChecked(True)
         self.checkSaveAsUseMediaFolder.setObjectName("checkSaveAsUseMediaFolder")
-        self.formLayout_18.setWidget(5, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
+        self.formLayout_18.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkSaveAsUseMediaFolder)
         self.checkCycleRememberOriginalPath = QtWidgets.QCheckBox(self.tabEditing)
         self.checkCycleRememberOriginalPath.setChecked(True)
         self.checkCycleRememberOriginalPath.setTristate(True)
         self.checkCycleRememberOriginalPath.setObjectName("checkCycleRememberOriginalPath")
-        self.formLayout_18.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.formLayout_18.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkCycleRememberOriginalPath)
+        self.groupBox_11 = QtWidgets.QGroupBox(self.tabEditing)
+        self.groupBox_11.setObjectName("groupBox_11")
+        self.horizontalLayout_53 = QtWidgets.QHBoxLayout(self.groupBox_11)
+        self.horizontalLayout_53.setContentsMargins(-1, 2, 0, 4)
+        self.horizontalLayout_53.setSpacing(0)
+        self.horizontalLayout_53.setObjectName("horizontalLayout_53")
+        self.checkEditOpenRejectedAddToRecents = QtWidgets.QCheckBox(self.groupBox_11)
+        self.checkEditOpenRejectedAddToRecents.setObjectName("checkEditOpenRejectedAddToRecents")
+        self.horizontalLayout_53.addWidget(self.checkEditOpenRejectedAddToRecents)
+        self.checkEditOpenRejectedBeep = QtWidgets.QCheckBox(self.groupBox_11)
+        self.checkEditOpenRejectedBeep.setObjectName("checkEditOpenRejectedBeep")
+        self.horizontalLayout_53.addWidget(self.checkEditOpenRejectedBeep)
+        self.formLayout_18.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.groupBox_11)
         self.groupBox_10 = QtWidgets.QGroupBox(self.tabEditing)
         self.groupBox_10.setObjectName("groupBox_10")
         self.horizontalLayout_52 = QtWidgets.QHBoxLayout(self.groupBox_10)
@@ -1124,10 +1137,23 @@ class Ui_settingsDialog(object):
         self.checkEditFocusRejectedBeep = QtWidgets.QCheckBox(self.groupBox_10)
         self.checkEditFocusRejectedBeep.setObjectName("checkEditFocusRejectedBeep")
         self.horizontalLayout_52.addWidget(self.checkEditFocusRejectedBeep)
-        self.formLayout_18.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.groupBox_10)
-        self.checkEditOpenRejectedBeep = QtWidgets.QCheckBox(self.tabEditing)
-        self.checkEditOpenRejectedBeep.setObjectName("checkEditOpenRejectedBeep")
-        self.formLayout_18.setWidget(7, QtWidgets.QFormLayout.SpanningRole, self.checkEditOpenRejectedBeep)
+        self.formLayout_18.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.groupBox_10)
+        self.label_15 = QtWidgets.QLabel(self.tabEditing)
+        self.label_15.setToolTip("The number of output paths to remember during a session.\n"
+"These can be accessed by right-clicking the statusbar.\n"
+"\n"
+"Note: Setting this to 0 will hide the \"Recent edits\" submenu.\n"
+"\n"
+"Note: Lowering this value will not remove edits from the\n"
+"existing list until you save a new edit.")
+        self.label_15.setText("Recent edits to track")
+        self.label_15.setObjectName("label_15")
+        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_15)
+        self.spinRecentEdits = QtWidgets.QSpinBox(self.tabEditing)
+        self.spinRecentEdits.setMaximum(1000)
+        self.spinRecentEdits.setProperty("value", 25)
+        self.spinRecentEdits.setObjectName("spinRecentEdits")
+        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.spinRecentEdits)
         self.verticalLayout_19.addLayout(self.formLayout_18)
         self.groupBox_16 = QtWidgets.QGroupBox(self.tabEditing)
         self.groupBox_16.setObjectName("groupBox_16")
@@ -2317,16 +2343,21 @@ class Ui_settingsDialog(object):
 "NOTE: On Windows, \"%-\" is represented by \"%#\" instead.\n"
 "PyPlayer will automatically make this conversion for you,\n"
 "and vice versa."))
-        self.label_58.setToolTip(_translate("settingsDialog", "The number of files to remember between sessions\n"
-"after being played.\n"
+        self.label_58.setToolTip(_translate("settingsDialog", "The number of opened files to remember between sessions.\n"
 "\n"
-"NOTE: Setting this to 0 will not clear the existing list\n"
-"unless you manually clear it or restart PyPlayer.\n"
+"Note: At 25 or less, recent files are validated on launch to\n"
+"make sure they still exist. Otherwise, they\'re loaded as-is.\n"
 "\n"
-"NOTE: At greater than 25, files will be loaded as-is\n"
-"each session, even if some of the files no longer exist.\n"
-"Otherwise, the recent files are validated on launch."))
+"Note: Lowering this value will not remove files\n"
+"from the existing list until you play a new file."))
         self.label_58.setText(_translate("settingsDialog", "Recent files to track"))
+        self.spinRecentFiles.setToolTip(_translate("settingsDialog", "The number of opened files to remember between sessions.\n"
+"\n"
+"Note: At 25 or less, recent files are validated on launch to\n"
+"make sure they still exist. Otherwise, they\'re loaded as-is.\n"
+"\n"
+"Note: Lowering this value will not remove files\n"
+"from the existing list until you play a new file."))
         self.spinRecentFiles.setSpecialValueText(_translate("settingsDialog", "Do not track recent files"))
         self.spinRecentFiles.setSuffix(_translate("settingsDialog", " file(s)"))
         self.spinRecentFiles.setPrefix(_translate("settingsDialog", "The last "))
@@ -3001,6 +3032,13 @@ class Ui_settingsDialog(object):
 "file #5, but then rename it so that it becomes file #1, the\n"
 "next file that will play will still be file #6."))
         self.checkCycleRememberOriginalPath.setText(_translate("settingsDialog", "Cycle media based on file\'s original filepath (tristate)"))
+        self.groupBox_11.setTitle(_translate("settingsDialog", "If a newly saved edit is not auto-opened..."))
+        self.checkEditOpenRejectedAddToRecents.setToolTip(_translate("settingsDialog", "If checked, edits that do not automatically open after finishing will\n"
+"instead add themselves to your recent files list for easy access."))
+        self.checkEditOpenRejectedAddToRecents.setText(_translate("settingsDialog", "Add to recent files list"))
+        self.checkEditOpenRejectedBeep.setToolTip(_translate("settingsDialog", "If checked, a notification sound will play if an\n"
+"edit finishes but is not automatically opened."))
+        self.checkEditOpenRejectedBeep.setText(_translate("settingsDialog", "Play beep"))
         self.groupBox_10.setTitle(_translate("settingsDialog", "If focus is not given after auto-opening an edit..."))
         self.checkEditFocusRejectedPause.setToolTip(_translate("settingsDialog", "If checked, edits that automatically open after finishing but\n"
 "don\'t give PyPlayer focus will immediately pause the player.\n"
@@ -3018,9 +3056,16 @@ class Ui_settingsDialog(object):
 "your focus settings, and instead using the notification sound\n"
 "as an audio cue that your edit has finished."))
         self.checkEditFocusRejectedBeep.setText(_translate("settingsDialog", "Play beep"))
-        self.checkEditOpenRejectedBeep.setToolTip(_translate("settingsDialog", "If checked, a notification sound will play if an\n"
-"edit finishes but is not automatically opened."))
-        self.checkEditOpenRejectedBeep.setText(_translate("settingsDialog", "Play beep if a newly saved edit is not auto-opened"))
+        self.spinRecentEdits.setToolTip(_translate("settingsDialog", "The number of output paths to remember during a session.\n"
+"These can be accessed by right-clicking the statusbar.\n"
+"\n"
+"Note: Setting this to 0 will hide the \"Recent edits\" submenu.\n"
+"\n"
+"Note: Lowering this value will not remove edits from the\n"
+"existing list until you save a new edit."))
+        self.spinRecentEdits.setSpecialValueText(_translate("settingsDialog", "Do not track recent edits"))
+        self.spinRecentEdits.setSuffix(_translate("settingsDialog", " edit(s)"))
+        self.spinRecentEdits.setPrefix(_translate("settingsDialog", "The last "))
         self.groupBox_16.setTitle(_translate("settingsDialog", "File timestamps"))
         self.checkEditCtimeOnNew.setToolTip(_translate("settingsDialog", "If checked, the current media\'s creation time will be\n"
 "applied to any new files that are saved. Otherwise,\n"
