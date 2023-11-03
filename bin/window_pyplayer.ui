@@ -149,11 +149,14 @@
      <property name="title">
       <string>&amp;Delete</string>
      </property>
-     <addaction name="actionMarkDeleted"/>
-     <addaction name="actionClearMarked"/>
+     <property name="toolTipsVisible">
+      <bool>true</bool>
+     </property>
      <addaction name="actionShowDeletePrompt"/>
-     <addaction name="actionDeleteImmediately"/>
      <addaction name="separator"/>
+     <addaction name="actionMarkDeleted"/>
+     <addaction name="actionDeleteImmediately"/>
+     <addaction name="actionClearMarked"/>
     </widget>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
@@ -1388,27 +1391,26 @@ Right-click for more options.</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Mark media for &amp;deletion</string>
+    <string>Mark for &amp;deletion</string>
    </property>
    <property name="iconText">
     <string notr="true">Mark media for deletion</string>
    </property>
    <property name="toolTip">
-    <string>Mark current media for deletion. This does not delete the file
-right away, but will give you the option to delete it it later, if
-you select &quot;Preview list of marked media&quot; or when you close
-the program.</string>
+    <string>Mark current media for deletion. Closing the window
+or clicking &quot;Show prompt&quot; will display a confirmation
+prompt containing all marked files.</string>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
    </property>
   </action>
   <action name="actionShowDeletePrompt">
    <property name="text">
-    <string>&amp;Preview list of marked media</string>
+    <string>&amp;Show prompt</string>
    </property>
    <property name="toolTip">
-    <string>Displays a confirmation prompt for deleting
-all currently marked files. You may cancel this
-prompt, or hand-pick which files you do or
-do not want to actually delete.</string>
+    <string>Display the confirmation prompt for deleting all marked files.</string>
    </property>
   </action>
   <action name="actionViewLog">
@@ -1480,11 +1482,13 @@ do not want to actually delete.</string>
   </action>
   <action name="actionDeleteImmediately">
    <property name="text">
-    <string>&amp;Immediately delete current media</string>
+    <string>&amp;Immediately recycle</string>
    </property>
    <property name="toolTip">
-    <string>Immediately deletes the current
-media, without marking it.</string>
+    <string>Immediately move the current media to the recycle bin.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Del</string>
    </property>
   </action>
   <action name="actionLoop">
@@ -1629,7 +1633,7 @@ encounter corrupted trims, switch to high-precision manually.</string>
   </action>
   <action name="actionClearMarked">
    <property name="text">
-    <string>&amp;Clear list of marked media</string>
+    <string>&amp;Clear marked files</string>
    </property>
    <property name="toolTip">
     <string>Clear the list of files that are currently marked

@@ -55,6 +55,7 @@ class Ui_MainWindow(object):
         self.menuAutoplay.setToolTipsVisible(True)
         self.menuAutoplay.setObjectName("menuAutoplay")
         self.menuDelete = QtWidgets.QMenu(self.menuEdit)
+        self.menuDelete.setToolTipsVisible(True)
         self.menuDelete.setObjectName("menuDelete")
         self.menuHelp = QtWidgets.QMenu(self.menubar)
         self.menuHelp.setObjectName("menuHelp")
@@ -666,11 +667,11 @@ class Ui_MainWindow(object):
         self.menuAutoplay.addAction(self.actionAutoplayDirectionDynamic)
         self.menuAutoplay.addSeparator()
         self.menuAutoplay.addAction(self.actionAutoplaySameMime)
-        self.menuDelete.addAction(self.actionMarkDeleted)
-        self.menuDelete.addAction(self.actionClearMarked)
         self.menuDelete.addAction(self.actionShowDeletePrompt)
-        self.menuDelete.addAction(self.actionDeleteImmediately)
         self.menuDelete.addSeparator()
+        self.menuDelete.addAction(self.actionMarkDeleted)
+        self.menuDelete.addAction(self.actionDeleteImmediately)
+        self.menuDelete.addAction(self.actionClearMarked)
         self.menuEdit.addAction(self.actionSettings)
         self.menuEdit.addSeparator()
         self.menuEdit.addAction(self.actionLoop)
@@ -841,16 +842,13 @@ class Ui_MainWindow(object):
         self.actionCrop.setText(_translate("MainWindow", "&Crop"))
         self.actionCrop.setIconText(_translate("MainWindow", "Crop mode"))
         self.actionCrop.setToolTip(_translate("MainWindow", "Toggle crop mode"))
-        self.actionMarkDeleted.setText(_translate("MainWindow", "Mark media for &deletion"))
-        self.actionMarkDeleted.setToolTip(_translate("MainWindow", "Mark current media for deletion. This does not delete the file\n"
-"right away, but will give you the option to delete it it later, if\n"
-"you select \"Preview list of marked media\" or when you close\n"
-"the program."))
-        self.actionShowDeletePrompt.setText(_translate("MainWindow", "&Preview list of marked media"))
-        self.actionShowDeletePrompt.setToolTip(_translate("MainWindow", "Displays a confirmation prompt for deleting\n"
-"all currently marked files. You may cancel this\n"
-"prompt, or hand-pick which files you do or\n"
-"do not want to actually delete."))
+        self.actionMarkDeleted.setText(_translate("MainWindow", "Mark for &deletion"))
+        self.actionMarkDeleted.setToolTip(_translate("MainWindow", "Mark current media for deletion. Closing the window\n"
+"or clicking \"Show prompt\" will display a confirmation\n"
+"prompt containing all marked files."))
+        self.actionMarkDeleted.setShortcut(_translate("MainWindow", "Del"))
+        self.actionShowDeletePrompt.setText(_translate("MainWindow", "&Show prompt"))
+        self.actionShowDeletePrompt.setToolTip(_translate("MainWindow", "Display the confirmation prompt for deleting all marked files."))
         self.actionViewLog.setText(_translate("MainWindow", "View &log"))
         self.actionShowStatusBar.setText(_translate("MainWindow", "S&tatus Bar"))
         self.actionShowMenuBar.setText(_translate("MainWindow", "Men&u Bar"))
@@ -859,9 +857,9 @@ class Ui_MainWindow(object):
         self.actionShowProgressBar.setText(_translate("MainWindow", "Pro&gress Bar"))
         self.actionSnapshot.setText(_translate("MainWindow", "&Snapshot"))
         self.actionQuickSnapshot.setText(_translate("MainWindow", "&Quick snapshot"))
-        self.actionDeleteImmediately.setText(_translate("MainWindow", "&Immediately delete current media"))
-        self.actionDeleteImmediately.setToolTip(_translate("MainWindow", "Immediately deletes the current\n"
-"media, without marking it."))
+        self.actionDeleteImmediately.setText(_translate("MainWindow", "&Immediately recycle"))
+        self.actionDeleteImmediately.setToolTip(_translate("MainWindow", "Immediately move the current media to the recycle bin."))
+        self.actionDeleteImmediately.setShortcut(_translate("MainWindow", "Ctrl+Del"))
         self.actionLoop.setText(_translate("MainWindow", "&Loop"))
         self.actionRotate90.setText(_translate("MainWindow", "&90° clockwise"))
         self.actionRotate180.setText(_translate("MainWindow", "&180° clockwise"))
@@ -898,7 +896,7 @@ class Ui_MainWindow(object):
 "Note: Some formats cannot be trimmed without re-encoding and\n"
 "will default to high-precision trimming regardless. If you still\n"
 "encounter corrupted trims, switch to high-precision manually."))
-        self.actionClearMarked.setText(_translate("MainWindow", "&Clear list of marked media"))
+        self.actionClearMarked.setText(_translate("MainWindow", "&Clear marked files"))
         self.actionClearMarked.setToolTip(_translate("MainWindow", "Clear the list of files that are currently marked\n"
 "for deletion, without actually deleting them."))
         self.actionClearRecent.setText(_translate("MainWindow", "&Clear recent files"))

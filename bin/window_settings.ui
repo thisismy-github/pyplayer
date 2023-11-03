@@ -6323,61 +6323,13 @@ mime type as the current media (video, audio, or image).</string>
               </layout>
              </item>
              <item row="38" column="0">
-              <widget class="QLabel" name="label_28">
-               <property name="text">
-                <string>Mark for deletion</string>
-               </property>
-              </widget>
-             </item>
-             <item row="38" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_33">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="markdeleted">
-                 <property name="keySequence">
-                  <string>Ctrl+D</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="markdeleted_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="39" column="0">
-              <widget class="QLabel" name="label_29">
-               <property name="text">
-                <string>Delete immediately</string>
-               </property>
-              </widget>
-             </item>
-             <item row="39" column="1">
-              <layout class="QHBoxLayout" name="horizontalLayout_34">
-               <property name="spacing">
-                <number>4</number>
-               </property>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="deleteimmediately">
-                 <property name="keySequence">
-                  <string>Ctrl+Del</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QKeySequenceFlexibleEdit" name="deleteimmediately_"/>
-               </item>
-              </layout>
-             </item>
-             <item row="40" column="0">
               <widget class="QLabel" name="label_30">
                <property name="text">
                 <string>Snapshot</string>
                </property>
               </widget>
              </item>
-             <item row="40" column="1">
+             <item row="38" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_35">
                <property name="spacing">
                 <number>4</number>
@@ -6394,14 +6346,14 @@ mime type as the current media (video, audio, or image).</string>
                </item>
               </layout>
              </item>
-             <item row="41" column="0">
+             <item row="39" column="0">
               <widget class="QLabel" name="label_31">
                <property name="text">
                 <string>Quick snapshot</string>
                </property>
               </widget>
              </item>
-             <item row="41" column="1">
+             <item row="39" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_36">
                <property name="spacing">
                 <number>4</number>
@@ -6664,10 +6616,6 @@ mime type as the current media (video, audio, or image).</string>
   <tabstop>minussubtitledelay_</tabstop>
   <tabstop>cyclesubtitles</tabstop>
   <tabstop>cyclesubtitles_</tabstop>
-  <tabstop>markdeleted</tabstop>
-  <tabstop>markdeleted_</tabstop>
-  <tabstop>deleteimmediately</tabstop>
-  <tabstop>deleteimmediately_</tabstop>
   <tabstop>snapshot</tabstop>
   <tabstop>snapshot_</tabstop>
   <tabstop>quicksnapshot</tabstop>

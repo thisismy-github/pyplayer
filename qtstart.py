@@ -266,8 +266,6 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'cyclesubtitles':     lambda: self.cycle_track('subtitle'),
         'cycleaudio':         lambda: self.cycle_track('audio'),
         'cyclevideo':         lambda: self.cycle_track('video'),
-        'markdeleted':        self.actionMarkDeleted.trigger,
-        'deleteimmediately':  self.delete,
         'snapshot':           lambda: self.snapshot(mode='full'),
         'quicksnapshot':      self.snapshot,
     }
@@ -342,11 +340,12 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionSnapshotCutLastFile.triggered.connect(lambda: self.copy_file(config.cfg.last_snapshot_path, cut=True))
     self.actionSnapshotCopyLastImage.triggered.connect(lambda: self.copy_image(config.cfg.last_snapshot_path))
     self.actionSnapshotUndo.triggered.connect(lambda: self.snapshot(mode='undo'))
+    self.menuDelete.aboutToShow.connect(lambda: self.actionClearMarked.setText(f'Clear marked files ({len(self.marked_for_deletion)})'))
     self.actionMarkDeleted.triggered.connect(self.buttonMarkDeleted.setChecked)
     self.actionMarkDeleted.triggered.connect(self.mark_for_deletion)
     self.actionClearMarked.triggered.connect(self.clear_marked_for_deletion)
     self.actionShowDeletePrompt.triggered.connect(self.show_delete_prompt)
-    self.actionDeleteImmediately.triggered.connect(self.delete)
+    self.actionDeleteImmediately.triggered.connect(lambda: self.delete())
     self.actionEditFileTimestamps.triggered.connect(self.show_timestamp_dialog)
     self.menuVideo.aboutToShow.connect(lambda: self.actionResize.setText('&Resize'))
     self.menuVideo.aboutToShow.connect(lambda: self.actionResize.setEnabled(self.mime_type != 'audio'))
@@ -418,17 +417,18 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.comboThemes.currentTextChanged.connect(self.set_theme)
     settings.buttonRefreshThemes.clicked.connect(self.refresh_theme_combo)
     settings.buttonBrowseDefaultOutputPath.clicked.connect(lambda: self.browse_for_directory(lineEdit=settings.lineDefaultOutputPath, noun='default output'))
-    settings.buttonBrowseDefaultSnapshotPath.clicked.connect(lambda: self.browse_for_directory(lineEdit=settings.lineDefaultSnapshotPath, noun='default snapshot'))
-    settings.buttonHoverFontColor.clicked.connect(self.show_color_picker)
     settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
+    settings.checkRecycleBin.toggled.connect(self.refresh_recycle_setting)
     settings.checkFocusOnEdit.toggled.connect(lambda state: settings.checkFocusIgnoreFullscreenEditsOnly.setEnabled(state and settings.checkFocusIgnoreFullscreen.isChecked()))
     settings.checkFocusIgnoreFullscreen.toggled.connect(lambda state: settings.checkFocusIgnoreFullscreenEditsOnly.setEnabled(state and settings.checkFocusOnEdit.isChecked()))
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
     settings.checkTaskbarControls.toggled.connect(self.enable_taskbar_controls)
+    settings.buttonHoverFontColor.clicked.connect(self.show_color_picker)
     settings.checkZoomPrecise.toggled.connect(self.gifPlayer._updatePreciseZoom)
     settings.spinZoomMinimumFactor.valueChanged.connect(lambda v: settings.checkZoomAutoDisable1x.setEnabled(v == 1))
     settings.spinZoomMinimumFactor.valueChanged.connect(self.refresh_confusing_zoom_setting_tooltip)
     settings.spinZoomSmoothFactor.valueChanged.connect(self.gifPlayer._updateSmoothZoomFactor)
+    settings.buttonBrowseDefaultSnapshotPath.clicked.connect(lambda: self.browse_for_directory(lineEdit=settings.lineDefaultSnapshotPath, noun='default snapshot'))
     settings.comboSnapshotDefault.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.comboSnapshotShift.currentIndexChanged.connect(self.refresh_snapshot_button_controls)
     settings.comboSnapshotCtrl.currentIndexChanged.connect(self.refresh_snapshot_button_controls)

@@ -502,19 +502,22 @@ def getDialog(
                 any type and is accessed/manipulated after dialog execution. '''
             self.choice = choice
 
-        def addButtons(self, layout, *buttons) -> None:     # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
-            ''' Adds `QDialogButtonBox` to `layout` with a COMMA SEPARATED
-                list of `buttons`, connecting them to the `self.select()`
-                method in order to access the user's choice after execution.
-                `QDialogButtonBox` is connected to the `accept()` and
-                `reject()` methods for a more typical QDialog use-case. '''
+        # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
+        def addButtons(self, layout: QtW.QLayout, *buttons: QtW.QDialogButtonBox.StandardButton) -> QtW.QDialogButtonBox:
+            ''' Adds `QDialogButtonBox` to `layout` with a COMMA SEPARATED list
+                of `buttons`, connecting them to `self.select()` in order to
+                access the user's choice after execution. `QDialogButtonBox` is
+                connected to the `accept()` and `reject()` methods for a more
+                typical `QDialog` use-case. Returns the `QDialogButtonBox`. '''
             buttonBox = QtW.QDialogButtonBox(self)
             buttonBox.accepted.connect(self.accept)         # connect `buttonBox` to accept/reject in case we don't care about the buttons themselves
             buttonBox.rejected.connect(self.reject)
             for button in buttons:                          # connect buttons to a callback so we can access our selected button later
                 buttonBox.addButton(button)
-                buttonBox.button(button).clicked.connect(getButtonCallback(self, button))     # buttons cannot be connected directly
-            layout.addWidget(buttonBox)
+                buttonBox.button(button).clicked.connect(getButtonCallback(self, button))
+            if layout:                                      # ^ buttons cannot be connected directly
+                layout.addWidget(buttonBox)
+            return buttonBox
 
         def showEvent(self, event: QtGui.QShowEvent) -> None:
             ''' Plays default OS sound and centers the
@@ -806,20 +809,33 @@ def treeSetTopLevelItemIndex(treeWidget: QtW.QTreeWidget, new_index: int = 0, it
 # ----------------------
 # QLayout
 # ----------------------
-def layoutGetItems(layout: QtW.QLayout, start: int = 0, end: int = 0):
+def layoutGetItems(layout: QtW.QLayout, start: int = 0, end: int = 0, allow_empty_items: bool = False):
     index = start
-    if end == 0: end = layout.count()
+    if not end:
+        end = layout.count()
     while index <= end:
         item = layout.itemAt(index)
-        if not item: break
-        yield item.widget()     # other layouts return "widgetItems"
+        if not item:
+            break
         index += 1
+
+        # other layouts return "widgetItems"
+        widget = item.widget()
+        if widget or allow_empty_items:
+            yield widget
+        else:
+            continue
+
 
 def formGetItemsInColumn(formLayout: QtW.QFormLayout, column: int = 0, start: int = 0, end: int = 0):
     row_index = start
-    if end == 0: end = formLayout.rowCount()
+    if not end:
+        end = formLayout.rowCount()
     while row_index <= end:
         item = formLayout.itemAt(row_index, column)
-        if not item: break
-        yield item              # forms return natural widgets
+        if not item:
+            break
         row_index += 1
+
+        # forms return natural widgets
+        yield item

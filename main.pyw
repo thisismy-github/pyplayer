@@ -1730,9 +1730,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 elif key == 83:
                     if mod & Qt.ShiftModifier: self.actionSaveAs.trigger()  # ctrl + shift + s (save as)
                     else:                      self.actionSave.trigger()    # ctrl + s (save)
+                elif key == 16777223:                                       # ctrl + del (delete immediately)
+                    self.actionDeleteImmediately.trigger()
             elif mod & Qt.AltModifier:
                 if key == 81:                                               # alt + q (exit)
                     self.actionExit.trigger()
+            elif key == 16777223:                                           # del (mark for deletion)
+                self.actionMarkDeleted.trigger()
 
         if key == 16777239:                             # page down (pan image)
             if self.is_static_image or self.is_gif:
@@ -1950,16 +1954,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.exec(event.globalPos())
 
 
-    def buttonMarkDeletedContextMenuEvent(self, event: QtGui.QContextMenuEvent):    # should these use QWidget.actions() instead of contextMenuEvent?
+    def buttonMarkDeletedContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the deletion button. '''
-        context = QtW.QMenu(self)
-        context.setToolTipsVisible(True)
-        context.addAction(self.actionMarkDeleted)
-        context.addAction(self.actionClearMarked)
-        context.addAction(self.actionShowDeletePrompt)
-        context.addSeparator()
-        context.addAction(self.actionDeleteImmediately)
-        context.exec(event.globalPos())
+        # TODO: doing this as a lambda in `self.setup()` crashes if you open and close the confirmation prompt????
+        self.menuDelete.exec(event.globalPos())
 
 
     def buttonSnapshotContextMenuEvent(self, event: QtGui.QContextMenuEvent):
@@ -6555,33 +6553,110 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def show_delete_prompt(self, *, exiting: bool = False) -> QtW.QDialogButtonBox.StandardButton:
-        ''' Creates and shows a dialog for deleting marked files. Dialog
-            consists of a `QGroupBox` containing a `QCheckBox` for each file,
-            with Yes/No/Cancel buttons at the bottom. Returns the button chosen,
-            or None if there was an error. If `exiting` is True, the dialog will
-            not mention what happens if "No" is selected. '''
-        marked_for_deletion = self.marked_for_deletion
+        ''' Generates a dialog for deleting marked files. Dialog consists of
+            a `QScrollArea` containing a `QCheckBox` for each file (each with
+            their own context menu and middle-click event), with Yes/No/Cancel
+            and "Select/Deselect All" buttons at the bottom. Returns the button
+            chosen, or None if there was an error. If `exiting` is True, the
+            dialog will not mention what happens if "No" is selected. '''
 
-        # remove missing files from list and check if any are left
-        marked_for_deletion = [f for f in marked_for_deletion if exists(f)]
+        # ensure there are actually existing files to delete
+        marked_for_deletion = [f for f in self.marked_for_deletion if exists(f)]
         if not marked_for_deletion: return log_on_statusbar('No media is marked for deletion.')
 
-        logging.info('Opening deletion prompt...')
+        marked = []
+        unmarked = []
+        recycle = settings.checkRecycleBin.isChecked()
+        dialog_width = 450
+
         try:
-            dialog = qthelpers.getDialog(title='Confirm Deletion', icon='SP_DialogDiscardButton', **self.get_popup_location_kwargs())
-            recycle = settings.checkRecycleBin.isChecked()
-            marked = []
-            unmarked = []
+            logging.info('Opening deletion prompt...')
+            dialog = qthelpers.getDialog(
+                title='Confirm Deletion',
+                icon='SP_DialogDiscardButton',
+                flags=Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint,
+                **self.get_popup_location_kwargs()
+            )
 
-            # layout at "fixed size" https://stackoverflow.com/questions/14980620/qt-layout-resize-to-minimum-after-widget-size-changes
+            # layout and header label
+            warning_text = f'The following files will be {"recycled. Recycle?" if recycle else "permanently deleted. Delete?"}'
+            header = QtW.QLabel(f'{warning_text}\n(Middle-click to play, right-click for more options)', dialog)
+            header.setAlignment(Qt.AlignHCenter)
             layout = QtW.QVBoxLayout(dialog)
-            layout.setSizeConstraint(QtW.QLayout.SetFixedSize)
+            layout.addWidget(header)
 
-            # group box and its own layout
-            group = QtW.QGroupBox(f'The following files will be {"recycled. Recycle?" if recycle else "permanently deleted. Delete?"}', dialog)
-            group.setAlignment(Qt.AlignHCenter)
-            groupLayout = QtW.QVBoxLayout(group)
-            layout.addWidget(group)
+            # create scroll area (needlessly complicated - needs its own layout and sub-widget)
+            scroll_area = QtW.QScrollArea(dialog)
+            scroll_area_widget = QtW.QWidget(scroll_area)
+            scroll_area.setWidget(scroll_area_widget)
+            scroll_area.setWidgetResizable(True)
+            scroll_area_layout = QtW.QVBoxLayout(scroll_area_widget)
+            scroll_area_layout.setSpacing(0)
+            scroll_area_layout.setContentsMargins(4, 4, 4, 4)
+            layout.addWidget(scroll_area)
+
+            # give scroll area a white background and checkboxes a cool blue highlight when hovering
+            scroll_area.setStyleSheet(
+                'QWidget {background: white}'
+                'QScrollBar {background: none}'         # https://stackoverflow.com/a/62223180
+                'QCheckBox {padding: 3px}'
+                'QCheckBox::hover {border: 1px solid blue; padding-left: 2px; background: rgba(20, 196, 255, 50)}'
+            )
+
+            # add checkboxes for each file (key=splitext to ignore extensions when sorting)
+            # TODO add setting related to sorting the files
+            for file in sorted(marked_for_deletion, key=os.path.splitext):
+                checkbox = QtW.QCheckBox(file, scroll_area_widget)
+                checkbox.setToolTip(file)
+                checkbox.setChecked(True)               # ↓ https://stackoverflow.com/a/7872508
+                dialog_width = max(dialog_width, checkbox.fontMetrics().width(file) + 58)
+                scroll_area_layout.addWidget(checkbox)  # ^ track required width for each checkbox so we can resize later
+
+            # workarounds for python bug/oddity involving creating lambdas in iterables
+            get_open_lambda =    lambda file: lambda: self.open(file, focus_window=False, update_recent_list=False)
+            get_explore_lambda = lambda file: lambda: self.explore(file)
+
+            # checkbox events
+            def contextMenuEvent(event: QtGui.QContextMenuEvent):
+                ''' Show "Play" and "Explore" actions for the context
+                    menu of the checkbox currently under the mouse. '''
+                for checkbox in qthelpers.layoutGetItems(scroll_area_layout):
+                    if checkbox.underMouse():
+                        checkbox.setStyleSheet('border: 1px solid blue; padding: 2px; background: rgba(20, 196, 255, 50)')
+                        file = checkbox.text()          # ^ force stylesheet to use hover-style since it won't always update between right-clicks
+                        break
+                else:                                   # else in a for-loop means we didn't break
+                    return
+                context = QtW.QMenu(self)
+                context.addAction('Play', get_open_lambda(file))
+                context.addAction('Explore', get_explore_lambda(file))
+                context.addSeparator()
+                context.addAction(os.path.basename(file)).setEnabled(False)
+                context.exec(event.globalPos())
+                checkbox.setStyleSheet('')              # reset stylesheet to normal
+
+            def mousePressEvent(event: QtGui.QMouseEvent):
+                ''' Open the underlying path for the
+                    checkbox currently under the mouse. '''
+                if event.button() == Qt.MiddleButton:
+                    for checkbox in qthelpers.layoutGetItems(scroll_area_layout):
+                        if checkbox.underMouse():
+                            get_open_lambda(checkbox.text())()
+                            return
+
+            def finished(result):
+                ''' Populate the `marked` and `unmarked` lists
+                    with each checked and unchecked checkbox. '''
+                for checkbox in qthelpers.layoutGetItems(scroll_area_layout):
+                    (marked if checkbox.isChecked() else unmarked).append(checkbox.text())
+
+            def select_all(checked: bool):
+                ''' Set all checkboxes to `checked`. '''
+                for checkbox in qthelpers.layoutGetItems(scroll_area_layout):
+                    checkbox.setChecked(checked)
+
+            # add expanding vertical spacer to bottom of scroll area so checkboxes stay at the top
+            scroll_area_layout.addSpacerItem(QtW.QSpacerItem(0, 10, QtW.QSizePolicy.Minimum, QtW.QSizePolicy.Expanding))
 
             # footer label
             if not exiting:
@@ -6589,22 +6664,39 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 label.setAlignment(Qt.AlignCenter)
                 layout.addWidget(label)
 
-            # checkboxes for each file (key=splitext to ignore extensions when sorting)
-            # TODO add setting related to sorting the files
-            for file in sorted(marked_for_deletion, key=os.path.splitext):
-                checkbox = QtW.QCheckBox(file, group)
-                checkbox.setChecked(True)
-                groupLayout.addWidget(checkbox)
+            # create button box and add "select/deselect all" buttons to left side with spacer inbetween
+            buttons = dialog.addButtons(None, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.No, QtW.QDialogButtonBox.Yes)
+            button_layout = QtW.QHBoxLayout()
+            button_select_all = QtW.QPushButton('Select all')
+            button_select_all.clicked.connect(lambda: select_all(True))
+            button_deselect_all = QtW.QPushButton('Deselect all')
+            button_deselect_all.clicked.connect(lambda: select_all(False))
+            button_layout.addWidget(button_select_all)
+            button_layout.addWidget(button_deselect_all)
+            button_layout.addSpacerItem(QtW.QSpacerItem(0, 10, QtW.QSizePolicy.Expanding, QtW.QSizePolicy.Minimum))
+            button_layout.addWidget(buttons)
+            layout.addLayout(button_layout)
 
-            def finished(result):
-                for check in group.children():
-                    if isinstance(check, QtW.QCheckBox):
-                        (marked if check.isChecked() else unmarked).append(check.text())
-
-            dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.No, QtW.QDialogButtonBox.Yes)
+            # connect final events/signals
+            scroll_area_widget.contextMenuEvent = contextMenuEvent
+            scroll_area_widget.mousePressEvent = mousePressEvent
             dialog.finished.connect(finished)
-            dialog.exec()
 
+            # resize dialog based on longest path in checkboxes (trying to avoid BOTH scrollbars)
+            dialog.setMinimumHeight(150)
+            if len(marked_for_deletion) <= 2:
+                height = 150
+            else:
+                dialog.adjustSize()
+                height = dialog.height()
+
+            if dialog_width > 700:
+                dialog.resize(700, height + 7)
+            else:
+                dialog.resize(dialog_width, height - 10)
+
+            # delete checked files or unmark unchecked files depending on dialog choice
+            dialog.exec()
             if dialog.choice == QtW.QDialogButtonBox.Yes:
                 self.delete(*marked)
             elif dialog.choice == QtW.QDialogButtonBox.No:
@@ -7633,6 +7725,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         settings.checkZoomForceMinimum.setToolTip(
             constants.ZOOM_FORCE_MINIMUM_TOOLTIP_BASE.replace('?value', str(value))
         )
+
+
+    def refresh_recycle_setting(self, recycle: bool):
+        ''' Updates some text/tooltips to reflect whether "deleting" means
+            to actually delete something or to just move it to the `recycle` bin. '''
+        if recycle:
+            self.actionDeleteImmediately.setText('Immediately recycle')
+            self.actionDeleteImmediately.setToolTip('Immediately move the current media to the recycle bin.')
+        else:
+            self.actionDeleteImmediately.setText('Immediately delete')
+            self.actionDeleteImmediately.setToolTip('Immediately delete the current media.\nThis cannot be undone.')
 
 
     def refresh_volume_tooltip(self):
