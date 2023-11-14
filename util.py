@@ -1,4 +1,4 @@
-''' Generic, non-Qt-related utility functions.
+''' Generic, non-Qt-related utility functions created (mostly) by me.
     thisismy-github 4/23/22 '''
 
 from __future__ import annotations
@@ -136,6 +136,57 @@ def foreground_is_fullscreen() -> bool:
     screen_rect = win32gui.GetWindowRect(screen_hwnd)
     window_rect = win32gui.GetWindowRect(hwnd)
     return rects_are_equal(screen_rect, window_rect)
+
+
+def get_font_path(family: str, user_fonts_first: bool = True) -> str | None:
+    ''' Returns the full path for a given font `family` from the registry.
+        Checks HKEY_CURRENT_USER, then HKEY_LOCAL_MACHINE (or in reverse
+        order if `user_fonts_first` is False). Identifies the current
+        system font if "MS Shell Dlg 2" is provided. Windows-only. '''
+    if not constants.IS_WINDOWS: return
+
+    import winreg
+
+    # get family substitute for "MS Shell Dlg 2" (99.999% chance it's Tahoma)
+    family = family.strip().lower()
+    if family == 'ms shell dlg 2':
+        hkey = winreg.HKEY_LOCAL_MACHINE
+        key = winreg.OpenKey(hkey, r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\FontSubstitutes')
+        last_index = 0
+        while True:
+            try:
+                name, data, _ = winreg.EnumValue(key, last_index)
+                if name.lower() == family:
+                    family = data.split(',')[0].strip().lower()
+                    break
+                last_index += 1
+            except OSError:
+                break
+
+    # decide whether we check user fonts or system fonts first
+    if user_fonts_first: hkeys = (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE)
+    else:                hkeys = (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER)
+
+    # loop over every key in hkey until we find our family, then use the associated filename
+    for hkey in hkeys:
+        try:
+            key = winreg.OpenKey(hkey, r'SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts')
+            last_index = 0
+            while True:
+                try:
+                    name, data, _ = winreg.EnumValue(key, last_index)
+                    name = name.lower()                 # ↓ some fonts end with "(TrueType)"
+                    if name == family or name[:-11] == family:
+                        if not os.path.dirname(data):   # system fonts are usually just the filename
+                            data = os.path.normpath(os.path.expandvars(f'%SystemRoot%\\Fonts\\{data}'))
+                        logger.info(f'Found path for font "{family}": {data}')
+                        return data
+                    last_index += 1
+                except OSError:
+                    break
+        except Exception as error:
+            logger.error(f'(!) get_font_filename: {type(error)} - {error}')
+    logger.warning(f'(!) No path found for font "{family}"')
 
 
 def get_from_PATH(filename: str) -> str:        # i learned about `shutil.which()` way too late. oh well, this works
