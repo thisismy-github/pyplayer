@@ -355,6 +355,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.menuConcatenate.triggered.connect(self.concatenate)
     self.menuRotate.triggered.connect(self.rotate_video)
     self.actionCrop.triggered.connect(self.set_crop_mode)
+    self.actionAddText.triggered.connect(self.add_text)
     self.actionResize.triggered.connect(self.resize_media)
     self.menuAudio.aboutToShow.connect(lambda: self.actionResize.setText('&Change tempo'))
     self.menuAudio.aboutToShow.connect(lambda: self.actionResize.setEnabled(self.mime_type == 'audio'))

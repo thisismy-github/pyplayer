@@ -2052,6 +2052,289 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
 
 
 # ------------------------------------------
+# "Add text" Dialog Widgets
+# ------------------------------------------
+class QTextOverlayPreview(QtW.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.overlays: list[QTextOverlay] = []
+        self.selected: QTextOverlay = None                      # TODO ability to select multiple at once
+        self.ratio: float = None
+        self._draggingOffset: QtCore.QPoint = None
+        self._dragging: bool = False
+
+
+    #def overlayPosToPreviewPos(self, overlay: QTextOverlay) -> QtCore.QPointF:
+    #    return overlay.pos * self.ratio
+
+
+    def getOverlayInRange(self, pos: QtCore.QPoint, _range: int = 30) -> QTextOverlay:
+        ''' Returns the index of the closest text overlay to `pos`,
+            if any are within `_range` pixels, otherwise None. '''
+        min_dist = 1000
+        min_overlay = None
+        for overlay in self.overlays:
+            #font = overlay.font
+            #font.setPointSize(overlay.size)
+
+            overlay.font.setPointSize(overlay.size * self.ratio)
+            local_pos = overlay.pos * self.ratio
+            text_size = QtGui.QFontMetrics(overlay.font).size(0, overlay.text)
+            text_rect = QtCore.QRect(local_pos.toPoint(), text_size)
+
+            #text_size = QtGui.QFontMetrics(font).size(0, overlay.text)
+            #bottom_right = QtCore.QPoint(local_pos.x() + text_size.width(), local_pos.y() + text_size.height())
+            #if QtCore.QRect(local_pos.toPoint(), bottom_right).contains(pos):
+            if text_rect.contains(pos):
+                min_dist = 0
+                min_overlay = overlay
+
+            ##dist = abs(pos.x() - point.x()) + abs(pos.y() - point.y())     # TODO: verify that manhattanLength is actually better than this
+            #dist = (pos - (overlay.pos * self.ratio)).manhattanLength()     # https://doc.qt.io/qt-5/qpoint.html#manhattanLength
+            #print('DISTANCE', dist)
+            #if dist < min_dist:
+            #    min_dist = dist
+            #    min_overlay = overlay
+        return None if min_dist > _range else min_overlay
+
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        try:
+            if event.button() == Qt.LeftButton:
+                parent = self.parent()
+                overlay = self.getOverlayInRange(event.pos())
+                print('OVERLAY IN RANGE?', overlay)
+
+                if not self.selected.text.strip():
+                    try: self.overlays.pop(self.overlays.index(self.selected))
+                    except: pass
+
+                if not overlay:
+                    #overlay = QTextOverlay(parent.comboFont.currentFont(), parent.spinFontSize.value())
+                    overlay = QTextOverlay(parent)
+                    overlay.pos = QtCore.QPointF(event.pos()) / self.ratio
+                    self.overlays.append(overlay)
+                    parent.text.setFocus(True)
+
+                if overlay is not self.selected:
+                    self.selected = overlay
+                    parent.text.setPlainText(overlay.text)
+                    parent.comboFont.setCurrentFont(overlay.font)
+                    parent.spinFontSize.setValue(overlay.size)
+                    parent.spinBoxWidth.setValue(overlay.bgwidth)
+                    parent.buttonColorFont.setStyleSheet('QPushButton {background-color: rgba' + str(overlay.color.getRgb()) + ';border: 1px solid black;}')
+                    parent.buttonColorBox.setStyleSheet('QPushButton {background-color: rgba' + str(overlay.bgcolor.getRgb()) + ';border: 1px solid black;}')
+                    parent.buttonColorShadow.setStyleSheet('QPushButton {background-color: rgba' + str(overlay.shadowcolor.getRgb()) + ';border: 1px solid black;}')
+                    {
+                        Qt.AlignLeft:    parent.buttonAlignLeft,
+                        Qt.AlignHCenter: parent.buttonAlignCenter,
+                        Qt.AlignRight:   parent.buttonAlignRight
+                    }[overlay.alignment].setChecked(True)
+
+                self._draggingOffset = event.pos() - (overlay.pos * self.ratio)
+                self._dragging = True
+                self.update()
+
+        except:
+            print('mousepress', format_exc())
+
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        try:
+            if event.buttons() == Qt.LeftButton and self._dragging:
+                centered = False
+                overlay = self.selected
+                local_pos = event.pos() - self._draggingOffset
+
+                # hold ctrl for free dragging
+                if event.modifiers() & Qt.ControlModifier:
+                    overlay.centered_horizontally = False
+                    overlay.centered_vertically = False
+                    overlay.pos = local_pos / self.ratio
+
+                # otherwise, the text is snapped to an axis if close enough
+                else:
+                    #text_size = QtGui.QFontMetrics(overlay.font).size(0, overlay.text.strip('\n'))
+                    text_size = QtGui.QFontMetrics(overlay.font).size(0, overlay.text)
+                    text_pos_rect = QtCore.QRect(local_pos.toPoint(), text_size)
+                    text_center = text_pos_rect.center()
+                    horizontal_center = self.width() / 2
+                    vertical_center = self.height() / 2
+
+                    # check if we should snap to the horizontal center (locked x)
+                    if abs(text_center.x() - horizontal_center) < 20:
+                        text_pos_rect.moveCenter(QtCore.QPoint(horizontal_center, text_center.y()))
+                        overlay.centered_horizontally = True
+                        centered = True
+                    else:
+                        overlay.centered_horizontally = False
+
+                    # check if we should snap to the vertical center (locked y)
+                    if abs(text_center.y() - vertical_center) < 20:
+                        text_pos_rect.moveCenter(QtCore.QPoint(text_pos_rect.center().x(), vertical_center))
+                        overlay.centered_vertically = True
+                        centered = True
+                    else:
+                        overlay.centered_vertically = False
+
+                    # update text overlay position depending on if we snapped to a center or not
+                    if centered:
+                        overlay.pos = QtCore.QPointF(text_pos_rect.x(), text_pos_rect.y()) / self.ratio
+                    else:
+                        overlay.pos = local_pos / self.ratio
+                self.update()                                   # manually update
+        except: print('mousemove', format_exc())
+
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        local_pos = self.selected.pos * self.ratio
+        text_size = QtGui.QFontMetrics(self.selected.font).size(0, self.selected.text)
+        text_pos_rect = QtCore.QRect(local_pos.toPoint(), text_size)
+        if not self.rect().contains(text_pos_rect.center()):
+            logging.info('Text overlay dragged out of the preview, deleting...')
+            try: self.overlays.pop(self.overlays.index(self.selected))
+            except: pass
+
+        self._dragging = False
+        self.update()                                           # manually update
+
+
+    def paintEvent(self, event: QtGui.QPaintEvent):
+        super().paintEvent(event)                               # perform built-in paint immediately so we can paint on top
+
+        p = QtGui.QPainter()
+        p.begin(self)
+        try:
+            for overlay in self.overlays:
+                text = overlay.text.strip('\n')
+
+                #size = settings.spinHoverFontSize.value()   # TODO use currentFontChanged signals + more for performance? not needed?
+                #font = settings.comboHoverFont.currentFont()
+
+                #font = overlay.family
+                #font.setPointSize(overlay.size)
+                #p.setFont(font)
+                #color = overlay.color
+                #color.setAlpha(overlay.alpha)
+                #p.setPen(color)
+                #overlay.font.setPointSize(overlay.size * self.ratio)
+                #overlay.font.setPointSize(overlay.size * self.ratio)
+
+                #if overlay.size % 2 == 0:
+                #    overlay.font.setPointSize(overlay.size * self.ratio)
+                #else:
+                #    overlay.font.setPixelSize(overlay.size * self.ratio)
+
+                # FFmpeg uses pixel size
+                overlay.font.setPixelSize(overlay.size * self.ratio)
+
+                #overlay.color.setAlpha(overlay.alpha)
+                p.setFont(overlay.font)
+                p.setPen(overlay.color)
+                #p.setLine
+                fm = p.fontMetrics()
+
+                #color = QtGui.QColor(overlay.color)
+                #color.setAlpha(overlay.alpha)
+                #p.setPen(color)
+
+                local_pos = overlay.pos * self.ratio
+                text_size = fm.size(0, text)
+                #text_pos_rect = QtCore.QRect(local_pos.toPoint(), text_size)
+                text_pos_rect = QtCore.QRectF(local_pos, QtCore.QSizeF(text_size))
+                print('DRAWING AT!!', local_pos, text_pos_rect.center().x(), self.width() / 2)
+
+                ##local_pos.setY(self.height() - (self.height() - overlay.size) / 2)
+                ##p.drawText(local_pos, text)
+                ##text_width = QtGui.QFontMetrics(font).width(text)
+                ##text_size = QtGui.QFontMetrics(font).size(0, text)
+                #text_size = fm.size(0, text)
+                ##bottom_right = QtCore.QPointF(local_pos.x() + text_size.width(), local_pos.y() + text_size.height())
+                ##p.drawText(QtCore.QRect(local_pos, bottom_right), 0, text)
+                ##bottom_right = QtCore.QPoint(local_pos.x() + text_size.width(), local_pos.y() + text_size.height())
+                ##text_rect = QtCore.QRect(local_pos.toPoint(), bottom_right)
+                #text_rect = QtCore.QRect(local_pos.toPoint(), text_size)
+
+                #text_rect = fm.boundingRect(text)
+
+                #text_boundary_rect = fm.tightBoundingRect(text)
+                ##text_rect.setHeight(QtGui.QFontMetrics(overlay.font).ascent())
+                #print('tight:', text_boundary_rect)
+
+                #text_boundary_rect.translate(local_pos.toPoint())
+                #text_pos_rect.adjust(text_boundary_rect.x(), text_boundary_rect.y(), 0, 0)
+                #text_pos_rect.translate(-text_boundary_rect.x() // 2, text_boundary_rect.y() // 2)
+                #text_boundary_rect.moveTo(local_pos.toPoint())
+
+                ##x = QtCore.QPoint(local_pos.x() + text_boundary_rect.x(), local_pos.y() - text_boundary_rect.y())
+                #x = QtCore.QPoint(local_pos.x() + text_boundary_rect.x(), local_pos.y() + fm.descent() + 1)
+                #text_boundary_rect.moveTo(x)
+                ##text_boundary_rect.translate(text_boundary_rect.x(), text_boundary_rect.y())
+
+                # draw background first (or a simple outline and snap-lines if we're dragging)
+                #if self._dragging and overlay is self.selected: p.drawRect(text_boundary_rect)
+                #else: p.fillRect(text_boundary_rect, overlay.bgcolor)
+                if self._dragging and overlay is self.selected:
+                    p.drawRect(text_pos_rect)
+                    if overlay.centered_horizontally:
+                        p.drawLine(self.width() / 2, 0, self.width() / 2, self.height())
+                    if overlay.centered_vertically:
+                        p.drawLine(0, self.height() / 2, self.width(), self.height() / 2)
+                else:
+                    p.fillRect(text_pos_rect, overlay.bgcolor)
+
+                # draw text over background (drop-shadow first)
+                if overlay.shadowx or overlay.shadowy:
+                    p.setPen(overlay.shadowcolor)
+                    p.drawText(text_pos_rect.translated(overlay.shadowx, overlay.shadowy), overlay.alignment | Qt.AlignTop, text)
+                    p.setPen(overlay.color)
+                p.drawText(text_pos_rect, overlay.alignment | Qt.AlignTop, text)
+
+                #richtext = text.replace('\n', '<br>')
+                #richertext = f'<p style="line-height:0.8">{richtext}</p>'
+                #p.drawStaticText(local_pos, QtGui.QStaticText(richertext))
+                #td = QtGui.QTextDocument()
+                #td.setHtml(text)
+                #td.drawContents(p, text_pos_rect)
+        except:
+            print('TEXTADDPAINT', format_exc())
+        finally:
+            p.end()
+
+
+
+
+class QTextOverlay:
+    def __init__(self, dialog):
+        self.text = ''
+        self.pos = QtCore.QPointF(0.0, 0.0)
+        self.font: QtGui.QFont = dialog.comboFont.currentFont()
+        self.size: int = dialog.spinFontSize.value()
+        self.color = self.get_color_from_stylesheet(dialog.buttonColorFont.styleSheet())
+        self.bgcolor = self.get_color_from_stylesheet(dialog.buttonColorBox.styleSheet())
+        self.bgwidth: int = dialog.spinBoxWidth.value()
+        self.shadowcolor = self.get_color_from_stylesheet(dialog.buttonColorShadow.styleSheet())
+        self.shadowx = dialog.spinShadowX.value()
+        self.shadowy = dialog.spinShadowY.value()
+        self.alignment: Qt.Alignment = {
+            dialog.buttonAlignLeft:   Qt.AlignLeft,
+            dialog.buttonAlignCenter: Qt.AlignHCenter,
+            dialog.buttonAlignRight:  Qt.AlignRight
+        }[dialog.buttonGroup.checkedButton()]
+        self.centered_horizontally = False
+        self.centered_vertically = False
+
+
+    def get_color_from_stylesheet(self, stylesheet: str) -> QtGui.QColor:
+        ''' Returns the first "rgba()" in a `stylesheet` as a `QColor`. '''
+        start_index = stylesheet.find('rgba(') + 5
+        end_index = stylesheet.find(');', start_index)
+        rgba = stylesheet[start_index:end_index].replace(' ', '').split(',')
+        return QtGui.QColor(*(int(v) for v in rgba))
+
+
+
+# ------------------------------------------
 # Utility Widgets
 # ------------------------------------------
 class QKeySequenceFlexibleEdit(QtW.QKeySequenceEdit):

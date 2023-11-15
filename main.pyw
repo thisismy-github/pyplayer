@@ -176,7 +176,7 @@ import qthelpers
 from bin.window_pyplayer import Ui_MainWindow
 from bin.window_settings import Ui_settingsDialog
 from util import (                                      # direct import time-sensitive utils for a very small optimization
-    add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen,
+    add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_font_path,
     get_hms, get_PIL_Image, get_ratio_string, get_unique_path, get_verbose_timestamp,
     sanitize, scale, setctime, suspend_process, kill_process, file_is_hidden
 )
@@ -4300,6 +4300,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # operation aliases
         op_concat =        operations.get('concatenate', None)          # see `self.concatenate()` for details
+        op_add_text =      operations.get('add text', None)             # a list of `widgets.QTextOverlay` objects
         op_replace_audio = operations.get('replace audio', None)        # path to audio track
         op_add_audio =     operations.get('add audio', None)            # path to audio track
         op_isolate_track = operations.get('isolate track', None)        # track to isolate
@@ -4453,6 +4454,229 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     for intermediate_file in intermediate_files:
                         try: os.remove(intermediate_file)
                         except: pass
+
+            # we're overlaying text over the video/gif
+            # HACK: For ~5 days, I tried to figure out how to consistently and accurately translate the preview generated with QPainter/QFontMetrics...
+            # ...to what FFmpeg's drawtext filter expects. Modern (like so modern I don't think they're in public versions yet) releases of FFmpeg...
+            # ...now have `y_align` and `text_align` parameters which fix most of my issues, but I didn't want to make an unstable beta branch...
+            # ...a requirement. I assumed that doing this correctly was literally impossible with the arbitrarily limited infomation QFontMetrics...
+            # ...exposes to you, so I gave up on that after an hour and decided on a pretty wild hack: Re-painting the preview onto a QPixmap...
+            # ...before saving, then looping over the pixels to find the true coordinates of the text so that FFmpeg can place them correctly,...
+            # ...on top of having to do a bunch of silly math with terrible numbers to get text alignment figured out. 5 days of trial-and-error...
+            # ...later, I got everything mostly working at about 90% accuracy, before realizing that I could just use FFmpeg's image overlaying...
+            # ...filter to overlay the QPixmap I'm already generating. All I have to do is apply some of these hacks to the preview image instead...
+            # ...of the output, and it'll be 100% accurate no matter what AND we'll be able to do so much more, like overlaying actual images...
+            # ...or doing outlines/blurs and stuff. Kinda sad with how close I was to getting this (almost) perfect, but it's 100% for the best.
+            #
+            # Anyways that's why this code is unfinished garbage, and also why I'm committing it regardless. Thanks for coming to my TED talk.
+            #
+            # -vf "drawtext=fontfile=/path/to/font.ttf:text='Text testing, here!':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:x=(w-text_w)/2:y=(h-text_h)/2"
+            if op_add_text:                                     # 'ignore', 'start', 'end', 'both'
+                # we are using the start marker for our text (NOTE: NOT IMPLEMENTED)
+                #if op_add_text['markers'] in ('start', 'both'):
+                #    if op_trim_start:
+                #        del operations['trim start']
+                #        op_trim_start = False
+                #
+                ## we are using the end marker for our text (NOTE: NOT IMPLEMENTED)
+                #if op_add_text['markers'] in ('end', 'both'):
+                #    if op_trim_end:
+                #        del operations['trim start']
+                #        op_trim_start = False
+                filters = []
+                pixmap = QtGui.QPixmap(self.vwidth, self.vheight)
+                painter = QtGui.QPainter(pixmap)
+                try:
+                    for overlay in op_add_text['overlays']:
+                        if not overlay.text.strip():
+                            continue
+
+                        top_line_adjusted_center = 0
+                        text = overlay.text.strip('\n')
+                        lines = text.split('\n')
+
+                    # >>> see HACK above
+                        # use manual labor to figure out font filepath that Qt refuses to expose
+                        font = get_font_path(overlay.font.family())
+                        if font:
+                            font = font.replace('\\', '/')
+                            font_param = f'fontfile=\'{font}\''
+                        else:                                   # hope the user has a special build of ffmpeg that supports the "font" parameter
+                            show_on_statusbar(f'(!) No font file found for "{overlay.font.family()}"')
+                            font_param = f'font=\'{overlay.font.family()}\''
+
+                        overlay.font.setPixelSize(overlay.size)
+                        pixmap.fill(Qt.transparent)
+                        painter.setFont(overlay.font)
+                        painter.setPen(overlay.color)
+
+                        font_metrics = painter.fontMetrics()
+                        line_height = font_metrics.ascent() * 1.1
+                        text_size = font_metrics.size(0, text)
+                        text_rect = QtCore.QRect(overlay.pos.toPoint(), text_size)
+                        #if overlay.centered_vertically:
+                        #    text_rect.moveCenter(QtCore.QPoint(text_rect.x(), vheight / 2))
+
+                        painter.drawText(text_rect, overlay.alignment | Qt.AlignTop, text)
+                        image = get_PIL_Image().fromqpixmap(pixmap)
+                        pixels = image.load()
+                        local_pos = overlay.pos.toPoint()
+
+                        # loop over pixels until visible one is found (start from Qt's coordinates to massively improve performance)
+                        top_y = vheight * 2                     # use starting numbers outside the dimensions of the media
+                        min_x = vwidth * 2
+                        if len(lines) > 1 or not overlay.centered_vertically:
+                            for y in range(local_pos.y(), min(image.height, local_pos.y() + text_size.height())):
+                                for x in range(local_pos.x(), min(image.width, local_pos.x() + text_size.width())):
+                                    if pixels[x, y][-1] != 0:
+                                        logging.info(f'Overlay\'s first non-transparent pixel found at ({x}, {y}) -> {pixels[x, y]}')
+                                        min_x = min(min_x, x)
+                                        top_y = min(top_y, y)
+                                        break
+                                #else:                           # `else` means we didn't break the inner-loop (no pixels on this row)
+                                #    continue
+                                #break                           # break outer-loop if we broke the inner-loop
+                            #else:                               # `else` means we didn't break the outer-loop either (no pixels at all)
+                            if top_y > vheight:
+                                logging.info(f'Overlay isn\'t actually visible on the screen (text: {text})')
+                                continue                        # jump to the next overlay
+
+                        text_rect.setLeft(min_x)
+                        text_rect.setTop(top_y)
+                        text_rect.setWidth(max(font_metrics.tightBoundingRect(line).width() for line in lines))
+                        #text_rect.setWidth(font_metrics.size(0, text).width())
+                        #text_bounding_rect = font_metrics.tightBoundingRect(text)
+                        #text_rect.setWidth(text_bounding_rect.width())
+                        #text_rect.setHeight(text_bounding_rect.height())
+                        print('min_x, top_y, and text_rect', min_x, top_y, text_rect)
+                    # >>> main part of HACK finished
+
+                        for line_number, line in enumerate(lines):
+                            if not line.strip():
+                                continue
+
+                            line_size = font_metrics.size(0, line)
+                            #line_rect = QtCore.QRect(text_rect.topLeft(), line_size)
+                            line_width = font_metrics.horizontalAdvance(line)
+
+                            bounding_rect = font_metrics.tightBoundingRect(line)
+                            print('ascent', line_height, 'size', line_size, 'width', line_width, 'tightBoundingRect', bounding_rect)
+
+                            #bounding_rect.width
+
+                            #line_rect = QtCore.QRect(text_rect.topLeft(), QtCore.QSize(line_size.width(), line_height))
+                            #line_rect = QtCore.QRect(text_rect.topLeft(), QtCore.QSize(bounding_rect.width(), line_height))
+                            line_rect = QtCore.QRect(text_rect.topLeft(), QtCore.QSize(bounding_rect.width(), bounding_rect.height()))
+
+                            if line_number == 0:
+                                #top_line_rect = line_rect
+                                if overlay.centered_vertically:
+                                    top_line_adjusted_center = (vheight / 2) - (line_height * len(lines) / 2) + (line_height / 4)
+                                else:
+                                    #top_line_adjusted_center = top_y + (bounding_rect.height() / 2)
+                                    top_line_adjusted_center = top_y
+                                #elif len(lines) == 1:
+                                #    top_line_adjusted_center = top_y + (bounding_rect.height() / 2)
+                                #else:
+                                #    top_line_adjusted_center = line_rect.bottom() - (line_height / 2)
+                            #    if overlay.centered_vertically:
+                            #        if len(lines) == 1: y = '(h-text_h)/2'
+                            #        else:               y = y - ((line_height * len(lines)) / 4)
+                            #    else:                   y = y + 1
+                            #else:
+                            #    line_rect.moveCenter(QtCore.QPoint(
+                            #        text_rect.center().x(),
+                            #        top_line_rect.center().y() + (line_height * line_number)
+                            #    ))
+                            #    y = line_rect.y()
+
+                            #if overlay.centered_vertically and len(lines) == 1:
+                            if overlay.centered_vertically:
+                                if len(lines) == 1:
+                                    y = '(h-text_h)/2'
+                                else:
+                                    line_rect.moveCenter(QtCore.QPoint(
+                                        text_rect.center().x(),
+                                        #top_line_rect.center().y() + (line_height * line_number)
+                                        int(top_line_adjusted_center + (line_height * line_number))
+                                    ))
+                                    y = line_rect.bottom() - bounding_rect.height()
+                            else:
+                                #line_rect.moveCenter(QtCore.QPoint(
+                                #    text_rect.center().x(),
+                                #    #top_line_rect.center().y() + (line_height * line_number)
+                                #    int(top_line_adjusted_center + (line_height * line_number))
+                                #))
+                                #line_rect.moveTop(int(top_line_adjusted_center + (line_height * line_number)))
+                                #y = line_rect.y()
+                                #y = line_rect.bottom() - (line_height / 2)
+                                #y = line_rect.bottom() - line_height
+                                #y = line_rect.bottom() - line_size.height()
+                                #y = line_rect.bottom() - bounding_rect.height()
+                                #y = int(top_line_adjusted_center + (line_height * line_number))
+                                y = int(top_line_adjusted_center + (line_height * line_number))
+
+                            # attempt to manually align each line of text (FFmpeg only supports left-align)
+                            if overlay.centered_horizontally:   # use FFmpeg's built-in variables to escape the garbage below if possible
+                                x = '(w-text_w)/2'
+                            else:
+                                if overlay.alignment == Qt.AlignLeft:
+                                    #x = overlay.pos.x()
+                                    x = text_rect.left()
+                                    print('ALIGNLEFT', x)
+                                elif overlay.alignment == Qt.AlignHCenter:
+                                    #x = text_rect.center().x() - (line_size.width() / 2)
+                                    x = text_rect.center().x() - (bounding_rect.width() / 2)
+                                    print('ALIGNHCENTER', text_rect, text_rect.center().x(), bounding_rect.width() / 2, x)
+                                elif overlay.alignment == Qt.AlignRight:            # TODO: My right-align code just doesn't work and I don't understand why.
+                                    #x = top_line_rect.right() - line_size.width()  # Thankfuly, now I don't HAVE to understand why. See you never, drawtext.
+                                    #x = text_rect.right() - line_size.width()
+                                    x = text_rect.right() - bounding_rect.width() - bounding_rect.left()
+                                    print('ALIGNRIGHT', x)
+
+                            # escape stuff drawtext doesn't like -> https://stackoverflow.com/a/71635094
+                            line = (line.replace("\\", "\\\\")
+                                        .replace('"', '""')
+                                        .replace("'", "''")
+                                        .replace("%", "\\%")
+                                        .replace(":", "\\:"))
+
+                            filter_params = [
+                                f'text=\'{line}\'',
+                                f'x={x}',
+                                f'y={y}',
+                                f'fontsize={overlay.size}',
+                                f'fontcolor={overlay.color.name()}@{overlay.color.alpha() / 255}',
+                                font_param
+                                #'y_align=font'                 # see HACK comment above for why we can't use this
+                            ]
+
+                            # add background box
+                            if overlay.bgcolor.alpha():
+                                filter_params.append('box=1')
+                                filter_params.append(f'boxcolor={overlay.bgcolor.name()}@{overlay.bgcolor.alpha() / 255}')
+                                filter_params.append(f'boxborderw={overlay.bgwidth}')
+
+                            # add drop-shadow
+                            if overlay.shadowx or overlay.shadowy:
+                                filter_params.append(f'shadowcolor={overlay.shadowcolor.name()}@{overlay.shadowcolor.alpha() / 255}')
+                                filter_params.append(f'shadowx={overlay.shadowx}')
+                                filter_params.append(f'shadowy={overlay.shadowy}')
+
+                            # see HACK comment above for why we can't use this
+                            #alignments = {
+                            #    int(Qt.AlignLeft): 'L',
+                            #    int(Qt.AlignHCenter): 'C',
+                            #    int(Qt.AlignRight): 'R',
+                            #}
+                            #filter_params.append(f'text_align={alignments[overlay.alignment]}+M')
+
+                            filters.append(f'drawtext={":".join(filter_params)}')
+                finally:                                        # NOTE: IMPORTANT!!! we MUST close the painter manually...
+                    painter.end()                               # ...or we'll crash to desktop when the thread closes!!!
+
+                cmd = f'-i %in -vf "{",".join(filters)}" -codec:a copy %out'
+                intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Overlaying text')
 
             # trimming and fading (controlled using the same start/end points)
             # TODO: there are scenarios where cropping and/or resizing first is better
@@ -6003,6 +6227,120 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             preferred_extensions=preferred_extensions,                      # tells a potential "save as" prompt which extensions should be default
             unique_default=True
         )
+
+
+    def add_text(self):
+        ''' Opens a dialog for adding text to the current media.
+            Actual docstring coming in a different commit. '''
+        if not constants.IS_WINDOWS:
+            return qthelpers.getPopup(
+                title='Adding text is Windows-only',
+                text=('Adding text is Windows-only (for now). Qt doesn\'t expose font paths, and figuring out how to '
+                      'get them on Windows was convoluted enough as it is.\n\nThat\'s it. That\'s the entire reason.')
+            ).exec()
+
+        if not self.video:            return show_on_statusbar('No media is playing.', 10000)
+        if self.mime_type == 'audio': return show_on_statusbar('Well that would just be silly, wouldn\'t it?', 10000)
+        if self.mime_type == 'image': return show_on_statusbar('Adding text to static images is not supported yet.', 10000)
+
+        # pause video/GIF to avoid immediately generating several previews
+        self.force_pause(True)
+
+        last_preview_frame = -1
+        preview_image_path = f'{constants.THUMBNAIL_DIR}{sep}textoverlaypreview.jpg'
+        try: os.remove(preview_image_path)
+        except: pass
+
+        try:
+            from bin.window_text import Ui_textDialog
+            dialog = qthelpers.getDialogFromUiClass(
+                Ui_textDialog,
+                #modal=True,
+                #deleteOnClose=True,
+                flags=Qt.WindowStaysOnTopHint,
+                **self.get_popup_location_kwargs()
+            )
+
+            dialog.buttonColorFont.setStyleSheet('QPushButton {background-color: rgba(255,255,255,255); border: 1px solid black;}')
+            dialog.buttonColorBox.setStyleSheet('QPushButton {background-color: rgba(255,255,255,0); border: 1px solid black;}')
+            dialog.buttonColorShadow.setStyleSheet('QPushButton {background-color: rgba(0,0,0,150); border: 1px solid black;}')
+            overlay = widgets.QTextOverlay(dialog)
+
+            vw = self.vwidth
+            vh = self.vheight
+            if vw > vh: dialog.preview.setFixedSize(*scale(vw, vh, new_x=800))
+            else:       dialog.preview.setFixedSize(*scale(vw, vh, new_y=800))
+
+            dialog.preview.ratio = dialog.preview.width() / vw
+            dialog.preview.overlays.append(overlay)
+            dialog.preview.selected = overlay
+            dialog.preview.selected.pos = QtCore.QPointF(vw / 2, vh / 2)
+
+            def update_selected(attribute: str, value):
+                setattr(dialog.preview.selected, attribute, value)
+                dialog.preview.update()
+
+            def update_alignment(button: QtW.QPushButton):
+                dialog.preview.selected.alignment = {
+                    dialog.buttonAlignLeft: Qt.AlignLeft,
+                    dialog.buttonAlignCenter: Qt.AlignHCenter,
+                    dialog.buttonAlignRight: Qt.AlignRight
+                }[button]
+                dialog.preview.update()
+
+            dialog.text.textChanged.connect(lambda: update_selected('text', dialog.text.toPlainText().strip('\n')))
+            dialog.comboFont.currentFontChanged.connect(lambda font: update_selected('font', font))
+            dialog.spinFontSize.valueChanged.connect(lambda size: update_selected('size', size))
+            dialog.spinBoxWidth.valueChanged.connect(lambda size: update_selected('bgwidth', size))
+            dialog.spinShadowX.valueChanged.connect(lambda x: update_selected('shadowx', x))
+            dialog.spinShadowY.valueChanged.connect(lambda y: update_selected('shadowy', y))
+            dialog.buttonColorFont.clicked.connect(lambda: update_selected('color', self.show_color_picker(button=dialog.buttonColorFont, alpha=True)))
+            dialog.buttonColorBox.clicked.connect(lambda: update_selected('bgcolor', self.show_color_picker(button=dialog.buttonColorBox, alpha=True)))
+            dialog.buttonColorShadow.clicked.connect(lambda: update_selected('shadowcolor', self.show_color_picker(button=dialog.buttonColorShadow, alpha=True)))
+            dialog.buttonGroup.buttonClicked.connect(update_alignment)
+            #dialog.adjustSize()            # TODO why is it not shrinking correctly
+            #dialog.resize(0, 0)
+
+            def update_preview():
+                try:
+                    nonlocal last_preview_frame
+                    if not os.path.exists(constants.THUMBNAIL_DIR):
+                        os.makedirs(constants.THUMBNAIL_DIR)
+                    frame = get_ui_frame()
+                    if frame != last_preview_frame:
+                        ffmpeg(f'-ss {frame / self.frame_rate} -i "{self.video}" -vframes 1 "{preview_image_path}"')
+                        try: dialog.preview.setPixmap(QtGui.QPixmap(preview_image_path, 'JPEG'))
+                        except: return
+                        last_preview_frame = frame
+                except:
+                    logging.warning(f'(!) "Add text" dialog failed to update preview image: {format_exc()}')
+
+            preview_timer = QtCore.QTimer()
+            preview_timer.timeout.connect(update_preview)
+            preview_timer.timeout.emit()
+            preview_timer.start(1000)
+
+            if dialog.exec() == QtW.QDialog.Accepted:
+                marker_modes = {
+                    dialog.buttonMarkerIgnore: 'ignore',
+                    dialog.buttonMarkerStart:  'start',
+                    dialog.buttonMarkerBoth:   'both',
+                    dialog.buttonMarkerEnd:    'end'
+                }
+                self.operations['add text'] = {
+                    'markers': marker_modes[dialog.buttonGroup_2.checkedButton()],
+                    'overlays': dialog.preview.overlays
+                }
+                self.save(
+                    noun='media with overlaid text',
+                    filter='All files(*)',
+                    unique_default=True
+                )
+
+            preview_timer.stop()
+
+        except:
+            log_on_statusbar(f'(!) Add-text dialog failed: {format_exc()}')
 
 
     # ---------------------

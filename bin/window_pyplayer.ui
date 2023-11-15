@@ -258,6 +258,7 @@
     <addaction name="menuConcatenate"/>
     <addaction name="menuRotate"/>
     <addaction name="menuTrimMode"/>
+    <addaction name="actionAddText"/>
     <addaction name="actionResize"/>
     <addaction name="actionCrop"/>
    </widget>
@@ -1835,6 +1836,11 @@ for deletion, without actually deleting them.</string>
    <property name="toolTip">
     <string>If checked, Autoplay will only play media with the same mime
 type (video, audio, or image) as the file you started with.</string>
+   </property>
+  </action>
+  <action name="actionAddText">
+   <property name="text">
+    <string>Add text</string>
    </property>
   </action>
  </widget>
