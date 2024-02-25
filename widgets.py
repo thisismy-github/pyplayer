@@ -712,7 +712,7 @@ class QVideoPlayer(QtW.QWidget):  # https://python-camelot.s3.amazonaws.com/gpl/
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         ''' Accepts a cursor-drag if files are being dragged.
-            Requires `self.setAcceptDrops(True)`. '''
+            NOTE: Requires `self.setAcceptDrops(True)`. '''
         if event.mimeData().hasUrls(): event.accept()
         else: event.ignore()
         self.dragdrop_in_progress = True
@@ -1483,7 +1483,7 @@ class QVideoSlider(QtW.QSlider):
                 groove_rect = self.style().subControlRect(QtW.QStyle.CC_Slider, opt, QtW.QStyle.SC_SliderGroove, self)
                 #print(groove_rect, groove_rect.left(), groove_rect.topLeft(), dir(groove_rect))
 
-                # draw triangle markers for start/end and cover slider outside trim
+                # draw triangle markers for start/end and cover slider outside trim TODO: this is not efficient
                 if self.clamp_minimum:
                     x = self.rangeValueToPixelPos(gui.minimum)
                     p.setPen(pen_thick)
@@ -1943,23 +1943,23 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
         self.refresh_title()
 
 
-    def generate_thumbnails(self, *args: tuple[str, str, QVideoListItemWidget], _delete: list = None):
+    def generate_thumbnails(self, *thumbnail_args: tuple[str, str, QVideoListItemWidget], _delete: list = None):
         ''' Generates/saves thumbnails for an indeterminate number of tuples
             consisting of the vide to generate the thumbnail from, a path to
             save the thumbnail to, and the `QVideoListItemWidget` to apply the
             thumbnail to. Thumbnails are generated concurrently, but only 16
             at a time. `constants.FFMPEG` is assumed to be valid. '''
 
-        logging.info(f'Getting thumbnails for {len(args)} file(s)')
-        thumbnail_args = args[:16]                              # only do 16 at a time
-        excess = args[16:]
+        logger.info(f'Getting thumbnails for {len(thumbnail_args)} file(s)')
+        _thumbnail_args = thumbnail_args[:16]                   # only do 16 at a time
+        excess = thumbnail_args[16:]
         stage1 = []
         stage2 = []
         to_delete = _delete or []
 
         # begin ffmpeg process for each file and immediately jump to the next file
         # generate thumbnail from 3 seconds into each file
-        for file, thumbnail_path, item_widget in thumbnail_args:
+        for file, thumbnail_path, item_widget in _thumbnail_args:
             temp_path = thumbnail_path.replace('_thumbnail', '_thumbnail_unscaled')
             stage1.append(
                 (

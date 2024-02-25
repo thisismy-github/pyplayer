@@ -289,9 +289,10 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
                     probe_file,
                     subprocess.Popen(
                         cmd,
-                        stdout=subprocess.PIPE,         # don't use `shell=True` either for the same reason
+                        text=True,                      # turns stdout into easily parsible lines of text rather than a byte stream
+                        stdout=subprocess.PIPE,         # don't use `shell=True` for the same reason as above
                         startupinfo=constants.STARTUPINFO
-                    )                                   # ^ hides command prompt that appears w/o `shell=True`
+                    )                                   # ^ hides the command prompt that appears w/o `shell=True`
                 )
             )
 
@@ -3149,7 +3150,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # extra setup. frame_rate_rounded, ratio, delay, etc. could be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_cleanup_signal
         self.mime_type = mime
-
         if base_mime == 'image':
             self._open_cleanup_signal.emit()        # manually emit _open_cleanup_signal for images/gifs (slider thread will be idle)
 
@@ -3157,27 +3157,36 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             is_gif = extension == 'gif' and self.frame_count_raw > 1
             self.is_gif = is_gif                    # do not treat single-frame GIFs as actual GIFs (static images have more features)
             self.is_static_image = not is_gif
+
+            # disable all audio/video-related bandaid properties
             self.is_pitch_sensitive_audio = False
+            self.is_audio_with_cover_art = False
+            self.is_audio_without_cover_art = False
             self.is_bad_with_vlc = False
+
         else:
             self.open_cleanup_queued = True         # `open_cleanup_queued` + `open_in_progress` and `frame_override` work...
             self.frame_override = 0                 # ...together to halt `update_slider_thread` and trigger cleanup safely
             self.is_gif = False
             self.is_static_image = False
 
-            # see if this is a special type of audio file, if it's audio at all
             # TODO: we should really be tracking the codec instead of the container here
             # TODO: can this be fixed with a different demuxer or something? (what we COULD have done to fix pitch-shifting)
+            # see if this is a special type of audio file, if it's audio at all
             if extension == 'ogg':                  # TODO: flesh out a list of unresponsive media types
                 self.is_bad_with_vlc = True
                 self.is_pitch_sensitive_audio = False
             else:
                 self.is_bad_with_vlc = False
                 self.is_pitch_sensitive_audio = mime == 'audio'
+
             if mime == 'audio':
                 has_cover_art = bool(image_player.pixmap())
                 self.is_audio_with_cover_art = has_cover_art
                 self.is_audio_without_cover_art = not has_cover_art
+            else:
+                self.is_audio_with_cover_art = False
+                self.is_audio_without_cover_art = False
 
         self.extension = extension
         #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
@@ -4334,20 +4343,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if op_trim_start or op_trim_end:
             if is_static_image:                                         # NOTE: shouldn't be possible, but just in case
                 log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
-                del operations['trim start']                            # remove operation keys
-                del operations['trim end']
+                operations.pop('trim start', None)                      # remove operation keys if they exist
+                operations.pop('trim end', None)
                 op_trim_start = False
                 op_trim_end = False
             elif minimum == 0 and maximum == frame_count:
                 log_on_statusbar('It\'s not really a "trim" if you end up with the entire duration of the file, is it?')
-                del operations['trim start']                            # remove operation keys
-                del operations['trim end']
+                operations.pop('trim start', None)                      # remove operation keys if they exist
+                operations.pop('trim end', None)
                 op_trim_start = False
                 op_trim_end = False
             elif minimum == maximum:
                 log_on_statusbar('If you want to trim off 100% of the file, you might as well just delete it.')
-                del operations['trim start']                            # remove operation keys
-                del operations['trim end']
+                operations.pop('trim start', None)                      # remove operation keys if they exist
+                operations.pop('trim end', None)
                 op_trim_start = False
                 op_trim_end = False
 
@@ -4419,7 +4428,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 noun = 'Concatenation'
                 files = op_concat['files']
                 open_after_save = op_concat['open']
-                explore_after_save = op_concat['open']
+                explore_after_save = op_concat['explore']
                 delete_after_save = op_concat['delete_mode']
 
                 new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
@@ -5869,14 +5878,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # repeatedly open dialog until user succeeds or outright cancels
             while True:
-                logging.info('Opening concatenation dialog...')
                 self.vlc.idle_timeout_time = 0.0            # lock cursor (`QVideoPlayer.leaveEvent` might not trigger)
 
+                logging.info('Opening concatenation dialog...')
                 if dialog.exec() == QtW.QDialog.Rejected:   # cancel selected on dialog -> return
                     return log_on_statusbar('Concatenation cancelled.')
-                files = [abspath(item.toolTip()) for item in dialog.videoList]
 
                 # check if any files have stopped existing - if so, show a warning and re-loop
+                files = [abspath(item.toolTip()) for item in dialog.videoList]
                 missing = [(i, f) for i, f in enumerate(files) if not exists(f)]
                 if missing:
                     logging.info(f'(?) Files to be concatenated no longer exist, cancelling: {missing}')
@@ -6595,7 +6604,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             **self.get_popup_location_kwargs()
         )
 
-
         class Timestamp:
             __slots__ = 'original_time', 'dateTime', 'dateTimeEdit'
 
@@ -6610,7 +6618,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.dateTime.setSecsSinceEpoch(seconds or self.original_time)
                 self.dateTimeEdit.setDateTime(self.dateTime)
 
-
         def open_file(file: str):
             ''' Reads `file`'s timestamps and updates the UI accordingly. '''
             try:
@@ -6624,13 +6631,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except:
                 log_on_statusbar(f'(!) Failed to add file: {format_exc()}')
 
-
         def sync_file(file: str):
             sync_stat = os.stat(file)
             if dialog.checkCtime.isChecked(): timestamps['c'].reset(sync_stat.st_ctime)
             if dialog.checkMtime.isChecked(): timestamps['m'].reset(sync_stat.st_mtime)
             if dialog.checkAtime.isChecked(): timestamps['a'].reset(sync_stat.st_atime)
-
 
         def browse_for_file() -> str:
             ''' Browses for a file/folder to open.
@@ -6643,7 +6648,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 open_file(new_file)
             return new_file
 
-
         def refresh_sync_button():
             ''' Disables `dialog.buttonSync` if no timestamps are checked. '''
             dialog.buttonSync.setEnabled(
@@ -6652,14 +6656,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 or dialog.checkAtime.isChecked()
             )
 
-
         def get_timestamp_string(seconds: int) -> str:
             ''' Returns `seconds` as a timestamp formatted
                 according to `dialog.lineFormat.text()`. '''
             date = QtCore.QDateTime()
             date.setSecsSinceEpoch(seconds)
             return date.toString(dialog.lineFormat.text())
-
 
         def swap(a: QtW.QDateTimeEdit, b: QtW.QDateTimeEdit):
             ''' From Qt's documentation:
@@ -6671,7 +6673,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             b_date = b.dateTime()   # ...QDateTime property; QDateTime.swap() actually works fine)
             a.setDateTime(b_date)
             b.setDateTime(a_date)
-
 
         def on_menu(letter: str):
             ''' Generates a menu for the given `letter`time, i.e. "c" for ctime,
@@ -6705,7 +6706,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except:
                 log_on_statusbar(f'(!) Failed to generate menu for {letter}time: {format_exc()}')
 
-
         def on_click(button: QtW.QPushButton):
             ''' Handles `dialog.buttonBox` clicks
                 based on which `button` was pressed. '''
@@ -6728,7 +6728,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     atime=atime
                 )
 
-
         def on_sync():
             ''' Browses for new file to sync timestamps with.
                 Only timestamps that are enabled will be synced. '''
@@ -6742,7 +6741,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except:
                 log_on_statusbar(f'(!) Failed to sync timestamps: {format_exc()}')
 
-
         def on_update_format(format: str):
             ''' Updates all timestamps to use `format`. Uses
                 fallback if `format` is now an empty string. '''
@@ -6751,13 +6749,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.dateMtime.setDisplayFormat(format)
             dialog.dateAtime.setDisplayFormat(format)
 
-
         def dialogDragEnterEvent(event: QtGui.QDragEnterEvent):
             ''' Accepts a cursor-drag if files are being dragged.
                 Requires `dialog.setAcceptDrops(True)`. '''
             if event.mimeData().hasUrls(): event.accept()
             else: event.ignore()
-
 
         def dialogDragMoveEvent(event: QtGui.QDragMoveEvent):
             ''' Accepts a cursor-drag if files are being dragged. Requires
@@ -6766,12 +6762,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 be dropped over to sync the file rather than open it. '''
             dialog.buttonSync.setDown(dialog.buttonSync.geometry().contains(event.pos()))
 
-
         def dialogDragLeaveEvent(event: QtGui.QDragLeaveEvent):
             ''' Ensure the sync button no longer appears pressed
                 after dragging off of the window, just in case. '''
             dialog.buttonSync.setDown(False)
-
 
         def dialogDropEvent(event: QtGui.QDropEvent):
             ''' Opens the first dropped file/folder, or syncs its timestamps
@@ -6781,7 +6775,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if over_sync and dialog.buttonSync.isEnabled(): sync_file(files[0])
             else: open_file(files[0])
             dialog.buttonSync.setDown(False)
-
 
         # setup dialog and create timestamps dictionary
         timestamps = {}

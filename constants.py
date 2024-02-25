@@ -46,7 +46,7 @@ for _dir in (TEMP_DIR, PROBE_DIR, THUMBNAIL_DIR, THEME_DIR):
 # ---------------------
 
 if IS_WINDOWS:
-    STARTUPINFO = startupinfo = subprocess.STARTUPINFO()
+    STARTUPINFO = subprocess.STARTUPINFO()
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 else:
     STARTUPINFO = None
