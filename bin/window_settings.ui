@@ -75,7 +75,7 @@
         <x>0</x>
         <y>0</y>
         <width>344</width>
-        <height>2754</height>
+        <height>2721</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -1623,7 +1623,7 @@ on &quot;the first media file you open.&quot;</string>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="buttonHoverFontColor">
+                 <widget class="QColorPickerButton" name="buttonHoverFontColor">
                   <property name="maximumSize">
                    <size>
                     <width>22</width>
@@ -6506,6 +6506,11 @@ mime type as the current media (video, audio, or image).</string>
   <customwidget>
    <class>QKeySequenceFlexibleEdit</class>
    <extends>QKeySequenceEdit</extends>
+   <header>widgets</header>
+  </customwidget>
+  <customwidget>
+   <class>QColorPickerButton</class>
+   <extends>QPushButton</extends>
    <header>widgets</header>
   </customwidget>
  </customwidgets>

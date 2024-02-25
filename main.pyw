@@ -11,7 +11,7 @@ r'''  >>> thisismygithub - 10/31/21 <<<
 icon sources/inspirations https://www.pinclipart.com/maxpin/hxThoo/ + https://www.hiclipart.com/free-transparent-background-png-clipart-vuclz
 https://youtu.be/P1qMAupb2_Y?t=2461 VLC devs talk about Qt problems -> making two windows actually behave as one?
 TODO: need a way to deal with VLC registry edits
-TODO: move show_color_picker and other browse dialogs + indeterminate_progress decorator to qthelpers/util?
+TODO: move browse dialogs + indeterminate_progress decorator to qthelpers/util?
 TODO: better/more fleshed-out themes
 TODO: can't change themes while minimized to system tray (warn with tray icon?)
 TODO: live-themes option? (button that auto-refreshes themes every half-second for theme-editing)
@@ -7045,47 +7045,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return dialog.choice
         except:
             log_on_statusbar(f'(!) DELETION PROMPT FAILED: {format_exc()}')
-
-
-    def show_color_picker(self, initial_color: QtGui.QColor = None, alpha: bool = False, button: QtW.QPushButton = None) -> QtGui.QColor | None:
-        ''' Opens a color-picking dialog with an `alpha` control and defaulting
-            to `initial_color`. Returns the selected color. If `button` is
-            provided, the selected color will be applied to its stylesheet's
-            "background-color". If `initial_color` isn't provided, `button`'s
-            stylesheet is checked for a color to start with (it is assumed that
-            it uses "rgb()" if `alpha` is False, and "rgba()" otherwise). If the
-            user does not select a valid color, `initial_color` or `button`'s
-            starting color are returned, or None if neither was provided. '''
-        # NOTE: F suffix is Float -> values are represented from 0-1 (e.g. getRgb() becomes getRgbF())
-        try:                                            # TODO: add support for marquee colors
-            picker = QtW.QColorDialog()
-            #for index, default in enumerate(self.defaults):
-            #    picker.setCustomColor(index, QtGui.QColor(*default))
-            if not initial_color:
-                if button and 'QPushButton {background-color: rgb' in button.styleSheet():
-                    stylesheet = button.styleSheet()
-                    index = 36 if alpha else 35
-                    color_string = stylesheet[index:stylesheet.find(')', index)]
-                    color = color_string.replace(' ', '').split(',')
-                    initial_color = QtGui.QColor(*(int(v) for v in color))
-
-            # open color picker with appropriate arguments
-            kwargs = dict(initial=initial_color, parent=self.dialog_settings, title='Picker? I hardly know her!')
-            if alpha: color = picker.getColor(**kwargs, options=QtW.QColorDialog.ShowAlphaChannel)
-            else:     color = picker.getColor(**kwargs)
-
-            # if color is invalid, return starting color. otherwise update `button` and return selected color
-            if not color.isValid():
-                return initial_color
-            if button:
-                color_string = str(color.getRgb())
-                button.setToolTip(color_string)
-                if alpha:
-                    color_string = 'a' + color_string
-                button.setStyleSheet('QPushButton {background-color: rgb' + color_string + ';border: 1px solid black;}')
-            return color
-        except:
-            log_on_statusbar(f'(!) OPEN_COLOR_PICKER FAILED: {format_exc()}')
 
 
     # -------------------------------
