@@ -15,7 +15,7 @@ from traceback import format_exc
 
 
 # reserved words/characters on Windows
-_SANITIZE_BLACKLIST = ('\\', '/', ':', '*', '?', '\'', '<', '>', '|', '\0')
+_SANITIZE_BLACKLIST = ('\\', '/', ':', '*', '?', '"', '<', '>', '|', '\0')
 _SANITIZE_RESERVED = (
     'CON', 'PRN', 'AUX', 'NUL', 'COM0', 'COM1', 'COM2', 'COM3',
     'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT0', 'LPT1',
