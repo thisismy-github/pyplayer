@@ -3804,6 +3804,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.is_paused = True
         self.buttonPause.setIcon(self.icons[icon])
 
+        # if the media is over, mark ourselves as having NOT restarted yet -> this...
+        # ...keeps us from getting confused if the media file is renamed/deleted
+        if get_ui_frame() == self.frame_count:
+            self.restarted = False
+
         refresh_title()
         self.refresh_taskbar()
         if constants.IS_WINDOWS and settings.checkTaskbarIconPauseMinimized.isChecked():
@@ -3875,7 +3880,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.force_pause_signal.emit(was_paused)                # rename can be called from a thread -> use signal
             if not was_paused:                                      # progress thread might get confused and reset to 0
                 self.frame_override = frame
-            set_player_position(frame / self.frame_count)
+            if frame == self.frame_count:                           # if the media is over, stop the player again immediately...
+                self.stop(icon='restart')                           # ...since VLC will black out the player anyway, so we...
+            else:                                                   # ...might as well release its lock on the file
+                set_player_position(frame / self.frame_count)
 
         # update recent files's list with new name, if possible
         # NOTE: this is done after playing in case the recent files list is very large
