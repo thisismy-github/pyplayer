@@ -104,6 +104,8 @@ TODO: editing feature changes:
         - do math to chain audio-resizes to get around ffmpeg atempo 0.5-2.0 limitation (can be chained in single command)
         - implement more image edits?
         - ability to "hold" fades
+TODO: should probe files be written/read as bytes? how much faster would that be?
+        - `json.detect_encoding()` would still be needed for actually parsing the files into JSON
 
 
 TODO: MEDIUM PRIORITY:
@@ -245,12 +247,12 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
         If `write` is False, any new probes will not be written to a file. '''
 
     logging.info(f'Manually probing files: {files} (refresh={refresh})')
-    probes = {}
-    processes = []
+    probes: dict[str, dict] = {}
+    processes: list[tuple[str, str, subprocess.Popen]] = []
 
     is_windows = constants.IS_WINDOWS
     if not is_windows:
-        import shlex                                    # have to pass commands as list for linux/macos (stupid)
+        import shlex                                # have to pass commands as list for linux/macos (stupid)
         cmd_parts = shlex.split(f'"{FFPROBE}" -show_format -show_streams -of json "output"')
 
     # begin probe-process for each file and immediately jump to the next file
@@ -267,11 +269,11 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
                 except: logging.warning('(!) FAILED TO DELETE UNWANTED PROBE FILE: ' + format_exc())
                 probe_exists = False
             else:
-                with open(probe_file, 'r') as f:
+                with open(probe_file, 'r') as probe:
                     try:
-                        probes[file] = json.loads(f.read())
+                        probes[file] = parse_json(probe.read())
                     except:
-                        f.close()
+                        probe.close()
                         logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
                         try: os.remove(probe_file)
                         except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
@@ -289,7 +291,7 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
                     probe_file,
                     subprocess.Popen(
                         cmd,
-                        text=True,                      # turns stdout into easily parsible lines of text rather than a byte stream
+                        text=True,                      # decodes stdout into text rather than a byte stream
                         stdout=subprocess.PIPE,         # don't use `shell=True` for the same reason as above
                         startupinfo=constants.STARTUPINFO
                     )                                   # ^ hides the command prompt that appears w/o `shell=True`
@@ -301,10 +303,10 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
     for file, probe_file, process in processes:
         out, err = process.communicate()
         try:
-            probes[file] = json.loads(out)
+            probes[file] = parse_json(out)
             if write:                                   # manually write probe to file
-                with open(probe_file, 'w') as f:
-                    f.write(out)
+                with open(probe_file, 'w') as probe:
+                    probe.write(out)
         except:
             logging.warning(f'(!) {file} could not be correctly parsed by FFprobe: {format_exc()}')
             show_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
@@ -2209,7 +2211,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 }
 
                 theme_info_lines = []
-                with open(f'{constants.THEME_DIR}{sep}{filename}') as theme_file:
+                with open(f'{constants.THEME_DIR}{sep}{filename}', 'r') as theme_file:
                     theme['stylesheet'] = theme_file.read()
                     for line in theme['stylesheet'].split('\n'):
                         line = line.strip()
@@ -2824,7 +2826,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif extended:
                 if self.is_gif: image_player.gif.setPaused(True)
                 else: player.set_pause(True)
-                width, height, quality = self.show_size_dialog(snapshot=True)
+                width, height, quality = self.show_size_dialog(show_quality=True)
                 if width is None:                   # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
 
@@ -2942,10 +2944,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if probe_data is None:      # VLC not finished, no data provided, but probe file is being generated
                             while not exists(probe_file):
                                 sleep(0.01)
-                            with open(probe_file) as probe:
+                            with open(probe_file, 'r') as probe:
                                 while probe_data is None:
                                     try:
-                                        probe_data = json.loads(probe.read())
+                                        probe_data = parse_json(probe.read())
                                     except:
                                         if self.vlc.media.get_parsed_status() == 4 and player.get_fps() != 0 and player.get_length() != 0 and player.video_get_size() != (0, 0):
                                             logging.info(f'VLC finished parsing while waiting for FFprobe ({get_time() - start:.4f} seconds).')
@@ -3055,10 +3057,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             start = get_time()
                             while not exists(probe_file):
                                 sleep(0.01)
-                            with open(probe_file) as probe:
+                            with open(probe_file, 'r') as probe:
                                 while probe_data is None:
                                     try:
-                                        probe_data = json.loads(probe.read())
+                                        probe_data = parse_json(probe.read())
                                     except:
                                         if get_time() - start > 5:
                                             logging.error('Media probe did not finish after 5 seconds.')
@@ -3261,14 +3263,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 probe_file = f'{constants.PROBE_DIR}{sep}{basename}_{stat.st_mtime}_{filesize}.txt'
                 probe_exists = exists(probe_file)
                 if probe_exists:                            # probe file already exists
-                    with open(probe_file, 'r') as f:
+                    with open(probe_file, 'r') as probe:
                         try:
-                            probe_data = json.loads(f.read())
+                            probe_data = parse_json(probe.read())
                             probe_process = None
                             if not probe_data:              # probe is literally just two braces with no data -> DON'T...
                                 raise                       # ...give up. instead, raise error and try to re-probe it
                         except:
-                            f.close()
+                            probe.close()
                             logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
                             try: os.remove(probe_file)
                             except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
@@ -3322,12 +3324,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             sleep(0.02)
 
                         # attempt to parse probe file. if successful, this might be actual media
-                        with open(probe_file) as probe:
+                        with open(probe_file, 'r') as probe:
                             while probe_data is None:
                                 if probe.read():            # keep reading until the file actually contains data
                                     sleep(0.1)
                                     probe.seek(0)
-                                    probe_data = json.loads(probe.read())
+                                    probe_data = parse_json(probe.read())
 
                         # for some asinine reason, FFprobe "recognizes" text as a form of video
                         # if that, or probe is literally just two braces with no data -> give up
@@ -4012,7 +4014,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # get width, height, and jpeg quality of snapshot
             if mode == 'full':
-                width, height, quality = self.show_size_dialog(snapshot=True)
+                width, height, quality = self.show_size_dialog(show_quality=True)
                 if width is None:                               # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
             else:
@@ -4294,7 +4296,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Do not call this directly. Use `save()` instead. Iteration: VII '''
         start_time = get_time()
         successful = True
-        noun = ''
+        log_noun = ''
 
         # save copies of critical properties that could potentially change while we're saving
         video = self.video.strip()
@@ -4306,64 +4308,66 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         frame_rate, duration = self.frame_rate, self.duration
         vwidth, vheight = self.vwidth, self.vheight
         minimum, maximum = self.minimum, self.maximum
-        audio_tracks = player.audio_get_track_count()
-        dest_already_exists = exists(dest)
-        replacing_original = video == dest
+        audio_track_count = player.audio_get_track_count()
 
-        # what will we do to our output and original files after saving?
-        open_after_save = None                                          # None means we'll decide after the edit finishes
-        explore_after_save = False
-        delete_after_save = self.checkDeleteOriginal.checkState()       # 0, 1, or 2
+        # misc. constants
+        DEST_ALREADY_EXISTS = exists(dest)
+        REPLACING_ORIGINAL = video == dest
+
+        # what will we do to our output and original files after saving? (NOTE: concatenation will override these)
+        open_after_save = None                                  # None means we'll decide after the edit finishes
+        explore_after_save = False                              # ↓ 0, 1, or 2 (ignored if `REPLACING_ORIGINAL` is True)
+        delete_mode = 0 if REPLACING_ORIGINAL else self.checkDeleteOriginal.checkState()
 
         # operation aliases
-        op_concat =        operations.get('concatenate', None)          # see `self.concatenate()` for details
-        op_add_text =      operations.get('add text', None)             # a list of `widgets.QTextOverlay` objects
-        op_replace_audio = operations.get('replace audio', None)        # path to audio track
-        op_add_audio =     operations.get('add audio', None)            # path to audio track
-        op_isolate_track = operations.get('isolate track', None)        # track to isolate
-        op_amplify_audio = operations.get('amplify audio', None)        # new volume, from 0-1(+)
-        op_resize =        operations.get('resize', None)
-        op_rotate_video =  operations.get('rotate video', None)         # rotate angle -> 90/180/270
-        op_trim_start =    operations.get('trim start', None)           # represents both trimming and fading
-        op_trim_end =      operations.get('trim end', None)             # represents both trimming and fading
-        op_crop =          operations.get('crop', None)
+        op_concat: dict[str] =               operations.get('concatenate', None)    # see `self.concatenate()` for details
+        op_add_text =                        operations.get('add text', None)       # a list of `widgets.QTextOverlay` objects
+        op_replace_audio: str =              operations.get('replace audio', None)  # path to audio track
+        op_add_audio: str =                  operations.get('add audio', None)      # path to audio track
+        op_isolate_track: tuple[str, int] =  operations.get('isolate track', None)  # track-type and index to isolate
+        op_amplify_audio: float =            operations.get('amplify audio', None)  # new volume, from 0-1(+)
+        op_resize: tuple[int, int] | float = operations.get('resize', None)         # (width, height) OR duration multiplier
+        op_rotate_video: str =               operations.get('rotate video', None)   # rotation command (e.g. "vflip")
+        op_trim_start: bool =                operations.get('trim start', None)     # represents both trimming and fading
+        op_trim_end: bool =                  operations.get('trim end', None)       # represents both trimming and fading
+        op_crop: bool =                      operations.get('crop', None)
 
         # quick pre-operation checks (we do this here instead of being the...
         # ...thread because it's kinda slow + we reuse some of these variables)
         if op_crop:
-            if mime == 'audio':                                         # don't disable crop, but ignore it as an operation for audio
+            if mime == 'audio':                                 # don't disable crop, but ignore it as an operation for audio
                 log_on_statusbar('Crop mode on audio files is designed for cropping cover art through snapshots/image copying.')
-                del operations['crop']                                  # remove operation key
+                del operations['crop']                          # remove operation key
                 op_crop = False
-            crop_selection = tuple(self.vlc.factor_point(point) for point in self.vlc.selection)
             lfp = tuple(self.vlc.last_factored_points)
+            crop_selection = tuple(self.vlc.factor_point(point) for point in self.vlc.selection)
             crop_top =    min(crop_selection[0].y(), vheight - 1)
             crop_left =   min(crop_selection[0].x(), vwidth - 1)
             crop_right =  min(crop_selection[1].x(), vwidth)
             crop_bottom = min(crop_selection[2].y(), vheight)
             crop_width =  round(crop_right - crop_left)
             crop_height = round(crop_bottom - crop_top)
-            if crop_width == vwidth and crop_height == vheight:         # not actually cropped -> disable crop mode and update our operations
+            if crop_width == vwidth and crop_height == vheight:  # not actually cropped -> disable crop mode and update our operations
                 log_on_statusbar('Crop is the same size as the source media.')
-                self.disable_crop_mode_signal.emit(False)               # False to make sure we don't log crop mode being disabled
-                del operations['crop']                                  # remove operation key
+                self.disable_crop_mode_signal.emit(False)        # False to make sure we don't log crop mode being disabled
+                del operations['crop']                           # remove operation key
                 op_crop = False
         if op_trim_start or op_trim_end:
-            if is_static_image:                                         # NOTE: shouldn't be possible, but just in case
+            if is_static_image:                                 # NOTE: shouldn't be possible, but just in case
                 log_on_statusbar('I don\'t know how you got this far, but you can\'t trim/fade a static image.')
-                operations.pop('trim start', None)                      # remove operation keys if they exist
+                operations.pop('trim start', None)              # remove operation keys if they exist
                 operations.pop('trim end', None)
                 op_trim_start = False
                 op_trim_end = False
             elif minimum == 0 and maximum == frame_count:
                 log_on_statusbar('It\'s not really a "trim" if you end up with the entire duration of the file, is it?')
-                operations.pop('trim start', None)                      # remove operation keys if they exist
+                operations.pop('trim start', None)              # remove operation keys if they exist
                 operations.pop('trim end', None)
                 op_trim_start = False
                 op_trim_end = False
             elif minimum == maximum:
                 log_on_statusbar('If you want to trim off 100% of the file, you might as well just delete it.')
-                operations.pop('trim start', None)                      # remove operation keys if they exist
+                operations.pop('trim start', None)              # remove operation keys if they exist
                 operations.pop('trim end', None)
                 op_trim_start = False
                 op_trim_end = False
@@ -4395,17 +4399,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         final_dest = dest                                       # save the original dest so we can rename our temporary dest back later
         dest = add_path_suffix(dest, '_temp', unique=True)      # add _temp to dest, in case dest is the same as our base video
 
-        temp_paths = []
         logging.info(f'Saving file to "{final_dest}"')
-        logging.debug(f'temp-dest={dest}, video={video} delete_after_save={delete_after_save} operations={operations}')
+        logging.debug(f'temp-dest={dest}, video={video} delete={delete_mode} replacing_original={REPLACING_ORIGINAL} operations={operations}')
+        temp_paths = []                                         # some edits generate excess files we'll need to delete later
 
-        # lock both temporary and actual destination
+        # lock both temporary and actual destination in the player
         self.locked_files.add(dest)
         self.locked_files.add(final_dest)
-        if replacing_original:                                  # ignore deletion setting if we're replacing the original file
-            delete_after_save = 0
 
-        # open handle to our destination
+        # open handle to our destination to lock it on the system
         dest_handle = open(final_dest, 'a')
 
     # --- Apply operations to media ---
@@ -4433,11 +4435,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # the code block formerly known as `self._concatenate()`
             if op_concat:
-                noun = 'Concatenation'
+                log_noun = 'Concatenation'
                 files = op_concat['files']
                 open_after_save = op_concat['open']
                 explore_after_save = op_concat['explore']
-                delete_after_save = op_concat['delete_mode']
+                delete_mode = op_concat['delete_mode']
 
                 new_ctime, new_mtime = self.get_new_file_timestamps(*files, dest=dest)
                 edit.frame_rate = op_concat['frame_rate_hint']
@@ -4809,16 +4811,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # resize video/GIF/image, or change audio file's tempo
             # TODO: this is a relatively fast operation and SHOULD be done much sooner but that requires...
             # ...dynamic ordering of operations (see above) and adjusting `crop_selection`/`lfp` and I'm lazy
-            if op_resize is not None:       # audio -> https://stackoverflow.com/questions/25635941/ffmpeg-modify-audio-length-size-stretch-or-shrink
-                log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (Note: this should be a VERY quick operation)' if mime == 'audio' else ''
+            if op_resize is not None:       # audio -> https://stackoverflow.com/q/25635941/13010956
+                log_note = ' (this is a time-consuming task)' if mime == 'video' else ' (this should be a VERY quick operation)' if mime == 'audio' else ''
                 log_on_statusbar(f'{mime.capitalize()} resize requested{log_note}.')
-                width, height = op_resize   # for audio, width is a value from 0-1 (as a string) and height is None
-                if mime == 'audio':
-                    edit.frame_count = (duration / float(width)) * frame_rate
-                    cmd = f'-i %in -filter:a atempo="{width}"'
+                if mime == 'audio':         # for audio: only duration (as a multiplier, e.g. 1.5x) is given
+                    duration_factor = op_resize
+                    edit.frame_count = (duration / duration_factor) * frame_rate
+                    cmd = f'-i %in -filter:a atempo="{duration_factor}"'
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adjusting tempo')
-                else:
-                    vwidth, vheight = scale(vwidth, vheight, width, height)
+                else:                       # for videos/images: (width, height) tuple
+                    vwidth, vheight = scale(vwidth, vheight, *op_resize)
                     if is_static_image:     # ^ pillow can't handle 0/-1 and ffmpeg is stupid (see below) -> scale right away
                         with get_image_data(intermediate_file, extension) as image:
                             image = image.resize((vwidth, vheight))                 # resize image
@@ -4886,7 +4888,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
                 else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
                     log_on_statusbar('Additional audio track requested.')
-                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_tracks == 0 else '-filter_complex amix=inputs=2'
+                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_track_count == 0 else '-filter_complex amix=inputs=2'
                     cmd = f'-i %in -i "{audio}" {the_important_part}'
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
 
@@ -4906,6 +4908,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # the code block formerly known as `self.cleanup_edit_exception()`
         except Exception as error:
             successful = False
+            noun = log_noun or 'Save'
             qthelpers.deleteTempPath(dest, 'FFmpeg file')
 
             # ffmpeg had a memory error
@@ -4952,19 +4955,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # edit was intentionally cancelled by the user
             elif text == 'Cancelled.':
-                if not start_time: log_on_statusbar(f'{noun or "Save"} cancelled.')
-                else: log_on_statusbar(f'{noun or "Save"} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
+                if not start_time: log_on_statusbar(f'{noun} cancelled.')
+                else: log_on_statusbar(f'{noun} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
 
             # edit failed for an unknown reason
             else:
-                if not start_time: log_on_statusbar(f'(!) {noun.upper() or "SAVE"} FAILED: {format_exc()}')
-                else: log_on_statusbar(f'(!) {noun.upper() or "SAVE"} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
+                if not start_time: log_on_statusbar(f'(!) {noun.upper()} FAILED: {format_exc()}')
+                else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
 
         # --- Post-edit cleanup & opening our newly edited media ---
         finally:
             try:
                 # close handle to destination and delete temp file if needed
-                close_handle(dest_handle, not dest_already_exists)
+                close_handle(dest_handle, delete=not DEST_ALREADY_EXISTS)
 
                 # clean up temp paths if we have any
                 for path in temp_paths:
@@ -4974,13 +4977,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # confirm/validate/cleanup our operations
                 if operations and successful:
                     to_delete = video if not op_concat else op_concat['files']
-                    true_dest = self._cleanup_edit_output(dest, final_dest, new_ctime, new_mtime, delete_after_save, to_delete, noun)
+                    true_dest = self._cleanup_edit_output(dest, final_dest, new_ctime, new_mtime, delete_mode, to_delete, log_noun)
                     if not true_dest:
                         qthelpers.deleteTempPath(dest, 'FFmpeg file')
                         return
 
-                    # auto-open output if desired
-                    if open_after_save if open_after_save is not None else (self.video == video):
+                    # auto-open output if desired or we're watching the media that just got edited
+                    if (open_after_save) if open_after_save is not None else (self.video == video):
                         remember_old_file = not op_concat and settings.checkCycleRememberOriginalPath.checkState() == 2
                         self.open_from_thread(
                             file=true_dest,
@@ -5308,10 +5311,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             NOTE: If `temp_dest` is valid, this function is relatively "slow"
             as we must wait for a fresh probe file to be created. '''
         try:
+            noun = noun or 'Media'
             if not exists(temp_dest):
-                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but never actually appeared. Possibly an FFmpeg error. No changes have been made.')
+                return log_on_statusbar(f'(!) {noun} saved without error, but never actually appeared. Possibly an FFmpeg error. No changes have been made.')
             if os.stat(temp_dest).st_size == 0:
-                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
+                return log_on_statusbar(f'(!) {noun} saved without error, but was completely empty. Possibly an FFmpeg error. No changes have been made.')
 
             # next part takes a while so show text on the progress bar if this is the last edit
             if len(self.edits_in_progress) == 1:
@@ -5321,9 +5325,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # ... but cleanup is 100x easier if we do this now rather than later
             new_probe = probe_files(temp_dest, refresh=True, write=False)
             if not new_probe:                   # no probe returned
-                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
+                return log_on_statusbar(f'(!) {noun} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
             elif not new_probe[temp_dest]:      # empty probe returned
-                return log_on_statusbar(f'(!) {noun or "Media"} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
+                return log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
 
             # handle deletion behavior
             if delete_mode == 1:                # 1 -> mark for deletion
@@ -6061,19 +6065,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             and changes the length of audio files. '''
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
-        width, height = self.show_size_dialog()
+        width, height, _ = self.show_size_dialog(show_quality=False)
         if width is None: return            # dialog cancelled
         if width == 0: width = -1           # ffmpeg takes -1 as a default value, not 0
         if height == 0: height = -1         # ffmpeg takes -1 as a default value, not 0
 
-        # check for unchanged size/duration
+        # cancel if size/duration is unchanged
         if self.mime_type == 'audio':
             if round(width, 2) == 1:        # might get something like 1.0000331463797563
                 return show_on_statusbar('New length cannot be the same as the old length.', 10000)
+            self.operations['resize'] = width
         elif (width <= 0 or width == self.vwidth) and (height <= 0 or height == self.vheight):
             return show_on_statusbar('New size cannot be the same as the old size.', 10000)
+        else:
+            self.operations['resize'] = (width, height)
 
-        self.operations['resize'] = (width, height)
         self.save(                          # doesn't really need any hints
             noun='resized media',
             filter='All files(*)',
@@ -6369,7 +6375,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         lineEdit: QtW.QLineEdit = None,
         noun: str = None,
         default_path: str = None
-    ) -> str:
+    ) -> str | None:
         caption = f'Select {noun} directory' if noun else 'Select directory'
         path, cfg.lastdir = qthelpers.browseForDirectory(
             lastdir=cfg.lastdir,
@@ -6377,7 +6383,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             directory=default_path,
             lineEdit=lineEdit
         )
-        if path is None: return
         return path
 
 
@@ -6392,7 +6397,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         default_path: str = None,
         unique_default: bool = True,
         fallback_override: str = None
-    ) -> str:
+    ) -> str | None:
         ''' Opens a file-browsing dialog and returns a path to save to. Assigns
             path to `lineEdit` if provided. Dialog caption will read, "Save
             `noun` as..." if provided, otherwise "Save as...". If `default_path`
@@ -6492,32 +6497,38 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.add_subtitle_files(urls)
 
 
-    def show_size_dialog(self, snapshot: bool = False):
-        ''' Opens a dialog for choosing a new size/length for a given file.
-            If `snapshot` is True, additional options for quality and format
-            are provided. '''
-        dimensions = snapshot or self.mime_type != 'audio'
+    def show_size_dialog(self, show_quality: bool = False) -> tuple[int, int, int | None] | tuple[float, None, None]:
+        ''' Opens a dialog for choosing a new size/length for a given file,
+            returning the width, height, and quality (if `show_quality`) for
+            images and videos, or the duration, None, and None for audio.
+            If `show_quality` is True, additional options for image quality
+            are provided. Otherwise, the quality is None. '''
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
+
+        dimension_mode = show_quality or self.mime_type != 'audio'
         dialog = qthelpers.getDialog(
-            title='Input desired ' + ('size' if dimensions else 'duration'),
+            title='Input desired ' + ('size' if dimension_mode else 'duration'),
             fixedSize=(0, 0),
             flags=Qt.Tool,
             **self.get_popup_location_kwargs()
         )
 
-        if dimensions:
+        # setup dialog for images/videos
+        if dimension_mode:
             label = QtW.QLabel(constants.SIZE_DIALOG_DIMENSIONS_LABEL_BASE.replace('?resolution', f'{vwidth}x{vheight}'), dialog)
             wline = QtW.QLineEdit('0', dialog)
             hline = QtW.QLineEdit('0', dialog)
             wbutton = QtW.QPushButton('Width:', dialog)
             wbutton.clicked.connect(lambda: wline.setText(str(int(vwidth))))
             wbutton.setToolTip(f'Reset width to native resolution ({vwidth:.0f} pixels).')
+            wbutton.setMaximumWidth(50)
             hbutton = QtW.QPushButton('Height:', dialog)
             hbutton.clicked.connect(lambda: hline.setText(str(int(vheight))))
             hbutton.setToolTip(f'Reset height to native resolution ({vheight:.0f} pixels).')
+            hbutton.setMaximumWidth(50)
 
-            if snapshot:                        # add JPEG quality label/spinbox
+            if show_quality:                    # add JPEG quality label/spinbox
                 qlabel = QtW.QLabel('Quality:', dialog)
                 qlabel.setMinimumWidth(50)
                 qlabel.setAlignment(Qt.AlignCenter)
@@ -6526,12 +6537,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 qspin.setValue(settings.spinSnapshotJpegQuality.value())
                 qspin.setMaximum(100)
 
-            for w in (wbutton, hbutton):
-                w.setMaximumWidth(50)
-            for w in (wline, hline):
-                w.setMaxLength(6)
-                w.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('\\d*%')))    # https://stackoverflow.com/questions/13422995/set-qlineedit-to-accept-only-numbers
+            for lineEdit in (wline, hline):
+                lineEdit.setMaxLength(6)        # ↓ https://stackoverflow.com/questions/13422995/set-qlineedit-to-accept-only-numbers
+                lineEdit.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp('\\d*%')))
 
+        # setup dialog for audio
         else:
             label = QtW.QLabel('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.', dialog)
             wline = QtW.QLineEdit(max_time_string, dialog)
@@ -6541,47 +6551,59 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             wbutton.setMaximumWidth(58)
 
         label.setAlignment(Qt.AlignCenter)
-        wline.selectAll()                       # start with text in width lineEdit selected, for quicker editing
+        wline.selectAll()                       # start with width lineEdit's text already selected, for quicker editing
 
         layout = QtW.QVBoxLayout(dialog)
         form = QtW.QFormLayout()
         form.addRow(label)
         form.addRow(wbutton, wline)
-        if dimensions: form.addRow(hbutton, hline)
-        if snapshot:   form.addRow(qlabel, qspin)
+        if dimension_mode: form.addRow(hbutton, hline)
+        if show_quality:   form.addRow(qlabel, qspin)
         layout.addLayout(form)
         dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
 
         def accept():
-            if dimensions:                      # if sizes are percents, strip '%' and multiply w/h by percentages.
+            # video/image resize. accepts raw values or percentages. blank fields default to 0, which then align to aspect ratio
+            if dimension_mode:                                  # if sizes are percents, strip '%' and multiply w/h by percentages
                 width, height =   wline.text().strip(), hline.text().strip()
                 if '%' in width:  width = round(vwidth * (float(width.strip('%').strip()) / 100))
-                else:             width = int(width) if width else 0                    # blank lineEdit defaults to 0
+                else:             width = int(width) if width else 0
                 if '%' in height: height = round(vheight * (float(height.strip('%').strip()) / 100))
-                else:             height = int(height) if height else 0                 # blank lineEdit defaults to 0
-            else:                               # audio resize, check for timestamp-style string instead (hh:mm:ss.ms)
-                width, height = wline.text().strip(), None
-                if '%' in width: width = 1 / (float(width.strip('%').strip()) / 100)    # convert percentage to tempo-multiplier
+                else:             height = int(height) if height else 0
+                dialog.width = width
+                dialog.height = height
+                dialog.quality = qspin.value() if show_quality else None
+
+            # audio resize (adjusting tempo) NOTE: final duration is a multiplier of the original (e.g. 1.5x)
+            # TODO: ffmpeg's atempo is limited to 0.5x-2.0x duration. this is fixable with math. i suck at math.
+            else:
+                duration_factor = wline.text().strip()          # audio doesn't use `hline` lineEdit
+                if '%' in duration_factor:                      # convert percentage to multiplier
+                    duration_factor = 1 / (float(duration_factor.strip('%').strip()) / 100)
+
+                # calculate duration (as seconds) from timestamp string (hh:mm:ss.ms)
                 else:
-                    seconds = 0
-                    parts = tuple(float(part) for part in width.split(':') if part)     # float() takes care of milliseconds at the end
-                    if len(parts) == 3:   seconds += (parts[0] * 3600) + (parts[1] * 60) + parts[2]
-                    elif len(parts) == 2: seconds += (parts[0] * 60) + parts[1]
-                    elif len(parts) == 1: seconds = parts[0]
-                    width = duration / seconds  # actual length is not a percent, but a multiplier
-                width = min(2, max(0.5, width))
-            dialog.width = width
-            dialog.height = height
-            if snapshot:
-                dialog.quality = qspin.value()
+                    new_duration = 0                            # ↓ float() takes care of milliseconds at the end
+                    parts = tuple(float(part) for part in duration_factor.split(':') if part)
+                    if len(parts) == 3:   new_duration += (parts[0] * 3600) + (parts[1] * 60) + parts[2]
+                    elif len(parts) == 2: new_duration += (parts[0] * 60) + parts[1]
+                    elif len(parts) == 1: new_duration = parts[0]
+                    duration_factor = duration / new_duration
 
-        # open resize dialog. if cancel is selected, return None
+                # clamp between 0.5x and 2.0x (see TODO above)
+                duration_factor = min(2, max(0.5, duration_factor))
+                dialog.width = duration_factor
+                dialog.height = None
+                dialog.quality = None
+
+        # open resize dialog. if cancel is selected, return None's
         dialog.accepted.connect(accept)
-        if not dialog.exec(): return (None, None, None) if snapshot else (None, None)
-        return (dialog.width, dialog.height, dialog.quality) if snapshot else (dialog.width, dialog.height)
+        if not dialog.exec():
+            return (None, None, None)
+        return (dialog.width, dialog.height, dialog.quality)
 
 
-    def show_about_dialog(self):                # lazy version of about dialog
+    def show_about_dialog(self):                                # lazy version of about dialog
         from bin.window_about import Ui_aboutDialog
         dialog = qthelpers.getDialogFromUiClass(
             Ui_aboutDialog,
@@ -6881,14 +6903,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if not constants.IS_WINDOWS:
                 dialog.adjustSize()
 
-            if dialog.exec() == QtW.QDialog.Accepted:               # trim mode selected -> set appropriate QAction
+            if dialog.exec() == QtW.QDialog.Accepted:           # trim mode selected -> set appropriate QAction
                 if dialog.choice == button_auto: self.actionTrimAuto.setChecked(True)
                 else: self.actionTrimPrecise.setChecked(True)
-            else:                                                   # trim mode rejected -> set flag so whatever opened...
-                self.trim_mode_selection_cancelled = True           # ...the dialog can cancel whatever work it was doing
+            else:                                               # trim mode rejected -> set flag so whatever opened...
+                self.trim_mode_selection_cancelled = True       # ...the dialog can cancel whatever work it was doing
 
         except: log_on_statusbar(f'(!) TRIM DIALOG ERROR: {format_exc()}')
-        finally: cfg.trimmodeselected = True                        # set this to True no matter what (_save is waiting on this)
+        finally: cfg.trimmodeselected = True                    # set this to True no matter what (_save is waiting on this)
 
 
     def show_delete_prompt(self, *, exiting: bool = False) -> QtW.QDialogButtonBox.StandardButton:
@@ -7099,8 +7121,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 just_updated = True
 
         if not _launch or settings.checkAutoUpdateCheck.isChecked():
-            try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))  # string into seconds needs %x
-            except: last_check_time_seconds = 0
+            try: last_check_time_seconds = mktime(strptime(cfg.lastupdatecheck, '%x'))
+            except: last_check_time_seconds = 0         # ^ string into seconds needs %x
             if not _launch or last_check_time_seconds + (86400 * settings.spinUpdateFrequency.value()) < get_time():
                 if not just_updated:
                     log_on_statusbar('Checking for updates...')
@@ -7247,7 +7269,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # append valid extension if needed
             if not ext:
                 ext = ext_hint or video_ext or ('.' + self.extension)
-                output = f'{output}{ext}'
+                output += ext
 
             # make sure new name didn't end up being the same as the old one anyway
             if output == video:
@@ -8385,9 +8407,9 @@ if __name__ == "__main__":
         log_on_statusbar = gui.log_on_statusbar_signal.emit
         show_on_statusbar = gui.statusbar.showMessage
         update_progress = gui.update_progress
+        emit_update_progress_signal = gui.update_progress_signal.emit
         set_and_update_progress = gui.set_and_update_progress
         set_and_adjust_and_update_progress = gui.set_and_adjust_and_update_progress
-        emit_update_progress_signal = gui.update_progress_signal.emit
         set_volume_slider = gui.sliderVolume.setValue
         get_volume_slider = gui.sliderVolume.value
         get_volume_scroll_increment = settings.spinScrollVolume.value
@@ -8405,6 +8427,7 @@ if __name__ == "__main__":
         sep = os.sep
         exists = os.path.exists
         abspath = os.path.abspath
+        parse_json = json.JSONDecoder.decode
 
         qtstart.connect_widget_signals(gui)             # connect signals and slots
         cfg = widgets.cfg = config.loadConfig(gui)      # create and load config (uses constants.CONFIG_PATH)
