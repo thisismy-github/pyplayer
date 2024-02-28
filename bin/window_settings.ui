@@ -545,7 +545,9 @@ will always appear in the context (right-click) menu.
 Partially checked - The submenus will only appear in the context
 menu if the menubar itself is not visible.
 
-Unchecked - The submenus will never appear in the context menu.</string>
+Unchecked - The submenus will never appear in the context menu.
+
+Note: Shift-right-clicking the player will always show the full menu.</string>
                </property>
                <property name="text">
                 <string>Show menubar's submenus in context menu (tristate)</string>
@@ -1577,26 +1579,6 @@ on &quot;the first media file you open.&quot;</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="label_5">
-                <property name="text">
-                 <string>Font size</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QSpinBox" name="spinHoverFontSize">
-                <property name="minimum">
-                 <number>6</number>
-                </property>
-                <property name="maximum">
-                 <number>20</number>
-                </property>
-                <property name="value">
-                 <number>12</number>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="0" colspan="2">
                <layout class="QHBoxLayout" name="horizontalLayout_6">
                 <property name="spacing">
@@ -1707,6 +1689,26 @@ away after removing your mouse from the progress slider.</string>
                 </property>
                 <property name="text">
                  <string>Fade duration</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="label_5">
+                <property name="text">
+                 <string>Font size</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QSpinBox" name="spinHoverFontSize">
+                <property name="minimum">
+                 <number>6</number>
+                </property>
+                <property name="maximum">
+                 <number>20</number>
+                </property>
+                <property name="value">
+                 <number>12</number>
                 </property>
                </widget>
               </item>
@@ -3538,6 +3540,50 @@ Leave blank to always save unspecified videos to their source folder.</string>
                </item>
               </layout>
              </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_15">
+               <property name="toolTip">
+                <string notr="true">The number of output paths to remember during a session.
+These can be accessed by right-clicking the statusbar.
+
+Note: Setting this to 0 will hide the &quot;Recent edits&quot; submenu.
+
+Note: Lowering this value will not remove edits from the
+existing list until you save a new edit.</string>
+               </property>
+               <property name="text">
+                <string notr="true">Recent edits to track</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QSpinBox" name="spinRecentEdits">
+               <property name="toolTip">
+                <string>The number of output paths to remember during a session.
+These can be accessed by right-clicking the statusbar.
+
+Note: Setting this to 0 will hide the &quot;Recent edits&quot; submenu.
+
+Note: Lowering this value will not remove edits from the
+existing list until you save a new edit.</string>
+               </property>
+               <property name="specialValueText">
+                <string>Do not track recent edits</string>
+               </property>
+               <property name="suffix">
+                <string> edit(s)</string>
+               </property>
+               <property name="prefix">
+                <string>The last </string>
+               </property>
+               <property name="maximum">
+                <number>1000</number>
+               </property>
+               <property name="value">
+                <number>25</number>
+               </property>
+              </widget>
+             </item>
              <item row="2" column="0">
               <widget class="QLabel" name="label_14">
                <property name="toolTip">
@@ -3552,17 +3598,15 @@ Note: FFmpeg will still fight for resources even at &quot;Low&quot; priority,
 so combining this with a thread override may be more optimal.
 
 For Linux, each priority level represents a &quot;niceness&quot; value:
-- High: -10 (requires root)
-- Above normal: -5 (requires root)
+- High: -10 (requires root, uses 0 otherwise)
+- Above normal: -5 (requires root, uses 0 otherwise)
 - Normal: 0
 - Below normal: 5
 - Low: 10
 
 Note: This setting has no effect on macOS.
-Note: Negative niceness values (high/above normal) require root.
-Otherwise, they will default to 0.
-Note: Changing this setting will not affect FFmpeg processes that
-were already started.</string>
+Note: Changing this setting will not affect FFmpeg processes
+that have already started.</string>
                </property>
                <property name="text">
                 <string notr="true">FFmpeg priority level</string>
@@ -3583,17 +3627,15 @@ Note: FFmpeg will still fight for resources even at &quot;Low&quot; priority,
 so combining this with a thread override may be more optimal.
 
 For Linux, each priority level represents a &quot;niceness&quot; value:
-- High: -10 (requires root)
-- Above normal: -5 (requires root)
+- High: -10 (requires root, uses 0 otherwise)
+- Above normal: -5 (requires root, uses 0 otherwise)
 - Normal: 0
 - Below normal: 5
 - Low: 10
 
 Note: This setting has no effect on macOS.
-Note: Negative niceness values (high/above normal) require root.
-Otherwise, they will default to 0.
-Note: Changing this setting will not affect FFmpeg processes that
-were already started.</string>
+Note: Changing this setting will not affect FFmpeg processes
+that have already started.</string>
                </property>
                <property name="currentIndex">
                 <number>4</number>
@@ -3846,50 +3888,6 @@ as an audio cue that your edit has finished.</string>
                  </widget>
                 </item>
                </layout>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_15">
-               <property name="toolTip">
-                <string notr="true">The number of output paths to remember during a session.
-These can be accessed by right-clicking the statusbar.
-
-Note: Setting this to 0 will hide the &quot;Recent edits&quot; submenu.
-
-Note: Lowering this value will not remove edits from the
-existing list until you save a new edit.</string>
-               </property>
-               <property name="text">
-                <string notr="true">Recent edits to track</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
-              <widget class="QSpinBox" name="spinRecentEdits">
-               <property name="toolTip">
-                <string>The number of output paths to remember during a session.
-These can be accessed by right-clicking the statusbar.
-
-Note: Setting this to 0 will hide the &quot;Recent edits&quot; submenu.
-
-Note: Lowering this value will not remove edits from the
-existing list until you save a new edit.</string>
-               </property>
-               <property name="specialValueText">
-                <string>Do not track recent edits</string>
-               </property>
-               <property name="suffix">
-                <string> edit(s)</string>
-               </property>
-               <property name="prefix">
-                <string>The last </string>
-               </property>
-               <property name="maximum">
-                <number>1000</number>
-               </property>
-               <property name="value">
-                <number>25</number>
-               </property>
               </widget>
              </item>
             </layout>

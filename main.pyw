@@ -957,6 +957,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_video = ''                    # NOTE: the actual last non-edited file played
         self.recent_files: list[str] = []       # NOTE: the user-friendly list of recent files
         self.recent_edits: list[str] = []       # NOTE: a list of recent edit output destinations
+        self.last_open_time: float = 0.0        # NOTE: the last time we COMPLETED opening a file (`end`)
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
         self.extension_label = '?'
@@ -1814,11 +1815,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             context.addAction(self.actionCopyImage)
         context.addAction(self.actionSettings)
 
-        # add submenus if menubar isn't visible or we always want them shown
+        # add submenus if menubar isn't visible, we shift-click, or we always want them shown
         show_submenus = settings.checkContextShowSubmenus.checkState()
         always_show = show_submenus == 2
         dynamic_show = show_submenus == 1
-        if always_show or (not self.menubar.isVisible() and dynamic_show):
+        if always_show or event.modifiers() & Qt.ShiftModifier or (not self.menubar.isVisible() and dynamic_show):
             context.addSeparator()
             context.addMenu(self.menuFile)
             context.addMenu(self.menuEdit)
@@ -3517,7 +3518,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             refresh_title()
 
             # log opening time. all done! (except for cleanup)
-            logging.info(f'Initial media opening completed after {get_time() - start:.4f} seconds.')
+            self.last_open_time = end = get_time()
+            logging.info(f'Initial media opening completed after {end - start:.4f} seconds.')
             return 1
 
         except:
@@ -6927,6 +6929,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         marked = []
         unmarked = []
+        marked_count = len(marked_for_deletion)
         recycle = settings.checkRecycleBin.isChecked()
         dialog_width = 450
 
@@ -6938,40 +6941,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 flags=Qt.WindowStaysOnTopHint | Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint,
                 **self.get_popup_location_kwargs()
             )
-
-            # layout and header label
-            warning_text = f'The following files will be {"recycled. Recycle?" if recycle else "permanently deleted. Delete?"}'
-            header = QtW.QLabel(f'{warning_text}\n(Middle-click to play, right-click for more options)', dialog)
-            header.setAlignment(Qt.AlignHCenter)
-            layout = QtW.QVBoxLayout(dialog)
-            layout.addWidget(header)
-
-            # create scroll area (needlessly complicated - needs its own layout and sub-widget)
-            scroll_area = QtW.QScrollArea(dialog)
-            scroll_area_widget = QtW.QWidget(scroll_area)
-            scroll_area.setWidget(scroll_area_widget)
-            scroll_area.setWidgetResizable(True)
-            scroll_area_layout = QtW.QVBoxLayout(scroll_area_widget)
-            scroll_area_layout.setSpacing(0)
-            scroll_area_layout.setContentsMargins(4, 4, 4, 4)
-            layout.addWidget(scroll_area)
-
-            # give scroll area a white background and checkboxes a cool blue highlight when hovering
-            scroll_area.setStyleSheet(
-                'QWidget {background: white}'
-                'QScrollBar {background: none}'         # https://stackoverflow.com/a/62223180
-                'QCheckBox {padding: 3px}'
-                'QCheckBox::hover {border: 1px solid blue; padding-left: 2px; background: rgba(20, 196, 255, 50)}'
-            )
-
-            # add checkboxes for each file (key=splitext to ignore extensions when sorting)
-            # TODO add setting related to sorting the files
-            for file in sorted(marked_for_deletion, key=os.path.splitext):
-                checkbox = QtW.QCheckBox(file, scroll_area_widget)
-                checkbox.setToolTip(file)
-                checkbox.setChecked(True)               # ↓ https://stackoverflow.com/a/7872508
-                dialog_width = max(dialog_width, checkbox.fontMetrics().width(file) + 58)
-                scroll_area_layout.addWidget(checkbox)  # ^ track required width for each checkbox so we can resize later
 
             # workarounds for python bug/oddity involving creating lambdas in iterables
             get_open_lambda =    lambda file: lambda: self.open(file, focus_window=False, update_recent_list=False)
@@ -7015,6 +6984,59 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 ''' Set all checkboxes to `checked`. '''
                 for checkbox in qthelpers.layoutGetItems(scroll_area_layout):
                     checkbox.setChecked(checked)
+
+            def checkbox_toggled(checked: bool):
+                ''' Increments `marked_count` and
+                    updates the header accordingly. '''
+                nonlocal marked_count
+                marked_count += 1 if checked else -1
+                header.setText(get_header_text())
+
+            def get_header_text() -> str:
+                ''' Calculates and returns the proper header text. '''
+                warning_verb = 'recycled' if recycle else 'permanently deleted'
+                if len(marked_for_deletion) == 1:
+                    warning_noun = 'file'
+                elif marked_count != len(marked_for_deletion):
+                    warning_noun = f'{marked_count}/{len(marked_for_deletion)} files'
+                else:
+                    warning_noun = f'{len(marked_for_deletion)} files'
+                warning_text = f'The following {warning_noun} will be {warning_verb}. Continue?'
+                return f'{warning_text}\n(Middle-click to play, right-click for more options)'
+
+            # layout and header label
+            header = QtW.QLabel(get_header_text(), dialog)
+            header.setAlignment(Qt.AlignHCenter)
+            layout = QtW.QVBoxLayout(dialog)
+            layout.addWidget(header)
+
+            # create scroll area (needlessly complicated - needs its own layout and sub-widget)
+            scroll_area = QtW.QScrollArea(dialog)
+            scroll_area_widget = QtW.QWidget(scroll_area)
+            scroll_area.setWidget(scroll_area_widget)
+            scroll_area.setWidgetResizable(True)
+            scroll_area_layout = QtW.QVBoxLayout(scroll_area_widget)
+            scroll_area_layout.setSpacing(0)
+            scroll_area_layout.setContentsMargins(4, 4, 4, 4)
+            layout.addWidget(scroll_area)
+
+            # give scroll area a white background and checkboxes a cool blue highlight when hovering
+            scroll_area.setStyleSheet(
+                'QWidget {background: white}'
+                'QScrollBar {background: none}'         # https://stackoverflow.com/a/62223180
+                'QCheckBox {padding: 3px}'
+                'QCheckBox::hover {border: 1px solid blue; padding-left: 2px; background: rgba(20, 196, 255, 50)}'
+            )
+
+            # add checkboxes for each file (key=splitext to ignore extensions when sorting)
+            # TODO add setting related to sorting the files
+            for file in sorted(marked_for_deletion, key=os.path.splitext):
+                checkbox = QtW.QCheckBox(file, scroll_area_widget)
+                checkbox.setToolTip(file)
+                checkbox.setChecked(True)               # ↓ https://stackoverflow.com/a/7872508
+                checkbox.toggled.connect(checkbox_toggled)
+                dialog_width = max(dialog_width, checkbox.fontMetrics().width(file) + 58)
+                scroll_area_layout.addWidget(checkbox)  # ^ track required width for each checkbox so we can resize later
 
             # add expanding vertical spacer to bottom of scroll area so checkboxes stay at the top
             scroll_area_layout.addSpacerItem(QtW.QSpacerItem(0, 10, QtW.QSizePolicy.Minimum, QtW.QSizePolicy.Expanding))
@@ -7520,7 +7542,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def set_volume_boost(self, value: float = 1.0, increment: bool = False):
         ''' Sets `self.volume_boost` to `value`, or increments it by `value`
-            if `increment` is True. Refreshs UI and displays marquee. '''
+            if `increment` is True. Refreshs UI and displays marquee.
+            NOTE: Cancels if a file was opened in the last 0.35 seconds. '''
+        cancel_delta = get_time() - self.last_open_time
+        if cancel_delta < 0.35:
+            logging.info(f'Blocking possibly accidental volume boost (triggered {cancel_delta:.2f} seconds after opening a file)')
+            return
+
         base_volume = self.sliderVolume.value()
         if increment: boost = max(0.5, min(5, self.volume_boost + value))
         else:         boost = max(0.5, min(5, value))

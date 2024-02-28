@@ -448,15 +448,6 @@ class Ui_settingsDialog(object):
         self.comboHoverFont.setCurrentFont(font)
         self.comboHoverFont.setObjectName("comboHoverFont")
         self.formLayout_2.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.comboHoverFont)
-        self.label_5 = QtWidgets.QLabel(self.groupHover)
-        self.label_5.setObjectName("label_5")
-        self.formLayout_2.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_5)
-        self.spinHoverFontSize = QtWidgets.QSpinBox(self.groupHover)
-        self.spinHoverFontSize.setMinimum(6)
-        self.spinHoverFontSize.setMaximum(20)
-        self.spinHoverFontSize.setProperty("value", 12)
-        self.spinHoverFontSize.setObjectName("spinHoverFontSize")
-        self.formLayout_2.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinHoverFontSize)
         self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_6.setSpacing(5)
         self.horizontalLayout_6.setObjectName("horizontalLayout_6")
@@ -489,6 +480,15 @@ class Ui_settingsDialog(object):
         self.label_41 = QtWidgets.QLabel(self.groupHover)
         self.label_41.setObjectName("label_41")
         self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_41)
+        self.label_5 = QtWidgets.QLabel(self.groupHover)
+        self.label_5.setObjectName("label_5")
+        self.formLayout_2.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_5)
+        self.spinHoverFontSize = QtWidgets.QSpinBox(self.groupHover)
+        self.spinHoverFontSize.setMinimum(6)
+        self.spinHoverFontSize.setMaximum(20)
+        self.spinHoverFontSize.setProperty("value", 12)
+        self.spinHoverFontSize.setObjectName("spinHoverFontSize")
+        self.formLayout_2.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinHoverFontSize)
         self.verticalLayout_3.addWidget(self.groupHover)
         self.groupBox_9 = QtWidgets.QGroupBox(self.tabGeneral)
         self.groupBox_9.setObjectName("groupBox_9")
@@ -1051,6 +1051,22 @@ class Ui_settingsDialog(object):
         self.buttonBrowseDefaultOutputPath.setObjectName("buttonBrowseDefaultOutputPath")
         self.horizontalLayout_45.addWidget(self.buttonBrowseDefaultOutputPath)
         self.formLayout_18.setLayout(0, QtWidgets.QFormLayout.FieldRole, self.horizontalLayout_45)
+        self.label_15 = QtWidgets.QLabel(self.tabEditing)
+        self.label_15.setToolTip("The number of output paths to remember during a session.\n"
+"These can be accessed by right-clicking the statusbar.\n"
+"\n"
+"Note: Setting this to 0 will hide the \"Recent edits\" submenu.\n"
+"\n"
+"Note: Lowering this value will not remove edits from the\n"
+"existing list until you save a new edit.")
+        self.label_15.setText("Recent edits to track")
+        self.label_15.setObjectName("label_15")
+        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_15)
+        self.spinRecentEdits = QtWidgets.QSpinBox(self.tabEditing)
+        self.spinRecentEdits.setMaximum(1000)
+        self.spinRecentEdits.setProperty("value", 25)
+        self.spinRecentEdits.setObjectName("spinRecentEdits")
+        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.spinRecentEdits)
         self.label_14 = QtWidgets.QLabel(self.tabEditing)
         self.label_14.setToolTip("What priority level FFmpeg processes should have while running.\n"
 "Higher levels allow FFmpeg to finish marginally faster at the cost of\n"
@@ -1063,17 +1079,15 @@ class Ui_settingsDialog(object):
 "so combining this with a thread override may be more optimal.\n"
 "\n"
 "For Linux, each priority level represents a \"niceness\" value:\n"
-"- High: -10 (requires root)\n"
-"- Above normal: -5 (requires root)\n"
+"- High: -10 (requires root, uses 0 otherwise)\n"
+"- Above normal: -5 (requires root, uses 0 otherwise)\n"
 "- Normal: 0\n"
 "- Below normal: 5\n"
 "- Low: 10\n"
 "\n"
 "Note: This setting has no effect on macOS.\n"
-"Note: Negative niceness values (high/above normal) require root.\n"
-"Otherwise, they will default to 0.\n"
-"Note: Changing this setting will not affect FFmpeg processes that\n"
-"were already started.")
+"Note: Changing this setting will not affect FFmpeg processes\n"
+"that have already started.")
         self.label_14.setText("FFmpeg priority level")
         self.label_14.setObjectName("label_14")
         self.formLayout_18.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.label_14)
@@ -1138,22 +1152,6 @@ class Ui_settingsDialog(object):
         self.checkEditFocusRejectedBeep.setObjectName("checkEditFocusRejectedBeep")
         self.horizontalLayout_52.addWidget(self.checkEditFocusRejectedBeep)
         self.formLayout_18.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.groupBox_10)
-        self.label_15 = QtWidgets.QLabel(self.tabEditing)
-        self.label_15.setToolTip("The number of output paths to remember during a session.\n"
-"These can be accessed by right-clicking the statusbar.\n"
-"\n"
-"Note: Setting this to 0 will hide the \"Recent edits\" submenu.\n"
-"\n"
-"Note: Lowering this value will not remove edits from the\n"
-"existing list until you save a new edit.")
-        self.label_15.setText("Recent edits to track")
-        self.label_15.setObjectName("label_15")
-        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_15)
-        self.spinRecentEdits = QtWidgets.QSpinBox(self.tabEditing)
-        self.spinRecentEdits.setMaximum(1000)
-        self.spinRecentEdits.setProperty("value", 25)
-        self.spinRecentEdits.setObjectName("spinRecentEdits")
-        self.formLayout_18.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.spinRecentEdits)
         self.verticalLayout_19.addLayout(self.formLayout_18)
         self.groupBox_16 = QtWidgets.QGroupBox(self.tabEditing)
         self.groupBox_16.setObjectName("groupBox_16")
@@ -2401,7 +2399,9 @@ class Ui_settingsDialog(object):
 "Partially checked - The submenus will only appear in the context\n"
 "menu if the menubar itself is not visible.\n"
 "\n"
-"Unchecked - The submenus will never appear in the context menu."))
+"Unchecked - The submenus will never appear in the context menu.\n"
+"\n"
+"Note: Shift-right-clicking the player will always show the full menu."))
         self.checkContextShowSubmenus.setText(_translate("settingsDialog", "Show menubar\'s submenus in context menu (tristate)"))
         self.groupBox.setTitle(_translate("settingsDialog", "Window behavior"))
         self.checkFocusAggressive.setToolTip(_translate("settingsDialog", "If checked, PyPlayer will use COM and native Windows\' APIs\n"
@@ -2604,7 +2604,6 @@ class Ui_settingsDialog(object):
         self.checkTrayResetFirstFileOnRestore.setText(_translate("settingsDialog", "\"First media file\" resets when using system tray"))
         self.groupHover.setTitle(_translate("settingsDialog", "Show timestamps when hovering"))
         self.label_3.setText(_translate("settingsDialog", "Font"))
-        self.label_5.setText(_translate("settingsDialog", "Font size"))
         self.label_6.setText(_translate("settingsDialog", "Font color"))
         self.checkHoverShadow.setToolTip(_translate("settingsDialog", "If checked, a small drop-shadow will appear beneath the timestamp."))
         self.checkHoverShadow.setText(_translate("settingsDialog", "Drop shadow"))
@@ -2614,6 +2613,7 @@ class Ui_settingsDialog(object):
         self.label_41.setToolTip(_translate("settingsDialog", "The duration, in seconds, that a timestamp takes to fade\n"
 "away after removing your mouse from the progress slider."))
         self.label_41.setText(_translate("settingsDialog", "Fade duration"))
+        self.label_5.setText(_translate("settingsDialog", "Font size"))
         self.groupBox_9.setTitle(_translate("settingsDialog", "Autoplay"))
         self.label_68.setToolTip(_translate("settingsDialog", "The number of files that Autoplay will remember in a\n"
 "given folder during shuffle mode. This is used to avoid\n"
@@ -2928,6 +2928,16 @@ class Ui_settingsDialog(object):
         self.spinTextX.setSuffix(_translate("settingsDialog", "% of media\'s height"))
         self.spinTextY.setSuffix(_translate("settingsDialog", "% of media\'s height"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabGeneral), _translate("settingsDialog", "&General"))
+        self.spinRecentEdits.setToolTip(_translate("settingsDialog", "The number of output paths to remember during a session.\n"
+"These can be accessed by right-clicking the statusbar.\n"
+"\n"
+"Note: Setting this to 0 will hide the \"Recent edits\" submenu.\n"
+"\n"
+"Note: Lowering this value will not remove edits from the\n"
+"existing list until you save a new edit."))
+        self.spinRecentEdits.setSpecialValueText(_translate("settingsDialog", "Do not track recent edits"))
+        self.spinRecentEdits.setSuffix(_translate("settingsDialog", " edit(s)"))
+        self.spinRecentEdits.setPrefix(_translate("settingsDialog", "The last "))
         self.comboFFmpegPriority.setToolTip(_translate("settingsDialog", "What priority level FFmpeg processes should have while running.\n"
 "Higher levels allow FFmpeg to finish marginally faster at the cost of\n"
 "slowing down your system, whereas lower levels allow your system\n"
@@ -2939,17 +2949,15 @@ class Ui_settingsDialog(object):
 "so combining this with a thread override may be more optimal.\n"
 "\n"
 "For Linux, each priority level represents a \"niceness\" value:\n"
-"- High: -10 (requires root)\n"
-"- Above normal: -5 (requires root)\n"
+"- High: -10 (requires root, uses 0 otherwise)\n"
+"- Above normal: -5 (requires root, uses 0 otherwise)\n"
 "- Normal: 0\n"
 "- Below normal: 5\n"
 "- Low: 10\n"
 "\n"
 "Note: This setting has no effect on macOS.\n"
-"Note: Negative niceness values (high/above normal) require root.\n"
-"Otherwise, they will default to 0.\n"
-"Note: Changing this setting will not affect FFmpeg processes that\n"
-"were already started."))
+"Note: Changing this setting will not affect FFmpeg processes\n"
+"that have already started."))
         self.comboFFmpegPriority.setItemText(0, _translate("settingsDialog", "High"))
         self.comboFFmpegPriority.setItemText(1, _translate("settingsDialog", "Above normal"))
         self.comboFFmpegPriority.setItemText(2, _translate("settingsDialog", "Normal"))
@@ -3026,16 +3034,6 @@ class Ui_settingsDialog(object):
 "your focus settings, and instead using the notification sound\n"
 "as an audio cue that your edit has finished."))
         self.checkEditFocusRejectedBeep.setText(_translate("settingsDialog", "Play beep"))
-        self.spinRecentEdits.setToolTip(_translate("settingsDialog", "The number of output paths to remember during a session.\n"
-"These can be accessed by right-clicking the statusbar.\n"
-"\n"
-"Note: Setting this to 0 will hide the \"Recent edits\" submenu.\n"
-"\n"
-"Note: Lowering this value will not remove edits from the\n"
-"existing list until you save a new edit."))
-        self.spinRecentEdits.setSpecialValueText(_translate("settingsDialog", "Do not track recent edits"))
-        self.spinRecentEdits.setSuffix(_translate("settingsDialog", " edit(s)"))
-        self.spinRecentEdits.setPrefix(_translate("settingsDialog", "The last "))
         self.groupBox_16.setTitle(_translate("settingsDialog", "File timestamps"))
         self.checkEditCtimeOnNew.setToolTip(_translate("settingsDialog", "If checked, the current media\'s creation time will be\n"
 "applied to any new files that are saved. Otherwise,\n"
