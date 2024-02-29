@@ -1011,6 +1011,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.marked_for_deletion: set[str] = set()
         self.shortcuts: dict = None
         self.operations = {}
+        self.save_remnants: dict[float, dict] = {}
         self.playback_speed = 1.0
         self.volume_boost = 1
         self.volume_startup_correction_needed = True
@@ -4154,10 +4155,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ext_hint: str = None,
         default_path: str = None,
         unique_default: bool = True
-    ):
+    ) -> bool | None:
         ''' Opens a file dialog with `filter` and the caption "Save `noun`
-            as...", before saving to the user-selected path, if any.
-            See `save()` for more details. '''
+            as...", before saving to the user-selected path, if any. Returns
+            None if the dialog is cancelled. See `save()` for more details. '''
 
         video = self.video
         if not video: return show_on_statusbar('No media is playing.', 10000)
@@ -4181,7 +4182,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             if file:                                            # None if cancel was selected
                 logging.info(f'Saving as \'{file}\'')
-                self.save(dest=file)
+                return self.save(dest=file)
         except:
             log_on_statusbar(f'(!) SAVE_AS FAILED: {format_exc()}')
 
@@ -4196,7 +4197,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         preferred_extensions: tuple[str] = None,
         ext_hint: str = None,
         unique_default: bool = False
-    ):
+    ) -> bool | None:
         ''' Checks for any edit operations, applies them to the current media,
             and saves the new file to `dest`. If `dest` is None, `save_as()`
             is called, passing in `filter`, and a list of `valid_extensions`.
@@ -4292,6 +4293,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # do actual saving in separate thread
         Thread(target=self._save, args=(dest, operations), daemon=True).start()
+        return True
 
 
     def _save(self, dest: str = None, operations: dict = {}):
@@ -4333,6 +4335,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         op_trim_start: bool =                operations.get('trim start', None)     # represents both trimming and fading
         op_trim_end: bool =                  operations.get('trim end', None)       # represents both trimming and fading
         op_crop: bool =                      operations.get('crop', None)
+
+        # save remnants dict (contains stuff like dialogs we want to hang onto for later if the save fails)
+        if 'remnants' in operations:
+            operations['remnants'].setdefault('video', video)
+            operations['remnants'].setdefault('_in_progress', True)
+            self.save_remnants[start_time] = operations['remnants']
+            del operations['remnants']                          # delete the operation key, not the remnant itself
 
         # quick pre-operation checks (we do this here instead of being the...
         # ...thread because it's kinda slow + we reuse some of these variables)
@@ -5011,7 +5020,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 max_len = settings.spinRecentFiles.value()
                                 self.recent_files = recent_files[-max_len:]
                         if settings.checkTextOnSave.isChecked():
-                            show_on_player(f'{noun or "Changes"} saved to {true_dest}.')
+                            show_on_player(f'{log_noun or "Changes"} saved to {true_dest}.')
 
                     # open output in explorer if desired
                     if explore_after_save:
@@ -5026,6 +5035,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         max_len = settings.spinRecentEdits.value()
                         self.recent_edits = recent_edits[-max_len:]
 
+                    # clear out inactive save remnants from this edit or earlier in a thread-safe manner
+                    # this way, we only clear out remnants that have had edits started and finished after they were created
+                    logging.debug(f'Clearing any remnants older than {start_time}')
+                    remnant_times = sorted(self.save_remnants.keys())
+                    for remnant_time in remnant_times:
+                        if remnant_time > start_time:
+                            break
+                        try:                            # ignore marker for this edit's remnant
+                            if remnant_time == start_time or not self.save_remnants[remnant_time].get('_in_progress', False):
+                                logging.debug(f'Removing remnant from {remnant_time}')
+                                del self.save_remnants[remnant_time]
+                        except:
+                            logging.warning(f'(!) Failed to remove stale save remnant from {remnant_time}: {format_exc()}')
+
                     # log our changes or lack thereof
                     log_on_statusbar(f'{noun or "Changes"} saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
                 elif successful:                        # log our lack of changes
@@ -5038,6 +5061,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.locked_files.discard(final_dest)   # unlock final destination
                 self.setFocus(True)                     # restore keyboard focus so we can use hotkeys again
                 self.remove_edit(edit)                  # remove `Edit` object and update priority
+                if start_time in self.save_remnants:    # mark save remnant as safe to remove, if still present
+                    try: self.save_remnants[start_time]['_in_progress'] = False
+                    except: logging.warning('(!) Failed to mark save remnant as safe to remove: ' + format_exc())
                 logging.info(f'Remaining locked files after {noun.lower() or "edit"}: {self.locked_files}')
 
 
@@ -7311,6 +7337,38 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return None, None, None
         finally:
             os.chdir(old_oscwd)                         # reset os module's CWD before returning
+
+
+    def get_save_remnant(
+        self,
+        key: str,
+        default=None,
+        video: str = '',
+        active: bool = True,
+        inactive: bool = True,
+        return_state: bool = False
+    ):
+        ''' Convenience method for accessing the most recent data within
+            `self.save_remnants` for a given `key` on a given `video` (if
+            provided). `active` and `inactive` control whether or not remnants
+            for edits still in progress ("active") or not ("inactive") may be
+            returned. If not present, `default` is returned. If `return_state`
+            is True, the remnant's active/inactive state is be returned as a
+            second value (always False for `default`). '''
+        try:
+            remnant_times = sorted(self.save_remnants.keys(), reverse=True)
+            for remnant_time in remnant_times:
+                try:
+                    remnant = self.save_remnants[remnant_time]
+                    if key in remnant and remnant.get('video', video) == video:
+                        _active = remnant.get('_in_progress', False)
+                        if (_active and active) or (not _active and inactive):
+                            return (remnant[key], _active) if return_state else remnant[key]
+                except:
+                    log_on_statusbar(f'(!) Error accessing save remnant at {remnant_time}: {format_exc()}')
+        except:
+            log_on_statusbar(f'(!) Unexpected error while getting save remnant for key "{key}": {format_exc()}')
+        return (default, False) if return_state else default
 
 
     def get_popup_location_kwargs(self) -> dict[str, str, str]:
