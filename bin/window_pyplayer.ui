@@ -78,7 +78,7 @@
      <x>0</x>
      <y>0</y>
      <width>757</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -208,6 +208,8 @@
      <property name="title">
       <string>C&amp;oncatenate</string>
      </property>
+     <addaction name="actionCatLastDialog"/>
+     <addaction name="separator"/>
      <addaction name="actionCatAfterLast"/>
      <addaction name="actionCatBeforeLast"/>
      <addaction name="separator"/>
@@ -228,7 +230,7 @@
     </widget>
     <widget class="QMenu" name="menuSubtitles">
      <property name="title">
-      <string>Su&amp;btitle Tracks</string>
+      <string>&amp;Subtitle Tracks</string>
      </property>
      <addaction name="actionAddSubtitleFile"/>
     </widget>
@@ -1840,7 +1842,20 @@ type (video, audio, or image) as the file you started with.</string>
   </action>
   <action name="actionAddText">
    <property name="text">
-    <string>Add text</string>
+    <string>&amp;Add text</string>
+   </property>
+  </action>
+  <action name="actionChangeDuration">
+   <property name="text">
+    <string>&amp;Duration</string>
+   </property>
+  </action>
+  <action name="actionCatLastDialog">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Reopen last dialog</string>
    </property>
   </action>
  </widget>

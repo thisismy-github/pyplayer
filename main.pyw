@@ -943,6 +943,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_cycle_was_forward = True
         self.last_cycle_index: int = None
         self.last_amplify_audio_value = 100
+        self.last_resize_media_values: tuple[str, str] = ('50%', '50%')
+        self.last_resize_media_base_size: tuple[int, int] = (-1, -1)
+        self.last_concat_files: list[str] = []
+        self.last_concat_output = ''
         self.invert_next_move_event = False
         self.invert_next_resize_event = False
         self.ignore_next_fullscreen_move_event = False
@@ -2828,7 +2832,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif extended:
                 if self.is_gif: image_player.gif.setPaused(True)
                 else: player.set_pause(True)
-                width, height, quality = self.show_size_dialog(show_quality=True)
+                width, height, quality, _, _ = self.show_size_dialog(show_quality=True)
                 if width is None:                   # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
 
@@ -4017,7 +4021,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # get width, height, and jpeg quality of snapshot
             if mode == 'full':
-                width, height, quality = self.show_size_dialog(show_quality=True)
+                width, height, quality, _, _ = self.show_size_dialog(show_quality=True)
                 if width is None:                               # dialog cancelled (finally-statement ensures we unpause if needed)
                     return
             else:
@@ -5761,48 +5765,70 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             CAT_APPEND_THIS  = action in (self.actionCatBeforeThis, self.actionCatAfterThis)
             CAT_APPEND_LAST  = action in (self.actionCatBeforeLast, self.actionCatAfterLast)
             CAT_APPEND_AFTER = action in (self.actionCatAfterThis, self.actionCatAfterLast)
-            CAT_BROWSE       = files is None and action is not self.actionCatDialog and not CAT_APPEND_LAST
+            CAT_DIALOG       = action in (self.actionCatDialog, self.actionCatLastDialog)
+            CAT_BROWSE       = files is None and not CAT_DIALOG and not CAT_APPEND_LAST
 
-            # determine if our current file, our last file, or no file should be included by default
-            # if we're adding to the current file but our current file isn't a video, just return
-            output = ''
-            if files and action is self.actionCatDialog:
-                base_video = ''
+            # reuse last file list (action is disabled until at least one dialog was opened)
+            if action is self.actionCatLastDialog:
+                old_files = self.last_concat_files
+                old_output = self.last_concat_output
+
+            # see if we have a file list left over from a failed edit and ask if user wants to reuse it
+            # NOTE: if the user opens the dialog directly, we can skip the confirmation popup
             else:
-                files = files or list()
-                if CAT_APPEND_LAST:             base_video = self.last_video
-                elif self.mime_type == 'video': base_video = self.video
-                elif CAT_APPEND_THIS: return show_on_statusbar('Concatenation is not implemented for audio and image files yet.', 10000)
-                else:                           base_video = ''
+                old_output, old_files = self.get_save_remnant('concatenate', ('', None))
+                if old_files and (self.video in old_files or not self.video):
+                    if CAT_DIALOG or qthelpers.getPopupYesNo(
+                        title='Reuse previous concatenation?',
+                        text='A previous incomplete concatentation\ninvolving this file exists. Reuse?',
+                        **self.get_popup_location_kwargs()
+                    ).exec() == QtW.QMessageBox.Yes:
+                        files = old_files
+                    else:
+                        old_files = None
+                else:
+                    old_files = None
 
-            # if we're adding our last file and current file together,...
-            # ...add current file to `files` (which should be empty)
-            if CAT_APPEND_LAST:
-                files.append(self.video)
+            if not old_files:
+                # determine if our current file, our last file, or no file should be included by default
+                # if we're adding to the current file but our current file isn't a video, just return
+                if files and CAT_DIALOG:
+                    base_video = ''
+                else:
+                    files = files or list()
+                    if CAT_APPEND_LAST:             base_video = self.last_video
+                    elif self.mime_type == 'video': base_video = self.video
+                    elif CAT_APPEND_THIS: return show_on_statusbar('Concatenation is not implemented for audio and image files yet.', 10000)
+                    else:                           base_video = ''
 
-            # see where in the file list to put our base video if we have one
-            # if we expected it to be our last file but it's not there, warn user and return
-            # if we expected it to be our current file, don't return. the user is more likely...
-            # ...to be okay with this behavior for the current file rather than the last file
-            if exists(base_video):
-                if CAT_APPEND_AFTER: files.insert(0, base_video)
-                else:                files.append(base_video)
-            elif CAT_APPEND_LAST:
-                if self.last_video == '': return marquee('No other files have been played.')
-                else:                     return marquee('Last file no longer exists.')
+                # if we're adding our last file and current file together,...
+                # ...add current file to `files` (which should be empty)
+                if CAT_APPEND_LAST:
+                    files.append(self.video)
 
-            # browse for additional files before (possibly) showing dialog
-            # if no files are selected and we were expecting some, just return
-            if CAT_BROWSE:
-                new_files, cfg.lastdir = qthelpers.browseForFiles(
-                    lastdir=cfg.lastdir,
-                    caption='Select media files to concatenate together',
-                    filter='All files (*)'
-                )
-                if len(new_files) == 0 and CAT_APPEND_THIS:
-                    return
-                files += new_files
-            files = [file.strip() for file in files if file]
+                # see where in the file list to put our base video if we have one
+                # if we expected it to be our last file but it's not there, warn user and return
+                # if we expected it to be our current file, don't return. the user is more likely...
+                # ...to be okay with this behavior for the current file rather than the last file
+                if exists(base_video):
+                    if CAT_APPEND_AFTER: files.insert(0, base_video)
+                    else:                files.append(base_video)
+                elif CAT_APPEND_LAST:
+                    if self.last_video == '': return marquee('No other files have been played.')
+                    else:                     return marquee('Last file no longer exists.')
+
+                # browse for additional files before (possibly) showing dialog
+                # if no files are selected and we were expecting some, just return
+                if CAT_BROWSE:
+                    new_files, cfg.lastdir = qthelpers.browseForFiles(
+                        lastdir=cfg.lastdir,
+                        caption='Select media files to concatenate together',
+                        filter='All files (*)'
+                    )
+                    if len(new_files) == 0 and CAT_APPEND_THIS:
+                        return
+                    files += new_files
+                files = [file.strip() for file in files if file]
 
         # >>> create, setup, and open dialog <<<
             # NOTE: originally if we only had 2 files and already knew their order, we'd skip the...
@@ -5827,11 +5853,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # set dialog's output to our current output text unless we're putting the current...
             # ...video AFTER the last watched video AND we haven't touched our current output text
-            current_output_text = self.lineOutput.text().strip()
-            if CAT_APPEND_LAST and CAT_APPEND_AFTER and current_output_text == splitext_media(os.path.basename(self.video))[0]:
-                dialog.output.setText(splitext_media(os.path.basename(self.last_video))[0])
+            if old_output:
+                dialog.output.setText(old_output)
             else:
-                dialog.output.setText(current_output_text)
+                current_output_text = self.lineOutput.text().strip()
+                if CAT_APPEND_LAST and CAT_APPEND_AFTER and current_output_text == splitext_media(os.path.basename(self.video))[0]:
+                    dialog.output.setText(splitext_media(os.path.basename(self.last_video))[0])
+                else:
+                    dialog.output.setText(current_output_text)
 
             # change "Save All" to say "Save as..."
             # we could just add our own buttons manually but it doesn't really make...
@@ -6052,6 +6081,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         continue
                     break                                   # we have our files, we have our name -> break loop
 
+            # store output and file list for potential reuse later
+            self.last_concat_files = files
+            self.last_concat_output = dialog.output.text()
+            self.actionCatLastDialog.setEnabled(True)       # enable "reuse last dialog" action now that we have one
+
             logging.info(f'Concatenation dialog files to {output}: {files}')
             operations = {
                 'concatenate': {
@@ -6062,6 +6096,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     'delete_mode': dialog.checkDelete.checkState(),
                     'frame_rate_hint': FRAME_RATE_HINT,
                     'frame_count_hint': FRAME_COUNT_HINT
+                },
+                'remnants': {
+                    'concatenate': (dialog.output.text(), files)
                 }
             }
 
@@ -6093,26 +6130,44 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             and changes the length of audio files. '''
         if not self.video: return show_on_statusbar('No media is playing.', 10000)
 
-        width, height, _ = self.show_size_dialog(show_quality=False)
-        if width is None: return            # dialog cancelled
-        if width == 0: width = -1           # ffmpeg takes -1 as a default value, not 0
-        if height == 0: height = -1         # ffmpeg takes -1 as a default value, not 0
-
-        # cancel if size/duration is unchanged
-        if self.mime_type == 'audio':
-            if round(width, 2) == 1:        # might get something like 1.0000331463797563
-                return show_on_statusbar('New length cannot be the same as the old length.', 10000)
-            self.operations['resize'] = width
-        elif (width <= 0 or width == self.vwidth) and (height <= 0 or height == self.vheight):
-            return show_on_statusbar('New size cannot be the same as the old size.', 10000)
+        # reuse old width/height values for images and videos (NOT audio) if our last...
+        # ...resize failed OR we're resizing something with the same dimensions as last time
+        is_audio = self.mime_type == 'audio'
+        base_size = (self.vwidth, self.vheight)
+        if not is_audio and self.last_resize_media_base_size == base_size:
+            old_size = self.get_save_remnant('resize', self.last_resize_media_values, self.video)
         else:
-            self.operations['resize'] = (width, height)
+            old_size = self.get_save_remnant('resize', ('0', '0'), self.video)
 
-        self.save(                          # doesn't really need any hints
-            noun='resized media',
-            filter='All files(*)',
-            unique_default=True
-        )
+        while True:
+            width, height, _, raw_width, raw_height = self.show_size_dialog(*old_size, show_quality=False)
+            if width is None: return        # dialog cancelled
+            if width == 0: width = -1       # ffmpeg takes -1 as a default value, not 0
+            if height == 0: height = -1     # ffmpeg takes -1 as a default value, not 0
+
+            # cancel if size/duration is unchanged
+            if is_audio:
+                if round(width, 2) == 1:    # might get something like 1.0000331463797563
+                    return show_on_statusbar('New length cannot be the same as the old length.', 10000)
+                self.operations['resize'] = width
+            elif (width <= 0 or width == self.vwidth) and (height <= 0 or height == self.vheight):
+                return show_on_statusbar('New size cannot be the same as the old size.', 10000)
+            else:
+                self.operations['resize'] = (width, height)
+
+            # save the width and height values to save remnants so we can restore them if needed
+            old_size = (raw_width, raw_height)
+            self.operations.setdefault('remnants', {})['resize'] = old_size
+
+            if self.save(                   # doesn't really need any hints
+                noun='resized media',
+                filter='All files(*)',
+                unique_default=True
+            ):
+                if not is_audio:
+                    self.last_resize_media_values = old_size
+                    self.last_resize_media_base_size = base_size
+                break
 
 
     def rotate_video(self, action: QtW.QAction):
@@ -6192,30 +6247,48 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             valid_extensions = constants.VIDEO_EXTENSIONS + constants.AUDIO_EXTENSIONS
             preferred_extensions = None
 
-        dialog = qthelpers.getDialog(title='Amplify Audio', fixedSize=(125, 105), flags=Qt.Tool, **self.get_popup_location_kwargs())
-        layout = QtW.QVBoxLayout(dialog)
-        label = QtW.QLabel('Input desired volume \n(applies on save):', dialog)
-        spin = QtW.QSpinBox(dialog)
-        spin.setSuffix('%')
-        spin.setMaximum(1000)
-        spin.setValue(self.last_amplify_audio_value)
-        for w in (label, spin):
-            layout.addWidget(w)
-        dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
-
-        def accept():
-            self.last_amplify_audio_value = spin.value()                     # save value to re-display it next time
-            self.operations['amplify audio'] = round(spin.value() / 100, 2)  # convert volume to 0-1 range
-            self.save(
-                noun='amplified video/audio',
-                filter=filter,
-                valid_extensions=valid_extensions,
-                preferred_extensions=preferred_extensions,
-                unique_default=True
+        try:
+            dialog = qthelpers.getDialog(
+                title='Amplify Audio',
+                deleteOnClose=False,            # TODO this MIGHT cause a memory leak
+                fixedSize=(125, 105),
+                flags=Qt.Tool,
+                **self.get_popup_location_kwargs()
             )
 
-        dialog.accepted.connect(accept)
-        dialog.exec()
+            layout = QtW.QVBoxLayout(dialog)
+            label = QtW.QLabel('Input desired volume \n(applies on save):', dialog)
+            spin = QtW.QSpinBox(dialog)
+            spin.setSuffix('%')
+            spin.setMaximum(1000)
+            spin.setValue(self.get_save_remnant('amplify audio', self.last_amplify_audio_value, self.video))
+            for w in (label, spin):
+                layout.addWidget(w)
+            dialog.addButtons(layout, QtW.QDialogButtonBox.Cancel, QtW.QDialogButtonBox.Ok)
+
+            # repeatedly open dialog until user succeeds or outright cancels (slightly less flair than the concat version)
+            while dialog.exec() != QtW.QDialog.Rejected:
+                self.last_amplify_audio_value = spin.value()                     # save value to re-display it next time
+                self.operations['amplify audio'] = round(spin.value() / 100, 2)  # convert volume to 0-1 range
+                self.operations.setdefault('remnants', {})['amplify audio'] = spin.value()
+                if self.save(
+                    noun='amplified video/audio',
+                    filter=filter,
+                    valid_extensions=valid_extensions,
+                    preferred_extensions=preferred_extensions,
+                    unique_default=True
+                ):
+                    break
+        except:
+            log_on_statusbar(f'(!) Audio amplification failed: {format_exc()}')
+        finally:
+            try:
+                dialog.close()
+                dialog.deleteLater()
+                del dialog
+                gc.collect(generation=2)
+            except:
+                pass
 
 
     def replace_audio(self, *, path: str = None):
@@ -6525,14 +6598,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.add_subtitle_files(urls)
 
 
-    def show_size_dialog(self, show_quality: bool = False) -> tuple[int, int, int | None] | tuple[float, None, None]:
-        ''' Opens a dialog for choosing a new size/length for a given file,
-            returning the width, height, and quality (if `show_quality`) for
-            images and videos, or the duration, None, and None for audio.
-            If `show_quality` is True, additional options for image quality
-            are provided. Otherwise, the quality is None. '''
+    def show_size_dialog(
+        self,
+        width: str = '',
+        height: str = '',
+        quality: int = -1,
+        show_quality: bool = False,
+    ) -> tuple[int, int, int, str, str] | tuple[int, int, None, str, str] | tuple[float, None, None, str, str]:
+        ''' Opens a dialog for choosing a new size/length for the current file.
+            Returns the width, height, quality, as well as the raw width and
+            height strings entered into the dialog, for a total of 5 values.
+            If the dialog was cancelled, the first value (the width) will be
+            None. For audio, "width" will be the duration as a factor of the
+            original (e.g. 1.5x). If `show_quality` is True, additional options
+            for image quality are provided. Otherwise, the quality will be None.
+
+            `width`, `height`, and `quality` parameters can be provided
+            to define their respective default values within the dialog. '''
         vwidth, vheight, duration = self.vwidth, self.vheight, self.duration
         max_time_string = self.labelMaxTime.text()
+        logging.debug(f'Showing size dialog with defaults: w={width} h={height} q={quality} (show={show_quality})')
 
         dimension_mode = show_quality or self.mime_type != 'audio'
         dialog = qthelpers.getDialog(
@@ -6542,11 +6627,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             **self.get_popup_location_kwargs()
         )
 
+        # user-friendly properties for the various fields before and after conversion
+        dialog.width = None
+        dialog.height = None
+        dialog.quality = None
+        dialog.raw_width = width
+        dialog.raw_height = height
+
         # setup dialog for images/videos
         if dimension_mode:
             label = QtW.QLabel(constants.SIZE_DIALOG_DIMENSIONS_LABEL_BASE.replace('?resolution', f'{vwidth}x{vheight}'), dialog)
-            wline = QtW.QLineEdit('0', dialog)
-            hline = QtW.QLineEdit('0', dialog)
+            wline = QtW.QLineEdit(str(width) or '0', dialog)
+            hline = QtW.QLineEdit(str(height) or '0', dialog)
             wbutton = QtW.QPushButton('Width:', dialog)
             wbutton.clicked.connect(lambda: wline.setText(str(int(vwidth))))
             wbutton.setToolTip(f'Reset width to native resolution ({vwidth:.0f} pixels).')
@@ -6562,7 +6654,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 qlabel.setAlignment(Qt.AlignCenter)
                 qlabel.setToolTip('JPEG quality (0-100). Higher is better. Does not apply if saved as PNG format.')
                 qspin = QtW.QSpinBox(dialog)
-                qspin.setValue(settings.spinSnapshotJpegQuality.value())
+                qspin.setValue(quality if quality != -1 else settings.spinSnapshotJpegQuality.value())
                 qspin.setMaximum(100)
 
             for lineEdit in (wline, hline):
@@ -6572,7 +6664,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # setup dialog for audio
         else:
             label = QtW.QLabel('Enter a timestamp (hh:mm:ss.ms)\nor a percentage. Note: This is\ncurrently limited to 50-200%\nof the original audio\'s length.', dialog)
-            wline = QtW.QLineEdit(max_time_string, dialog)
+            wline = QtW.QLineEdit(str(width) or max_time_string, dialog)
             wbutton = QtW.QPushButton('Duration:', dialog)
             wbutton.clicked.connect(lambda: wline.setText(max_time_string))
             wbutton.setToolTip(f'Reset to native duration ({max_time_string}).')
@@ -6593,7 +6685,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         def accept():
             # video/image resize. accepts raw values or percentages. blank fields default to 0, which then align to aspect ratio
             if dimension_mode:                                  # if sizes are percents, strip '%' and multiply w/h by percentages
-                width, height =   wline.text().strip(), hline.text().strip()
+                width = dialog.raw_width = wline.text().strip()
+                height = dialog.raw_height = hline.text().strip()
                 if '%' in width:  width = round(vwidth * (float(width.strip('%').strip()) / 100))
                 else:             width = int(width) if width else 0
                 if '%' in height: height = round(vheight * (float(height.strip('%').strip()) / 100))
@@ -6604,8 +6697,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # audio resize (adjusting tempo) NOTE: final duration is a multiplier of the original (e.g. 1.5x)
             # TODO: ffmpeg's atempo is limited to 0.5x-2.0x duration. this is fixable with math. i suck at math.
-            else:
-                duration_factor = wline.text().strip()          # audio doesn't use `hline` lineEdit
+            else:                                               # ↓ audio doesn't use `hline` lineEdit
+                duration_factor = dialog.raw_width = wline.text().strip()
                 if '%' in duration_factor:                      # convert percentage to multiplier
                     duration_factor = 1 / (float(duration_factor.strip('%').strip()) / 100)
 
@@ -6621,14 +6714,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # clamp between 0.5x and 2.0x (see TODO above)
                 duration_factor = min(2, max(0.5, duration_factor))
                 dialog.width = duration_factor
-                dialog.height = None
-                dialog.quality = None
 
         # open resize dialog. if cancel is selected, return None's
         dialog.accepted.connect(accept)
-        if not dialog.exec():
-            return (None, None, None)
-        return (dialog.width, dialog.height, dialog.quality)
+        dialog.exec()
+        return dialog.width, dialog.height, dialog.quality, dialog.raw_width, dialog.raw_height
 
 
     def show_about_dialog(self):                                # lazy version of about dialog
