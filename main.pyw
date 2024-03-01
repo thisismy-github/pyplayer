@@ -4923,7 +4923,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # the code block formerly known as `self.cleanup_edit_exception()`
         except Exception as error:
             successful = False
-            noun = log_noun or 'Save'
             qthelpers.deleteTempPath(dest, 'FFmpeg file')
 
             # ffmpeg had a memory error
@@ -4970,13 +4969,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # edit was intentionally cancelled by the user
             elif text == 'Cancelled.':
-                if not start_time: log_on_statusbar(f'{noun} cancelled.')
-                else: log_on_statusbar(f'{noun} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
+                if not start_time: log_on_statusbar(f'{log_noun or "Save"} cancelled.')
+                else: log_on_statusbar(f'{log_noun or "Save"} cancelled after {get_verbose_timestamp(get_time() - start_time)}.')
 
             # edit failed for an unknown reason
             else:
-                if not start_time: log_on_statusbar(f'(!) {noun.upper()} FAILED: {format_exc()}')
-                else: log_on_statusbar(f'(!) {noun.upper()} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
+                if not start_time: log_on_statusbar(f'(!) {log_noun.upper() or "SAVE"} FAILED: {format_exc()}')
+                else: log_on_statusbar(f'(!) {log_noun.upper() or "SAVE"} FAILED AFTER {get_verbose_timestamp(get_time() - start_time).upper()}: {format_exc()}')
 
         # --- Post-edit cleanup & opening our newly edited media ---
         finally:
@@ -5054,12 +5053,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             logging.warning(f'(!) Failed to remove stale save remnant from {remnant_time}: {format_exc()}')
 
                     # log our changes or lack thereof
-                    log_on_statusbar(f'{noun or "Changes"} saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
+                    log_on_statusbar(f'{log_noun or "Changes"} saved to {true_dest} after {get_verbose_timestamp(get_time() - start_time)}.')
                 elif successful:                        # log our lack of changes
                     return log_on_statusbar('No changes have been made.')
 
             except:
-                log_on_statusbar(f'(!) Post-{noun.lower() or "save"} cleanup failed: {format_exc()}')
+                log_on_statusbar(f'(!) Post-{log_noun.lower() or "save"} cleanup failed: {format_exc()}')
             finally:
                 self.locked_files.discard(dest)         # unlock temp destination
                 self.locked_files.discard(final_dest)   # unlock final destination
@@ -5068,7 +5067,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if start_time in self.save_remnants:    # mark save remnant as safe to remove, if still present
                     try: self.save_remnants[start_time]['_in_progress'] = False
                     except: logging.warning('(!) Failed to mark save remnant as safe to remove: ' + format_exc())
-                logging.info(f'Remaining locked files after {noun.lower() or "edit"}: {self.locked_files}')
+                logging.info(f'Remaining locked files after {log_noun.lower() or "edit"}: {self.locked_files}')
 
 
     def update_gif_progress(self, frame: int):
@@ -5845,7 +5844,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             dialog.checkExplore.setChecked(cfg.concatenate.explore)
             dialog.buttonEncode.setChecked(cfg.concatenate.encode)
             dialog.buttonNoEncode.setChecked(not cfg.concatenate.encode)
-            dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our current delete setting
+            dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our own
             dialog.reverse.setIcon(self.icons['reverse_vertical'])
             dialog.recent.setIcon(self.icons['recent'])
             dialog.recent.setMenu(QtW.QMenu(dialog))
@@ -6030,14 +6029,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 header = ('Your files do not have the same dimensions. You can still concatenate\n'
                                           'them with stream-copying, but the output will be very broken if you\n'
                                           'don\'t crop or resize the offending files individually. Continue?')
-                                popup = qthelpers.getPopupOkCancel(
+                                if qthelpers.getPopupOkCancel(
                                     title='Concatenation cancelled!',
                                     text=header if len(files) > 20 else f'{header}\n\n{footer}',
                                     textDetailed=footer if len(files) > 20 else None,
                                     icon='warning',         # ↓ needed so it appears over the concat dialog
                                     **self.get_popup_location_kwargs()
-                                )
-                                if popup.exec() == QtW.QMessageBox.Cancel:
+                                ).exec() == QtW.QMessageBox.Cancel:
                                     continue
 
                 # >>> prepare output from dialog <<<
@@ -8600,10 +8598,10 @@ if __name__ == "__main__":
         set_current_time_text = gui.lineCurrentTime.setText
         current_time_lineedit_has_focus = gui.lineCurrentTime.hasFocus
         is_high_precision_slider = settings.checkHighPrecisionProgress.isChecked
-        sep = os.sep
-        exists = os.path.exists
+        parse_json = json.JSONDecoder(object_hook=None, object_pairs_hook=None).decode
         abspath = os.path.abspath
-        parse_json = json.JSONDecoder.decode
+        exists = os.path.exists
+        sep = os.sep
 
         qtstart.connect_widget_signals(gui)             # connect signals and slots
         cfg = widgets.cfg = config.loadConfig(gui)      # create and load config (uses constants.CONFIG_PATH)
