@@ -234,7 +234,7 @@ WindowStateChange = QtCore.QEvent.WindowStateChange     # important alias, but c
 # -------------------------------------------
 # Additional media-related utility functions
 # -------------------------------------------
-def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[str, dict]:
+def probe_files(*files: str, refresh: bool = False, write: bool = True, retries: int = 0) -> dict[str, dict]:
     ''' Probes an indeterminant number of `files` and returns a dictionary of
         `{path: probe_dictionary}` pairs. All files are probed concurrently, but
         this function does not return until all probes are completed. Files that
@@ -246,73 +246,91 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
         probe will always be generated even if the probe file already exists.
         If `write` is False, any new probes will not be written to a file. '''
 
-    logging.info(f'Manually probing files: {files} (refresh={refresh})')
-    probes: dict[str, dict] = {}
-    processes: list[tuple[str, str, subprocess.Popen]] = []
+    try:
+        logging.info(f'Manually probing files: {files} (refresh={refresh})')
+        probes: dict[str, dict] = {}
+        processes: list[tuple[str, str, subprocess.Popen]] = []
 
-    is_windows = constants.IS_WINDOWS
-    if not is_windows:
-        import shlex                                # have to pass commands as list for linux/macos (stupid)
-        cmd_parts = shlex.split(f'"{FFPROBE}" -show_format -show_streams -of json "output"')
+        is_windows = constants.IS_WINDOWS
+        if not is_windows:
+            import shlex                                # have to pass commands as list for linux/macos (stupid)
+            cmd_parts = shlex.split(f'"{FFPROBE}" -show_format -show_streams -of json "output"')
 
-    # begin probe-process for each file and immediately jump to the next file
-    for file in files:
-        if file in probes or not exists(file):
-            continue
+        # begin probe-process for each file and immediately jump to the next file
+        for file in files:
+            if file in probes or not exists(file):
+                continue
 
-        stat = os.stat(file)
-        probe_file = f'{constants.PROBE_DIR}{sep}{os.path.basename(file)}_{stat.st_mtime}_{stat.st_size}.txt'
-        probe_exists = exists(probe_file)
-        if probe_exists:
-            if refresh:                                 # NOTE: if `refresh` is True and `write` is False, existing...
-                try: os.remove(probe_file)              # ...probe files will be deleted without being replaced
-                except: logging.warning('(!) FAILED TO DELETE UNWANTED PROBE FILE: ' + format_exc())
-                probe_exists = False
-            else:
-                with open(probe_file, 'r', encoding='utf-8') as probe:
-                    try:
-                        probes[file] = parse_json(probe.read())
-                    except:
-                        probe.close()
-                        logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
-                        try: os.remove(probe_file)
-                        except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
-                        probe_exists = False
+            stat = os.stat(file)
+            probe_file = f'{constants.PROBE_DIR}{sep}{os.path.basename(file)}_{stat.st_mtime}_{stat.st_size}.txt'
+            probe_exists = exists(probe_file)
+            if probe_exists:
+                if refresh:                             # NOTE: if `refresh` is True and `write` is False, existing...
+                    try: os.remove(probe_file)          # ...probe files will be deleted without being replaced
+                    except: logging.warning('(!) FAILED TO DELETE UNWANTED PROBE FILE: ' + format_exc())
+                    probe_exists = False
+                else:
+                    with open(probe_file, 'r', encoding='utf-8') as probe:
+                        try:
+                            probe_data = parse_json(probe.read())
+                            if not probe_data:
+                                raise AssertionError('probe returned no data')
+                            probes[file] = probe_data
+                        except:
+                            probe.close()
+                            logging.info('(?) Deleting potentially invalid probe file: ' + probe_file)
+                            try: os.remove(probe_file)
+                            except: logging.warning('(!) FAILED TO DELETE POTENTIALLY INVALID PROBE FILE: ' + format_exc())
+                            probe_exists = False
 
-        if not probe_exists:
-            if is_windows:
-                cmd = f'"{FFPROBE}" -show_format -show_streams -of json "{file}"'
-            else:                                       # ^ do NOT use ">" here since we need to read stdout
-                cmd = cmd_parts[:]                      # copy list and replace final element with our destination
-                cmd[-1] = file                          # do NOT put quotes around this
-            processes.append(
-                (
-                    file,
-                    probe_file,
-                    subprocess.Popen(
-                        cmd,
-                        text=True,                      # decodes stdout into text rather than a byte stream
-                        encoding='utf-8',               # use ffmpeg/ffprobe's encoding so `text=True` doesn't crash for paths w/ scary characters
-                        errors='ignore',                # drop bad characters when there's an encoding error (which won't matter for our usecase)
-                        stdout=subprocess.PIPE,         # don't use `shell=True` for the same reason as above
-                        startupinfo=constants.STARTUPINFO
-                    )                                   # ^ hides the command prompt that appears w/o `shell=True`
+            if not probe_exists:
+                if is_windows:
+                    cmd = f'"{FFPROBE}" -show_format -show_streams -of json "{file}"'
+                else:                                   # ^ do NOT use ">" here since we need to read stdout
+                    cmd = cmd_parts[:]                  # copy list and replace final element with our destination
+                    cmd[-1] = file                      # do NOT put quotes around this
+                processes.append(
+                    (
+                        file,
+                        probe_file,
+                        subprocess.Popen(
+                            cmd,
+                            text=True,                  # decodes stdout into text rather than a byte stream
+                            encoding='utf-8',           # use ffmpeg/ffprobe's encoding so `text=True` doesn't crash for paths w/ scary characters
+                            errors='ignore',            # drop bad characters when there's an encoding error (which won't matter for our usecase)
+                            stdout=subprocess.PIPE,     # don't use `shell=True` for the same reason as above
+                            startupinfo=constants.STARTUPINFO
+                        )                               # ^ hides the command prompt that appears w/o `shell=True`
+                    )
                 )
-            )
 
-    # for any files that did not have pre-existing probe files, wait until...
-    # ...their processes are complete and read output directly from the process
-    for file, probe_file, process in processes:
-        try:
-            out, err = process.communicate()            # NOTE: this is where errors happen on filenames with the wrong encoding above
-            probes[file] = parse_json(out)
-            if write:                                   # manually write probe to file
-                with open(probe_file, 'w', encoding='utf-8') as probe:
-                    probe.write(out)                    # ^ DON'T use `errors='ignore'` here. if we somehow error out here, i'd rather know why
-        except:
-            logging.warning(f'(!) {file} could not be correctly parsed by FFprobe: {format_exc()}')
-            show_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
-    return probes
+        # for any files that did not have pre-existing probe files, wait until...
+        # ...their processes are complete and read output directly from the process
+        for file, probe_file, process in processes:
+            try:
+                out, err = process.communicate()        # NOTE: this is where errors happen on filenames with the wrong encoding above
+                probe_data = parse_json(out)
+                if not probe_data:
+                    raise AssertionError('probe returned no data')
+                probes[file] = probe_data
+                if write:                               # manually write probe to file
+                    with open(probe_file, 'w', encoding='utf-8') as probe:
+                        probe.write(out)                    # ^ DON'T use `errors='ignore'` here. if we somehow error out here, i'd rather know why
+            except:
+                logging.warning(f'(!) {file} could not be correctly parsed by FFprobe: {format_exc()}')
+                show_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
+        return probes
+
+    # if we're low on RAM, wait one second and try again
+    except OSError:                                     # "[WinError 1455] The paging file is too small for this operation to complete"
+        logging.warning(f'(!) OSError while probing files: {format_exc()}')
+        if retries:
+            show_on_statusbar('(!) Not enough RAM to probe files. Trying again...')
+            sleep(1)
+            return probe_files(*files, refresh, write, retries - 1)
+        else:
+            show_on_statusbar('(!) Not enough RAM to probe files. Giving up.')
+            return {}
 
 
 def get_audio_duration(file: str) -> float:
@@ -5986,35 +6004,24 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         new_frame_total = 0
 
                         # attempt to probe files. if we're low on RAM, wait one second and try again
-                        try:
-                            probes = probe_files(*files)
-                        except OSError:                     # "[WinError 1455] The paging file is too small for this operation to complete"
-                            logging.warning(f'(!) OSError while probing files before concatenation: {format_exc()}')
-                            show_on_statusbar('(!) Not enough RAM to probe files before concatenation. Trying again...')
-                            try:
-                                sleep(1)
-                                probes = probe_files(*files)
-                            except OSError:
-                                show_on_statusbar('(!) Not enough RAM to probe files before concatenation. Going in blind.')
-                                probes = {}
+                        probes = probe_files(*files, retries=1)
 
                         # get dimensions, total frame count, and average FPS of all `files`
-                        if probes:
-                            for file, probe_data in probes.items():
-                                for stream in probe_data['streams']:
-                                    if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
-                                        new_dimensions = (str(int(stream['width'])), str(int(stream['height'])))
-                                        dimensions.append((file, new_dimensions))
-                                        if new_dimensions != dimensions[0][-1]:
-                                            invalid_dimensions_detected = True
-                                        fps_parts = stream['avg_frame_rate'].split('/')
-                                        fps = int(fps_parts[0]) / int(fps_parts[1])
-                                        duration = float(probe_data['format']['duration'])
-                                        occurances = files.count(file)
-                                        new_frame_total += (math.ceil(duration * fps) * occurances)
-                                        fps_sum += fps * occurances
-                            FRAME_RATE_HINT = fps_sum / len(probes)
-                            FRAME_COUNT_HINT = new_frame_total
+                        for file, probe_data in probes.items():
+                            for stream in probe_data['streams']:
+                                if stream['codec_type'] == 'video' and stream['avg_frame_rate'] != '0/0':
+                                    new_dimensions = (str(int(stream['width'])), str(int(stream['height'])))
+                                    dimensions.append((file, new_dimensions))
+                                    if new_dimensions != dimensions[0][-1]:
+                                        invalid_dimensions_detected = True
+                                    fps_parts = stream['avg_frame_rate'].split('/')
+                                    fps = int(fps_parts[0]) / int(fps_parts[1])
+                                    duration = float(probe_data['format']['duration'])
+                                    occurances = files.count(file)
+                                    new_frame_total += (math.ceil(duration * fps) * occurances)
+                                    fps_sum += fps * occurances
+                        FRAME_RATE_HINT = fps_sum / len(probes)
+                        FRAME_COUNT_HINT = new_frame_total
 
                         # the videos have different dimensions -> warn user and cancel if necessary
                         if invalid_dimensions_detected:
