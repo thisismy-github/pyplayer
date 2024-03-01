@@ -13,7 +13,7 @@ from PyQt5 import QtWidgets as QtW
 import qtstart
 import constants
 import qthelpers
-from util import ffmpeg_async, get_hms, get_PIL_Image, get_unique_path
+from util import ffmpeg, ffmpeg_async, get_hms, get_PIL_Image, get_unique_path
 
 import os
 import time
@@ -1951,7 +1951,7 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
             at a time. `constants.FFMPEG` is assumed to be valid. '''
 
         logger.info(f'Getting thumbnails for {len(thumbnail_args)} file(s)')
-        _thumbnail_args = thumbnail_args[:16]                   # only do 16 at a time
+        _thumbnail_args = thumbnail_args[:16]                    # only do 16 at a time
         excess = thumbnail_args[16:]
         stage1 = []
         stage2 = []
@@ -1967,13 +1967,15 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
                     thumbnail_path,
                     item_widget,
                     ffmpeg_async(f'-ss 3 -i "{file}" -vframes 1 "{temp_path}"')
-                )
+                )                                                # ^ "-ss 3" gets a frame from 3 seconds in
             )
 
         # wait for each process and then repeat
         # this time we're resizing the thumbnails we just generated
         for temp_path, thumbnail_path, item_widget, process in stage1:
             process.communicate()
+            if not os.path.exists(temp_path):                    # thumbnail won't generate if video is <3s long
+                ffmpeg(f'-i "{file}" -vframes 1 "{temp_path}"')  # try again, getting the first frame instead
             stage2.append(
                 (
                     temp_path,

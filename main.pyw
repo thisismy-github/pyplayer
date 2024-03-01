@@ -4343,12 +4343,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # misc. constants
         DEST_ALREADY_EXISTS = exists(dest)
-        REPLACING_ORIGINAL = video == dest
 
         # what will we do to our output and original files after saving? (NOTE: concatenation will override these)
         open_after_save = None                                  # None means we'll decide after the edit finishes
-        explore_after_save = False                              # ↓ 0, 1, or 2 (ignored if `REPLACING_ORIGINAL` is True)
-        delete_mode = 0 if REPLACING_ORIGINAL else self.checkDeleteOriginal.checkState()
+        explore_after_save = False
+        delete_mode = self.checkDeleteOriginal.checkState()     # 0, 1, or 2 (ultimately ignored if we're replacing `dest`)
 
         # operation aliases
         op_concat: dict[str] =               operations.get('concatenate', None)    # see `self.concatenate()` for details
@@ -4438,7 +4437,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dest = add_path_suffix(dest, '_temp', unique=True)      # add _temp to dest, in case dest is the same as our base video
 
         logging.info(f'Saving file to "{final_dest}"')
-        logging.debug(f'temp-dest={dest}, video={video} delete={delete_mode} replacing_original={REPLACING_ORIGINAL} operations={operations}')
+        logging.debug(f'temp-dest={dest}, video={video} delete={delete_mode} operations={operations}')
         temp_paths = []                                         # some edits generate excess files we'll need to delete later
 
         # lock both temporary and actual destination in the player
@@ -4491,10 +4490,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     funnysquares = ''.join(f'[{i}:v:0][{i}:a:0]' for i in range(len(files)))
                     filtercmd = f'-filter_complex "{funnysquares}concat=n={len(files)}:v=1:a=1[outv][outa]"'
                     cmd = f'{inputs}" {filtercmd} -map "[outv]" -map "[outa]" -vsync 2 %out'
-                    edit.ffmpeg(None, cmd, dest, 'Concatenating')
+                    edit.ffmpeg(None, cmd, dest, 'Concatenating', 'Preparing files for concatenation...')
 
                 # no re-encoding, concatenate (almost instantly) using stream copying
                 else:
+                    # immediately and directly set text while we do intermediate step
+                    edit.start_text = edit.text = 'Preparing files for concatenation...'
+                    edit.give_priority(conditional=True)        # update priority so the UI's text refreshes
+
+                    # convert files to MPEG-TS for easier concatenation
                     intermediate_files = []
                     for file in files:
                         temp_filename = file.replace(':', '').replace('/', '').replace('\\', '') + '.ts'
@@ -4505,9 +4509,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         ffmpeg(f'-i "{file}" -c copy -bsf:v h264_mp4toannexb -f mpegts "{intermediate_file}"')
 
                     # concatentate with ffmpeg
-                    if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy "{dest}"'
-                    else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 -threads 1 "{dest}"'
-                    ffmpeg(cmd)
+                    if self.mime_type == 'audio': cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy %out'
+                    else: cmd = f'-i "concat:{"|".join(intermediate_files)}" -c copy -video_track_timescale 100 -bsf:a aac_adtstoasc -movflags faststart -f mp4 %out'
+                    edit.ffmpeg(None, cmd, dest, 'Concatenating', 'Preparing files for concatenation...')
                     for intermediate_file in intermediate_files:
                         try: os.remove(intermediate_file)
                         except: pass
@@ -5358,6 +5362,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             - `delete_mode=1` - `to_delete` is marked for deletion
             - `delete_mode=2` - `to_delete` is deleted/recycled outright
+            - NOTE: `final_dest` cannot be marked or deleted.
 
             If everything is valid but `temp_dest` cannot be renamed, a popup is
             shown and `temp_dest` is returned. Otherwise, returns `final_dest`.
@@ -5383,17 +5388,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif not new_probe[temp_dest]:      # empty probe returned
                 return log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
 
-            # handle deletion behavior
-            if delete_mode == 1:                # 1 -> mark for deletion
-                if isinstance(to_delete, str): self.marked_for_deletion.add(to_delete)
-                elif to_delete:                self.marked_for_deletion.update(to_delete)
-            elif delete_mode == 2:              # 2 -> recycle/delete outright
-                if isinstance(to_delete, str): self.delete(to_delete, cycle=False)
-                elif to_delete:                self.delete(*to_delete, cycle=False)
-            #elif replacing_original:           # TODO add setting for this behavior?
-            #    temp_name = add_path_suffix(video, '_original', unique=True)
-            #    os.rename(video, temp_name)
-            #    video = temp_name
+            # handle deletion behavior, ignoring `final_dest`
+            if isinstance(to_delete, str): to_delete = (to_delete,) if to_delete != final_dest else None
+            elif to_delete:                to_delete = [file for file in to_delete if file != final_dest]
+            if to_delete:                       # 1 -> mark for deletion, 2 -> recycle/delete outright
+                if delete_mode == 1:       self.marked_for_deletion.update(to_delete)
+                elif delete_mode == 2:     self.delete(*to_delete, cycle=False)
+                #elif replacing_original:       # TODO add setting for this behavior?
+                #    temp_name = add_path_suffix(video, '_original', unique=True)
+                #    os.rename(video, temp_name)
+                #    video = temp_name
 
             # rename `dest` back to `final_dest` if possible
             if self.video == final_dest:        # stop player if necessary
@@ -5790,6 +5794,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             CAT_DIALOG       = action in (self.actionCatDialog, self.actionCatLastDialog)
             CAT_BROWSE       = files is None and not CAT_DIALOG and not CAT_APPEND_LAST
 
+            # what will we do to our output and original files after saving?
+            open_after_save = cfg.concatenate.open
+            explore_after_save = cfg.concatenate.explore
+            encode_mode = cfg.concatenate.encode    # ↓ set dialog's delete setting to our own
+            delete_mode = self.checkDeleteOriginal.checkState()
+
             # reuse last file list (action is disabled until at least one dialog was opened)
             if action is self.actionCatLastDialog:
                 old_files = self.last_concat_files
@@ -5798,20 +5808,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # see if we have a file list left over from a failed edit and ask if user wants to reuse it
             # NOTE: if the user opens the dialog directly, we can skip the confirmation popup
             else:
-                old_output, old_files = self.get_save_remnant('concatenate', ('', None))
+                old_output, old_files, old_settings = self.get_save_remnant('concatenate', ('', None, None))
                 if old_files and (self.video in old_files or not self.video):
-                    if CAT_DIALOG or qthelpers.getPopupYesNo(
+                    if not CAT_DIALOG and qthelpers.getPopupYesNo(
                         title='Reuse previous concatenation?',
-                        text='A previous incomplete concatentation\ninvolving this file exists. Reuse?',
+                        text='A previous incomplete concatenation\ninvolving this file exists. Reuse?',
                         **self.get_popup_location_kwargs()
-                    ).exec() == QtW.QMessageBox.Yes:
-                        files = old_files
-                    else:
+                    ).exec() != QtW.QMessageBox.Yes:
                         old_files = None
+                        old_settings = None
                 else:
                     old_files = None
+                    old_settings = None
+                if old_settings:
+                    encode_mode, open_after_save, explore_after_save, delete_mode = old_settings
 
-            if not old_files:
+            # construct starting file list, if any
+            if old_files:
+                files = old_files
+            else:
                 # determine if our current file, our last file, or no file should be included by default
                 # if we're adding to the current file but our current file isn't a video, just return
                 if files and CAT_DIALOG:
@@ -5863,11 +5878,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 **self.get_popup_location_kwargs()
             )
 
-            dialog.checkOpen.setChecked(cfg.concatenate.open)
-            dialog.checkExplore.setChecked(cfg.concatenate.explore)
-            dialog.buttonEncode.setChecked(cfg.concatenate.encode)
-            dialog.buttonNoEncode.setChecked(not cfg.concatenate.encode)
-            dialog.checkDelete.setCheckState(self.checkDeleteOriginal.checkState())     # set dialog's delete setting to our own
+            dialog.checkOpen.setChecked(open_after_save)
+            dialog.checkExplore.setChecked(explore_after_save)
+            dialog.buttonEncode.setChecked(encode_mode)
+            dialog.buttonNoEncode.setChecked(not encode_mode)
+            dialog.checkDelete.setCheckState(delete_mode)
             dialog.reverse.setIcon(self.icons['reverse_vertical'])
             dialog.recent.setIcon(self.icons['recent'])
             dialog.recent.setMenu(QtW.QMenu(dialog))
@@ -5980,15 +5995,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 missing = [(i, f) for i, f in enumerate(files) if not exists(f)]
                 if missing:
                     logging.info(f'(?) Files to be concatenated no longer exist, cancelling: {missing}')
-                    missing_string = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
                     if len(missing) == 1: header = 'The file at the following index no longer exists:\n\n'
                     else:                 header = 'The files at the following indexes no longer exist:\n\n'
+                    footer = '\n'.join(f'{index + 1}. {file}' for index, file in missing)
                     qthelpers.getPopup(                     # TODO this is a rare scenario so it just shows...
                         title='Concatenation cancelled!',   # ...the popup and goes away, but it should...
-                        text=header + missing_string,       # ...really give "discard" and "ignore" options
+                        text=header + footer,               # ...really give "discard" and "ignore" options
                         icon='warning',
                         **self.get_popup_location_kwargs()
                     ).exec()
+                    continue
 
                 elif len(files) < 2:
                     marquee('Not enough files to concatenate.', log=False)
@@ -6022,6 +6038,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                     fps_sum += fps * occurances
                         FRAME_RATE_HINT = fps_sum / len(probes)
                         FRAME_COUNT_HINT = new_frame_total
+
+                        # not all files were probed correctly -> warn user and cancel if necessary
+                        corrupt = [(i, f) for i, f in enumerate(files) if f not in probes]
+                        if corrupt:
+                            logging.info(f'(?) Files to be concatenated could not be probed, cancelling: {corrupt}')
+                            if len(corrupt) == 1: header = 'The file at the following index could not be probed and may be corrupt:\n\n'
+                            else:                 header = 'The files at the following indexes could not be probed and may be corrupt:\n\n'
+                            footer = '\n'.join(f'{index + 1}. {file}' for index, file in corrupt)
+                            qthelpers.getPopup(             # TODO: ditto for the "discard" and "ignore" options
+                                title='Concatenation cancelled!',
+                                text=header + footer,
+                                icon='warning',
+                                **self.get_popup_location_kwargs()
+                            ).exec()
+                            continue
 
                         # the videos have different dimensions -> warn user and cancel if necessary
                         if invalid_dimensions_detected:
@@ -6096,7 +6127,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.last_concat_output = dialog.output.text()
             self.actionCatLastDialog.setEnabled(True)       # enable "reuse last dialog" action now that we have one
 
-            logging.info(f'Concatenation dialog files to {output}: {files}')
+            logging.info(f'Concatenating dialog files to {output}: {files}')
             operations = {
                 'concatenate': {
                     'files': files,
@@ -6108,7 +6139,16 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     'frame_count_hint': FRAME_COUNT_HINT
                 },
                 'remnants': {
-                    'concatenate': (dialog.output.text(), files)
+                    'concatenate': (
+                        dialog.output.text(),
+                        files,
+                        (
+                            dialog.buttonEncode.isChecked(),
+                            dialog.checkOpen.isChecked(),
+                            dialog.checkExplore.isChecked(),
+                            dialog.checkDelete.checkState()
+                        )
+                    )
                 }
             }
 
