@@ -112,7 +112,9 @@ def ffmpeg_async(cmd: str, priority: int = None, niceness: int = None, threads: 
         startupinfo=constants.STARTUPINFO,      # hides command prompt that appears w/o `shell=True`
         creationflags=priority,                 # sets the priority level ffmpeg will start with
         start_new_session=True,                 # this allows us to more easily kill the ffmpeg process if needed
-        text=True                               # turns stdout into easily parsible lines of text rather than a byte stream
+        text=True,                              # turns stdout into easily parsible lines of text rather than a byte stream
+        encoding='utf-8',                       # ffmpeg/ffprobe output text in utf-8 encoding
+        errors='ignore'                         # if there are encoding errors anyway, just drop the bad characters
     )
 
 

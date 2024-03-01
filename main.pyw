@@ -269,7 +269,7 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
                 except: logging.warning('(!) FAILED TO DELETE UNWANTED PROBE FILE: ' + format_exc())
                 probe_exists = False
             else:
-                with open(probe_file, 'r') as probe:
+                with open(probe_file, 'r', encoding='utf-8') as probe:
                     try:
                         probes[file] = parse_json(probe.read())
                     except:
@@ -292,6 +292,8 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
                     subprocess.Popen(
                         cmd,
                         text=True,                      # decodes stdout into text rather than a byte stream
+                        encoding='utf-8',               # use ffmpeg/ffprobe's encoding so `text=True` doesn't crash for paths w/ scary characters
+                        errors='ignore',                # drop bad characters when there's an encoding error (which won't matter for our usecase)
                         stdout=subprocess.PIPE,         # don't use `shell=True` for the same reason as above
                         startupinfo=constants.STARTUPINFO
                     )                                   # ^ hides the command prompt that appears w/o `shell=True`
@@ -301,12 +303,12 @@ def probe_files(*files: str, refresh: bool = False, write: bool = True) -> dict[
     # for any files that did not have pre-existing probe files, wait until...
     # ...their processes are complete and read output directly from the process
     for file, probe_file, process in processes:
-        out, err = process.communicate()
         try:
+            out, err = process.communicate()            # NOTE: this is where errors happen on filenames with the wrong encoding above
             probes[file] = parse_json(out)
             if write:                                   # manually write probe to file
-                with open(probe_file, 'w') as probe:
-                    probe.write(out)
+                with open(probe_file, 'w', encoding='utf-8') as probe:
+                    probe.write(out)                    # ^ DON'T use `errors='ignore'` here. if we somehow error out here, i'd rather know why
         except:
             logging.warning(f'(!) {file} could not be correctly parsed by FFprobe: {format_exc()}')
             show_on_statusbar(f'{file} could not be correctly parsed by FFprobe.')
@@ -766,10 +768,13 @@ class Edit:
                     end_index = process.stdout.tell()
                     try:
                         process.stdout.seek(start_index, 0)         # seeking back sometimes throws an error?
+                        progress_lines = process.stdout.read(end_index - start_index).split('\n')
                     except OSError:
                         logging.warning(f'(!) Failed to seek backwards from index {end_index} to index {start_index} in FFmpeg\'s stdout pipe, retrying...')
                         continue
-                    progress_lines = process.stdout.read(end_index - start_index).split('\n')
+                    except:
+                        logging.warning('(!) Unexpected error while seeking or reading from FFmpeg\'s stdout pipe: ' + format_exc())
+                        progress_lines = []
 
                 # can't seek in streams on linux -> call & measure readline()'s delay until it buffers
                 # NOTE: this is WAY less efficient and updates noticably slower when sleeping for the same duration. too bad lol
@@ -2950,7 +2955,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if probe_data is None:      # VLC not finished, no data provided, but probe file is being generated
                             while not exists(probe_file):
                                 sleep(0.01)
-                            with open(probe_file, 'r') as probe:
+                            with open(probe_file, 'r', encoding='utf-8') as probe:
                                 while probe_data is None:
                                     try:
                                         probe_data = parse_json(probe.read())
@@ -3063,7 +3068,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             start = get_time()
                             while not exists(probe_file):
                                 sleep(0.01)
-                            with open(probe_file, 'r') as probe:
+                            with open(probe_file, 'r', encoding='utf-8') as probe:
                                 while probe_data is None:
                                     try:
                                         probe_data = parse_json(probe.read())
@@ -3269,7 +3274,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 probe_file = f'{constants.PROBE_DIR}{sep}{basename}_{stat.st_mtime}_{filesize}.txt'
                 probe_exists = exists(probe_file)
                 if probe_exists:                            # probe file already exists
-                    with open(probe_file, 'r') as probe:
+                    with open(probe_file, 'r', encoding='utf-8') as probe:
                         try:
                             probe_data = parse_json(probe.read())
                             probe_process = None
@@ -3330,7 +3335,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                             sleep(0.02)
 
                         # attempt to parse probe file. if successful, this might be actual media
-                        with open(probe_file, 'r') as probe:
+                        with open(probe_file, 'r', encoding='utf-8') as probe:
                             while probe_data is None:
                                 if probe.read():            # keep reading until the file actually contains data
                                     sleep(0.1)
