@@ -215,13 +215,6 @@ def after_show_setup(self: QtW.QMainWindow):
 
 def connect_shortcuts(self: QtW.QMainWindow):
     # TODO add standardShortcuts | TODO are these noticably slower than using keyPressEvent or am I crazy?
-    def increment_subtitle_delay(value: int = 50):
-        if (self.player.video_get_spu_count() - 1) <= 0: return self.marquee('No subtitles available', marq_key='SubtitleDelay', log=False)
-        new_delay = self.player.video_get_spu_delay() + (value * 1000)
-        self.player.video_set_spu_delay(new_delay)
-        if new_delay == 0: self.marquee('Subtitle delay 0ms', marq_key='SubtitleDelay', log=False)
-        else: self.marquee(f'Subtitle delay {new_delay/ 1000:.0f}ms ({"later" if new_delay > 0 else "sooner"})', marq_key='SubtitleDelay', log=False)
-
     def toggle_loop():
         self.marquee(f'Looping {"disabled" if self.actionLoop.isChecked() else "enabled"}', marq_key='Loop', log=False),
         self.actionLoop.trigger()
@@ -261,8 +254,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'randommediamime':    lambda: self.shuffle_media(valid_mime_types=(self.mime_type,)),
         'forward':            lambda: self.cycle_recent_files(forward=True),
         'back':               lambda: self.cycle_recent_files(forward=False),
-        'plussubtitledelay':  increment_subtitle_delay,
-        'minussubtitledelay': lambda: increment_subtitle_delay(-50),
+        'plussubtitledelay':  lambda: self.set_subtitle_delay(50, increment=True),
+        'minussubtitledelay': lambda: self.set_subtitle_delay(-50, increment=True),
         'cyclesubtitles':     lambda: self.cycle_track('subtitle'),
         'cycleaudio':         lambda: self.cycle_track('audio'),
         'cyclevideo':         lambda: self.cycle_track('video'),
@@ -272,7 +265,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
     self.shortcuts = {action_name: (QtW.QShortcut(self, context=3), QtW.QShortcut(self, context=3)) for action_name in shortcut_actions}
     #self.shortcuts = {action_name: (Qtself.QKeySequence(), Qtself.QKeySequence()) for action_name in shortcut_actions}
 
-    get_refresh_shortcuts_lambda = lambda widget: lambda: self.refresh_shortcuts(widget)    # lambda-in-iterable workaround
+    get_refresh_shortcuts_lambda = lambda widget: lambda: self.refresh_shortcuts(widget)        # lambda-in-iterable workaround
     for layout in qthelpers.formGetItemsInColumn(self.dialog_settings.formKeys, 1):
         for keySequenceEdit in qthelpers.layoutGetItems(layout):
             name = keySequenceEdit.objectName()
@@ -294,7 +287,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self._open_external_command_signal.connect(self._open_external_command_slot)
     self.restart_signal.connect(self.restart)
     self.force_pause_signal.connect(self.force_pause)
-    self.concatenate_signal.connect(self.concatenate, type=Qt.QueuedConnection)     # without this, `QVideoPlayer.dropEvent()` freezes explorer windows
+    self.restore_tracks_signal.connect(self._restore_tracks_slot, type=Qt.QueuedConnection)     # `Qt.QueuedConnection` fixes `self.restart()` not unpausing
+    self.concatenate_signal.connect(self.concatenate, type=Qt.QueuedConnection)                 # `Qt.QueuedConnection` fixes dropEvents freezing explorer windows
     self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)
     self.show_trim_dialog_signal.connect(self.show_trim_dialog)
     self.update_progress_signal.connect(self._update_progress_slot)
@@ -315,7 +309,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionOpen.triggered.connect(self.open)
     self.menuFile.aboutToShow.connect(self.refresh_copy_image_action)
     self.menuRecent.aboutToShow.connect(self.refresh_recent_menu)
-    self.actionClearRecent.triggered.connect(lambda: self.recent_files.clear())    # TODO why won't .clear work on its own?
+    self.actionClearRecent.triggered.connect(lambda: self.recent_files.clear())                 # TODO why won't `.clear` work on its own?
     self.actionExploreMediaPath.triggered.connect(self.explore)
     self.actionCopyMediaPath.triggered.connect(self.copy)
     self.actionCopyFile.triggered.connect(self.copy_file)
