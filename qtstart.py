@@ -256,6 +256,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'back':               lambda: self.cycle_recent_files(forward=False),
         'plussubtitledelay':  lambda: self.set_subtitle_delay(50, increment=True),
         'minussubtitledelay': lambda: self.set_subtitle_delay(-50, increment=True),
+        'plusaudiodelay':     lambda: self.set_audio_delay(50, increment=True),
+        'minusaudiodelay':    lambda: self.set_audio_delay(-50, increment=True),
         'cyclesubtitles':     lambda: self.cycle_track('subtitle'),
         'cycleaudio':         lambda: self.cycle_track('audio'),
         'cyclevideo':         lambda: self.cycle_track('video'),

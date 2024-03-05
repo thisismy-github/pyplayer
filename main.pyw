@@ -975,6 +975,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_audio_track: int | None = None
         self.last_subtitle_track: int | None = None
         self.last_subtitle_delay: int | None = None
+        self.last_audio_delay: int | None = None
         self.restore_tracks_queued = False
         self.invert_next_move_event = False
         self.invert_next_resize_event = False
@@ -7758,6 +7759,26 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             suffix = ' (later)' if delay > 0 else ' (sooner)' if delay < 0 else ''
             self.marquee(f'Subtitle delay {delay / 1000:.0f}ms{suffix}', marq_key='SubtitleDelay', log=False)
         self.last_subtitle_delay = delay
+        self.restore_tracks_queued = True
+
+
+    def set_audio_delay(self, msec: int = 50, increment: bool = False, marq: bool = True):
+        ''' Sets the audio delay to `msec`, or increments it by `msec` if
+            `increment` is True. Displays a marquee if `marq` is True. '''
+        if (player.audio_get_track_count() - 1) <= 0:
+            if marq:
+                self.marquee('No audio tracks available', marq_key='SubtitleDelay', log=False)
+            return
+
+        if increment: delay = player.audio_get_delay() + (msec * 1000)
+        else:         delay = msec * 1000
+        player.audio_set_delay(delay)
+
+        if marq:
+            suffix = ' (later)' if delay > 0 else ' (sooner)' if delay < 0 else ''
+            self.marquee(f'Audio delay {delay / 1000:.0f}ms{suffix}', marq_key='SubtitleDelay', log=False)
+
+        self.last_audio_delay = delay
         self.restore_tracks_queued = True
 
 
