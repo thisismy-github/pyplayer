@@ -149,6 +149,7 @@ KNOWN ISSUES:
         rarely, concatenated videos will have a literal missing frame between clips, causing PyPlayer's background to appear for 1 frame
         abnormally long delay opening first video after opening extremely large video (longer delay than in VLC) -> delay occurs at player.set_media
         output-name lineEdit's placeholder text becomes invisible after setting a theme and then changing focus
+        libVLC does NOT like it when you disable the video track. lots of bugs
     Medium priority:
         resizing an audio file rarely stalls forever with no error (works upon retry)
         rotating/flipping video rarely fails for no reason (works upon retry)
@@ -2498,7 +2499,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         current_dir, current_basename = os.path.split(base_file)
         files = os.listdir(current_dir)
-        if len(files) == 1: return log_on_statusbar('This is the only file in this folder.')
+        if len(files) < 2:
+            if len(files) == 1: return log_on_statusbar('This is the only file in this folder.')
+            if len(files) == 0: return log_on_statusbar('There are no remaining files to play in this folder.')
 
         # get current position in folder so we know where to start from
         if current_basename in files:               # original path might not exist anymore
@@ -2543,7 +2546,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         skipped_old_video = False
         start = get_time()
         for new_index in file_range:
-            new_index = new_index % len(files)
+            new_index = new_index % len(files)      # `len(files)` is already confirmed to not be 0
             file = f'{current_dir}{sep}{files[new_index]}'
             #logging.debug(f'Checking {file} at index #{new_index}')
 
@@ -3477,10 +3480,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             #       ...during parsing which happens immediately AFTER we focus the window. i'd...
             #       ...still rather focus first. it's rare enough that i think it's probably fine
             if not self.isActiveWindow():
-                if _from_cycle and settings.checkFocusIgnoreAutoplay.isChecked():
-                    focus_window = False
-                elif not _from_edit and mime == 'audio' and settings.checkFocusIgnoreAudio.isChecked():
-                    focus_window = False
+                if not _from_edit:
+                    if _from_cycle and settings.checkFocusIgnoreAutoplay.isChecked():
+                        focus_window = False
+                    elif mime == 'audio' and settings.checkFocusIgnoreAudio.isChecked():
+                        focus_window = False
 
                 if focus_window is None:
                     if self.isMinimized():
@@ -3666,7 +3670,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Safely calls `self.open()` from a thread by
             emitting `self._open_signal` with any provided
             keyword arguments passed as a dictionary. '''
-        self._open_signal.emit(kwargs)
+        self._open_signal.emit(kwargs)                  # do NOT unpack dictionary
 
 
     def _open_external_command_slot(self, cmdpath: str):
@@ -3961,38 +3965,43 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             within `files`, all players are stopped and the media is cycled
             (if `cycle` is True) before deleting. '''
 
-        if not files:
-            files = (self.video,)
+        try:
+            if not files:
+                if not self.video:
+                    return show_on_statusbar('No media is playing.', 10000)
+                files = (self.video,)
 
-        if self.video in files:
-            if not cycle:
-                self.stop()
-            else:                                   # cycle media before deleting if current video is about to be deleted
-                if self.is_gif:                     # image_player's QMovie must have its filename changed to unlock it
+            if self.video in files:
+                if not cycle:
                     self.stop()
-                old_file = self.video               # self.video will likely change after media is cycled
-                new_file = self.cycle_media(next=self.last_cycle_was_forward, ignore=files)
-                if new_file is None or new_file == old_file:
-                    self.stop()                     # media wasn't cycled -> stop player and uncheck deletion button
-                    self.actionMarkDeleted.setChecked(False)
-                    self.buttonMarkDeleted.setChecked(False)
-                    log_on_statusbar('There are no remaining files to play.')
+                else:                                   # cycle media before deleting if current video is about to be deleted
+                    if self.is_gif:                     # image_player's QMovie must have its filename changed to unlock it
+                        self.stop()
+                    old_file = self.video               # self.video will likely change after media is cycled
+                    new_file = self.cycle_media(next=self.last_cycle_was_forward, ignore=files)
+                    if new_file is None or new_file == old_file:
+                        self.stop()                     # media wasn't cycled -> stop player and uncheck deletion button
+                        self.actionMarkDeleted.setChecked(False)
+                        self.buttonMarkDeleted.setChecked(False)
+                        log_on_statusbar('There are no remaining files to play in this folder.')
 
-        recycle = settings.checkRecycleBin.isChecked()
-        verb = 'recycl' if recycle else 'delet'     # we're appending "ing" to these words
-        logging.info(f'{verb.capitalize()}ing {len(files)} files...')
-        if recycle:
-            import send2trash
+            recycle = settings.checkRecycleBin.isChecked()
+            verb = 'recycl' if recycle else 'delet'     # we're appending "ing" to these words
+            logging.info(f'{verb.capitalize()}ing {len(files)} files...')
+            if recycle:
+                import send2trash
 
-        for file in files:
-            try:
-                send2trash.send2trash(file) if recycle else os.remove(file)
-                logging.info(f'File {file} {verb}ed successfully.')
-            except Exception as error:
-                log_on_statusbar(f'File could not be deleted: {file} - {error}')
-            if not exists(file):                    # if file doesn't exist, unmark file (even if error occurred)
-                if file in self.recent_files:        self.recent_files.remove(file)
-                if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
+            for file in files:
+                try:
+                    send2trash.send2trash(file) if recycle else os.remove(file)
+                    logging.info(f'File {file} {verb}ed successfully.')
+                except Exception as error:
+                    log_on_statusbar(f'File could not be deleted: {file} - {error}')
+                if not exists(file):                    # if file doesn't exist, unmark file (even if error occurred)
+                    if file in self.recent_files:        self.recent_files.remove(file)
+                    if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
+        except:
+            log_on_statusbar(f'(!) Unexpected error while deleting `files` ({files}), (cycle={cycle}): {format_exc()}')
 
 
     def snapshot(self, *, mode: str = 'quick', is_temp: bool = False):      # * to capture unused signal args
@@ -4369,9 +4378,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         minimum, maximum = self.minimum, self.maximum
         audio_track_count = player.audio_get_track_count()
 
-        # misc. constants
-        DEST_ALREADY_EXISTS = exists(dest)
-
         # what will we do to our output and original files after saving? (NOTE: concatenation will override these)
         open_after_save = None                                  # None means we'll decide after the edit finishes
         explore_after_save = False
@@ -4439,7 +4445,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # check if we still have work to do after the above checks
         if not operations:
-            return logging.info('(?) Pre-operation checks failed, nothing left to do.')
+            return logging.info('(?) All pre-operation checks failed, nothing left to do.')
 
         # min/max are usually offset in ffmpeg for some reason, so adjust if necessary
         # NOTE: audio-only will never be truly correct. might require audio re-encoding
@@ -4465,7 +4471,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dest = add_path_suffix(dest, '_temp', unique=True)      # add _temp to dest, in case dest is the same as our base video
 
         logging.info(f'Saving file to "{final_dest}"')
-        logging.debug(f'temp-dest={dest}, video={video} delete={delete_mode} operations={operations}')
+        logging.debug(f'temp-dest={dest}, video={video}, delete={delete_mode}, operations={operations}')
         temp_paths = []                                         # some edits generate excess files we'll need to delete later
 
         # lock both temporary and actual destination in the player
@@ -4473,6 +4479,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.locked_files.add(final_dest)
 
         # open handle to our destination to lock it on the system
+        DEST_ALREADY_EXISTED = exists(final_dest)
         dest_handle = open(final_dest, 'a')
 
     # --- Apply operations to media ---
@@ -4488,10 +4495,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 edit.operation_count -= 1
             self.add_edit(edit)
 
-            # static images are cached and can be deleted independant of pyplayer
-            # if this happens, take the cached QPixmap and save it to a temporary file
-            # we'll assume the user wants the original image to stay gone, so we'll delete the temporary file later
-            if is_static_image and not exists(video):
+            # static images are cached and can be deleted independent of pyplayer. if this happens, save the cached...
+            # ...QPixmap to a temp file and delete it later (we'll assume the user wants the original to stay gone)
+            # NOTE: we do this even if we're not sure the image will actually be used (like if we're concatenating)
+            if is_static_image and video and not exists(video):
                 temp_image_path = add_path_suffix(video, '_tempimage', unique=True)
                 temp_paths.append(temp_image_path)
                 intermediate_file = temp_image_path
@@ -5035,8 +5042,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # --- Post-edit cleanup & opening our newly edited media ---
         finally:
             try:
-                # close handle to destination and delete temp file if needed
-                close_handle(dest_handle, delete=not DEST_ALREADY_EXISTS)
+                # close handle to destination. if there wasn't already a...
+                # ...file there, delete the temp file our handle created
+                close_handle(dest_handle, delete=not DEST_ALREADY_EXISTED)
 
                 # clean up temp paths if we have any
                 for path in temp_paths:
@@ -5056,6 +5064,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         remember_old_file = not op_concat and settings.checkCycleRememberOriginalPath.checkState() == 2
                         self.open_from_thread(
                             file=true_dest,
+                            _from_cycle=True,           # skips unnecessary validation (like checking if `file` is locked)
                             _from_edit=True,
                             focus_window=settings.checkFocusOnEdit.isChecked(),
                             pause_if_focus_rejected=settings.checkEditFocusRejectedPause.isChecked(),
@@ -5079,6 +5088,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 self.recent_files = recent_files[-max_len:]
                         if settings.checkTextOnSave.isChecked():
                             show_on_player(f'{log_noun or "Changes"} saved to {true_dest}.')
+
+                        # our current file might have been marked -> manually update action/button
+                        current_video_is_marked = self.video in self.marked_for_deletion
+                        self.actionMarkDeleted.setChecked(current_video_is_marked)
+                        self.buttonMarkDeleted.setChecked(current_video_is_marked)
 
                     # open output in explorer if desired
                     if explore_after_save:
@@ -5409,11 +5423,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.set_save_progress_format_signal.emit('Cleaning up...')
 
             # NOTE: this probe can't be reused since `temp_dest` is about to be renamed,...
-            # ... but cleanup is 100x easier if we do this now rather than later
+            # ...but cleanup is 100x easier if we do this now rather than later
             new_probe = probe_files(temp_dest, refresh=True, write=False)
             if not new_probe:                   # no probe returned
                 return log_on_statusbar(f'(!) {noun} saved without error, but cannot be probed. Possibly an FFmpeg error. No changes have been made.')
-            elif not new_probe[temp_dest]:      # empty probe returned
+            elif not new_probe[temp_dest]:      # empty probe returned TODO: not possible anymore. add parameter for old `probe_files()` behavior?
                 return log_on_statusbar(f'(!) {noun} saved without error, but returned an invalid probe. Possibly an FFmpeg error. No changes have been made.')
 
             # handle deletion behavior, ignoring `final_dest`
@@ -5611,12 +5625,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def cycle_edit_priority(self):
         ''' Gives priority to the `Edit` at `self.edits_in_progress`'s next index,
             wrapping if necessary. Updates the progress bar immediately. '''
-        edits = self.edits_in_progress
-        for new_index, save in enumerate(edits, start=1):
-            if save.has_priority:
-                save.has_priority = False
-                edits[new_index % len(edits)].give_priority()
-                break
+        try:
+            edits = self.edits_in_progress
+            for new_index, save in enumerate(edits, start=1):
+                if save.has_priority:
+                    save.has_priority = False
+                    edits[new_index % len(edits)].give_priority()
+                    break
+        except ZeroDivisionError:
+            logging.info('(?) Tried to cycle edit priority, but `self.edits_in_progress` became empty while doing so.')
+        except:
+            log_on_statusbar(f'(!) Unexpected error while cycling edit: {format_exc()}')
 
 
     def reset_edit_priority(self, _paranoia: bool = False):
@@ -8654,12 +8673,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             `checked` and `file` are backwards to accomodate Qt passing the
             check-state first in its signals. '''
 
-        if not self.video:
+        # auto-uncheck button if no file is open or given
+        if not self.video and not file:
             if checked:
                 self.actionMarkDeleted.trigger()
             return show_on_statusbar('No media is playing.', 10000)
         file = file or self.video
 
+        # auto-set `mode` based on modifier keys if `mode` was None
         if mode is None:
             mod = app.keyboardModifiers()
             if mod:
