@@ -1407,6 +1407,12 @@ prompt containing all marked files.</string>
    <property name="shortcut">
     <string>Del</string>
    </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetShortcut</enum>
+   </property>
+   <property name="autoRepeat">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="actionShowDeletePrompt">
    <property name="text">

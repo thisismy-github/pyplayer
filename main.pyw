@@ -1044,6 +1044,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.shuffle_ignore_order = []
         self.shuffle_ignore_unique: set[str] = set()
         self.marked_for_deletion: set[str] = set()
+        self.mark_for_deletion_held_down = False
+        self.mark_for_deletion_held_down_state = False
         self.shortcuts: dict = None
         self.operations = {}
         self.save_remnants: dict[float, dict] = {}
@@ -1775,8 +1777,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             elif mod & Qt.AltModifier:
                 if key == 81:                                               # alt + q (exit)
                     self.actionExit.trigger()
-            elif key == 16777223:                                           # del (mark for deletion)
-                self.actionMarkDeleted.trigger()
+
+        # del (mark for deletion) - when we press del, save the mark state we just set and auto-apply it to every file...
+        # ...we open afterwards until we've released del. this way we can hold del and cycle for quick marking/unmarking
+        # NOTE: `actionMarkDeleted` uses "WidgetShortcut" context so its keypresses only get eaten if the menubar is focused
+        if key == 16777223:                             # ignore entirely if ctrl or alt modifiers are held
+            if mod & Qt.ControlModifier or mod & Qt.AltModifier:
+                self.mark_for_deletion_held_down = False
+            else:
+                if self.video and not self.mark_for_deletion_held_down:
+                    self.mark_for_deletion_held_down_state = self.video not in self.marked_for_deletion
+                    self.actionMarkDeleted.trigger()
+                self.mark_for_deletion_held_down = not mod & Qt.ShiftModifier
 
         if key == 16777239:                             # page down (pan image)
             if self.is_static_image or self.is_gif:
@@ -1801,6 +1813,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.ignore_next_alt = False
             elif not self.vlc.dragdrop_in_progress:
                 self.actionShowMenuBar.trigger()
+
+        # confirm that we're actually releasing del -> `isAutoRepeat()` means this is an...
+        # ...automatic key-repeat event sent by the OS and the key was not actually released
+        if key == 16777223 and self.mark_for_deletion_held_down:            # del (mark for deletion)
+            self.mark_for_deletion_held_down = event.isAutoRepeat()
+
         logging.debug(f'RELEASED key={key} text="{event.text()}"')
 
 
@@ -3450,8 +3468,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.setPlaceholderText(basename)
             self.lineOutput.setToolTip(f'{file}\n---\nEnter a new name and press enter to rename this file.')
 
-            # update delete-action's QToolButton
-            is_marked = file in self.marked_for_deletion
+            # update delete-action's QToolButton. if we're holding del, auto-mark the file accordingly
+            if self.mark_for_deletion_held_down:
+                is_marked = self.mark_for_deletion_held_down_state
+                self.mark_for_deletion(is_marked, file)
+            else:
+                is_marked = file in self.marked_for_deletion
             self.actionMarkDeleted.setChecked(is_marked)
             self.buttonMarkDeleted.setChecked(is_marked)
 

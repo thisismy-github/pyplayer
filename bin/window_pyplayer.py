@@ -477,6 +477,8 @@ class Ui_MainWindow(object):
         self.actionMarkDeleted = QtWidgets.QAction(MainWindow)
         self.actionMarkDeleted.setCheckable(True)
         self.actionMarkDeleted.setIconText("Mark media for deletion")
+        self.actionMarkDeleted.setShortcutContext(QtCore.Qt.WidgetShortcut)
+        self.actionMarkDeleted.setAutoRepeat(False)
         self.actionMarkDeleted.setObjectName("actionMarkDeleted")
         self.actionShowDeletePrompt = QtWidgets.QAction(MainWindow)
         self.actionShowDeletePrompt.setObjectName("actionShowDeletePrompt")
