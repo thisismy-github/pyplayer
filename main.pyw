@@ -110,7 +110,6 @@ TODO: should probe files be written/read as bytes? how much faster would that be
 
 TODO: MEDIUM PRIORITY:
 DPI/scaling support
-ffmpeg audio replacement/addition sometimes cuts out the audio 1 second short. keyframe related? corrupted streams (not vlc-specific)?
 further polish cropping
 confirm/increase stability for videos > 60fps (not yet tested)
 trimming-support for more obscure formats
@@ -120,7 +119,7 @@ high-precision progress bar on non-1x speeds
 
 TODO: LOW PRIORITY:
 resize-snapping does not work on linux
-implement the "concatenate" edit for audio-only files
+implement concatenation for audio files
 further reduce RAM usage
 "Restore Defaults" button in settings window
 see update change logs before installing
@@ -128,7 +127,6 @@ add way to distinguish base and forked repos
 ability to skip updates
 far greater UI customization
 figure out the smallest feasible ffmpeg executable we can use without sacrificing major edit features (ffmpeg.dll?)
-create "lite" version on github that doesn't include ffmpeg or vlc files?
 ability to continue playing media while minimized to system tray
 forwards/backwards buttons currently only work when pressed over the player
 ability to limit combination-edits (adding/replacing audio) to the shortest input (this exists in ffmpeg but breaks often)
@@ -151,15 +149,17 @@ KNOWN ISSUES:
         output-name lineEdit's placeholder text becomes invisible after setting a theme and then changing focus
         libVLC does NOT like it when you disable the video track. lots of bugs
     Medium priority:
-        resizing an audio file rarely stalls forever with no error (works upon retry)
-        rotating/flipping video rarely fails for no reason (works upon retry)
+        resizing an audio file rarely stalls forever with no error (works upon retry) NOTE: might have been fixed with new `Edit` class
+        rotating/flipping video rarely fails for no reason (works upon retry) NOTE: might have been fixed with new `Edit` class
         videos with replaced/added audio tracks longer than the video themselves do NOT concatenate correctly (audio track freaks ffmpeg out)
         repeatedly going into fullscreen on a higher DPI/scaled monitor results ruins the controls (general DPI/scaling support is high priority)
+        audio replacement/addition sometimes cuts out audio 1 second short. keyframe related? corrupted streams (not vlc-specific)?
     Moderately high priority:
         .3gp, .ogv, and .mpg files do not trim correctly
     Cannot reproduce consistently:
         volume gain suddenly changes after extended use
-        spamming the cycle buttons will eventually either crash to desktop with no error or leave the UI in a severely broken state
+        spamming the cycle buttons may rarely crash to desktop with no error NOTE: might have been fixed with 3/06/24 commit
+        spamming the cycle buttons may rarely cause the UI to desync in a way that `high_precision_progress_thread()` seemingly can't detect
         player's current visible frame doesn't change when navigating (<- and ->) after video finishes until it's unpaused (used to never happen)
         scrubbing slider and sharply moving mouse out of window while releasing causes video to not unpause until scrubbed again (rare)
         clicking on the progress bar will update the video without moving the progress bar (very rare, may be bottlenecking issue)
@@ -1290,7 +1290,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 # NOTE: VLC can be deceptive - only listen to VLC if it's been desynced for a while
                 vlc_is_desynced = vlc_frame > 0 and abs(vlc_desync) > vlc_desync_limit
                 if vlc_is_desynced: vlc_desync_counter += 1
-                else: vlc_desync_counter = 0
+                else:               vlc_desync_counter = 0
                 if absolute_time_desync >= 1 or vlc_desync_counter >= vlc_desync_counter_limit:
                     self.ui_delay = self.delay
                     true_frame = (player.get_position() * self.frame_count) + (self.frame_rate * 0.2)
@@ -1430,16 +1430,20 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
                                 now = _get_time()
                                 time_elapsed = now - start
-                        except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
-                        finally: start = now
+                        except Exception as error:
+                            logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
+                        finally:
+                            start = now
 
                     # for normal FPS media, just sleep normally, accounting for the loop's execution time
                     else:
                         try:
                             _sleep(0.0001)              # sleep to force-update get_time()
                             _sleep(self.ui_delay - (_get_time() - start))
-                        except Exception as error: logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
-                        finally: start = _get_time()
+                        except Exception as error:
+                            logging.warning(f'update_slider_thread bottleneck - {type(error)}: {error} -> delay={self.ui_delay} execution-time={_get_time() - start}')
+                        finally:
+                            start = _get_time()
 
             # high-precision option disabled -> use libvlc's native progress and manually paint QVideoSlider
             else:
@@ -1816,8 +1820,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # confirm that we're actually releasing del -> `isAutoRepeat()` means this is an...
         # ...automatic key-repeat event sent by the OS and the key was not actually released
-        if key == 16777223 and self.mark_for_deletion_held_down:            # del (mark for deletion)
-            self.mark_for_deletion_held_down = event.isAutoRepeat()
+        if key == 16777223 and self.mark_for_deletion_held_down and not event.isAutoRepeat():
+            self.mark_for_deletion_held_down = False    # update tooltip once we're done auto-setting
+            self.refresh_marked_for_deletion_tooltip()  # NOTE: this means we'll double-update it sometimes but that's fine
 
         logging.debug(f'RELEASED key={key} text="{event.text()}"')
 
@@ -3174,9 +3179,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 if   orientation == 3: angle = 180
                                 elif orientation == 6: angle = 90   # actually represents 270 counter-clockwise
                                 elif orientation == 8: angle = 270  # actually represents 90 counter-clockwise
-                                else: angle = 0
-                                if angle: image_player.art = image_player.art.transformed(QtGui.QTransform().rotate(angle))
-                            try: self.vwidth, self.vheight = image.size
+                                else:                  angle = 0
+                                if angle:
+                                    image_player.art = image_player.art.transformed(QtGui.QTransform().rotate(angle))
+                            try:
+                                self.vwidth, self.vheight = image.size
                             except AttributeError:
                                 self.vwidth = image_player.art.width()
                                 self.vheight = image_player.art.height()
@@ -3469,9 +3476,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.setToolTip(f'{file}\n---\nEnter a new name and press enter to rename this file.')
 
             # update delete-action's QToolButton. if we're holding del, auto-mark the file accordingly
-            if self.mark_for_deletion_held_down:
+            if self.mark_for_deletion_held_down:            # NOTE: we don't update the tooltip until we've release del
                 is_marked = self.mark_for_deletion_held_down_state
-                self.mark_for_deletion(is_marked, file)
+                if is_marked: self.marked_for_deletion.add(file)
+                else:         self.marked_for_deletion.discard(file)
             else:
                 is_marked = file in self.marked_for_deletion
             self.actionMarkDeleted.setChecked(is_marked)
@@ -4019,11 +4027,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     logging.info(f'File {file} {verb}ed successfully.')
                 except Exception as error:
                     log_on_statusbar(f'File could not be deleted: {file} - {error}')
-                if not exists(file):                    # if file doesn't exist, unmark file (even if error occurred)
-                    if file in self.recent_files:        self.recent_files.remove(file)
-                    if file in self.marked_for_deletion: self.marked_for_deletion.remove(file)
+
+                # unmark file if it no longer exists, even if an error occurred
+                if not exists(file):
+                    if file in self.recent_files:
+                        try: self.recent_files.remove(file)
+                        except ValueError: pass
+                    if file in self.marked_for_deletion:
+                        self.marked_for_deletion.discard(file)
         except:
             log_on_statusbar(f'(!) Unexpected error while deleting `files` ({files}), (cycle={cycle}): {format_exc()}')
+        finally:                                        # ensure delete button's tooltip is still correct
+            self.refresh_marked_for_deletion_tooltip()
 
 
     def snapshot(self, *, mode: str = 'quick', is_temp: bool = False):      # * to capture unused signal args
@@ -4949,7 +4964,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if op_rotate_video == 'transpose=clock' or op_rotate_video == 'transpose=cclock':
                     vwidth, vheight = vheight, vwidth           # update dimensions
 
-            # replace audio track
+            # replace audio (entirely - TODO: track-by-track replacement)
             if op_replace_audio is not None:
                 log_on_statusbar('Audio replacement requested.')
                 audio = op_replace_audio    # TODO -shortest (before output) results in audio cutting out ~1 second before end of video despite the audio being longer
@@ -4987,7 +5002,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
                 else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
                     log_on_statusbar('Additional audio track requested.')
-                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if mime == 'video' and audio_track_count == 0 else '-filter_complex amix=inputs=2'
+                    the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if (mime == 'video' and audio_track_count == 0) else '-filter_complex amix=inputs=2'
                     cmd = f'-i %in -i "{audio}" {the_important_part}'
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
 
@@ -5456,7 +5471,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if isinstance(to_delete, str): to_delete = (to_delete,) if to_delete != final_dest else None
             elif to_delete:                to_delete = [file for file in to_delete if file != final_dest]
             if to_delete:                       # 1 -> mark for deletion, 2 -> recycle/delete outright
-                if delete_mode == 1:       self.marked_for_deletion.update(to_delete)
+                if delete_mode == 1:       self.mark_for_deletion(*to_delete, True, mode='')
                 elif delete_mode == 2:     self.delete(*to_delete, cycle=False)
                 #elif replacing_original:       # TODO add setting for this behavior?
                 #    temp_name = add_path_suffix(video, '_original', unique=True)
@@ -7162,10 +7177,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         marked_for_deletion = [f for f in self.marked_for_deletion if exists(f)]
         if not marked_for_deletion: return log_on_statusbar('No media is marked for deletion.')
 
-        marked = []
-        unmarked = []
+        marked: list[str] = []
+        unmarked: list[str] = []
         marked_count = len(marked_for_deletion)
-        recycle = settings.checkRecycleBin.isChecked()
+        recycle: bool = settings.checkRecycleBin.isChecked()
         dialog_width = 450
 
         try:
@@ -7318,8 +7333,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if dialog.choice == QtW.QDialogButtonBox.Yes:
                 self.delete(*marked)
             elif dialog.choice == QtW.QDialogButtonBox.No:
-                for file in unmarked:
-                    self.mark_for_deletion(False, file)
+                self.mark_for_deletion(*unmarked, False)
 
             logging.info(f'Deletion dialog choice: {dialog.choice}')
             return dialog.choice
@@ -7599,7 +7613,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def get_hotkey_full_string(self, hotkey: str) -> str:
         ''' Returns a string in the format " (key1/key2)" for the given `hotkey`
             group, where key1 and key2 are the two `QKeySequenceFlexibleEdit`'s.
-            Example: "mute" would return one the following:
+            Example: "mute" would return one of the following:
             1. `" ({settings.mute.toString()}/{settings.mute_.toString()})"`
             2. `" ({settings.mute.toString()}"`
             3. `" ({settings.mute_.toString()}"`
@@ -8443,7 +8457,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         )
 
 
-    def refresh_recycle_setting(self, recycle: bool):
+    def refresh_recycle_tooltip(self, recycle: bool):
         ''' Updates some text/tooltips to reflect whether "deleting" means
             to actually delete something or to just move it to the `recycle` bin. '''
         if recycle:
@@ -8469,6 +8483,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         elif boost == 1.0:   tooltip = f'{boosted_volume:.0f}%'
         else:                tooltip = f'{boosted_volume:.0f}% ({boost:.1f}x boost)'
         self.sliderVolume.setToolTip(tooltip)
+
+
+    def refresh_marked_for_deletion_tooltip(self):
+        ''' Updates the deletion button's tooltip to
+            include the current number of marked files. '''
+        tooltip_count_string = f'{len(self.marked_for_deletion)} file{"s" if len(self.marked_for_deletion) != 1 else ""}'
+        self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', tooltip_count_string))
 
 
     def refresh_snapshot_button_controls(self):
@@ -8686,53 +8707,49 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.swap_slider_styles_queued = True
 
 
-    def mark_for_deletion(self, checked: bool = False, file: str = None, mode: str = None):
-        ''' Marks a `file` for deletion if `checked` is True. Alternate
-            behavior can be triggered if `mode` is set to "delete" or "prompt".
-            If `mode` is None, it will automatically be set to "delete" if
-            Ctrl is being held down, or "prompt" if shift is held down.
-
-            `checked` and `file` are backwards to accomodate Qt passing the
-            check-state first in its signals. '''
+    def mark_for_deletion(self, *files: str, mark: bool = False, mode: str = None):
+        ''' Marks `files` for deletion if `mark` is True, updating the deletion
+            checkboxes accordingly. Alternate behavior is triggered if `mode` is
+            set to "delete" or "prompt". If `mode` is None, it will be set based
+            on what (if any) modifiers are being held down: "delete" for Ctrl,
+            "prompt" for Shift. '''
 
         # auto-uncheck button if no file is open or given
-        if not self.video and not file:
-            if checked:
-                self.actionMarkDeleted.trigger()
-            return show_on_statusbar('No media is playing.', 10000)
-        file = file or self.video
+        if not files:
+            if not self.video:
+                self.actionMarkDeleted.setChecked(False)
+                self.buttonMarkDeleted.setChecked(False)
+                return show_on_statusbar('No media is playing.', 10000)
+            files = (self.video,)
 
         # auto-set `mode` based on modifier keys if `mode` was None
         if mode is None:
             mod = app.keyboardModifiers()
-            if mod:
+            if mod and not self.mark_for_deletion_held_down:    # don't auto-set `mode` while auto-marking
                 if mod & Qt.ControlModifier: mode = 'delete'    # ctrl pressed -> immediately delete video
                 elif mod & Qt.ShiftModifier: mode = 'prompt'    # shift pressed -> show deletion prompt
         else:
             mode = mode.lower()
-        logging.info(f'Marking file {file} for deletion: {checked}. Mode: {mode}')
+        logging.info(f'Marking files {files} for deletion: {mark}. Mode: {mode}')
 
-        if mode == 'delete':   self.delete(file)
+        if mode == 'delete':   self.delete(*files)
         elif mode == 'prompt': self.show_delete_prompt()
-        elif checked and file: self.marked_for_deletion.add(file)
-        elif not checked:
-            try: self.marked_for_deletion.remove(file)
-            except (ValueError, KeyError): pass
-            except: log_on_statusbar(f'(!) MARK_FOR_DELETION FAILED: {format_exc()}')
+        elif mark:             self.marked_for_deletion.update(files)
+        else:                  self.marked_for_deletion.difference_update(files)
 
         # ensure mark-button is in the correct state and update tooltip
-        if file == self.video:
-            self.actionMarkDeleted.setChecked(checked)
-            self.buttonMarkDeleted.setChecked(checked)
-        tooltip_count_string = f'{len(self.marked_for_deletion)} file{"s" if len(self.marked_for_deletion) != 1 else ""}'
-        self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', tooltip_count_string))
+        if self.video in files:
+            self.actionMarkDeleted.setChecked(mark)
+            self.buttonMarkDeleted.setChecked(mark)
+        self.refresh_marked_for_deletion_tooltip()
 
 
     def clear_marked_for_deletion(self):
+        ''' Clears all marked files and updates the UI accordingly. '''
         self.marked_for_deletion.clear()
         self.actionMarkDeleted.setChecked(False)
         self.buttonMarkDeleted.setChecked(False)
-        self.buttonMarkDeleted.setToolTip(constants.MARK_DELETED_TOOLTIP_BASE.replace('?count', '0'))
+        self.refresh_marked_for_deletion_tooltip()
 
 
     # https://www.geeksforgeeks.org/convert-png-to-jpg-using-python/
