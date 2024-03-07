@@ -1381,11 +1381,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
                     if self.frame_override != -1:
                         if self.open_in_progress:       # opening -> wait for signal to start cleanup
-                            while not self.open_cleanup_queued:
+                            while self.open_in_progress and not self.open_cleanup_queued:
                                 sleep(0.01)
                             emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
                             self.open_cleanup_queued = False
-                            while self.open_in_progress:
+                            while self.open_in_progress and not self.open_cleanup_queued:
                                 sleep(0.01)             # wait for media opening to finish
                         else:
                             _emit_update_progress_signal(self.frame_override)
@@ -1453,11 +1453,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 while is_playing() and not self.lock_progress_updates and not self.swap_slider_styles_queued:
                     if self.frame_override != -1:
                         if self.open_in_progress:       # opening -> wait for signal to start cleanup
-                            while not self.open_cleanup_queued:
+                            while self.open_in_progress and not self.open_cleanup_queued:
                                 sleep(0.01)
                             emit_open_cleanup_signal()  # _open_cleanup_signal uses self._open_cleanup_slot()
                             self.open_cleanup_queued = False
-                            while self.open_in_progress:
+                            while self.open_in_progress and not self.open_cleanup_queued:
                                 sleep(0.01)             # wait for media opening to finish
                         else:
                             _emit_update_progress_signal(self.frame_override)
@@ -3596,7 +3596,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return -1
         finally:
             self._open_main_in_progress = False
-            self.open_in_progress = self._open_cleanup_in_progress
+            self.open_in_progress = self._open_cleanup_in_progress or self.open_cleanup_queued
 
 
     def _open_cleanup_slot(self):
@@ -3610,6 +3610,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             delay while opening media. '''
         try:
             # reset UI to frame 0 while `self._open_cleanup_in_progress` is True
+            self._open_cleanup_in_progress = True       # set this again, juuuuust in case
             update_progress(0)
 
             # NOTE: `sliderProgress.setMaximum` has an override -> it expects the raw count (i.e. 9000 for...
@@ -3691,9 +3692,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         except:
             logging.error(f'(!) OPEN-SLOT FAILED: {format_exc()}')
-        finally:
-            self._open_cleanup_in_progress = False
-            self.open_in_progress = self._open_main_in_progress
+        finally:                                        # if another open is queued already, stay marked as "in progress"
+            self._open_cleanup_in_progress = self.open_cleanup_queued
+            self.open_in_progress = self._open_main_in_progress or self.open_cleanup_queued
 
 
     def open_from_thread(self, **kwargs):
