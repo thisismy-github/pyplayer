@@ -463,8 +463,8 @@ class Edit:
     __slots__ = (
         'dest', 'temp_dest', 'process', '_is_paused', '_is_cancelled',
         '_threads', 'has_priority', 'frame_rate', 'frame_count',
-        'operation_count', 'operations_started', 'frame', 'value',
-        'text', 'percent_format', 'start_text', 'override_text'
+        'audio_track_titles', 'operation_count', 'operations_started', 'frame',
+        'value', 'text', 'percent_format', 'start_text', 'override_text'
     )
 
     def __init__(self, dest: str = ''):
@@ -477,6 +477,7 @@ class Edit:
         self.has_priority = False
         self.frame_rate = 0.0
         self.frame_count = 0
+        self.audio_track_titles: list[str] = []
         self.operation_count = 1
         self.operations_started = 0
         self.frame = 0
@@ -618,19 +619,23 @@ class Edit:
         text: str = None,
         start_text: str = None,
         percent_format: str = None,
-        text_override: str = None
+        text_override: str = None,
+        auto_map_tracks: bool = True,
+        audio_track_titles: list[str] = None
     ) -> str:
         ''' Executes an FFmpeg `cmd` on `infile` and outputs to `outfile`,
             showing a progress bar on both the statusbar and the taskbar icon
             (on Windows) by parsing FFmpeg's output. "%in" and "%out" will be
-            replaced within `cmd` if provided. If `outfile` is specified, "%out"
-            will be appended to the end of `cmd` if needed.
+            replaced within `cmd` if provided. "%out" will be appended to the
+            end of `cmd` automatically if needed. If `auto_map_tracks` is True,
+            "-map 0" will be inserted before "%out" if "-map" is not present.
+            the appropriate metadata arguments for `audio_track_titles` (or
+            `self.audio_track_titles`) will also be inserted.
 
             NOTE: `infile` and "%in" do not necessarily need to be included, but
             if you don't providing `infile`, you shouldn't provide "%in" either.
-            NOTE: If `outfile` is not provided, the output path in `cmd` MUST be
-            surrounded by quotes for `util.ffmpeg_async()` to properly apply the
-            "-threads" parameter when necessary.
+            NOTE: If `outfile` is not provided, `infile` is overwritten instead.
+            If neither was provided, an exception is raised.
             NOTE: This method will only update the progress bar if this edit
             has priority. Priority may change mid-operation and is gained
             whenever `len(gui.edits_in_progress) == 1`.
@@ -674,10 +679,11 @@ class Edit:
         is_windows = constants.IS_WINDOWS
         logging.info(f'Performing FFmpeg operation (infile={infile} | outfile={outfile} | cmd={cmd})')
 
-        # set text-format-related properties based on parameters and existing values
+        # set title/text-format-related properties based on parameters and existing values
         self.override_text = bool(text_override)
         self.start_text = start_text or text_override or self.get_progress_text()
         self.text = text_override or text or self.text
+        self.audio_track_titles = audio_track_titles or self.audio_track_titles
         if percent_format is not None:
             self.percent_format = percent_format
 
@@ -716,9 +722,25 @@ class Edit:
             else:                                                   # no infile provided at all, so no temp path either
                 temp_infile = ''
 
-            # run final ffmpeg command, replacing %in and %out with their respective (quote-surrounded) paths
+            # replace %in and %out with their respective (quote-surrounded) paths
             if '%out' not in cmd:                                   # ensure %out is present so we have a spot to insert `outfile`
                 cmd += ' %out'
+
+            # insert `-map 0` so all tracks are "mapped" to the final output
+            # TODO: ffprobe can't parse track titles (LOL), so we need mediainfo if we want...
+            # ...to get them on the fly, especially for edits like concatenation. incredible.
+            if auto_map_tracks and '-map ' not in cmd:
+                out = cmd.find(' %out')
+                if self.audio_track_titles:                         # ffmpeg drops the track titles, so insert garbage metadata arguments
+                    titles = ' '.join(                              # ↓ replace empty titles with something generic, like "Track 2"
+                        f'-metadata:s:a:{index} title="{title.strip() or f"Track {index + 1}"}"'
+                        for index, title in enumerate(self.audio_track_titles)
+                    )
+                    cmd = f'{cmd[:out]} -map 0 {titles}{cmd[out:]}'
+                else:
+                    cmd = f'{cmd[:out]} -map 0{cmd[out:]}'
+
+            # run final ffmpeg command
             try:
                 self._threads = settings.spinFFmpegThreads.value() if settings.checkFFmpegThreadOverride.isChecked() else 0
                 process: subprocess.Popen = ffmpeg_async(
@@ -4415,6 +4437,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         vwidth, vheight = self.vwidth, self.vheight
         minimum, maximum = self.minimum, self.maximum
         audio_track_count = player.audio_get_track_count()
+        audio_track_titles: list[str] = [id_and_title[-1].decode() for id_and_title in player.audio_get_track_description()[1:]]
 
         # what will we do to our output and original files after saving? (NOTE: concatenation will override these)
         open_after_save = None                                  # None means we'll decide after the edit finishes
@@ -4503,6 +4526,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not op_concat:                                       # NOTE: concatenation provides its own files
             new_ctime, new_mtime = self.get_new_file_timestamps(video, dest=dest)
 
+        # VLC may add tags to track titles, like "Track 1 - [English]" -> try to detect and remove these
+        for index in range(len(audio_track_titles)):
+            fake_tags = []
+            parts = audio_track_titles[index].split(' - ')
+            title = parts[0]
+            for tag in reversed(parts[1:]):
+                if fake_tags:                                   # if we found a non-tag, don't look for tags before it in...
+                    fake_tags.append(tag)                       # ...the title, e.g. "Track 1 - [Don't Detect Me] - Yippee"
+                    continue
+                tag = tag.strip()
+                if tag[0] != '[' or tag[-1] != ']':
+                    fake_tags.append(tag)
+            if fake_tags:                                       # reapply all valid nontags
+                title = f'{title} - {" - ".join(reversed(fake_tags))}'
+            audio_track_titles[index] = title                   # apply our potentially new title to the list
+
         # NEVER directly save to our destination - always to a unique temp path. makes cleanup 100x easier
         intermediate_file = video                               # the path to the file that will be receiving all changes between operations
         final_dest = dest                                       # save the original dest so we can rename our temporary dest back later
@@ -4529,6 +4568,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             edit.frame_rate = frame_rate
             edit.frame_count = frame_count_raw
             edit.operation_count = len(operations)
+            edit.audio_track_titles = audio_track_titles        # NOTE: ignored on edits that manually specify `-map`
             if op_trim_start and op_trim_end:                   # account for trimming taking up two keys
                 edit.operation_count -= 1
             self.add_edit(edit)
@@ -4869,7 +4909,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         if mime != 'audio':
                             if precise: cmd += ' -c:v libx264 -c:a aac'
                             else:       cmd += ' -c:v copy -c:a copy -avoid_negative_ts make_zero'
-                        else:           cmd += ' -map 0 -codec copy -avoid_negative_ts make_zero'
+                        else:           cmd += ' -codec copy -avoid_negative_ts make_zero'
 
                     duration = trim_duration                                        # update duration
                     edit.frame_count = frame_count = maximum - minimum              # update frame count
@@ -5004,7 +5044,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:                       # video/audio TODO: adding "-stream_loop -1" and "-shortest" sometimes cause endless videos because ffmpeg is garbage
                     log_on_statusbar('Additional audio track requested.')
                     the_important_part = '-map 0:v:0 -map 1:a:0 -c:v copy' if (mime == 'video' and audio_track_count == 0) else '-filter_complex amix=inputs=2'
-                    cmd = f'-i %in -i "{audio}" {the_important_part}'
+                    cmd = f'-i %in -i "{audio}" {the_important_part}'               # ^ use special cmd for audio-less videos
                     intermediate_file = edit.ffmpeg(intermediate_file, cmd, dest, 'Adding audio track')
 
             # isolate audio or all video tracks (does not turn file into an image/GIF)
@@ -8237,7 +8277,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             first_track_parameters = (-1, None, None)
             show_title = settings.checkTrackCycleShowTitle.isChecked()
             for true_index, (track_index, track_title) in enumerate(get_description()):
-                track_title = str(track_title)[2:-1] if show_title else None
+                track_title = track_title.decode() if show_title else None
                 if first_track_parameters[0] == -1 and track_index > -1:
                     first_track_parameters = (track_index, true_index, track_title)
                 if track_index > current_track:                 # ^ mark the first valid track
