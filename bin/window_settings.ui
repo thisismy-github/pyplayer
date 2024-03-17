@@ -435,7 +435,7 @@ thread will monitor the slider to keep it from desyncing.
 If not checked, libVLC's native updates will be used.</string>
                </property>
                <property name="text">
-                <string>High-precision progress slider (CPU-intensive)</string>
+                <string>High-precision VLC progress slider (CPU-intensive)</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
@@ -3218,7 +3218,7 @@ before it begins to fade.</string>
                      <number>0</number>
                     </property>
                     <item row="2" column="0">
-                     <widget class="QRadioButton" name="radioTextPosition1">
+                     <widget class="QRadioButton" name="radioTextPosition4">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3237,7 +3237,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="3" column="0">
-                     <widget class="QRadioButton" name="radioTextPosition9">
+                     <widget class="QRadioButton" name="radioTextPosition7">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3256,7 +3256,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="2" column="1">
-                     <widget class="QRadioButton" name="radioTextPosition0">
+                     <widget class="QRadioButton" name="radioTextPosition5">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3275,7 +3275,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="2" column="2">
-                     <widget class="QRadioButton" name="radioTextPosition2">
+                     <widget class="QRadioButton" name="radioTextPosition6">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3313,7 +3313,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="3" column="2">
-                     <widget class="QRadioButton" name="radioTextPosition10">
+                     <widget class="QRadioButton" name="radioTextPosition9">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3332,7 +3332,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="1" column="0">
-                     <widget class="QRadioButton" name="radioTextPosition5">
+                     <widget class="QRadioButton" name="radioTextPosition1">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3354,7 +3354,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="1" column="1">
-                     <widget class="QRadioButton" name="radioTextPosition4">
+                     <widget class="QRadioButton" name="radioTextPosition2">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -3373,7 +3373,7 @@ before it begins to fade.</string>
                      </widget>
                     </item>
                     <item row="1" column="2">
-                     <widget class="QRadioButton" name="radioTextPosition6">
+                     <widget class="QRadioButton" name="radioTextPosition3">
                       <property name="minimumSize">
                        <size>
                         <width>16</width>
@@ -6656,15 +6656,15 @@ mime type as the current media (video, audio, or image).</string>
   <tabstop>checkTextOnSubtitleDelay</tabstop>
   <tabstop>checkTextOnSave</tabstop>
   <tabstop>checkTextOnFullScreenPosition</tabstop>
-  <tabstop>radioTextPosition5</tabstop>
-  <tabstop>radioTextPosition4</tabstop>
-  <tabstop>radioTextPosition6</tabstop>
   <tabstop>radioTextPosition1</tabstop>
-  <tabstop>radioTextPosition0</tabstop>
   <tabstop>radioTextPosition2</tabstop>
-  <tabstop>radioTextPosition9</tabstop>
+  <tabstop>radioTextPosition3</tabstop>
+  <tabstop>radioTextPosition4</tabstop>
+  <tabstop>radioTextPosition5</tabstop>
+  <tabstop>radioTextPosition6</tabstop>
+  <tabstop>radioTextPosition7</tabstop>
   <tabstop>radioTextPosition8</tabstop>
-  <tabstop>radioTextPosition10</tabstop>
+  <tabstop>radioTextPosition9</tabstop>
   <tabstop>scrollArea</tabstop>
   <tabstop>pause</tabstop>
   <tabstop>pause_</tabstop>

@@ -53,6 +53,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('trimmodeselected', False)
     load('ffmpegwarningignored', False)
     load('minimizedtotraywarningignored', False)
+    gui.set_player(load('player', 'VLC'))
 
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, settings.tabEditing, settings.tabHotkeys, settings.tabUpdates, ignore=('comboThemes'))

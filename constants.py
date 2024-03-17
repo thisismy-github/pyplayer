@@ -91,6 +91,18 @@ ALL_MEDIA_EXTENSIONS = VIDEO_EXTENSIONS + AUDIO_EXTENSIONS + IMAGE_EXTENSIONS
 
 # ---------------------
 
+class SetProgressContext(int):
+    NONE = 0
+    RESTORE = 1
+    RESTART = 2
+    RESET_TO_MIN = 3
+    RESET_TO_MAX = 4
+    NAVIGATION_RELATIVE = 5
+    NAVIGATION_EXACT = 6
+    SCRUB = 7
+
+# ---------------------
+
 TRIM_BUTTON_TOOLTIP_BASE = '''Click to set the starting position of a trim/
 the point where the intro fade will stop.
 

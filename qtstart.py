@@ -26,7 +26,7 @@ parser.add_argument('file', nargs='?', help='Specifies a filepath to open')     
 parser.add_argument('--exit', action='store_true', help='Instantly exits. Used when sending media to other instances')
 parser.add_argument('--play-and-exit', action='store_true', help='Automatically exits at the conclusion of a media file')
 parser.add_argument('--minimized', action='store_true', help='Start minimized (to the tray, if enabled). Useful when used as a startup program')
-parser.add_argument('-v', '--vlc', default='--gain=2.0', help='Specifies arguments to pass to the underlying VLC instance')
+parser.add_argument('-v', '--vlc', default='--gain=2.0', help='Specifies arguments to pass to the underlying VLC instance (if enabled)')
 parser.add_argument('-d', '--debug', action='store_true', help='Outputs debug messages to the log file.')
 args = parser.parse_args()
 if args.exit: sys.exit(100)
@@ -74,7 +74,8 @@ logging.info(f'Arguments: {args}')
 def exit(self: QtW.QMainWindow):
     try:
         self.closed = True
-        logging.info('Exiting. self.closed set to True.')
+        self.player.disable(wait=False)
+        logging.info('Exiting. self.closed set to True and player disabled.')
 
         if self.tray_icon is not None:
             if self.dialog_settings.groupTray.isChecked() and not self.isHidden():
@@ -91,8 +92,11 @@ def exit(self: QtW.QMainWindow):
         except: logging.warning(f'Error saving configuration: {format_exc()}')
         logging.info('Configuration has been saved. Goodbye.')
 
-    except: logging.critical(f'\n\n(!)QTSTART.EXIT FAILED: {format_exc()}')
-    finally: self.closed = True                         # absolutely must be True or else daemon threads will never close
+    except:
+        logging.critical(f'\n\n(!)QTSTART.EXIT FAILED: {format_exc()}')
+    finally:
+        self.closed = True                              # absolutely must be True or else daemon threads will never close
+        self.player.enabled = False
 
 
 def get_tray_icon(self: QtW.QMainWindow) -> QtW.QSystemTrayIcon:
@@ -197,9 +201,9 @@ def after_show_setup(self: QtW.QMainWindow):
     self.gifPlayer._imageScale = settings.comboScaleImages.currentIndex()
     self.gifPlayer._artScale = settings.comboScaleArt.currentIndex()
     self.gifPlayer._gifScale = settings.comboScaleGifs.currentIndex() + 1
-    self.vlc.set_text_height(settings.spinTextHeight.value())
-    self.vlc.set_text_x(settings.spinTextX.value())
-    self.vlc.set_text_y(settings.spinTextY.value())
+    self.player.set_text_height(settings.spinTextHeight.value())
+    self.player.set_text_x(settings.spinTextX.value())
+    self.player.set_text_y(settings.spinTextY.value())
 
     # setup/connect hotkeys, manually refresh various parts of UI
     connect_shortcuts(self)
@@ -233,8 +237,8 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'minus4':             lambda: self.navigate(forward=False, seconds_spinbox=settings.spinNavigation4),
         'plusframe':          self.spinFrame.stepUp,
         'minusframe':         self.spinFrame.stepDown,
-        'plusspeed':          lambda: self.set_playback_speed(self.playback_speed + 0.05),
-        'minusspeed':         lambda: self.set_playback_speed(self.playback_speed - 0.05),
+        'plusspeed':          lambda: self.set_playback_speed(0.05, increment=True),
+        'minusspeed':         lambda: self.set_playback_speed(-0.05, increment=True),
         'plusvolume1':        lambda: self.sliderVolume.setValue(self.sliderVolume.value() + settings.spinVolume1.value()),
         'minusvolume1':       lambda: self.sliderVolume.setValue(self.sliderVolume.value() - settings.spinVolume1.value()),
         'plusvolume2':        lambda: self.sliderVolume.setValue(self.sliderVolume.value() + settings.spinVolume2.value()),
@@ -414,8 +418,8 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.comboThemes.currentTextChanged.connect(self.set_theme)
     settings.buttonRefreshThemes.clicked.connect(self.refresh_theme_combo)
     settings.buttonBrowseDefaultOutputPath.clicked.connect(lambda: self.browse_for_directory(lineEdit=settings.lineDefaultOutputPath, noun='default output'))
-    settings.checkHighPrecisionProgress.toggled.connect(self.swap_slider_styles)
-    settings.checkRecycleBin.toggled.connect(self.refresh_recycle_tooltip)
+    settings.checkHighPrecisionProgress.toggled.connect(lambda: setattr(self.player, 'swap_slider_styles', True))
+    settings.checkRecycleBin.toggled.connect(self.refresh_recycle_tooltip)      # ^ TODO: lol
     settings.checkFocusOnEdit.toggled.connect(lambda state: settings.checkFocusIgnoreFullscreenEditsOnly.setEnabled(state and settings.checkFocusIgnoreFullscreen.isChecked()))
     settings.checkFocusIgnoreFullscreen.toggled.connect(lambda state: settings.checkFocusIgnoreFullscreenEditsOnly.setEnabled(state and settings.checkFocusOnEdit.isChecked()))
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
@@ -433,16 +437,16 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.buttonCheckForUpdates.clicked.connect(self.handle_updates)
 
     self.position_button_group = QtW.QButtonGroup(settings)
-    for button in (settings.radioTextPosition0, settings.radioTextPosition1, settings.radioTextPosition2,
+    for button in (settings.radioTextPosition1, settings.radioTextPosition2, settings.radioTextPosition3,
                    settings.radioTextPosition4, settings.radioTextPosition5, settings.radioTextPosition6,
-                   settings.radioTextPosition8, settings.radioTextPosition9, settings.radioTextPosition10):
+                   settings.radioTextPosition7, settings.radioTextPosition8, settings.radioTextPosition9):
         self.position_button_group.addButton(button)
-    self.position_button_group.buttonToggled.connect(self.vlc.set_text_position)
+    self.position_button_group.buttonToggled.connect(self.player.set_text_position)
 
-    settings.spinTextHeight.valueChanged.connect(self.vlc.set_text_height)
-    settings.spinTextX.valueChanged.connect(self.vlc.set_text_x)
-    settings.spinTextY.valueChanged.connect(self.vlc.set_text_y)
-    settings.spinTextOpacity.valueChanged.connect(self.vlc.set_text_opacity)
+    settings.spinTextHeight.valueChanged.connect(self.player.set_text_height)
+    settings.spinTextX.valueChanged.connect(self.player.set_text_x)
+    settings.spinTextY.valueChanged.connect(self.player.set_text_y)
+    settings.spinTextOpacity.valueChanged.connect(self.player.set_text_opacity)
     settings.comboScaleImages.currentIndexChanged.connect(self.gifPlayer._updateImageScale)
     settings.comboScaleArt.currentIndexChanged.connect(self.gifPlayer._updateArtScale)
     settings.comboScaleGifs.currentIndexChanged.connect(self.gifPlayer._updateGifScale)
