@@ -1075,6 +1075,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuAudio.insertAction(self.menuAudio.actions()[-1], self.actionResize)
         self.dockControls.setTitleBarWidget(QtW.QWidget(self.dockControls))  # disables QDockWidget's unique titlebar
         self.lineOutput.setIgnoreAll(False)
+        self.checkDeleteOriginal.setCheckState(1)                            # default to partially checked (can't be done in QtDesigner, lol)
         self.frameAdvancedControls.setDragTarget(self)
         self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
         self.dialog_settings.checkContextShowSubmenus.setCheckState(1)       # can't make checkboxes default to partially checked in Qt Designer :(
@@ -1148,7 +1149,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.toggle_mute,
             self.actionFullscreen.trigger,
             self.toggle_maximized,
-            lambda: self.set_playback_speed(1.0)
+            lambda: self.set_playback_rate(1.0)
         )
 
         # all possible middle-click actions, ordered by their appearance in the settings
@@ -1158,7 +1159,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.toggle_mute,
             self.actionFullscreen.trigger,
             self.toggle_maximized,
-            lambda: self.set_playback_speed(1.0)
+            lambda: self.set_playback_rate(1.0)
         )
 
         # all possible tray middle-click actions, ordered by their appearance in the settings
@@ -1429,7 +1430,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         if mod & Qt.ControlModifier:
             inc = 0.05 if mod & Qt.ShiftModifier else 0.2
-            self.set_playback_speed(inc if up else -inc, increment=True)
+            self.set_playback_rate(inc if up else -inc, increment=True)
         else:
             if event.buttons() == Qt.RightButton:
                 self.ignore_next_right_click = True     # reset-timer for this starts in `QVideoPlayer.mouseReleaseEvent`
@@ -1795,8 +1796,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         prev_any_action.triggered.connect(lambda: self.cycle_media(next=False))
         prev_mime_action = QtW.QAction(f'Open previous {mime} file')
         prev_mime_action.triggered.connect(lambda: self.cycle_media(next=False, valid_mime_types=(mime,)))
-        random_any_action = QtW.QAction('Open random file')
-        random_any_action.triggered.connect(self.shuffle_media)
+        random_any_action = QtW.QAction('Open random file')  # ↓ lambda to discard qt's signal parameter
+        random_any_action.triggered.connect(lambda: self.shuffle_media())
         random_mime_action = QtW.QAction(f'Open random {mime} file')
         random_mime_action.triggered.connect(lambda: self.shuffle_media(valid_mime_types=(mime,)))
 
@@ -1875,12 +1876,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.set_mute(False)
 
 
-    def buttonPauseContextMenuEvent(self, event: QtGui.QContextMenuEvent):  # should these use QWidget.actions() instead of contextMenuEvent?
+    def buttonPauseContextMenuEvent(self, event: QtGui.QContextMenuEvent):
         ''' Handles the context (right-click) menu for the pause button. '''
+        # TODO should these redefined events use QWidget.actions() instead of contextMenuEvent?
         context = QtW.QMenu(self)
         context.addAction(self.actionStop)
         context.addAction('Restart', lambda: set_and_update_progress(0, SetProgressContext.RESET_TO_MIN))
-        context.exec(event.globalPos())                                     # ^ TODO this might have timing issues with update_thread
+        context.exec(event.globalPos())                     # ^ TODO this might have timing issues with update_thread
 
 
     def buttonPauseMousePressEvent(self, event: QtGui.QMouseEvent):
@@ -3144,7 +3146,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 probe_data = None
                 probe_process = None
             else:
-                qthelpers.getPopup(             # TODO: add the signal version too if we need it
+                qthelpers.getPopup(
                     title='Welp.',
                     text='You have FFprobe disabled, but have also selected a\nplayer that cannot sufficiently parse media on its own.\n\nDo you see the issue?',
                     icon='warning',
@@ -3457,6 +3459,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # force volume/mute-state to quickly correct gain issues (ONLY if audio is present!)
             # player doesn't always want to update immediately after first file is opened - keep trying
+            # TODO: is this VLC-only?
             if self.volume_startup_correction_needed and player.get_audio_track_count() > 0:
                 muted = not self.sliderVolume.isEnabled()
                 volume = get_volume_slider()
@@ -3473,7 +3476,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             image_player.gif.setPaused(False)
 
             player.on_open_cleanup()
-
             logging.info(f'Media info:\nmime={self.mime_type}, extension={self.extension}\n'
                          f'duration={self.duration}, frames={self.frame_count_raw}, fps={self.frame_rate}, delay={self.delay:.4f}\n'
                          f'size={self.vwidth}x{self.vheight}, ratio={self.ratio}')
@@ -4198,9 +4200,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         op_amplify_audio: float =            operations.get('amplify audio', None)  # new volume, from 0-1(+)
         op_resize: tuple[int, int] | float = operations.get('resize', None)         # (width, height) OR duration multiplier
         op_rotate_video: str =               operations.get('rotate video', None)   # rotation command (e.g. "vflip")
-        op_trim_start: bool =                operations.get('trim start', None)     # represents both trimming and fading
-        op_trim_end: bool =                  operations.get('trim end', None)       # represents both trimming and fading
-        op_crop: bool =                      operations.get('crop', None)
+        op_trim_start: bool =                operations.get('trim start', False)    # represents both trimming and fading
+        op_trim_end: bool =                  operations.get('trim end', False)      # represents both trimming and fading
+        op_crop: bool =                      operations.get('crop', False)
 
         # save remnants dict (contains stuff like dialogs we want to hang onto for later if the save fails)
         if 'remnants' in operations:
@@ -5197,7 +5199,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if isinstance(to_delete, str): to_delete = (to_delete,) if to_delete != final_dest else None
             elif to_delete:                to_delete = [file for file in to_delete if file != final_dest]
             if to_delete:                       # 1 -> mark for deletion, 2 -> recycle/delete outright
-                if delete_mode == 1:       self.mark_for_deletion(*to_delete, True, mode='')
+                if delete_mode == 1:       self.mark_for_deletion(*to_delete, mark=True, mode='')
                 elif delete_mode == 2:     self.delete(*to_delete, cycle=False)
                 #elif replacing_original:       # TODO add setting for this behavior?
                 #    temp_name = add_path_suffix(video, '_original', unique=True)
@@ -7059,7 +7061,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             if dialog.choice == QtW.QDialogButtonBox.Yes:
                 self.delete(*marked)
             elif dialog.choice == QtW.QDialogButtonBox.No:
-                self.mark_for_deletion(*unmarked, False)
+                self.mark_for_deletion(*unmarked, mark=False)
 
             logging.info(f'Deletion dialog choice: {dialog.choice}')
             return dialog.choice
@@ -7509,7 +7511,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             except: log_on_statusbar(f'(!) Failed to update modified time for file: {format_exc()}')
 
 
-    def set_playback_speed(self, rate: float, increment: bool = False):
+    def set_playback_rate(self, rate: float, increment: bool = False):
         ''' Sets the playback `rate` for the media, or increments it by
             `rate` if `increment` is True. Displays a marquee if desired. '''
         if increment:
@@ -7533,15 +7535,14 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.marquee('No subtitles available', marq_key='SubtitleDelay', log=False)
             return
 
-        delay = msec
         if increment:
-            delay += player.get_subtitle_delay()
-        player.set_subtitle_delay(int(delay))
+            msec += player.get_subtitle_delay()
+        player.set_subtitle_delay(int(msec))
 
         if marq:
-            suffix = ' (later)' if delay > 0 else ' (sooner)' if delay < 0 else ''
-            self.marquee(f'Subtitle delay {delay / 1000:.0f}ms{suffix}', marq_key='SubtitleDelay', log=False)
-        self.last_subtitle_delay = delay
+            suffix = ' (later)' if msec > 0 else ' (sooner)' if msec < 0 else ''
+            self.marquee(f'Subtitle delay {msec / 1000:.2f}s{suffix}', marq_key='SubtitleDelay', log=False)
+        self.last_subtitle_delay = msec
         self.restore_tracks_queued = True
 
 
@@ -7553,16 +7554,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.marquee('No audio tracks available', marq_key='SubtitleDelay', log=False)
             return
 
-        delay = msec
         if increment:
-            delay += player.audio_get_delay()
-        player.set_audio_delay(delay)
+            msec += player.audio_get_delay()
+        player.set_audio_delay(msec)
 
         if marq:
-            suffix = ' (later)' if delay > 0 else ' (sooner)' if delay < 0 else ''
-            self.marquee(f'Audio delay {delay / 1000:.0f}ms{suffix}', marq_key='SubtitleDelay', log=False)
+            suffix = ' (later)' if msec > 0 else ' (sooner)' if msec < 0 else ''
+            self.marquee(f'Audio delay {msec / 1000:.2f}s{suffix}', marq_key='SubtitleDelay', log=False)
 
-        self.last_audio_delay = delay
+        self.last_audio_delay = msec
         self.restore_tracks_queued = True
 
 
@@ -7641,7 +7641,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Toggles fullscreen-mode on and off. Saves window-state to
             `self.was_maximized` to remember if the window is maximized
             or not and restore the window accordingly. '''
-        self.dockControls.setFloating(fullscreen)       # FramelessWindowHint and WindowStaysOnTopHint not needed
+
+        # FramelessWindowHint and WindowStaysOnTopHint not needed
+        self.dockControls.setFloating(fullscreen)
+
+        # entering fullscreen
         if fullscreen:  # TODO: figure out why dockControls won't resize in fullscreen mode -> strange behavior when showing/hiding control-frames
             current_screen = app.screenAt(self.mapToGlobal(self.rect().center()))   # fullscreen destination is based on center of window
             screen_size = current_screen.size()
@@ -7671,14 +7675,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:                                   # set timer to act like we JUST stopped moving the mouse
                     self.vlc.idle_timeout_time = get_time() + settings.spinHideIdleCursorDuration.value()
 
+            player.on_fullscreen(fullscreen)
             self.ignore_next_fullscreen_move_event = True
-            return self.showFullScreen()                # FullScreen with a capital S
+            self.showFullScreen()                # FullScreen with a capital S
+
+        # leaving fullscreen
         else:
             self.statusbar.setVisible(self.actionShowStatusBar.isChecked())
             self.menubar.setVisible(self.actionShowMenuBar.isChecked())
             #self.dockControls.setFixedWidth(QWIDGETSIZE_MAX)
-            if self.was_maximized: self.showMaximized()
-            else: self.showNormal()
+
+            player.on_fullscreen(fullscreen)
+            self.showMaximized() if self.was_maximized else self.showNormal()
 
 
     def toggle_maximized(self):
@@ -7910,7 +7918,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         else:
             if getattr(player, f'SUPPORTS_{track_type.upper()}_TRACK_MANIPULATION'):
                 if track_type == 'subtitle':
-                    track_type = 'subtitles'                        # prefer "Subtitles disabled" over "Subtitle disabled"
+                    track_type = 'subtitles'                    # prefer "Subtitles disabled" over "Subtitle disabled"
                 marquee(f'{track_type.capitalize()} disabled', marq_key='TrackChanged', log=False)
             else:
                 marquee(f'The selected player does not support {track_type} track manipulation', marq_key='TrackChanged', log=False)

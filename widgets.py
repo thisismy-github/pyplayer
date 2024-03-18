@@ -118,6 +118,11 @@ class PyPlayerBackend:
         ''' Called at the end of `QVideoPlayer.resizeEvent()`. '''
         pass
 
+    def on_fullscreen(self, fullscreen: bool):
+        ''' Called at the end of `gui.set_fullscreen()`, just before calling
+            `gui.showFullScreen()`/`gui.showMaximized()`/`gui.showNormal()`. '''
+        pass
+
     def on_parse(self, file: str, base_mime: str, mime: str, extension: str):
         ''' Called at the end of `gui.parse_media_file()`. All probe-related
             properties will be up-to-date when this event fires. Rarely, `mime`
@@ -929,7 +934,7 @@ class PlayerVLC(PyPlayerBackend):
         # ...animations tied to the slider continue to work (smoothly)
         # NOTE: this number must match the `fps` variable that...
         #       ...appears twice in `QVideoSlider.paintEvent()`
-        min_fps = 20
+        min_fps = 20                                    # TODO this is applied even for non-fullscreen images
         min_fps_delay = 1 / min_fps
 
         while self.enabled:
@@ -937,7 +942,7 @@ class PlayerVLC(PyPlayerBackend):
             while not _gui.isVisible() and self.enabled:
                 _sleep(0.25)
 
-            # window is visible, but nothing is actively playing
+            # window is visible, but nothing is actively playing (NOTE: `is_playing()` will be False for images)
             while _gui.isVisible() and not is_playing() and self.enabled:
                 repaint_slider()                        # force `QVideoSlider` to keep painting
                 _sleep(min_fps_delay)                   # update at `min_fps`
@@ -1146,7 +1151,10 @@ class PlayerQt(PyPlayerBackend):
         video_widget.leaveEvent = self.parent.leaveEvent
 
         # start ui-updating timer
-        interval = max(17, min(50, gui.delay * 1000))       # clamp interval to 17-50ms (~59-20fps)
+        if gui.mime_type == 'image':
+            interval = 50 if gui.isFullScreen() else 200        # update at 5fps for images (or 20fps if we're fullscreen)
+        else:
+            interval = max(17, min(50, gui.delay * 1000))       # clamp interval to 17-50ms (~59-20fps)
         self._frame_timer.start(interval)
 
 
@@ -1175,8 +1183,8 @@ class PlayerQt(PyPlayerBackend):
             frame = round((self._player.position() / 1000) * gui.frame_rate)
             if frame:                                       # sometimes Qt will try to reset UI to 0 when we don't want it to
                 gui.update_progress(frame)
-                self.ignore_zero_progress = False          # reset flag now that Qt is reporting the correct progress
-            elif not self.ignore_zero_progress:            # only allow a `frame` of 0 if we're not ignoring it
+                self.ignore_zero_progress = False           # reset flag now that Qt is reporting the correct progress
+            elif not self.ignore_zero_progress:             # only allow a `frame` of 0 if we're not ignoring it
                 gui.update_progress(0)
         else:                                               # continue painting hover timestamp/fullscreen UI while paused
             gui.sliderProgress.update()
@@ -1213,14 +1221,25 @@ class PlayerQt(PyPlayerBackend):
         #self._video_widget.resize(1920, 1080)              # TODO this can be used for video zooming
 
 
+    def on_fullscreen(self, fullscreen: bool):
+        if gui.mime_type == 'image':                        # use 20fps for images in fullscreen
+            self._frame_timer.setInterval(50 if fullscreen else 200)
+
+
     def on_parse(self, file: str, base_mime: str, mime: str, extension: str):
         if mime == 'video':
             self._video_widget.show()
         else:
             self._video_widget.hide()
 
+        if mime == 'image':
+            self.lock_timer = True
+            interval = 50 if gui.isFullScreen() else 200    # update at 5fps for images (or 20fps if we're fullscreen)
+        else:
+            self.lock_timer = False
+            interval = max(17, min(50, gui.delay * 1000))   # clamp interval to 17-50ms (~59-20fps)
+
         gui._open_cleanup_signal.emit()
-        interval = max(17, min(50, gui.delay * 1000))       # clamp interval to 17-50ms (~59-20fps)
         self._frame_timer.setInterval(interval)
         logger.info(f'PlayerQt timer set to {interval:.2f}ms')
 
@@ -2504,10 +2523,11 @@ class QVideoSlider(QtW.QSlider):
 
 
     def setMaximum(self, maximum: int):
-        ''' Sets the maximum slider value to `maximum - 1`.
-            If 1 or less, the slider is automatically disabled. '''
+        ''' Sets the maximum slider value to `maximum - 1`. If 1 or less,
+            the slider and its mouse events are automatically disabled. '''
         super().setMaximum(maximum - 1)
         self.setEnabled(maximum > 1)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, maximum < 2)
 
 
     def paintEvent(self, event: QtGui.QPaintEvent):
@@ -2564,102 +2584,96 @@ class QVideoSlider(QtW.QSlider):
         except:
             return
 
-        # if slider isn't enabled, don't bother with trim-boundaries or hover-timestamps
-        # NOTE: do this after the idle-timeout is handled or our cursor/UI will be stuck
-        if not self.isEnabled():
-            return
-
         p = QtGui.QPainter()
         p.begin(self)
-        try:
-            # trim start/end markers -> draw trim-boundaries
-            if self.clamp_minimum or self.clamp_maximum:
 
-                # pick current color to use for animated trim-boundaries
-                if not self.colors:
-                    next_index = self.color_index + 1
-                    if next_index > len(self.color_order) - 1:
-                        next_index = 0
-                    self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
-                    self.color_index = next_index
-                if now > self.last_color_change_time + 0.05:    # update color at a MAX of 20fps
-                    color = QtGui.QColor(self.colors.pop().get_hex())
-                    self.last_color_change_time = now
+        # trim start/end markers -> draw trim-boundaries
+        if self.clamp_minimum or self.clamp_maximum:
+
+            # pick current color to use for animated trim-boundaries
+            if not self.colors:
+                next_index = self.color_index + 1
+                if next_index > len(self.color_order) - 1:
+                    next_index = 0
+                self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
+                self.color_index = next_index
+            if now > self.last_color_change_time + 0.05:    # update color at a MAX of 20fps
+                color = QtGui.QColor(self.colors.pop().get_hex())
+                self.last_color_change_time = now
+            else:
+                color = QtGui.QColor(self.colors[-1].get_hex())
+
+            color.setAlpha(100)
+            pen_thick = QtGui.QPen(color, 2)
+            pen_thin = QtGui.QPen(QtGui.QColor(255, 255, 255), 1)
+            #pen_thick.setCapStyle(Qt.RoundCap)
+            p.setBrush(QtGui.QColor(0, 0, 0, 200))
+
+            opt = QtW.QStyleOptionSlider()
+            self.initStyleOption(opt)
+            groove_rect = self.style().subControlRect(QtW.QStyle.CC_Slider, opt, QtW.QStyle.SC_SliderGroove, self)
+            #print(groove_rect, groove_rect.left(), groove_rect.topLeft(), dir(groove_rect))
+
+            # draw triangle markers for start/end and cover slider outside trim TODO: this is not efficient
+            if self.clamp_minimum:
+                x = self.rangeValueToPixelPos(gui.minimum)
+                p.setPen(pen_thick)
+                p.drawRoundedRect(groove_rect.left(), groove_rect.top(), x, groove_rect.height(), 2, 2)
+                p.setPen(pen_thin)
+                p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x - 4, self.height() / 2)]))
+            if self.clamp_maximum:
+                x = self.rangeValueToPixelPos(gui.maximum)
+                p.setPen(pen_thick)
+                p.drawRoundedRect(x, groove_rect.top(), groove_rect.width() - x - 1, groove_rect.height(), 2, 2)
+                p.setPen(pen_thin)
+                p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x + 4, self.height() / 2)]))
+
+        #for marker in self.markers:    # an idea for a more general implementation with an arbitrary number of "markers"
+        #    x = self.rangeValueToPixelPos(marker)
+        #    #print(x)
+        #    #p.drawImage(pos, 0, QtGui.QImage(r'C:\cs\python\videoeditor\bin\icon.ico'))
+        #    p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255), 1))
+        #    p.setBrush(QtGui.QColor(255, 255, 255))
+        #    #p.drawLine(x, 0, x, self.height())
+        #    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 0), QtCore.QPoint(x, self.height()), QtCore.QPoint(x + 4, self.height() / 2)]))
+
+        # hover timestamps
+        if settings.groupHover.isChecked():                 # ↓ 0.05 looks instant but avoids flickers
+            fade_time = max(0.05, settings.spinHoverFadeDuration.value())
+            if now <= self.last_mouseover_time + fade_time:
+                if self.underMouse():                       # ↓ get position relative to widget
+                    pos = self.mapFromGlobal(QtGui.QCursor().pos())
+                    self.last_mouseover_time = now          # reset fade timer if we're still hovering
+                    self.last_mouseover_pos = pos           # save last mouse position within slider
                 else:
-                    color = QtGui.QColor(self.colors[-1].get_hex())
+                    pos = self.last_mouseover_pos           # use last position if mouse is outside the slider
 
-                color.setAlpha(100)
-                pen_thick = QtGui.QPen(color, 2)
-                pen_thin = QtGui.QPen(QtGui.QColor(255, 255, 255), 1)
-                #pen_thick.setCapStyle(Qt.RoundCap)
-                p.setBrush(QtGui.QColor(0, 0, 0, 200))
+                frame = self.pixelPosToRangeValue(pos)
+                h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
+                text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
 
-                opt = QtW.QStyleOptionSlider()
-                self.initStyleOption(opt)
-                groove_rect = self.style().subControlRect(QtW.QStyle.CC_Slider, opt, QtW.QStyle.SC_SliderGroove, self)
-                #print(groove_rect, groove_rect.left(), groove_rect.topLeft(), dir(groove_rect))
+                size = settings.spinHoverFontSize.value()   # TODO use currentFontChanged signals + more for performance? not needed?
+                font = settings.comboHoverFont.currentFont()
+                font.setPointSize(size)
+                #font.setPixelSize(size)
+                p.setFont(font)
+                pos.setY(self.height() - (self.height() - size) / 2)
 
-                # draw triangle markers for start/end and cover slider outside trim TODO: this is not efficient
-                if self.clamp_minimum:
-                    x = self.rangeValueToPixelPos(gui.minimum)
-                    p.setPen(pen_thick)
-                    p.drawRoundedRect(groove_rect.left(), groove_rect.top(), x, groove_rect.height(), 2, 2)
-                    p.setPen(pen_thin)
-                    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x - 4, self.height() / 2)]))
-                if self.clamp_maximum:
-                    x = self.rangeValueToPixelPos(gui.maximum)
-                    p.setPen(pen_thick)
-                    p.drawRoundedRect(x, groove_rect.top(), groove_rect.width() - x - 1, groove_rect.height(), 2, 2)
-                    p.setPen(pen_thin)
-                    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x + 4, self.height() / 2)]))
+                # calculate fade-alpha from 0-255 based on time since we stopped hovering. default to 255 if fading is disabled
+                # TODO: I sure used a lot of different methods for fading things. should these be more unified?
+                alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
 
-            #for marker in self.markers:    # an idea for a more general implementation with an arbitrary number of "markers"
-            #    x = self.rangeValueToPixelPos(marker)
-            #    #print(x)
-            #    #p.drawImage(pos, 0, QtGui.QImage(r'C:\cs\python\videoeditor\bin\icon.ico'))
-            #    p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255), 1))
-            #    p.setBrush(QtGui.QColor(255, 255, 255))
-            #    #p.drawLine(x, 0, x, self.height())
-            #    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 0), QtCore.QPoint(x, self.height()), QtCore.QPoint(x + 4, self.height() / 2)]))
+                if settings.checkHoverShadow.isChecked():   # draw shadow first (as black, slightly offset text)
+                    p.setPen(QtGui.QColor(0, 0, 0, alpha))  # set color to black
+                    p.drawText(pos.x() + 1, pos.y() + 1, text)
+                self.hover_font_color.setAlpha(alpha)
+                p.setPen(self.hover_font_color)             # set color to white
+                p.drawText(pos, text)                       # draw actual text over shadow
 
-            # hover timestamps
-            if settings.groupHover.isChecked():                 # ↓ 0.05 looks instant but avoids flickers
-                fade_time = max(0.05, settings.spinHoverFadeDuration.value())
-                if now <= self.last_mouseover_time + fade_time:
-                    if self.underMouse():                       # ↓ get position relative to widget
-                        pos = self.mapFromGlobal(QtGui.QCursor().pos())
-                        self.last_mouseover_time = now          # reset fade timer if we're still hovering
-                        self.last_mouseover_pos = pos           # save last mouse position within slider
-                    else:
-                        pos = self.last_mouseover_pos           # use last position if mouse is outside the slider
-
-                    frame = self.pixelPosToRangeValue(pos)
-                    h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
-                    text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
-
-                    size = settings.spinHoverFontSize.value()   # TODO use currentFontChanged signals + more for performance? not needed?
-                    font = settings.comboHoverFont.currentFont()
-                    font.setPointSize(size)
-                    #font.setPixelSize(size)
-                    p.setFont(font)
-                    pos.setY(self.height() - (self.height() - size) / 2)
-
-                    # calculate fade-alpha from 0-255 based on time since we stopped hovering. default to 255 if fading is disabled
-                    # TODO: I sure used a lot of different methods for fading things. should these be more unified?
-                    alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
-
-                    if settings.checkHoverShadow.isChecked():   # draw shadow first (as black, slightly offset text)
-                        p.setPen(QtGui.QColor(0, 0, 0, alpha))  # set color to black
-                        p.drawText(pos.x() + 1, pos.y() + 1, text)
-                    self.hover_font_color.setAlpha(alpha)
-                    p.setPen(self.hover_font_color)             # set color to white
-                    p.drawText(pos, text)                       # draw actual text over shadow
-
-                    # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
-                    #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
-                    #self.setToolTip(f'{h}:{m:02}:{s:02}' if h else f'{m}:{s:02}')
-        finally:
-            p.end()
+                # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
+                #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
+                #self.setToolTip(f'{h}:{m:02}:{s:02}' if h else f'{m}:{s:02}')
+        p.end()
 
 
     def wheelEvent(self, event: QtGui.QWheelEvent):
