@@ -3802,16 +3802,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         self.buttonMarkDeleted.setChecked(False)
                         log_on_statusbar('There are no remaining files to play in this folder.')
 
+            count = len(files)
+            fail_count = 0
             recycle = settings.checkRecycleBin.isChecked()
             verb = 'recycl' if recycle else 'delet'     # we're appending "ing" to these words
-            logging.info(f'{verb.capitalize()}ing {len(files)} files...')
+            verbing = f'{verb.capitalize()}ing'
             if recycle:
                 import send2trash
 
-            for file in files:
-                try:
+            if count >= 10 and not self.edits_in_progress:
+                logging.info(f'{verbing} {count} files...')
+                self.set_save_progress_max_signal.emit(count)
+                self.set_save_progress_format_signal.emit(f'{verbing} 0/{count} files...')
+                self.set_save_progress_visible_signal.emit(True)
+            else:
+                log_on_statusbar(f'{verbing} {count} files...')
+                app.processEvents()                     # process events so the statusbar updates immediately
+
+            for index, file in enumerate(files, start=1):
+                try:                                    # update statusbar every 5 files
                     send2trash.send2trash(file) if recycle else os.remove(file)
                     logging.info(f'File {file} {verb}ed successfully.')
+                    if not self.edits_in_progress:
+                        self.set_save_progress_value_and_format_signal.emit(index, f'{verbing} {index}/{count} files...')
                 except Exception as error:
                     log_on_statusbar(f'File could not be deleted: {file} - {error}')
 
@@ -3822,10 +3835,19 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         except ValueError: pass
                     if file in self.marked_for_deletion:
                         self.marked_for_deletion.discard(file)
+                else:                                   # track how many files still exist
+                    fail_count += 1
+
+            if fail_count == 0:
+                log_on_statusbar(f'{count} files {verb}ed successfully.')
+            else:
+                log_on_statusbar(f'{count - fail_count}/{count} files {verb}ed successfully.')
         except:
             log_on_statusbar(f'(!) Unexpected error while deleting `files` ({files}), (cycle={cycle}): {format_exc()}')
         finally:                                        # ensure delete button's tooltip is still correct
             self.refresh_marked_for_deletion_tooltip()
+            if not self.edits_in_progress:
+                self.hide_edit_progress()
 
 
     def snapshot(self, *, mode: str = 'quick', is_temp: bool = False):      # * to capture unused signal args
