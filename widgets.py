@@ -61,12 +61,17 @@ class PyPlayerBackend:
     SUPPORTS_VIDEO_TRACK_MANIPULATION = False               # Can this player return video track info AND set video tracks?
     SUPPORTS_AUDIO_TRACK_MANIPULATION = False               # Can this player return audio track info AND set audio tracks?
     SUPPORTS_SUBTITLE_TRACK_MANIPULATION = False            # Can this player return subtitle track info AND set subtitle tracks?
+    SUPPORTS_AUTOMATIC_SUBTITLE_ENABLING = False            # Does this player auto-enable subtitle tracks when present?
+    ENABLE_AUTOMATIC_TRACK_RESTORATION = True               # Should PyPlayer restore its saved tracks/delays when opening/restoring? NOTE: Avoid this if possible!!
+    ENABLE_AUTOMATIC_TRACK_RESET = True                     # Should PyPlayer reset its saved tracks/delays to None when opening new files?
 
     def __init__(self, parent, *args, **kwargs):
         self.parent = parent
         self.enabled = False
         self.menu: QtW.QMenu = None
 
+        self.last_file = ''
+        self.file_being_opened = ''
         self.open_cleanup_queued = False
 
         self.text = None
@@ -87,12 +92,13 @@ class PyPlayerBackend:
 
     # ---
 
-    def enable(self):
+    def enable(self) -> bool:
         ''' Called upon enabling the backend. When starting PyPlayer, this is
             called immediately after `gui.setup()` and loading the config, but
             before showing the window. '''
         self.enabled = True
         self.open_cleanup_queued = False
+        return True
 
     def disable(self, wait: bool = True):
         ''' Called upon disabling the backend. Stop playing, set `self.enabled`
@@ -137,7 +143,7 @@ class PyPlayerBackend:
             to finish parsing or using `self.on_open_cleanup()` instead. '''
         gui._open_cleanup_signal.emit()
 
-    def on_open_cleanup(self, *args):
+    def on_open_cleanup(self):
         ''' Called at the end of `gui._open_cleanup_slot()`. All opening-related
             properties (aside from `gui.open_in_progress`) will be up-to-date
             when this even fires. '''
@@ -328,10 +334,10 @@ class PyPlayerBackend:
     def set_subtitle_track(self, index: int):
         self.show_text('Track manipulation is not supported by the selected player.')
 
-    def add_audio_track(self, url: str, enable: bool = False):
+    def add_audio_track(self, url: str, enable: bool = False) -> bool:
         self.show_text('Dynamically adding audio tracks is not supported by the selected player.')
 
-    def add_subtitle_track(self, url: str, enable: bool = False):
+    def add_subtitle_track(self, url: str, enable: bool = False) -> bool:
         self.show_text('Dynamically adding subtitle tracks is not supported by the selected player.')
 
     # ---
@@ -389,6 +395,9 @@ class PlayerVLC(PyPlayerBackend):
     SUPPORTS_VIDEO_TRACK_MANIPULATION = True
     SUPPORTS_AUDIO_TRACK_MANIPULATION = True
     SUPPORTS_SUBTITLE_TRACK_MANIPULATION = True
+    SUPPORTS_AUTOMATIC_SUBTITLE_ENABLING = True
+    ENABLE_AUTOMATIC_TRACK_RESTORATION = False
+    ENABLE_AUTOMATIC_TRACK_RESET = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -423,7 +432,7 @@ class PlayerVLC(PyPlayerBackend):
         }
 
 
-    def enable(self):
+    def enable(self) -> bool:
         while self.metronome_thread_open or self.slider_thread_open or self.text_fade_thread_open:
             time.sleep(0.02)
         super().enable()
@@ -436,6 +445,8 @@ class PlayerVLC(PyPlayerBackend):
 
         # NOTE: cannot use .emit as a callback
         event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, lambda event: gui.restart_signal.emit())
+        event_manager.event_attach(vlc.EventType.MediaPlayerOpening, lambda event: setattr(self, 'opening', True))
+        event_manager.event_attach(vlc.EventType.MediaPlayerPlaying, self._on_play)
 
         self.get_playback_rate = player.get_rate
         self.set_playback_rate = player.set_rate
@@ -453,8 +464,8 @@ class PlayerVLC(PyPlayerBackend):
         self.is_playing = player.is_playing
         self.get_fps = player.get_fps                       # TODO: self.vlc.media.get_tracks() might be more accurate, but I can't get it to work
         self.get_duration = lambda: player.get_length() / 1000
-        self.get_dimensions = player.video_get_size
-        self.get_audio_delay = lambda: player.audio_get_delay() / 1000             # VLC uses microseconds for delays for some reason
+        self.get_dimensions = player.video_get_size         # ↓ VLC uses microseconds for delays for some reason
+        self.get_audio_delay = lambda: player.audio_get_delay() / 1000
         self.set_audio_delay = lambda msec: player.audio_set_delay(msec * 1000)
         self.get_subtitle_delay = lambda: player.video_get_spu_delay() / 1000
         self.set_subtitle_delay = lambda msec: player.video_set_spu_delay(msec * 1000)
@@ -487,6 +498,7 @@ class PlayerVLC(PyPlayerBackend):
         self.slider_thread_open = False
         Thread(target=self.update_slider_thread, daemon=True).start()
         Thread(target=self.high_precision_slider_accuracy_thread, daemon=True).start()
+        return True
 
 
     def disable(self, wait: bool = True):                   # TODO do we need `gui.frame_override` in here for smooth transitions?
@@ -506,6 +518,25 @@ class PlayerVLC(PyPlayerBackend):
         if constants.IS_WINDOWS: self._player.set_hwnd(self.parent.winId())
         elif constants.IS_MAC:   self._player.set_nsobject(int(self.parent.winId()))
         else:                    self._player.set_xwindow(self.parent.winId())
+
+
+    def _on_play(self, event: vlc.Event):
+        ''' VLC event. '''
+        if self.opening:
+            self.opening = False
+
+            # HACK: for some files, VLC will always default to the wrong audio track (NO idea...
+            # ...why, nothing unusal in any media-parsing tool i've used and no other player...
+            # ...does it) -> when opening a new file, immediately set all tracks to track 1
+            if self.last_file != self.file_being_opened:
+                self.last_file = self.file_being_opened
+                gui.last_video_track = 1
+                gui.last_audio_track = 1
+                gui.last_subtitle_track = 1 if settings.checkAutoEnableSubtitles.isChecked() else -1
+                gui.last_audio_delay = 0
+                gui.last_subtitle_delay = 0
+            gui.tracks_were_changed = True
+            gui.restore_tracks()
 
 
     def on_parse(self, file: str, base_mime: str, mime: str, extension: str):
@@ -684,22 +715,24 @@ class PlayerVLC(PyPlayerBackend):
                 yield id, title
 
 
-    def add_audio_track(self, url: str, enable: bool = False):
+    def add_audio_track(self, url: str, enable: bool = False) -> bool:
         if self._player.add_slave(1, url, enable) == 0:     # slaves can be subtitles (0) or audio (1)
             gui.log_on_statusbar_signal.emit(f'Audio file {url} added and enabled.')
             if settings.checkTextOnSubtitleAdded.isChecked():
                 self.show_text('Audio file added and enabled')
+            return True
         else:                                               # returns 0 on success
             gui.log_on_statusbar_signal.emit(f'Failed to add audio file {url} (VLC does not report specific errors for this).')
             if settings.checkTextOnSubtitleAdded.isChecked():
                 self.show_text('Failed to add audio file')
 
 
-    def add_subtitle_track(self, url: str, enable: bool = False):
+    def add_subtitle_track(self, url: str, enable: bool = False) -> bool:
         if self._player.add_slave(0, url, enable) == 0:     # slaves can be subtitles (0) or audio (1)
             gui.log_on_statusbar_signal.emit(f'Subtitle file {url} added and enabled.')
             if settings.checkTextOnSubtitleAdded.isChecked():
                 self.show_text('Subtitle file added and enabled')
+            return True
         else:                                               # returns 0 on success
             gui.log_on_statusbar_signal.emit(f'Failed to add subtitle file {url} (VLC does not report specific errors for this).')
             if settings.checkTextOnSubtitleAdded.isChecked():
@@ -1080,6 +1113,9 @@ class PlayerQt(PyPlayerBackend):
     SUPPORTS_VIDEO_TRACK_MANIPULATION = False
     SUPPORTS_AUDIO_TRACK_MANIPULATION = False
     SUPPORTS_SUBTITLE_TRACK_MANIPULATION = False
+    SUPPORTS_AUTOMATIC_SUBTITLE_ENABLING = False
+    ENABLE_AUTOMATIC_TRACK_RESTORATION = False          # False because we don't support tracks in the first place
+    ENABLE_AUTOMATIC_TRACK_RESET = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1102,7 +1138,7 @@ class PlayerQt(PyPlayerBackend):
         #    except: print(format_exc())
 
 
-    def enable(self):
+    def enable(self) -> bool:
         super().enable()
 
         # TODO: should we be reusing this instead of creating new ones? no, right?
@@ -1156,6 +1192,7 @@ class PlayerQt(PyPlayerBackend):
         else:
             interval = max(17, min(50, gui.delay * 1000))       # clamp interval to 17-50ms (~59-20fps)
         self._frame_timer.start(interval)
+        return True
 
 
     def disable(self, wait: bool = True):
@@ -1263,6 +1300,7 @@ class PlayerQt(PyPlayerBackend):
             self.ignore_zero_progress = will_restore
             self._player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(file)))
             self._player.play()
+            self.file_being_opened = file
             return True
         except:
             logger.warning(f'QMediaPlayer failed to play video {file}: {format_exc()}')
@@ -1300,8 +1338,8 @@ class PlayerQt(PyPlayerBackend):
         else:
             self._player.setPosition(int((frame / gui.frame_rate) * 1000))
             gui.update_progress(frame)
-            if context == SetProgressContext.RESTORE:
-                gui.frame_override = frame
+            if context == SetProgressContext.RESTORE:       # HACK: this helps fix flickering on the slider when switching from a...
+                gui.frame_override = frame                  # ...player that uses `update_progress_signal`, but otherwise does nothing
         gui.gifPlayer.gif.jumpToFrame(frame)
 
 

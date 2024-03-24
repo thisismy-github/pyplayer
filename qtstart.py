@@ -293,7 +293,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self._open_external_command_signal.connect(self._open_external_command_slot)
     self.restart_signal.connect(self.restart)
     self.force_pause_signal.connect(self.force_pause)
-    self.restore_tracks_signal.connect(self._restore_tracks_slot, type=Qt.QueuedConnection)     # `Qt.QueuedConnection` fixes `self.restart()` not unpausing
+    self.restore_tracks_signal.connect(self.restore_tracks, type=Qt.QueuedConnection)           # `Qt.QueuedConnection` fixes `self.restart()` not unpausing
     self.concatenate_signal.connect(self.concatenate, type=Qt.QueuedConnection)                 # `Qt.QueuedConnection` fixes dropEvents freezing explorer windows
     self.show_ffmpeg_warning_signal.connect(constants._display_ffmpeg_warning)
     self.show_trim_dialog_signal.connect(self.show_trim_dialog)

@@ -186,6 +186,7 @@ import os
 import gc
 import sys
 import math
+import glob
 import json
 import random
 import logging
@@ -920,7 +921,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     _open_external_command_signal = QtCore.pyqtSignal(str)
     restart_signal = QtCore.pyqtSignal()
     force_pause_signal = QtCore.pyqtSignal(bool)
-    restore_tracks_signal = QtCore.pyqtSignal()
+    restore_tracks_signal = QtCore.pyqtSignal(bool)
     concatenate_signal = QtCore.pyqtSignal(QtW.QAction, list)
     show_ffmpeg_warning_signal = QtCore.pyqtSignal(QtW.QWidget)
     show_trim_dialog_signal = QtCore.pyqtSignal()
@@ -997,7 +998,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_subtitle_track: int | None = None
         self.last_subtitle_delay: int | None = None
         self.last_audio_delay: int | None = None
-        self.restore_tracks_queued = False
+        self.tracks_were_changed = False
         self.invert_next_move_event = False
         self.invert_next_resize_event = False
         self.ignore_next_fullscreen_move_event = False
@@ -2120,7 +2121,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             is cached if needed, and the config is immediately updated. '''
         global player, play, show_on_player, set_and_update_progress, set_player_position
 
-        if self.player_swap_in_progress:
+        if self.player_swap_in_progress and not _error:
             return logging.info('Not changing player - player swap is already in progress.')
         self.player_swap_in_progress = True
 
@@ -2138,7 +2139,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # disable old player if we had one
             try:
+                if self.player.__name__ == 'Undefined':
+                    raise
                 old_player = self.player
+
                 if new_player == old_player:
                     return show_on_statusbar(f'You\'re already using {backend} player.', 3000)
                 if not FFPROBE and not new_player.SUPPORTS_PARSING:
@@ -2149,7 +2153,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                         **self.get_popup_location_kwargs()
                     ).exec() != QtW.QMessageBox.Yes:
                         return
+
                 old_player.disable()
+                new_player.last_file = old_player.last_file
             except:
                 pass
 
@@ -2162,7 +2168,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             # enable the new player and restore our original progress within it
             self.frame_override = -1                # reset frame_override in case last player was using it
-            new_player.enable()
+            if not new_player.enable():
+                raise
             if self.isVisible():                    # only show player if the window is visible
                 new_player.show()
 
@@ -2170,7 +2177,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.vlc.players[new_player.__name__] = new_player
             self.vlc.player = new_player
             self.player = new_player
-            cfg.player = new_player.__name__
+            config.cfg.player = new_player.__name__
 
             self.restore(frame, was_paused)
             log_on_statusbar(f'Player successfully set to {backend} player.')
@@ -2576,14 +2583,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Adds an arbitrary number of `files` as subtitle tracks,
             if possible. `files` may be paths or `QUrl`s. '''
         urls = []
-        enable = settings.checkAutoEnableSubtitles.isChecked()
         for file in files:
             if isinstance(file, QtCore.QUrl):
                 urls.append(file)
             else:
                 urls.append(QtCore.QUrl.fromLocalFile(file))
+
+        enable = settings.checkAutoEnableSubtitles.isChecked()
         for url in urls:
-            player.add_subtitle_track(url.url(), enable=enable)
+            if player.add_subtitle_track(url.url(), enable=enable) and enable:
+                self.last_subtitle_track = player.get_subtitle_track_count()
+                self.tracks_were_changed = True
+
+
+    def discover_subtitle_files(self):
+        ''' Detects and adds .srt subtitle files that start
+            with `self.video`'s extensionless basename. '''
+        dirname, basename = os.path.split(self.video)
+        basename_no_ext = os.path.splitext(basename)[0]
+        self.add_subtitle_files(*glob.glob(f'{dirname}{sep}{basename_no_ext}*.srt'))
 
 
     def explore(self, path: str = None, noun: str = 'Recent file'):
@@ -3438,24 +3456,21 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if not (settings.checkAutoplayHideMarquee.isChecked() and self.current_file_is_autoplay):
                     show_on_player(os.path.basename(self.video), 1000)
 
-            # restore tracks to our previous selections if we're reopening the same file...
-            # ...(VLC resets the tracks when the player stops), otherwise reset our selections
-            if self.video == self.last_video:
-                self.restore_tracks_signal.emit()
-            else:
-                self.last_video_track = None
-                self.last_audio_track = None
-                self.last_subtitle_delay = None
-                self.last_audio_delay = None
-
-                # safely auto-disable subtitles if desired (VLC's default behavior is to enable them)
-                if settings.checkAutoEnableSubtitles.isChecked():
-                    self.last_subtitle_track = None
-                    self.restore_tracks_queued = False
-                else:
-                    self.last_subtitle_track = -1       # -1 -> disabled
-                    self.restore_tracks_queued = True
-                    self.restore_tracks_signal.emit()
+            # reset track selections/delays for new files unless player specifies otherwise
+            if self.video != self.last_video:
+                if player.ENABLE_AUTOMATIC_TRACK_RESET:
+                    self.last_video_track = None
+                    self.last_audio_track = None
+                    self.last_subtitle_delay = None
+                    self.last_audio_delay = None
+                    if settings.checkAutoEnableSubtitles.isChecked():
+                        self.last_subtitle_track = 1
+                        self.tracks_were_changed = not player.SUPPORTS_AUTOMATIC_SUBTITLE_ENABLING
+                    else:
+                        self.last_subtitle_track = -1       # -1 -> disabled
+                        self.tracks_were_changed = player.SUPPORTS_AUTOMATIC_SUBTITLE_ENABLING
+                if player.ENABLE_AUTOMATIC_TRACK_RESTORATION:
+                    self.restore_tracks_signal.emit(True)
 
             # force volume/mute-state to quickly correct gain issues (ONLY if audio is present!)
             # player doesn't always want to update immediately after first file is opened - keep trying
@@ -3568,7 +3583,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             refresh_title()
             self.refresh_taskbar()
             show_on_player('')                      # VLC auto-shows last marq on restart -> this trick hides it
-            self.restore_tracks_signal.emit()       # VLC resets tracks on restart -> restore them
 
             # ensure this is True (it resets depending on settings)
             self.first_video_fully_loaded = True
@@ -3583,7 +3597,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def restore(self, frame: int, was_paused: bool = None):
         ''' Replays the current file & immediately restores progress to `frame`,
-            pausing if the media `was_paused`. Does nothing for images. '''
+            pausing if the media `was_paused`. Restores tracks if supported by
+            the current player. Returns immediately for images. '''
         if self.mime_type == 'image':               # do not restore for images/gifs
             return
         if was_paused is None:
@@ -3594,6 +3609,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.stop(icon='restart')               # ...will be blacked out anyway, so we might as well release the lock
         else:                                       # this can be called from a thread -> pause with a signal
             self.force_pause_signal.emit(was_paused)
+            if player.ENABLE_AUTOMATIC_TRACK_RESTORATION:
+                self.restore_tracks_signal.emit(True)
 
 
     def pause(self) -> bool:
@@ -7530,7 +7547,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def set_subtitle_delay(self, msec: int = 50, increment: bool = False, marq: bool = True):
         ''' Sets the subtitle delay to `msec`, or increments it by `msec` if
             `increment` is True. Displays a marquee if `marq` is True. '''
-        if (player.get_subtitle_track_count() - 1) <= 0:
+        if player.get_subtitle_track_count() <= 0:
             if marq:
                 self.marquee('No subtitles available', marq_key='SubtitleDelay', log=False)
             return
@@ -7543,27 +7560,27 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             suffix = ' (later)' if msec > 0 else ' (sooner)' if msec < 0 else ''
             self.marquee(f'Subtitle delay {msec / 1000:.2f}s{suffix}', marq_key='SubtitleDelay', log=False)
         self.last_subtitle_delay = msec
-        self.restore_tracks_queued = True
+        self.tracks_were_changed = True
 
 
     def set_audio_delay(self, msec: int = 50, increment: bool = False, marq: bool = True):
         ''' Sets the audio delay to `msec`, or increments it by `msec` if
             `increment` is True. Displays a marquee if `marq` is True. '''
-        if (player.get_audio_track_count() - 1) <= 0:
+        if player.get_audio_track_count() <= 0:
             if marq:
                 self.marquee('No audio tracks available', marq_key='SubtitleDelay', log=False)
             return
 
         if increment:
-            msec += player.audio_get_delay()
-        player.set_audio_delay(msec)
+            msec += player.get_audio_delay()
+        player.set_audio_delay(int(msec))
 
         if marq:
             suffix = ' (later)' if msec > 0 else ' (sooner)' if msec < 0 else ''
             self.marquee(f'Audio delay {msec / 1000:.2f}s{suffix}', marq_key='SubtitleDelay', log=False)
 
         self.last_audio_delay = msec
-        self.restore_tracks_queued = True
+        self.tracks_were_changed = True
 
 
     def set_volume(self, volume: int, verbose: bool = True) -> int:
@@ -7677,7 +7694,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
             player.on_fullscreen(fullscreen)
             self.ignore_next_fullscreen_move_event = True
-            self.showFullScreen()                # FullScreen with a capital S
+            self.showFullScreen()                       # FullScreen with a capital S
 
         # leaving fullscreen
         else:
@@ -7923,44 +7940,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else:
                 marquee(f'The selected player does not support {track_type} track manipulation', marq_key='TrackChanged', log=False)
 
-        self.restore_tracks_queued = True
+        self.tracks_were_changed = True
         gc.collect(generation=2)
-
-
-    def _restore_tracks_slot(self):
-        ''' Restores the previously selected audio/subtitle/video track (in that
-            order). This is needed because VLC resets all track selections after
-            the player is stopped. Uses multiple safeguards to prevent infinite
-            loops, even in the event of a corrupted file being opened. '''
-        video = self.video                                      # remember what video we were trying to open
-        if not self.restore_tracks_queued:
-            return
-        logging.info('Restoring tracks to their previous selections...')
-
-        # tracks cannot be consistently set or read properly while in the `Opening` state
-        # NOTE: this mostly affects keeping tracks disabled since the track numbers default...
-        # ...to disabled so we can't tell if the track is actually disabled yet or not
-        timeout = get_time() + 3.0
-        while (player.get_state() == State.NothingSpecial or player.get_state() == State.Opening) and video == self.video and get_time() < timeout:
-            if get_time() > timeout:
-                return log_on_statusbar('(!) Could not restore track selections, libVLC failed to leave the "Opening" state after 3 seconds.')
-            sleep(0.002)
-
-        # make sure we didn't open a new file just now. this SHOULD be impossible, but just in case
-        if video != self.video:
-            return logging.info('(?) Track restoration cancelled, file is changing.')
-
-        # most to least important: audio -> subtitles -> subtitle delay -> audio delay -> video
-        try: player.audio_set_track(self.last_audio_track)
-        except: pass
-        try: player.video_set_spu(self.last_subtitle_track)
-        except: pass
-        try: self.set_subtitle_delay(self.last_subtitle_delay, marq=False)
-        except: pass
-        try: self.set_audio_delay(self.last_audio_delay, marq=False)
-        except: pass
-        try: player.video_set_track(self.last_video_track)
-        except: pass
 
 
     def cycle_track(self, track_type: str):
@@ -8001,6 +7982,49 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 marquee(f'No {track_type} tracks available', marq_key='TrackChanged', log=False)
             else:
                 marquee(f'The selected player does not support {track_type} track manipulation', marq_key='TrackChanged', log=False)
+
+
+    def restore_tracks(self, safely: bool = False):
+        ''' Restores the previously selected audio/subtitle/video track/delays.
+            This is needed because some players reset all track selections after
+            they're stopped. If `safely` is True, safeguards are used to prevent
+            infinite loops, even in the event of a corrupted file being opened.
+            `safely` should only be used for players that cannot do not emit
+            their own events for opening/playing media. '''
+
+        video = self.video                                      # remember what video we were trying to open
+        if not self.tracks_were_changed:
+            return
+
+        if safely:
+            # tracks cannot be consistently set or read properly while in the `Opening` state
+            # NOTE: this mostly affects keeping tracks disabled since the track numbers default...
+            # ...to disabled so we can't tell if the track is actually disabled yet or not
+            timeout = get_time() + 3.0
+            while (player.get_state() == State.NothingSpecial or player.get_state() == State.Opening) and video == self.video and get_time() < timeout:
+                if get_time() > timeout:
+                    return log_on_statusbar('(!) Could not restore track selections, libVLC failed to leave the "Opening" state after 3 seconds.')
+                sleep(0.002)
+
+            # make sure we didn't open a new file just now. this SHOULD be impossible, but just in case
+            if video != self.video:
+                return logging.info('(?) Track restoration cancelled, file is changing.')
+
+        # most to least important: audio -> subtitles -> subtitle delay -> audio delay -> video
+        logging.info('Restoring tracks to their previous selections...')
+        try: player.audio_set_track(self.last_audio_track)
+        except: pass
+        try: player.video_set_spu(self.last_subtitle_track)
+        except: pass
+        try: self.set_subtitle_delay(self.last_subtitle_delay, marq=False)
+        except: pass
+        try: self.set_audio_delay(self.last_audio_delay, marq=False)
+        except: pass
+        try: player.video_set_track(self.last_video_track)
+        except: pass
+
+        # clear marquee if needed
+        player.show_text('')
 
 
     def refresh_track_menu(self, menu: QtW.QMenu):
