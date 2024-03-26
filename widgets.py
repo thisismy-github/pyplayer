@@ -535,7 +535,7 @@ class PlayerVLC(PyPlayerBackend):
                 gui.last_subtitle_track = 1 if settings.checkAutoEnableSubtitles.isChecked() else -1
                 gui.last_audio_delay = 0
                 gui.last_subtitle_delay = 0
-            gui.tracks_were_changed = True
+            gui.tracks_were_changed = True                  # we can ignore this since the tracks are always set
             gui.restore_tracks()
 
 
@@ -1858,7 +1858,7 @@ class QVideoPlayer(QtW.QWidget):    # https://python-camelot.s3.amazonaws.com/gp
         # ...don't reset cursor (the player AND each crop frame trigger their own `leaveEvent`'s)
         should_reset = True
         if gui.actionCrop.isChecked():
-            mouse_pos = QtGui.QCursor().pos()
+            mouse_pos = QtGui.QCursor.pos()
             if self.rect().contains(self.mapFromGlobal(mouse_pos)):
                 control_pos = gui.dockControls.mapFromGlobal(mouse_pos)
                 if not gui.dockControls.rect().contains(control_pos):
@@ -2433,7 +2433,7 @@ class QVideoPlayerLabel(QtW.QLabel):
         # calculate and apply our new zoom level
         zoom = self._targetZoom if settings.checkZoomSmooth.isChecked() else self.zoom
         increment = (zoom / factor)
-        self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor().pos())
+        self.setZoom(zoom + (increment if add else -increment), globalPos=QtGui.QCursor.pos())
 
 
     def resizeEvent(self, event: QtGui.QResizeEvent):
@@ -2680,7 +2680,7 @@ class QVideoSlider(QtW.QSlider):
             fade_time = max(0.05, settings.spinHoverFadeDuration.value())
             if now <= self.last_mouseover_time + fade_time:
                 if self.underMouse():                       # ↓ get position relative to widget
-                    pos = self.mapFromGlobal(QtGui.QCursor().pos())
+                    pos = self.mapFromGlobal(QtGui.QCursor.pos())
                     self.last_mouseover_time = now          # reset fade timer if we're still hovering
                     self.last_mouseover_pos = pos           # save last mouse position within slider
                 else:
@@ -2849,7 +2849,7 @@ class QVideoSlider(QtW.QSlider):
             try:
                 raw_position = pos - handle_rect.center() + handle_rect.topLeft()
             except TypeError:                                   # event.pos() becomes None in rare, unknown circumstances
-                pos = self.mapFromGlobal(QtGui.QCursor().pos())
+                pos = self.mapFromGlobal(QtGui.QCursor.pos())
                 raw_position = pos - handle_rect.center() + handle_rect.topLeft()
 
             if self.orientation() == Qt.Horizontal:
@@ -3954,10 +3954,15 @@ class QWidgetPassthrough(QtW.QWidget):
     def setIgnoreAlpha(self, ignore: bool): self.ignoreAlpha = ignore
     def setIgnorePunctuation(self, ignore: bool): self.ignorePunctuation = ignore
     def setIgnoreNumeric(self, ignore: bool): self.ignoreNumeric = ignore
-    def setIgnoredKeys(self, *args: int): self.ignoredKeys = args
+    def setIgnoredKeys(self, *keys: int): self.ignoredKeys = tuple(int(key) for key in keys)
+
+    def focusNextPrevChild(self, next: bool) -> bool:           # https://stackoverflow.com/a/21351638
+        ''' Don't change focus if we're ignoring the Tab key (16777217).
+            Not the best solution, but I don't want to use an event filter. '''
+        return False if 16777217 in self.ignoredKeys else super().focusNextPrevChild(next)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> QtGui.QKeyEvent:
-        key = event.key()                   # V esc (clear/pass focus)
+        key = event.key()                   # ↓ esc (clear/pass focus)
         if self.escClearsFocus and key == 16777216:
             if self.passFocus: return self._proxyWidget.setFocus()
             else: return self.clearFocus()

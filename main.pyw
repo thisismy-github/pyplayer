@@ -1013,6 +1013,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.last_video = ''                    # NOTE: the actual last non-edited file played
         self.recent_files: list[str] = []       # NOTE: the user-friendly list of recent files
         self.recent_edits: list[str] = []       # NOTE: a list of recent edit output destinations
+        self.recent_globs: dict[str, int] = {}  # NOTE: recent searches in the output textbox (values are the last selected index for that search)
         self.last_open_time: float = 0.0        # NOTE: the last time we COMPLETED opening a file (`end`)
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
@@ -1075,7 +1076,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.menuAudio.insertMenu(self.menuAudio.actions()[2], self.menuTrimMode)
         self.menuAudio.insertAction(self.menuAudio.actions()[-1], self.actionResize)
         self.dockControls.setTitleBarWidget(QtW.QWidget(self.dockControls))  # disables QDockWidget's unique titlebar
-        self.lineOutput.setIgnoreAll(False)
+        self.lineOutput.setProxyWidget(self)                                 # pass output text box's non-essential key events to ourselves
+        self.lineOutput.setIgnoredKeys(Qt.Key_Tab)                           # ignore tab presses, we're using them for something else
+        self.lineOutput.setIgnoreAll(False)                                  # but DON'T ignore normal stuff (letters, numbers, punctuation)
         self.checkDeleteOriginal.setCheckState(1)                            # default to partially checked (can't be done in QtDesigner, lol)
         self.frameAdvancedControls.setDragTarget(self)
         self.frameCropInfo.setVisible(False)                                 # ensure crop info panel is hidden on startup
@@ -1330,7 +1333,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             If we've ACTUALLY left the window, we trigger the idle timeout so
             the docked controls fade out. '''
         if settings.checkHideIdleCursor.isChecked():
-            pos = self.dockControls.mapFromGlobal(QtGui.QCursor().pos())
+            pos = self.dockControls.mapFromGlobal(QtGui.QCursor.pos())
             if not self.dockControls.rect().contains(pos):
                 self.vlc.idle_timeout_time = 1.0        # 0 locks the UI, so set it to 1
         return super().leaveEvent(event)
@@ -1449,19 +1452,149 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         key = event.key()
         mod = event.modifiers()
 
-        # ignore keypresses if a lineEdit has focus (except for esc). NOTE: spinboxes use QSpinBoxPassthrough
+        # ignore keypresses if a lineEdit has focus (except for esc/tab). NOTE: spinboxes use QSpinBoxPassthrough
         for widget in (self.lineOutput, self.lineCurrentTime):
             if widget.hasFocus():
-                if key == 16777216:                     # esc (clear focus)
+                if key == 16777216:                                     # esc (clear focus)
                     widget.clearFocus()
+                elif key == 16777217 and widget is self.lineOutput:     # tab (show similar files next to output text box)
+                    try:
+                        video = self.video
+                        recent_globs = self.recent_globs
+
+                        old_oscwd = os.getcwd()
+                        os.chdir(os.path.dirname(video))                # set CWD to self.video's folder -> allows things like abspath, '.', and '..'
+                        output = abspath(self.lineOutput.text().strip() or '*')
+                        dirname, basename = os.path.split(output)
+                        if '*' in output or '?' in output:              # search is a glob -> use as-is (plus a * at the end)
+                            output += '*'
+                            files = glob.glob(output)
+                            recent_globs.setdefault(output, 0)
+                        elif exists(output):                            # TODO: make this a setting
+                            files = [output]
+                        else:                                           # search is not a glob -> insert several *
+                            basename_no_ext, ext = os.path.splitext(basename)
+                            output = f'{dirname}{sep}*{basename_no_ext}*{ext}*'
+                            files = glob.glob(output)
+                            recent_globs.setdefault(output, 0)
+
+                        # overlay hidden combobox over textbox, fill it with our results, and display its dropdown
+                        # TODO: we SHOULD implement our own version with `QAbstractItemView` and stuff, but... lol
+                        if len(files) == 1 and files[0] == video:
+                            show_on_statusbar('No results')
+                        elif files:
+                            combo = QtW.QComboBox(self.lineOutput)
+                            combo.setModel(QtCore.QStringListModel())
+
+                            # limit max results if necessary and display count on statusbar
+                            max_count = 1000                            # too many results = tons of RAM + long population time
+                            max_threshold_count = max_count * 1.25      # allow some leniency, i.e. 1100 is okay, but 1500 becomes 1000
+                            if len(files) > max_threshold_count:
+                                show_on_statusbar(f'Results truncated from {len(files)} to {max_count}')
+                                files = files[:max_count]
+                            else:
+                                show_on_statusbar(f'Showing {len(files)} results')
+                            app.processEvents()
+
+                            def showPopup():
+                                qthelpers.setCursor(Qt.ArrowCursor)     # force cursor to arrow to hide VLC's loading icon bug
+                                QtW.QComboBox.showPopup(combo)
+                                self.vlc.idle_timeout_time = 0.0        # lock cursor so it doesn't enter bugged state while popup is open
+
+                                # HACK: change context of any shortcuts that use Up, Down, or Enter so that the UI doesn't...
+                                # ...eat those inputs. otherwise, you can't use the keyboard to navigate the combobox if it...
+                                # ...has a parent (we NEED a parent because the combobox is VERY broken without one (blame Qt))
+                                ignored_keys = (                        # major advantage over other workarounds: you can control...
+                                    QtGui.QKeySequence(Qt.Key_Up),      # ...the dropdown AND use other shortcuts at the same time
+                                    QtGui.QKeySequence(Qt.Key_Down),
+                                    QtGui.QKeySequence(Qt.Key_Enter)
+                                )
+                                for primary, secondary in self.shortcuts.values():
+                                    if primary.key() in ignored_keys or secondary.key() in ignored_keys:
+                                        primary.setContext(0)
+                                        secondary.setContext(0)
+
+                            def hidePopup():
+                                _combo = combo
+                                expected_count = getattr(combo, 'reopen_count', 0) + 1
+                                QtW.QComboBox.hidePopup(_combo)         # hide popup, then start a self-destruct timer
+                                QtCore.QTimer.singleShot(10000, lambda: cleanup(_combo, expected_count))
+                                self.vlc.idle_timeout_time = 1.0        # 0 locks the UI, so set it to 1
+
+                                # HACK: reverses the shortcut context hack (see above)
+                                ignored_keys = (
+                                    QtGui.QKeySequence(Qt.Key_Up),
+                                    QtGui.QKeySequence(Qt.Key_Down),
+                                    QtGui.QKeySequence(Qt.Key_Enter)
+                                )
+                                for primary, secondary in self.shortcuts.values():
+                                    if primary.key() in ignored_keys or secondary.key() in ignored_keys:
+                                        primary.setContext(3)
+                                        secondary.setContext(3)
+
+                            # delete the combobox if it hasn't been opened `expected_count` times...
+                            # ...after a delay. this ensures it gets deleted if we don't actually...
+                            # ...select anything (the `textActivated` signal fires AFTER `.hidePopup()`)
+                            def cleanup(combo: QtW.QComboBox, expected_count: int):
+                                if getattr(combo, 'reopen_count', 0) < expected_count:
+                                    combo.deleteLater()
+                                    gc.collect(generation=2)
+
+                            def select(text):
+                                old_count = getattr(combo, 'reopen_count', 0)
+                                setattr(combo, 'reopen_count', old_count + 1)
+                                path = f'{dirname}{sep}{text}'
+                                if path != self.video:                  # don't use local alias here
+                                    self.open(file=path)
+                                if len(files) > 1:                      # do NOT reopen popup if there was only one file to pick
+                                    combo.showPopup()                   # save search + our selected index (it's accurate here)
+                                    recent_globs[output] = combo.currentIndex()
+                                    if len(recent_globs) > 10:          # limit recent searches to the last 10
+                                        del recent_globs[recent_globs.keys()[0]]
+
+                            combo.showPopup = showPopup
+                            combo.hidePopup = hidePopup
+                            combo.textActivated.connect(select)
+
+                            # add basenames of every file to combobox
+                            prefix_size = len(dirname) + len(sep)
+                            combo.addItems(f[prefix_size:] for f in files)
+
+                            # force combobox to align with textbox and stretch to width of widest entry
+                            # NOTE: why don't setMinimumContentsLength and setSizeAdjustPolicy work?
+                            combo.setFixedHeight(self.lineOutput.height())
+                            combo.view().setMinimumWidth(combo.minimumSizeHint().width())
+                            combo.setMaxVisibleItems(9)                 # ^ https://stackoverflow.com/a/54005207
+
+                            # open dropdown, selecting/scrolling to old position if needed
+                            # TODO: should we check for `video in files` BEFORE truncating results?
+                            old_index = recent_globs.get(output) or (files.index(video) if video in files else 0)
+                            combo.setCurrentIndex(old_index)            # must set index BEFORE open, then scroll view AFTER open
+                            combo.showPopup()
+
+                            # `PositionAtCenter` is broken near the start, so only scroll if we're close...
+                            # ...to our visible limit (1 item away from the bottom/top of visible area)
+                            # NOTE: we do the reverse for items at the bottom by scrolling all the way down
+                            if old_index > combo.maxVisibleItems() - 2:
+                                near_center = old_index < (combo.count() - combo.maxVisibleItems() + 1)
+                                hint = QtW.QAbstractItemView.PositionAtCenter if near_center else QtW.QAbstractItemView.PositionAtTop
+                                combo.view().scrollTo(combo.model().createIndex(old_index, 0), hint)
+                    except:
+                        log_on_statusbar(f'(!) Failed to generate popup for similar files: {format_exc()}')
+                    finally:
+                        os.chdir(old_oscwd)
                 return
 
+        # manually emit shortcuts if the main window isn't focused. `WidgetWithChildrenShortcut` (our...
+        # ...shortcut context) usually doesn't need this, but some widgets like the frame spinbox don't...
+        # ...work for some reason. NOTE: this doesn't solve the combobox parenting problem above
         # https://stackoverflow.com/questions/10383418/qkeysequence-to-qkeyevent
-        sequence = QtGui.QKeySequence(event.modifiers() | event.key())
-        for primary, secondary in self.shortcuts.values():
-            if primary.key() == sequence or secondary.key() == sequence:
-                primary.activated.emit()
-                break
+        if not self.hasFocus():
+            sequence = QtGui.QKeySequence(event.modifiers() | event.key())
+            for primary, secondary in self.shortcuts.values():
+                if primary.key() == sequence or secondary.key() == sequence:
+                    primary.activated.emit()
+                    break
 
         # if AltModifier is True but we aren't pressing alt, ignore next alt release
         if key != 16777251 and mod & Qt.AltModifier:
@@ -1524,7 +1657,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # del (mark for deletion) - when we press del, save the mark state we just set and auto-apply it to every file...
         # ...we open afterwards until we've released del. this way we can hold del and cycle for quick marking/unmarking
         # NOTE: `actionMarkDeleted` uses "WidgetShortcut" context so its keypresses only get eaten if the menubar is focused
-        if key == 16777223:                             # ignore entirely if ctrl or alt modifiers are held
+        if key == 16777223:                             # ignore del entirely if ctrl or alt modifiers are held
             if mod & Qt.ControlModifier or mod & Qt.AltModifier:
                 self.mark_for_deletion_held_down = False
             else:
@@ -1533,7 +1666,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.actionMarkDeleted.trigger()
                 self.mark_for_deletion_held_down = not mod & Qt.ShiftModifier
 
-        if key == 16777239:                             # page down (pan image)
+        elif key == 16777239:                           # page down (pan image)
             if self.is_static_image or self.is_gif:
                 image_player.pan(QtCore.QPoint(0, -500))
         elif key == 16777238:                           # page up (pan image)
@@ -3294,7 +3427,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # ...full basename as placeholder text, and update tooltip
             self.lineOutput.setText(splitext_media(basename)[0])
             self.lineOutput.setPlaceholderText(basename)
-            self.lineOutput.setToolTip(f'{file}\n---\nEnter a new name and press enter to rename this file.')
+            self.lineOutput.setToolTip(f'{file}\n---\nEnter: Rename this file to whatever you\'ve entered.\nTab: View files similar to your entry (*/? supported).')
 
             # update delete-action's QToolButton. if we're holding del, auto-mark the file accordingly
             if self.mark_for_deletion_held_down:            # NOTE: we don't update the tooltip until we've release del
@@ -3747,7 +3880,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # set output textbox to extension-less basename (same as in open())
             self.lineOutput.setText(basename_no_ext)
             self.lineOutput.setPlaceholderText(basename_no_ext + ext)
-            self.lineOutput.setToolTip(f'{new_name}\n---\nEnter a new name and press enter to rename this file.')
+            self.lineOutput.setToolTip(f'{new_name}\n---\nEnter: Rename this file to whatever you\'ve entered.\nTab: View files similar to your entry (*/? supported).')
             self.lineOutput.clearFocus()                            # clear focus so we can navigate/use hotkeys again
 
             self.video = new_name
@@ -6751,7 +6884,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 context.addSeparator()
                 context.addAction(action_reset_original)
                 context.addAction(action_reset_current)
-                context.exec(QtGui.QCursor().pos())
+                context.exec(QtGui.QCursor.pos())
             except:
                 log_on_statusbar(f'(!) Failed to generate menu for {letter}time: {format_exc()}')
 
@@ -7709,7 +7842,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # ...is not playing (but not because we're paused), or the media is an image/GIF
             if settings.checkHideIdleCursor.isChecked():
                 always_lock_ui = not player.is_playing() and not self.is_paused and not self.mime_type == 'image'
-                if always_lock_ui or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor().pos()):
+                if always_lock_ui or QtCore.QRect(x, y, width, height).contains(QtGui.QCursor.pos()):
                     self.vlc.idle_timeout_time = 0.0
                 else:                                   # set timer to act like we JUST stopped moving the mouse
                     self.vlc.idle_timeout_time = get_time() + settings.spinHideIdleCursorDuration.value()
@@ -8034,15 +8167,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # most to least important: audio -> subtitles -> subtitle delay -> audio delay -> video
         logging.info('Restoring tracks to their previous selections...')
-        try: player.audio_set_track(self.last_audio_track)
+        try: player.set_audio_track(self.last_audio_track)
         except: pass
-        try: player.video_set_spu(self.last_subtitle_track)
+        try: player.set_subtitle_track(self.last_subtitle_track)
         except: pass
         try: self.set_subtitle_delay(self.last_subtitle_delay, marq=False)
         except: pass
         try: self.set_audio_delay(self.last_audio_delay, marq=False)
         except: pass
-        try: player.video_set_track(self.last_video_track)
+        try: player.set_video_track(self.last_video_track)
         except: pass
 
         # clear marquee if needed

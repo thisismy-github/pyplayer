@@ -146,7 +146,7 @@ def getScreenForRect(
                 break
         if not qscreen:     # no screen detected -> use mouse. if already used -> use primary screen
             if strict:        raise ValueError(f'Rect {rect} is not on any screen.')
-            if mouseFallback: qscreen = QtW.QApplication.screenAt(QtGui.QCursor().pos())
+            if mouseFallback: qscreen = QtW.QApplication.screenAt(QtGui.QCursor.pos())
             if not qscreen:   qscreen = QtW.QApplication.primaryScreen()
     return qscreen
 
@@ -155,7 +155,7 @@ def getPixel(pos: QtCore.QPoint = None) -> QtGui.QPixmap:
     ''' Returns a `QPixmap` of the screen pixel at `pos`, which must be
         relative to your `QApplication.primaryScreen()`. If `pos` is not
         provided, the mouse cursor's current position is used instead. '''
-    pos = pos or QtGui.QCursor().pos()                      # this is relative to your primary monitor, so we can avoid...
+    pos = pos or QtGui.QCursor.pos()                        # this is relative to your primary monitor, so we can avoid...
     qscreen = QtW.QApplication.primaryScreen()              # ...`screenAt()` and calculating relative coordinates
     return qscreen.grabWindow(0, pos.x(), pos.y(), 1, 1)
 
@@ -168,7 +168,7 @@ def getPixelColor(pos: QtCore.QPoint = None, alpha: int | float = -1) -> QtGui.Q
         returning, supporting both 0-1 and 0-255 as ranges, depending on
         if `alpha` is a float or an integer. '''
     # Derived from: https://rosettacode.org/wiki/Color_of_a_screen_pixel#Python
-    pos = pos or QtGui.QCursor().pos()
+    pos = pos or QtGui.QCursor.pos()
     qscreen = QtW.QApplication.primaryScreen()
     if alpha == -1:         # in hilarious Qt fashion, this is slightly faster than `QImage.pixelColor()`
         return QtGui.QColor(
@@ -189,7 +189,7 @@ def getPixelRgb(pos: QtCore.QPoint = None) -> tuple[int, int, int]:
         provided, the mouse cursor's current position is used instead.
         NOTE: This is slightly faster than `getPixelColor()`. '''
     # Derived from: https://rosettacode.org/wiki/Color_of_a_screen_pixel#Python
-    pos = pos or QtGui.QCursor().pos()
+    pos = pos or QtGui.QCursor.pos()
     qscreen = QtW.QApplication.primaryScreen()
     qrgb = qscreen.grabWindow(0, pos.x(), pos.y(), 1, 1).toImage().pixel(0, 0)
     return ((qrgb >> 16) & 0xff), ((qrgb >> 8) & 0xff), (qrgb & 0xff)
@@ -229,11 +229,11 @@ def center(
         targetRect = widget.geometry()
 
     if screen:
-        if mouse:        pos = QtGui.QCursor().pos()
+        if mouse:        pos = QtGui.QCursor.pos()
         elif not target: pos = widget.mapToGlobal(widget.rect().center())
         pos = getScreenForRect(targetRect, pos, mouse, strict).availableGeometry().center()
     elif mouse:
-        pos = QtGui.QCursor().pos()
+        pos = QtGui.QCursor.pos()
 
     # move widget first, then clamp to screen if possible
     widget.move(pos - widget.rect().center())               # move immediately and correct later
