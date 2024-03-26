@@ -32,7 +32,7 @@ class Ui_settingsDialog(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 2721))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 344, 2744))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -883,7 +883,7 @@ class Ui_settingsDialog(object):
         self.formLayout_6.setWidget(4, QtWidgets.QFormLayout.LabelRole, self.label_40)
         self.spinTextFadeDelay = QtWidgets.QDoubleSpinBox(self.groupText)
         self.spinTextFadeDelay.setDecimals(2)
-        self.spinTextFadeDelay.setMinimum(0.5)
+        self.spinTextFadeDelay.setMinimum(0.35)
         self.spinTextFadeDelay.setMaximum(10.0)
         self.spinTextFadeDelay.setSingleStep(0.05)
         self.spinTextFadeDelay.setProperty("value", 0.5)
@@ -995,7 +995,7 @@ class Ui_settingsDialog(object):
         self.label_39.setObjectName("label_39")
         self.gridLayout_DONTCHANGETHESE.addWidget(self.label_39, 0, 0, 1, 3)
         self.gridLayout_2.addLayout(self.gridLayout_DONTCHANGETHESE, 1, 0, 4, 1)
-        self.formLayout_6.setLayout(5, QtWidgets.QFormLayout.SpanningRole, self.gridLayout_2)
+        self.formLayout_6.setLayout(6, QtWidgets.QFormLayout.SpanningRole, self.gridLayout_2)
         self.label_42 = QtWidgets.QLabel(self.groupText)
         self.label_42.setObjectName("label_42")
         self.formLayout_6.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.label_42)
@@ -1016,6 +1016,17 @@ class Ui_settingsDialog(object):
         self.spinTextY.setProperty("value", 2.9)
         self.spinTextY.setObjectName("spinTextY")
         self.formLayout_6.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spinTextY)
+        self.label_82 = QtWidgets.QLabel(self.groupText)
+        self.label_82.setObjectName("label_82")
+        self.formLayout_6.setWidget(5, QtWidgets.QFormLayout.LabelRole, self.label_82)
+        self.spinTextFadeDuration = QtWidgets.QDoubleSpinBox(self.groupText)
+        self.spinTextFadeDuration.setDecimals(2)
+        self.spinTextFadeDuration.setMinimum(0.05)
+        self.spinTextFadeDuration.setMaximum(10.0)
+        self.spinTextFadeDuration.setSingleStep(0.05)
+        self.spinTextFadeDuration.setProperty("value", 0.2)
+        self.spinTextFadeDuration.setObjectName("spinTextFadeDuration")
+        self.formLayout_6.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.spinTextFadeDuration)
         self.horizontalLayout_15.addLayout(self.formLayout_6)
         self.verticalLayout_3.addWidget(self.groupText)
         self.tabWidget.addTab(self.tabGeneral, "")
@@ -2918,9 +2929,12 @@ class Ui_settingsDialog(object):
 "overlayed messages appear as before fading."))
         self.label_38.setText(_translate("settingsDialog", "Maximum opacity"))
         self.spinTextOpacity.setSuffix(_translate("settingsDialog", "%"))
-        self.label_40.setToolTip(_translate("settingsDialog", "The duration in seconds that an overlayed\n"
-"message is displayed at its maximum opacity\n"
-"before it begins to fade."))
+        self.label_40.setToolTip(_translate("settingsDialog", "The *minimum* duration in seconds that\n"
+"an overlayed message is displayed at its\n"
+"maximum opacity before it begins to fade.\n"
+"\n"
+"Note: Especially important messages\n"
+"may last longer than this."))
         self.label_40.setText(_translate("settingsDialog", "Start fading after"))
         self.spinTextFadeDelay.setSuffix(_translate("settingsDialog", " seconds"))
         self.checkTextOnFullScreenPosition.setText(_translate("settingsDialog", "Position changed (fullscreen only)"))
@@ -2957,6 +2971,11 @@ class Ui_settingsDialog(object):
         self.label_44.setText(_translate("settingsDialog", "Y offset"))
         self.spinTextX.setSuffix(_translate("settingsDialog", "% of media\'s height"))
         self.spinTextY.setSuffix(_translate("settingsDialog", "% of media\'s height"))
+        self.label_82.setToolTip(_translate("settingsDialog", "The duration in seconds that an overlayed\n"
+"message takes to completely fade out."))
+        self.label_82.setText(_translate("settingsDialog", "Fade duration"))
+        self.spinTextFadeDuration.setSpecialValueText(_translate("settingsDialog", "Disappear instantly"))
+        self.spinTextFadeDuration.setSuffix(_translate("settingsDialog", " seconds"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabGeneral), _translate("settingsDialog", "&General"))
         self.spinRecentEdits.setToolTip(_translate("settingsDialog", "The number of output paths to remember during a session.\n"
 "These can be accessed by right-clicking the statusbar.\n"

@@ -73,14 +73,7 @@ class PyPlayerBackend:
         self.last_file = ''
         self.file_being_opened = ''
         self.open_cleanup_queued = False
-
-        self.text = None
-        self.last_text = None
-        self._text_position = 5
-        self._text_height_percent = 0.05
-        self._text_x_percent = 0.016
-        self._text_y_percent = 0.016
-        self._text_opacity = 255
+        self.last_text_settings: tuple[str, int, int] = None
 
     # ---
 
@@ -353,26 +346,27 @@ class PyPlayerBackend:
             represented by a `button` on the settings dialog. Use
             `int(button.objectName()[17:])` to get a number between
             1-9 representing top-left to bottom-right. '''
-        self._text_position = int(button.objectName()[17:])
+        self.parent._text_position = int(button.objectName()[17:])
 
     def set_text_height(self, percent: int):
         ''' Sets marquee text's size (specifically its height) to a `percent`
             between 0-100 that is relative to the current media. '''
-        self._text_height_percent = percent / 100
+        self.parent._text_height_percent = percent / 100
 
     def set_text_x(self, percent: float):
         ''' Sets marquee text's x-offset from the nearest edge to a `percent`
             between 0-100 that is relative to the current media. '''
-        self._text_x_percent = percent / 100
+        self.parent._text_x_percent = percent / 100
 
     def set_text_y(self, percent: float):
         ''' Sets marquee text's y-offset to a `percent` between
             0-100 that is relative to the current media. '''
-        self._text_y_percent = percent / 100
+        self.parent._text_y_percent = percent / 100
 
-    def set_text_opacity(self, percent: int):
-        ''' Sets marquee text's max opacity to a `percent` between 0-100. '''
-        self._text_opacity = round(255 * (percent / 100))
+    def set_text_max_opacity(self, percent: int):
+        ''' Sets and scales marquee text's max opacity as a
+            `percent` between 0-100 to a value between 0-255. '''
+        self.parent._text_max_opacity = round(255 * (percent / 100))
 
     # ---
 
@@ -560,10 +554,11 @@ class PlayerVLC(PyPlayerBackend):
             # update marquee size and offset relative to video's dimensions
             if mime == 'video':
                 height = gui.vheight
+                parent = self.parent
                 set_marquee_int = self._player.video_set_marquee_int
-                set_marquee_int(vlc.VideoMarqueeOption.Size, int(height * self._text_height_percent))
-                set_marquee_int(vlc.VideoMarqueeOption.X,    int(height * self._text_x_percent))
-                set_marquee_int(vlc.VideoMarqueeOption.Y,    int(height * self._text_y_percent))
+                set_marquee_int(vlc.VideoMarqueeOption.Size, int(height * parent._text_height_percent))
+                set_marquee_int(vlc.VideoMarqueeOption.X,    int(height * parent._text_x_percent))
+                set_marquee_int(vlc.VideoMarqueeOption.Y,    int(height * parent._text_y_percent))
 
 
     def on_open_cleanup(self):
@@ -740,40 +735,38 @@ class PlayerVLC(PyPlayerBackend):
 
 
     def set_text_position(self, button: QtW.QRadioButton):
-        self._text_position = (                             # libVLC uses wacky position values, so map them accordingly
+        self.parent._text_position = (                      # libVLC uses wacky position values, so map them accordingly
             5, 4, 6,
             1, 0, 2,
             9, 8, 10
         )[int(button.objectName()[17:]) - 1]
-        self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Position, self._text_position)
+        self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Position, self.parent._text_position)
 
 
     def set_text_height(self, percent: int):
-        self._text_height_percent = percent / 100
-        new_size = int(gui.vheight * self._text_height_percent)
+        self.parent._text_height_percent = percent / 100
+        new_size = int(gui.vheight * self.parent._text_height_percent)
         self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Size, new_size)
 
 
     def set_text_x(self, percent: float):
-        self._text_x_percent = percent / 100
-        new_x = int(gui.vheight * self._text_x_percent)     # offset is relative to media's height for both X and Y
+        self.parent._text_x_percent = percent / 100         # ↓ offset is relative to media's height for both X and Y
+        new_x = int(gui.vheight * self.parent._text_x_percent)
         self._player.video_set_marquee_int(vlc.VideoMarqueeOption.X, new_x)
 
 
     def set_text_y(self, percent: float):
-        self._text_y_percent = percent / 100
-        new_y = int(gui.vheight * self._text_y_percent)     # offset is relative to media's height for both X and Y
+        self.parent._text_y_percent = percent / 100         # ↓ offset is relative to media's height for both X and Y
+        new_y = int(gui.vheight * self.parent._text_y_percent)
         self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Y, new_y)
 
 
-    def set_text_opacity(self, percent: int):
-        self._text_opacity = round(255 * (percent / 100))
-
-
     def show_text(self, text: str, timeout: int = 350, position: int = None):
-        ''' Displays marquee `text` on the player, for `timeout` milliseconds at
+        ''' Displays marquee `text` on the player, for at least `timeout` ms at
             `position`: 0 (Center), 1 (Left), 2 (Right), 4 (Top), 5 (Top-Left),
-            6 (Top-Right), 8 (Bottom), 9 (Bottom-Left), 10 (Bottom-Right)
+            6 (Top-Right), 8 (Bottom), 9 (Bottom-Left), 10 (Bottom-Right).
+
+            NOTE: If `timeout` is 0, `text` will stay visible indefinitely.
 
             TODO: marquees are supposed to be chainable -> https://wiki.videolan.org/Documentation:Modules/marq/
             NOTE: vlc.py claims "Marquee requires '--sub-source marq' in the Instance() call" <- not true?
@@ -783,19 +776,35 @@ class PlayerVLC(PyPlayerBackend):
         if not settings.groupText.isChecked(): return       # marquees are completely disabled -> return
 
         try:
-            if position is None:                            # reuse last position if needed
-                position = self._text_position
-            self.text = (text, timeout, position)           # self.text is read by text_fade_thread
-            unique_settings = self.text != self.last_text
-            self.last_text = self.text                      # TODO: calling show_text very rapidly results in no fading (text still goes away on time, though)
-            self.text_fade_start_time = time.time() + settings.spinTextFadeDelay.value()            # TODO this doesn't look right at low non-zero values (<0.5)
-            self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, self._text_opacity)  # reset opacity to default (repetitive but sometimes necessary)
+            # calculate when the text should start and complete its fading animation
+            delay = max(timeout / 1000, settings.spinTextFadeDelay.value())
+            self.text_fade_start_time = time.time() + delay
+            if timeout == 0:                                # `timeout` of 0 -> leave the text up indefinitely
+                self.text_fade_end_time = self.text_fade_start_time
+            else:
+                fade_duration = settings.spinTextFadeDuration.value()
+                if fade_duration < 0.1:                     # any lower than 0.1 seconds -> disappear instantly
+                    fade_duration = -0.1
+                self.text_fade_end_time = self.text_fade_start_time + fade_duration
 
+            # reset opacity to default (repetitive but sometimes necessary)
+            self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, self.parent._text_max_opacity)
+
+            # see if we actually need to update the text/position
+            if position is None:                            # reuse last position if needed
+                position = self.parent._text_position
+            new_settings = (text, timeout, position)
+            unique_settings = new_settings != self.last_text_settings
+
+            # actually set text and position if they're unique
             if (timeout == 0 and not unique_settings) or not gui.video:
                 return                                      # avoid repetitive + pointless calls
-            if unique_settings:                                                                     # avoid repetitive set_xyz() calls
+            if unique_settings:
                 self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Position, position)
-                self._player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, text)            # set new text
+                self._player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, text)
+                self.last_text_settings = new_settings
+
+            # start fading thread if it hasn't been started already
             if not self.text_fade_thread_open:
                 Thread(target=self.text_fade_thread, daemon=True).start()
                 self.text_fade_thread_open = True
@@ -804,20 +813,26 @@ class PlayerVLC(PyPlayerBackend):
 
 
     def text_fade_thread(self):
+        ''' A thread for animating libVLC's `VideoMarqueeOption.Opacity`
+            property. TODO: Should this be a `QTimer` instead? '''
+        _player = self._player
         while self.enabled:
             now = time.time()
-            fade_time = self.text[1] / 1000                 # self.text[1] = timeout
-            if now >= self.text_fade_start_time and fade_time != 0:
-                if now <= self.text_fade_start_time + fade_time:
-                    alpha = (self.text_fade_start_time + fade_time - now) * (self._text_opacity / fade_time)
-                    self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, round(alpha))
-                    time.sleep(0.005)
+            if now >= self.text_fade_start_time:
+                end = self.text_fade_end_time
+                fade_duration = end - self.text_fade_start_time
+                if fade_duration == 0:                      # don't fade at all, leave text up until told otherwise
+                    time.sleep(0.1)
+                elif now <= end:
+                    alpha = ((end - now) / fade_duration) * self.parent._text_max_opacity
+                    _player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, round(alpha))
+                    time.sleep(0.025)                       # fade out at 40fps
                 else:                                       # if we just finished fading, make sure no text is visible
-                    #self._player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, '')
-                    self._player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, 0)
+                    #_player.video_set_marquee_string(vlc.VideoMarqueeOption.Text, '')
+                    _player.video_set_marquee_int(vlc.VideoMarqueeOption.Opacity, 0)
                     self.text_fade_start_time = 9999999999  # set start_time to extreme number to stop the loop
-            else:                                           # sleep less frequently if we're going to fade soon
-                time.sleep(0.5 if self.text_fade_start_time - now < 1 else 0.025)
+            else:                                           # sleep as long as possible (but < the shortest possible delay)
+                time.sleep(0.25 if self.text_fade_start_time - now > 0.5 else 0.01)
 
         self.text_fade_thread_open = False
         return logging.info('VLC player disabled. Ending text_fade thread.')
@@ -1357,6 +1372,12 @@ class QVideoPlayer(QtW.QWidget):    # https://python-camelot.s3.amazonaws.com/gp
         self.player = PyPlayerBackend(self)                 # NOTE: this is set purely so we can set global aliases in `main.pyw`
         self.players: dict[str, PyPlayerBackend] = {}
 
+        self._text_position = 5
+        self._text_height_percent = 0.05
+        self._text_x_percent = 0.016
+        self._text_y_percent = 0.016
+        self._text_max_opacity = 255
+
         self.idle_timeout_time = 0.0
         self.last_invalid_snap_state_time = 0.0
         self.dragdrop_in_progress = False
@@ -1395,6 +1416,17 @@ class QVideoPlayer(QtW.QWidget):    # https://python-camelot.s3.amazonaws.com/gp
         self.player.show_text('')
         self.dragdrop_last_modifiers = None
         self.dragdrop_in_progress = False
+
+
+    def reset_undermouse_state(self):
+        ''' HACK: Manually updates `self.underMouse()` and
+            immediately hides cursor if it's over the player. '''
+        if app.widgetAt(QtGui.QCursor.pos()) is self:
+            self.setAttribute(Qt.WA_UnderMouse, True)
+            self.idle_timeout_time = 1.0                    # 0 locks the UI, so set it to 1
+        else:
+            self.setAttribute(Qt.WA_UnderMouse, False)
+        self.update()
 
 
     # ---------------------

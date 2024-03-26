@@ -75,7 +75,7 @@
         <x>0</x>
         <y>0</y>
         <width>344</width>
-        <height>2721</height>
+        <height>2744</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -3053,9 +3053,12 @@ overlayed messages appear as before fading.</string>
                 <item row="4" column="0">
                  <widget class="QLabel" name="label_40">
                   <property name="toolTip">
-                   <string>The duration in seconds that an overlayed
-message is displayed at its maximum opacity
-before it begins to fade.</string>
+                   <string>The *minimum* duration in seconds that
+an overlayed message is displayed at its
+maximum opacity before it begins to fade.
+
+Note: Especially important messages
+may last longer than this.</string>
                   </property>
                   <property name="text">
                    <string>Start fading after</string>
@@ -3071,7 +3074,7 @@ before it begins to fade.</string>
                    <number>2</number>
                   </property>
                   <property name="minimum">
-                   <double>0.500000000000000</double>
+                   <double>0.350000000000000</double>
                   </property>
                   <property name="maximum">
                    <double>10.000000000000000</double>
@@ -3084,7 +3087,7 @@ before it begins to fade.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="5" column="0" colspan="2">
+                <item row="6" column="0" colspan="2">
                  <layout class="QGridLayout" name="gridLayout_2">
                   <property name="topMargin">
                    <number>4</number>
@@ -3468,6 +3471,42 @@ the currently playing media's height.</string>
                   </property>
                   <property name="value">
                    <double>2.900000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="label_82">
+                  <property name="toolTip">
+                   <string>The duration in seconds that an overlayed
+message takes to completely fade out.</string>
+                  </property>
+                  <property name="text">
+                   <string>Fade duration</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QDoubleSpinBox" name="spinTextFadeDuration">
+                  <property name="specialValueText">
+                   <string>Disappear instantly</string>
+                  </property>
+                  <property name="suffix">
+                   <string> seconds</string>
+                  </property>
+                  <property name="decimals">
+                   <number>2</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.050000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>10.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.050000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.200000000000000</double>
                   </property>
                  </widget>
                 </item>

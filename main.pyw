@@ -1177,6 +1177,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # create all taskbar-extensions-related widgets for windows 7-11
         self.create_taskbar_controls()
 
+        # HACK: if you switch players at least once, libVLC will no longer be able to...
+        # ...track `QVideoPlayer.underMouse()` immediately after a menu is shown???????
+        # -> monkeypatch `QMenu` itself to always correct this issue (simple and performant)
+        def hideEvent(menu: QtW.QMenu, event: QtGui.QHideEvent):
+            QtW.QMenu._hideEvent(menu, event)
+            self.vlc.reset_undermouse_state()           # updates `underMouse()` and hides cursor if over player
+        QtW.QMenu._hideEvent = QtW.QMenu.hideEvent      # save real hideEvent to separate property
+        QtW.QMenu.hideEvent = hideEvent
+
         self.menuPlayer.addAction('Set player to VLC').triggered.connect(lambda: self.set_player('VLC'))
         self.menuPlayer.addAction('Set player to Qt').triggered.connect(lambda: self.set_player('Qt'))
 
@@ -1519,7 +1528,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                                 expected_count = getattr(combo, 'reopen_count', 0) + 1
                                 QtW.QComboBox.hidePopup(_combo)         # hide popup, then start a self-destruct timer
                                 QtCore.QTimer.singleShot(10000, lambda: cleanup(_combo, expected_count))
-                                self.vlc.idle_timeout_time = 1.0        # 0 locks the UI, so set it to 1
+
+                                # reuse `QMenu.hideEvent()` hack to hide cursor consistently (NOTE: the dropdown...
+                                # ...eats all mouse events while open, so this will NOT cause cursor flickers)
+                                self.vlc.reset_undermouse_state()
 
                                 # HACK: reverses the shortcut context hack (see above)
                                 ignored_keys = (
