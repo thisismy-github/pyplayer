@@ -43,7 +43,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('lastupdatecheck')
     gui.refresh_theme_combo(set_theme=load('theme', 'Midnight'))
 
-    cfg.setSection('general')       # NOTE: 'recent_files' gets loaded in qtstart.after_show_setup()
+    cfg.setSection('general')               # NOTE: 'recent_files' gets loaded in qtstart.after_show_setup()
     load('lastdir', '.' if constants.IS_COMPILED else constants.CWD)
     load('last_snapshot_path')
     load('last_snapshot_folder', '%USERPROFILE%\\Pictures')
@@ -80,7 +80,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
         items[1].setKeySequence(keys[1])
 
     # https://doc.qt.io/archives/qtjambi-4.5.2_01/com/trolltech/qt/gui/QAction.ActionEvent.html
-    cfg.setSection('visible')       # simulate trigger-events on these menu items if we want to hide their associated widgets
+    cfg.setSection('visible')               # simulate trigger-events on these actions if we want to hide their associated widgets
     if not load('menubar', True): gui.actionShowMenuBar.activate(QtW.QAction.ActionEvent.Trigger)
     if not load('statusbar', True): gui.actionShowStatusBar.activate(QtW.QAction.ActionEvent.Trigger)
     if not load('progressbar', True): gui.actionShowProgressBar.activate(QtW.QAction.ActionEvent.Trigger)
@@ -100,7 +100,7 @@ def saveConfig(gui, filename: str = None):
     save = cfg.save
 
     cfg.setSection('window')
-    save('fullscreen', gui.isFullScreen())                  # FullScreen with a capital S
+    save('fullscreen', gui.isFullScreen())  # FullScreen with a capital S
     save('maximized', gui.isMaximized() or (gui.isFullScreen() and gui.was_maximized))
     save('geometry', bytes(gui.saveGeometry().toHex()).decode())
     save('windowstyle', gui.app.style().objectName())

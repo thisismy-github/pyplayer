@@ -826,6 +826,7 @@ class Edit:
                         if not progress_lines[-1] or get_time() - line_read_start > 0.05:
                             break
 
+            # >>> parse ffmpeg output <<<
                 # loop over new stdout output without waiting for buffer so we can read output in...
                 # ...batches and sleep between loops without falling behind, saving a lot of resources
                 new_frame = last_frame
@@ -1070,8 +1071,6 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.volume_startup_correction_needed = True
 
         # misc setup
-        self.player = self.vlc.player                                        # NOTE: this is a secondary alias for other files to use
-        self.is_trim_mode = lambda: self.trim_mode_action_group.checkedAction() in (self.actionTrimAuto, self.actionTrimPrecise)
         self.menuRecent.setToolTipsVisible(True)
         self.menuAudio.insertMenu(self.menuAudio.actions()[2], self.menuTrimMode)
         self.menuAudio.insertAction(self.menuAudio.actions()[-1], self.actionResize)
@@ -1131,6 +1130,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.buttonNext.setIcon(self.icons['cycle_forward'])
         self.buttonPrevious.setIcon(self.icons['cycle_backward'])
 
+        # secondary aliases (mostly for other files to use)
+        self.player = self.vlc.player
+        self.is_trim_mode = lambda: self.trim_mode_action_group.checkedAction() in (self.actionTrimAuto, self.actionTrimPrecise)
+
         # all possible snapshot button actions and tooltips, ordered by their appearance in the settings
         self.snapshot_actions = (
             (self.snapshot,                                                          'Takes and saves a snapshot immediately using your presets.'),
@@ -1186,8 +1189,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         QtW.QMenu._hideEvent = QtW.QMenu.hideEvent      # save real hideEvent to separate property
         QtW.QMenu.hideEvent = hideEvent
 
-        self.menuPlayer.addAction('Set player to VLC').triggered.connect(lambda: self.set_player('VLC'))
-        self.menuPlayer.addAction('Set player to Qt').triggered.connect(lambda: self.set_player('Qt'))
+        self.menuPlayer.addAction('Set player to VLC', lambda: self.set_player('VLC'))
+        self.menuPlayer.addAction('Set player to Qt', lambda: self.set_player('Qt'))
 
 
     def external_command_interface_thread(
@@ -1934,58 +1937,33 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         ''' Handles the context (right-click) menu for the cycle buttons. '''
         mime = self.mime_type
 
-        next_any_action = QtW.QAction('Open next file')
-        next_any_action.triggered.connect(self.cycle_media)
-        next_mime_action = QtW.QAction(f'Open next {mime} file')
-        next_mime_action.triggered.connect(lambda: self.cycle_media(valid_mime_types=(mime,)))
-        prev_any_action = QtW.QAction('Open previous file')
-        prev_any_action.triggered.connect(lambda: self.cycle_media(next=False))
-        prev_mime_action = QtW.QAction(f'Open previous {mime} file')
-        prev_mime_action.triggered.connect(lambda: self.cycle_media(next=False, valid_mime_types=(mime,)))
-        random_any_action = QtW.QAction('Open random file')  # ↓ lambda to discard qt's signal parameter
-        random_any_action.triggered.connect(lambda: self.shuffle_media())
-        random_mime_action = QtW.QAction(f'Open random {mime} file')
-        random_mime_action.triggered.connect(lambda: self.shuffle_media(valid_mime_types=(mime,)))
-
-        context = QtW.QMenu(self)
-        context.addAction(random_any_action)
-        context.addAction(next_any_action)
-        context.addAction(prev_any_action)
+        context = QtW.QMenu(self)                           # ↓ lambda to discard qt's signal parameter
+        context.addAction('Open random file', lambda: self.shuffle_media())
+        context.addAction('Open next file', self.cycle_media)
+        context.addAction('Open previous file', lambda: self.cycle_media(next=False))
         context.addSeparator()
-        context.addAction(random_mime_action)
-        context.addAction(next_mime_action)
-        context.addAction(prev_mime_action)
+        context.addAction(f'Open random {mime} file', lambda: self.shuffle_media(valid_mime_types=(mime,)))
+        context.addAction(f'Open next {mime} file', lambda: self.cycle_media(valid_mime_types=(mime,)))
+        context.addAction(f'Open previous {mime} file', lambda: self.cycle_media(next=False, valid_mime_types=(mime,)))
         context.exec(event.globalPos())
 
 
     def menuRecentContextMenuEvent(self, event: QtGui.QContextMenuEvent):
-        ''' Handles the context (right-click) menus for individual recent files. '''
+        ''' Handles the context (right-click)
+            menus for individual recent files. '''
         action = self.menuRecent.actionAt(event.pos())
         if action is self.actionClearRecent or not action: return
         path = action.toolTip()
 
-        explore_action = QtW.QAction('M&edia location')
-        explore_action.triggered.connect(lambda: self.explore(path))
-        copy_action = QtW.QAction('&Copy media path')
-        copy_action.triggered.connect(lambda: self.copy(path))
-        remove_action = QtW.QAction('&Remove from recent files')
-        remove_action.triggered.connect(lambda: (self.recent_files.remove(path), self.refresh_recent_menu()))
-        move_to_top_action = QtW.QAction('&Move to top')
-        move_to_top_action.triggered.connect(lambda: self.open_recent_file(path, update=True, open=False))
-        open_update_action = QtW.QAction('&Open and move to top')
-        open_update_action.triggered.connect(lambda: self.open_recent_file(path, update=True))
-        open_no_update_action = QtW.QAction('&Open without moving to top')
-        open_no_update_action.triggered.connect(lambda: self.open_recent_file(path, update=False))
-
         context = QtW.QMenu(self)
-        context.addAction(remove_action)
+        context.addAction('&Remove from recent files', lambda: (self.recent_files.remove(path), self.refresh_recent_menu()))
         context.addSeparator()
-        context.addAction(explore_action)
-        context.addAction(copy_action)
+        context.addAction('M&edia location', lambda: self.explore(path))
+        context.addAction('&Copy media path', lambda: self.copy(path))
         context.addSeparator()
-        context.addAction(move_to_top_action)
-        context.addAction(open_update_action)
-        context.addAction(open_no_update_action)
+        context.addAction('&Move to top', lambda: self.open_recent_file(path, update=True, open=False))
+        context.addAction('&Open and move to top', lambda: self.open_recent_file(path, update=True))
+        context.addAction('&Open without moving to top', lambda: self.open_recent_file(path, update=False))
         context.exec(event.globalPos())
 
 
@@ -2121,9 +2099,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # add "Pause/Resume/Cancel all" actions, if appropriate
         if total_edits > 1:
             context.addSeparator()
-            context.addAction('Pause all').triggered.connect(lambda: self.pause_all(paused=True))
-            context.addAction('Resume all').triggered.connect(lambda: self.pause_all(paused=False))
-            context.addAction('Cancel all').triggered.connect(self.cancel_all)
+            context.addAction('Pause all', lambda: self.pause_all(paused=True))
+            context.addAction('Resume all', lambda: self.pause_all(paused=False))
+            context.addAction('Cancel all', self.cancel_all)
 
         context.exec(event.globalPos())
 
@@ -2679,8 +2657,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     log_on_statusbar(f'Randomly opened {os.path.basename(file)} from folder {folder} and {verb} Autoplay/shuffle mode.')
                     return file
 
-        except: log_on_statusbar(f'(!) Failed while checking folder "{folder}" for openable media: {format_exc()}')
-        finally: self.refresh_autoplay_button()
+        except:
+            log_on_statusbar(f'(!) Failed while checking folder "{folder}" for openable media: {format_exc()}')
+        finally:
+            self.refresh_autoplay_button()
 
 
     def open_probe_file(self, *, file: str = None, delete: bool = False, verbose: bool = True):
@@ -3431,7 +3411,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: log_on_statusbar(f'This file is seemingly playable, but PyPlayer is unsure of its true mime-type/extension: {file}')
 
             # misc cleanup/setup for new media that we can safely do before fully parsing
-            self.operations = {}
+            self.operations.clear()
             self.buttonTrimStart.setChecked(False)
             self.buttonTrimEnd.setChecked(False)
 
@@ -3893,12 +3873,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.setText(basename_no_ext)
             self.lineOutput.setPlaceholderText(basename_no_ext + ext)
             self.lineOutput.setToolTip(f'{new_name}\n---\nEnter: Rename this file to whatever you\'ve entered.\nTab: View files similar to your entry (*/? supported).')
-            self.lineOutput.clearFocus()                            # clear focus so we can navigate/use hotkeys again
+            self.lineOutput.clearFocus()            # clear focus so we can navigate/use hotkeys again
 
             self.video = new_name
-            refresh_title()                                         # update titlebar
+            refresh_title()                         # update titlebar
         except:
-            log_on_statusbar(f'RENAME FAILED: {format_exc()}')
+            log_on_statusbar(f'(!) Unexpected error while renaming: {format_exc()}')
 
         # replay the media, then restore position and pause state (no need for full-scale open())
         frame = get_ui_frame()
@@ -3916,7 +3896,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             recent_files = self.recent_files
             index = recent_files.index(old_name)
-            recent_files[index] = self.video                        # don't use `new_name` here in case we failed to rename
+            recent_files[index] = self.video        # don't use `new_name` here in case we failed to rename
         except:
             pass
 
@@ -4015,7 +3995,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 `i_height` - the snapshot's height. '''
 
         # aliases/variables
-        frame = get_ui_frame()                      # immediately get frame, regardless of whether we need it or not
+        frame = get_ui_frame()                          # immediately get frame, regardless of whether we need it or not
         mime = self.mime_type
         video = self.video
         must_pause = settings.checkSnapshotPause.isChecked() or mode == 'full'
@@ -4096,8 +4076,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 )
             elif mode == 'quick':                               # generate pre-determined path
                 dirname = os.path.expandvars(settings.lineDefaultSnapshotPath.text().strip() or os.path.dirname(default_name))
-                try: os.makedirs(dirname)
-                except FileExistsError: pass
+                os.makedirs(dirname, exist_ok=True)
                 path = abspath(
                     get_unique_path(
                         os.path.join(dirname, default_name) + ('.jpg' if format == 'JPEG' else '.png'),
@@ -5305,10 +5284,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # calculate and update to new frame as long as it's within our bounds
         if forward:                                     # media will wrap around cleanly if it goes below 0/above max frames
             if old_frame == self.frame_count and settings.checkNavigationWrap.isChecked(): new_frame = 0
-            else: new_frame = min(self.maximum, old_frame + self.frame_rate_rounded * seconds)
+            else: new_frame = min(self.maximum, int(old_frame + self.frame_rate_rounded * seconds))
         else:                                           # NOTE: only wrap start-to-end if we're paused
             if old_frame == 0 and self.is_paused and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            else: new_frame = max(self.minimum, old_frame - self.frame_rate_rounded * seconds)
+            else: new_frame = max(self.minimum, int(old_frame + self.frame_rate_rounded * seconds))
 
         # set progress to new frame while doing necessary adjustments/corrections/overrides
         set_and_update_progress(new_frame, SetProgressContext.NAVIGATION_RELATIVE)
@@ -6296,7 +6275,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         try:
             dialog = qthelpers.getDialog(
                 title='Amplify Audio',
-                deleteOnClose=False,            # TODO this MIGHT cause a memory leak
+                deleteOnClose=False,        # TODO this MIGHT cause a memory leak
                 fixedSize=(125, 105),
                 flags=Qt.Tool,
                 **self.get_popup_location_kwargs()
@@ -6474,7 +6453,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             def update_preview():
                 try:
                     nonlocal last_preview_frame
-                    if not os.path.exists(constants.THUMBNAIL_DIR):
+                    if not exists(constants.THUMBNAIL_DIR):
                         os.makedirs(constants.THUMBNAIL_DIR)
                     frame = get_ui_frame()
                     if frame != last_preview_frame:
@@ -8335,6 +8314,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def refresh_shortcuts(self, last_edit: widgets.QKeySequenceFlexibleEdit = None):
+        ''' Refreshes the `Hotkeys` page in the settings dialog, clearing out
+            duplicate shortcuts on launch (when `last_edit` is None) and
+            swapping newly duplicated shortcuts while editing hotkeys. '''
+
         # get list of all keySequenceEdits
         all_key_sequence_edits = []
         for layout in qthelpers.formGetItemsInColumn(settings.formKeys, 1):

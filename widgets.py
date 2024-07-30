@@ -606,7 +606,7 @@ class PlayerVLC(PyPlayerBackend):
         # TODO just in case doing `set_and_update_progress` causes hitches or delays, we're...
         # ...doing an if-statement instead to ensure normal loops are slightly more seamless
         #set_and_update_progress(self.minimum)              # <- DOES this cause hitches?
-        if self.buttonTrimStart.isChecked():
+        if gui.buttonTrimStart.isChecked():
             return gui.update_progress(0)
         return self.set_and_update_progress(gui.minimum, SetProgressContext.RESET_TO_MIN)
 
@@ -1232,7 +1232,7 @@ class PlayerQt(PyPlayerBackend):
     def _on_timer(self):
         ''' Qt event. '''
         if not gui.is_paused and not self.lock_timer:
-            frame = round((self._player.position() / 1000) * gui.frame_rate)
+            frame = int((self._player.position() / 1000) * gui.frame_rate)
             if frame:                                       # sometimes Qt will try to reset UI to 0 when we don't want it to
                 gui.update_progress(frame)
                 self.ignore_zero_progress = False           # reset flag now that Qt is reporting the correct progress
@@ -1288,8 +1288,8 @@ class PlayerQt(PyPlayerBackend):
             self.lock_timer = True
             interval = 50 if gui.isFullScreen() else 200    # update at 5fps for images (or 20fps if we're fullscreen)
         else:
-            self.lock_timer = False
-            interval = max(17, min(50, gui.delay * 1000))   # clamp interval to 17-50ms (~59-20fps)
+            self.lock_timer = False                         # ↓ clamp interval to 17-50ms (~59-20fps) TODO: `int()` or `round()` here?
+            interval = max(17, min(50, int(gui.delay * 1000)))
 
         gui._open_cleanup_signal.emit()
         self._frame_timer.setInterval(interval)
@@ -2667,7 +2667,7 @@ class QVideoSlider(QtW.QSlider):
                     next_index = 0
                 self.colors = list(self.color_order[next_index].range_to(self.color_order[self.color_index], int(gui.frame_rate * 4)))
                 self.color_index = next_index
-            if now > self.last_color_change_time + 0.05:    # update color at a MAX of 20fps
+            if now > self.last_color_change_time + 0.05:        # update color at a MAX of 20fps
                 color = QtGui.QColor(self.colors.pop().get_hex())
                 self.last_color_change_time = now
             else:
@@ -2689,14 +2689,14 @@ class QVideoSlider(QtW.QSlider):
                 x = self.rangeValueToPixelPos(gui.minimum)
                 p.setPen(pen_thick)
                 p.drawRoundedRect(groove_rect.left(), groove_rect.top(), x, groove_rect.height(), 2, 2)
-                p.setPen(pen_thin)
-                p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x - 4, self.height() / 2)]))
+                p.setPen(pen_thin)                              # ↓ triangle
+                p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x - 4, int(self.height() / 2))]))
             if self.clamp_maximum:
                 x = self.rangeValueToPixelPos(gui.maximum)
                 p.setPen(pen_thick)
                 p.drawRoundedRect(x, groove_rect.top(), groove_rect.width() - x - 1, groove_rect.height(), 2, 2)
-                p.setPen(pen_thin)
-                p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x + 4, self.height() / 2)]))
+                p.setPen(pen_thin)                              # ↓ triangle
+                p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 2), QtCore.QPoint(x, self.height() - 2), QtCore.QPoint(x + 4, int(self.height() / 2))]))
 
         #for marker in self.markers:    # an idea for a more general implementation with an arbitrary number of "markers"
         #    x = self.rangeValueToPixelPos(marker)
@@ -2708,37 +2708,37 @@ class QVideoSlider(QtW.QSlider):
         #    p.drawPolygon(QtGui.QPolygon([QtCore.QPoint(x, 0), QtCore.QPoint(x, self.height()), QtCore.QPoint(x + 4, self.height() / 2)]))
 
         # hover timestamps
-        if settings.groupHover.isChecked():                 # ↓ 0.05 looks instant but avoids flickers
+        if settings.groupHover.isChecked():                     # ↓ 0.05 looks instant but avoids flickers
             fade_time = max(0.05, settings.spinHoverFadeDuration.value())
             if now <= self.last_mouseover_time + fade_time:
-                if self.underMouse():                       # ↓ get position relative to widget
+                if self.underMouse():                           # ↓ get position relative to widget
                     pos = self.mapFromGlobal(QtGui.QCursor.pos())
-                    self.last_mouseover_time = now          # reset fade timer if we're still hovering
-                    self.last_mouseover_pos = pos           # save last mouse position within slider
+                    self.last_mouseover_time = now              # reset fade timer if we're still hovering
+                    self.last_mouseover_pos = pos               # save last mouse position within slider
                 else:
-                    pos = self.last_mouseover_pos           # use last position if mouse is outside the slider
+                    pos = self.last_mouseover_pos               # use last position if mouse is outside the slider
 
                 frame = self.pixelPosToRangeValue(pos)
                 h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
                 text = f'{m}:{s:02}' if gui.duration_rounded < 3600 else f'{h}:{m:02}:{s:02}'
 
-                size = settings.spinHoverFontSize.value()   # TODO use currentFontChanged signals + more for performance? not needed?
+                size = settings.spinHoverFontSize.value()       # TODO use currentFontChanged signals + more for performance? not needed?
                 font = settings.comboHoverFont.currentFont()
                 font.setPointSize(size)
                 #font.setPixelSize(size)
                 p.setFont(font)
-                pos.setY(self.height() - (self.height() - size) / 2)
+                pos.setY(int(self.height() - (self.height() - size) / 2))
 
                 # calculate fade-alpha from 0-255 based on time since we stopped hovering. default to 255 if fading is disabled
                 # TODO: I sure used a lot of different methods for fading things. should these be more unified?
-                alpha = (self.last_mouseover_time + fade_time - now) * (255 / fade_time) if fade_time != 0.05 else 255
+                alpha = int((self.last_mouseover_time + fade_time - now) * (255 / fade_time)) if fade_time != 0.05 else 255
 
-                if settings.checkHoverShadow.isChecked():   # draw shadow first (as black, slightly offset text)
-                    p.setPen(QtGui.QColor(0, 0, 0, alpha))  # set color to black
+                if settings.checkHoverShadow.isChecked():       # draw shadow first (as black, slightly offset text)
+                    p.setPen(QtGui.QColor(0, 0, 0, alpha))      # set color to black
                     p.drawText(pos.x() + 1, pos.y() + 1, text)
                 self.hover_font_color.setAlpha(alpha)
-                p.setPen(self.hover_font_color)             # set color to white
-                p.drawText(pos, text)                       # draw actual text over shadow
+                p.setPen(self.hover_font_color)                 # set color to white
+                p.drawText(pos, text)                           # draw actual text over shadow
 
                 # my idea for using tooltips for displaying the time. works, but qt's tooltips don't refresh fast enough
                 #h, m, s, _ = get_hms(round(gui.duration_rounded * (frame / gui.frame_count), 2))
@@ -3060,11 +3060,11 @@ class QVideoList(QtW.QListWidget):                              # TODO this like
         action2.triggered.connect(lambda: qthelpers.openPath(path, explore=True))
         action3 = QtW.QAction('&Remove')
         action3.triggered.connect(lambda: qthelpers.listRemoveSelected(self))
-        action4 = QtW.QAction('&Set as output (filename)')
+        action4 = QtW.QAction('&Set as output filename')
         action4.triggered.connect(set_output_part)
-        action5 = QtW.QAction('&Set as output (folder)')
+        action5 = QtW.QAction('&Set as output folder')
         action5.triggered.connect(lambda: set_output_part(filename=False))
-        action6 = QtW.QAction('&Set as output (full path)')
+        action6 = QtW.QAction('&Set as output path')
         action6.triggered.connect(lambda: self.parent().output.setText(path))
 
         context = QtW.QMenu(self)

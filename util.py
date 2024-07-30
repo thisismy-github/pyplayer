@@ -205,7 +205,8 @@ def get_from_PATH(filename: str) -> str:        # i learned about `shutil.which(
 
 
 def get_hms(seconds: float) -> tuple[int, int, int, int]:
-    ''' Converts seconds to the hours, minutes, seconds, and milliseconds it represents. '''
+    ''' Converts `seconds` to the hours, minutes,
+        seconds, and milliseconds it represents. '''
     h_remainder = seconds % 3600
     h = int(seconds // 3600)
     m = int(h_remainder // 60)
