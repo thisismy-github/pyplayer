@@ -84,7 +84,9 @@ logger = logging.getLogger('CPB')
 #    caller = getframeinfo(stack()[1][0])
 #    log = sep.join(str(arg).lstrip() for arg in args)
 #    logger.info(f'{caller.function:<11} [{caller.lineno:<3}] - {log}')
-generator = type(_ for _ in ())
+GENERATOR_TYPE = type(_ for _ in ())
+ITERTYPES = (GENERATOR_TYPE, list, tuple, set)
+
 
 class LockedNameException(Exception):   # TODO finish this
     def __init__(self, name):
@@ -224,7 +226,6 @@ class _ConfigParseBetter:
         self.__autosave = autosave
         self.__encoding = encoding
 
-        self.__iterTypes = (generator, list, tuple, set)
         #self.__locked = tuple(self.__dict__.keys())     # TODO unused (use soon)
         #print(self.__locked, end='\n\n')
 
@@ -252,7 +253,7 @@ class _ConfigParseBetter:
         if autosave and autosaveCallback is not False:          # False -> no callback; True or None -> default callback
             import atexit
             if autosaveCallback is not True and autosaveCallback is not None:   # custom callback specified
-                if type(autosaveCallback) in self.__iterTypes:      # callback is an array with arguments
+                if type(autosaveCallback) in ITERTYPES:         # callback is an array with arguments
                     kwargs_index = -1
                     for index, arg in enumerate(autosaveCallback):
                         if isinstance(arg, dict):
@@ -307,7 +308,7 @@ class _ConfigParseBetter:
         #        for option in self.__parser.options(section_name):
         #            try:
         #                values = self.__dict__[section_name].__dict__[option]
-        #                if type(values) in self.__iterTypes:    # unpack values
+        #                if type(values) in ITERTYPES:       # unpack values
         #                    self.save(
         #                        option,
         #                        *values,
@@ -410,7 +411,7 @@ class _ConfigParseBetter:
                 elif fallback_type == float:
                     value = section.getfloat(key, fallback=fallback)
                 else:
-                    if fallback_type in self.__iterTypes:     # TODO: converting to string and back (bad and stupid)
+                    if fallback_type in ITERTYPES:          # TODO: converting to string and back (bad and stupid)
                         delimiter = delimiter if delimiter is not None else ','
                         fallback = delimiter.join(str(v) for v in fallback)
                         #print('new', key, delimiter, fallback)
@@ -428,35 +429,23 @@ class _ConfigParseBetter:
 
         #try:                                   # TODO throw more errors here
         true_value = value
-        if not true_value and not fallback and delimiter_type is None and true_value == fallback:
-            #print('not true_value and not fallback and true_value == fallback')
-            key = key.lower()
-            bsp = self.getBetterSectionProxy(section)
-            option_proxy = OptionProxy(key, bsp, delimiter)
-            self.__dict__[key] = option_proxy
-            #self.__dict__[section.name].__dict__[key] = value
-            bsp.__dict__[key] = true_value      # TODO should these all be value here and not true_value?
-            #return option_proxy
-            return true_value
 
         # no delimiter set -> check if fallback is an iterable. if not, we can safely apply val_type to true_value
         if delimiter is None:
-            if fallback in self.__iterTypes:    # no delimiter but fallback is an iterable for some reason TODO or type(fallback) in self.__iterTypes?
+            if fallback in ITERTYPES:           # no delimiter but fallback is an iterable for some reason TODO or type(fallback) in self.__iterTypes?
                 delimiter = ','
-            if val_type:
+            if val_type:                        # immediately cast to our manual `val_type` if there's no delimiter
                 true_value = val_type(true_value)
 
         # double check if we have a delimiter yet -> is so, value is going to be split into a list
-        if delimiter is not None:
+        if delimiter:                           # NOTE: this is somehow slightly faster than `is not None` from my testing (have to check against '' anyways)
             #fallback_type = type(value)         # TODO why was this called fallback_type?
             #fallback_type = type()
             #print(f'value={value} type={fallback_type} fallback={fallback} type={type(fallback)}')
 
-            if delimiter_type is None:
-                if fallback_type in self.__iterTypes:        # no delimiter_type set
-                    delimiter_type = fallback_type
-                #else:
-                #    delimiter_type = list
+            # guess the desired iterable type we want to split the setting into
+            if not delimiter_type:              # if `fallback` is an iterable, use that type. otherwise, use a list
+                delimiter_type = fallback_type if fallback_type in ITERTYPES else list
             #_skip_first_element = fallback == '' and delimiter_type is not None     # fallback is an empty string, but a delimiter_type was specified
             #_skip_first_element = fallback == ''    # TODO
             _empty_fallback = fallback == ''
@@ -549,6 +538,21 @@ class _ConfigParseBetter:
                     if   delimiter_type == list:  true_value = [true_value]
                     elif delimiter_type == tuple: true_value = (true_value,)
                     elif delimiter_type == set:   true_value = {true_value}
+
+        # 7/30/24 return early...? moved this below the `delimiter` section b/c otherwise you needed...
+        # ...to manually specify `delimiter_type` to auto-split settings into iterables. i have no idea...
+        # ...what this is for. does it help performance? moving it down didn't noticably increase load times
+        if not true_value and not fallback and delimiter_type is None and true_value == fallback:
+            #print('not true_value and not fallback and true_value == fallback')
+            key = key.lower()
+            bsp = self.getBetterSectionProxy(section)
+            option_proxy = OptionProxy(key, bsp, delimiter)
+            self.__dict__[key] = option_proxy
+            #self.__dict__[section.name].__dict__[key] = value
+            bsp.__dict__[key] = true_value      # TODO should these all be value here and not true_value?
+            #return option_proxy
+            return true_value
+
         key = key.lower()
         #section_proxy = self.__dict__[section.name]
 
@@ -648,7 +652,7 @@ class _ConfigParseBetter:
              delimiter_type=None, section=None):
         logger.debug(f'Saving: key={key} values={values}, delim={delimiter}')
         if delimiter is None: delimiter = self.__defaultDelimiter
-        if isinstance(values, generator): values = tuple(values)    # turn generator into more flexible iterable
+        if isinstance(values, GENERATOR_TYPE): values = tuple(values)           # turn generator into more flexible iterable
         if self.__autoUnpackLen1Lists:
             if len(values) == 1 and type(values[0]) in self.__iterTypes:
                 values = values[0]

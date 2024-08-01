@@ -1016,6 +1016,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_edits: list[str] = []       # NOTE: a list of recent edit output destinations
         self.recent_globs: dict[str, int] = {}  # NOTE: recent searches in the output textbox (values are the last selected index for that search)
         self.last_open_time: float = 0.0        # NOTE: the last time we COMPLETED opening a file (`end`)
+        self.move_destinations: list[str] = []  # NOTE: a list of destinations for the "Move to..." and "Open..." context menu actions
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
         self.extension_label = '?'
@@ -1897,10 +1898,61 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         context.addAction(self.actionCopyMediaPath)
         context.addAction(self.actionCopyFile)
         context.addAction(self.actionCutFile)
-        if self.mime_type != 'audio' or self.is_audio_with_cover_art:
-            self.refresh_copy_image_action()                # add "Copy image" action if there's something to copy
-            context.addAction(self.actionCopyImage)
 
+        def menuMoveContextMenuEvent(menu: QtW.QMenu, event: QtGui.QContextMenuEvent):
+            ''' Handles the context (right-click) menus for
+                individual "Move to..." and "Open..." destinations. '''
+            if action := menu.actionAt(event.pos()):
+                context = QtW.QMenu(self)
+                context.addAction('&Remove destination', lambda: self.move_destinations.remove(action.toolTip()))
+                context.exec(event.globalPos())
+
+        def move(folder: str):
+            ''' Moves the current media to `folder`, retaining its basename.
+                Warns on replacement or if `folder` is on a different drive. '''
+            try:
+                if not os.path.isdir(folder) and exists(folder):
+                    folder = os.path.dirname(folder)        # if folder is actually a file, use ITS folder
+
+                # TODO: show saveFile prompt like rename does when the path already exists
+                new_name = os.path.join(folder, os.path.basename(self.video))
+                self.rename(
+                    new_name=new_name,
+                    sanitize=False,
+                    delete_source_dir=False,
+                    warn_on_replace=True,
+                    warn_on_drive=True
+                )
+            except:
+                log_on_statusbar(f'(!) Move failed: {format_exc()}')
+
+        def generate_menu(label: str) -> QtW.QMenu:
+            menu = context.addMenu(label)
+            menu.setToolTipsVisible(True)
+            menu.contextMenuEvent = menuMoveContextMenuEvent
+            return menu
+
+        # create "Open" and "Move to" submenus for quickly sorting files
+        context.addSeparator()
+        open_menu = generate_menu('&Open...')
+        move_menu = generate_menu('&Move to...')
+        add_destination_action = QtW.QAction('&Add destination...')
+        add_destination_action.triggered.connect(lambda: self.browse_for_directory(noun='destination'))
+
+        # add all existing destinations to the top of each submenu
+        # TODO: always `openPath`, or try opening in pyplayer first?
+        # TODO: only add to `move_menu` if it's a folder, or move to the file's folder?
+        for folder in self.move_destinations:
+            label = os.path.basename(folder)                # ↓ 7/30/24 i JUST learned you can do this to fix lambdas in iterables
+            open_menu.addAction(label, lambda f=folder: qthelpers.openPath(f)).setToolTip(folder)
+            move_menu.addAction(label, lambda f=folder: move(f)).setToolTip(folder)
+
+        # add a separator and an action for adding new destinations to each submenu
+        for menu in (open_menu, move_menu):
+            menu.addSeparator()
+            menu.addAction(add_destination_action)
+
+        # add labels with info about the current media, then show context menu
         self.add_info_actions(context)
         context.exec(event.globalPos())
 
@@ -1918,7 +1970,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             argument to sipBadCatcherResult()`. And it's uncatchable. '''
         context = QtW.QMenu(self)
         for index, action in enumerate(self.menuSnapshots.actions()):
-            if index == 2 and self.mime_type != 'audio' or self.is_audio_with_cover_art:
+            if index == 2 and self.mime_type != 'audio' or (self.is_audio_with_cover_art and settings.checkShowCoverArt.isChecked()):
                 self.refresh_copy_image_action()            # add "Copy image" action if there's something to copy
                 context.addAction(self.actionCopyImage)
             context.addAction(action)

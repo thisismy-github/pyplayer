@@ -54,6 +54,7 @@ def loadConfig(gui, filename: str = constants.CONFIG_PATH) -> ConfigParseBetterQ
     load('ffmpegwarningignored', False)
     load('minimizedtotraywarningignored', False)
     gui.set_player(load('player', 'VLC'))
+    gui.move_destinations = load('move_destinations', '', '<|>')
 
     cfg.setSection('settings')
     cfg.loadQt(settings.tabGeneral, settings.tabEditing, settings.tabHotkeys, settings.tabUpdates, ignore=('comboThemes'))
@@ -107,6 +108,7 @@ def saveConfig(gui, filename: str = None):
 
     cfg.setSection('general')
     save('recent_files', gui.recent_files, delimiter='<|>')
+    save('move_destinations', gui.move_destinations, delimiter='<|>')
     save('volume', gui.sliderVolume.value())
     save('muted', not gui.sliderVolume.isEnabled())
 
