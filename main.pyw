@@ -3720,14 +3720,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             logging.error(f'(!) RESTART FAILED: {format_exc()}')
 
 
+    # TODO: why was I restoring instantly for images?
     def restore(self, frame: int, was_paused: bool = None):
         ''' Replays the current file & immediately restores progress to `frame`,
             pausing if the media `was_paused`. Restores tracks if supported by
             the current player. Returns immediately for images. '''
-        if self.mime_type == 'image':               # do not restore for images/gifs
-            return
         if was_paused is None:
             was_paused = self.is_paused
+        if self.mime_type == 'image':
+            if self.is_gif:
+                image_player.gif.setFileName(self.video)
+                set_gif_position(frame)             # ^ don't need to play new path - just update filename
+                if not was_paused:                  # only unpause gif if it wasn't paused before
+                    self.force_pause_signal.emit(False)
+                image_player.filename = self.video  # also set our custom `filename` property (needed...
+            return                                  # ...in `self.pause()` but I don't remember why)
+
         play(self.video, will_restore=True)
         set_and_update_progress(frame, SetProgressContext.RESTORE)
         if frame >= self.frame_count:               # if the media is over, stop player again immediately since most players...
@@ -3831,13 +3839,29 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         logging.debug('Player stopped.')
 
 
-    def rename(self, new_name: str = None):
-        ''' Renames the current media to `new_name`. If `new_name` is blank,
-            `self.lineOutput` is used. See `self.get_output()` for details. '''
+    def rename(
+        self,
+        new_name: str = None,
+        sanitize: bool = True,
+        delete_source_dir: bool = True,
+        warn_on_replace: bool = True,
+        warn_on_drive: bool = True,
+    ):
+        ''' Renames the current media to `new_name`, restoring progress
+            afterwards. If `new_name` is blank, `self.lineOutput` is used.
+            Otherwise, if `sanitize` is True, `new_name` is passed through
+            `self.get_output()` first. If `delete_source_dir` is True, empty
+            folders left behind will be recursively deleted, super-rename-style
+            (destination folders will always be created). `warn_on_replace` and
+            `warn_on_drive` give the user a chance to cancel the rename rather
+            than replace an existing file or rename across drives. '''
 
         # prepare new name
         old_name = self.video
-        new_name, basename_no_ext, ext = self.get_output(new_name)
+        if sanitize or not new_name:
+            new_name, basename_no_ext, ext = self.get_output(new_name)
+        else:
+            basename_no_ext, ext = os.path.splitext(os.path.basename(new_name))
         if not new_name:                            # output was invalid, blank, or the default
             return
         if old_name in self.locked_files:
@@ -3852,20 +3876,66 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # actually rename the media
         try:
             try:
-                os.renames(old_name, new_name)
+                if exists(new_name) and warn_on_replace:
+                    if qthelpers.getPopupOkCancel(
+                        title='Move conflict',
+                        text=f'The destination already exists: {new_name}\n\nReplace? This can\'t be undone!',
+                        icon='warning',
+                        **self.get_popup_location_kwargs()
+                    ).exec() == QtW.QMessageBox.Ok:
+                        os.makedirs(os.path.dirname(old_name), exist_ok=True)
+                        os.replace(old_name, new_name)
+                        if delete_source_dir:       # this is how `os.renames()` deletes its empty directories
+                            try: os.removedirs(os.path.dirname(old_name))
+                            except OSError: pass
+                    else:                           # don't want to replace -> restore and return without error
+                        self.restore(get_ui_frame(), was_paused)
+                        return log_on_statusbar('Rename cancelled.')
+                elif delete_source_dir:
+                    os.renames(old_name, new_name)
+                else:
+                    os.makedirs(os.path.dirname(old_name), exist_ok=True)
+                    os.rename(old_name, new_name)
                 marquee(f'File renamed to {new_name}', marq_key='Save', timeout=2500)
+
+            # source media stopped existing in the time it took to start rename
             except FileNotFoundError:               # images/gifs are cached so they can be altered behind the scenes
                 if self.mime_type == 'image' and settings.checkRenameMissingImages.isChecked():
                     image_player.art.save(new_name)
                     log_on_statusbar(f'Original file no longer exists, so a copy was created at {new_name}.')
                 else:
                     return log_on_statusbar(f'Current file no longer exists at {old_name}.')
+
+            # source media is being used by something other than PyPlayer
             except PermissionError:
                 return log_on_statusbar('File cannot be renamed because it is in use by another process.')
-            except OSError as error:                # show specific message for OSError 17
+
+            # this is usually OSError 17, which is trying to rename across drives
+            except OSError as error:
                 if 'disk drive' in str(error):
-                    return log_on_statusbar('Renaming across drives is not supported yet.')
-                return log_on_statusbar(f'(!) OSError while renaming: {format_exc()}')
+                    title = 'Move across drives?'
+                    if constants.IS_WINDOWS:        # drives will be blank on posix
+                        source_drive = os.path.splitdrive(old_name)[0]
+                        dest_drive   = os.path.splitdrive(new_name)[0]
+                        title += f' ({source_drive} -> {dest_drive})'
+
+                    # ask before moving across drives if desired, otherwise just do it
+                    if not warn_on_drive or qthelpers.getPopupOkCancel(
+                        title=title,
+                        text='The source and destination are on different drives.\nMoving across drives may lose obscure metadata\nlike file owners and alternate data streams.\n\nContinue?',
+                        **self.get_popup_location_kwargs()
+                    ).exec() == QtW.QMessageBox.Ok:
+                        import shutil               # NOTE: `shutil.move()` CAN move across drives (on Windows, at least)
+                        shutil.move(old_name, new_name)
+
+                    # don't want to move across drives -> restore and return without error
+                    else:
+                        self.restore(get_ui_frame(), was_paused)
+                        return log_on_statusbar('Rename cancelled.')
+                else:
+                    return log_on_statusbar(f'(!) OSError while renaming: {format_exc()}')
+
+            # unexpected error :(
             except:
                 return log_on_statusbar(f'(!) Failed to rename: {format_exc()}')
 
@@ -3881,15 +3951,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             log_on_statusbar(f'(!) Unexpected error while renaming: {format_exc()}')
 
         # replay the media, then restore position and pause state (no need for full-scale open())
-        frame = get_ui_frame()
-        if self.is_gif:                                             # gifs
-            image_player.gif.setFileName(new_name)                  # don't need to play new path - just update filename
-            set_gif_position(frame)
-            if not was_paused:                                      # unpause gif if it wasn't paused before
-                self.force_pause_signal.emit(False)
-            image_player.filename = new_name
-        else:                                                       # video/audio (static images don't need extra cleanup)
-            self.restore(frame, was_paused)                         # this auto-returns for images
+        self.restore(get_ui_frame(), was_paused)
 
         # update recent files's list with new name, if possible
         # NOTE: this is done after playing in case the recent files list is very large
