@@ -1050,9 +1050,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.extension_label = '?'
         self.is_gif = False
         self.is_static_image = True
-        self.is_audio_with_cover_art = False
+        self.is_audio_with_cover_art = False    # NOTE: True if cover art is present in buffer, even if it's hidden
         self.is_audio_without_cover_art = False
         self.clipboard_image_buffer = None
+        self.cover_art_buffer: bytes = None     # NOTE: used to store cover art in memory in case we want to load but not display it
         #self.PIL_image = None                  # TODO: store images in memory for quick copying?
 
         self.delay = 0.0
@@ -1768,6 +1769,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             action_disable_zoom.triggered.connect(image_player.disableZoom)
             context.addAction(action_disable_zoom)
 
+        # add cover art toggle if we have cover art in our buffer
+        if self.is_audio_with_cover_art:                # True so long as the cover art is loaded (even while hidden)
+            action_toggle_cover_art = context.addAction('Show cover art')
+            action_toggle_cover_art.setCheckable(True)
+            action_toggle_cover_art.setChecked(can_show_cover_art())
+            action_toggle_cover_art.triggered.connect(settings.checkShowCoverArt.setChecked)
+
         # add bilinear filtering toggle if showing image/gif/cover art
         # NOTE: bilinear filtering is not yet supported for animated GIFs (part of larger project)
         if image_player.pixmap():
@@ -1785,7 +1793,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
         # main shortcut actions (only show copy image action if there's something to copy)
         context.addAction(self.actionStop)
-        if self.mime_type != 'audio' or self.is_audio_with_cover_art:
+        if not self.is_audio_without_cover_art:
             self.refresh_copy_image_action()
             context.addAction(self.actionCopyImage)
         context.addAction(self.actionSettings)
@@ -1998,7 +2006,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             argument to sipBadCatcherResult()`. And it's uncatchable. '''
         context = QtW.QMenu(self)
         for index, action in enumerate(self.menuSnapshots.actions()):
-            if index == 2 and self.mime_type != 'audio' or (self.is_audio_with_cover_art and settings.checkShowCoverArt.isChecked()):
+            if index == 2 and not self.is_audio_without_cover_art:
                 self.refresh_copy_image_action()            # add "Copy image" action if there's something to copy
                 context.addAction(self.actionCopyImage)
             context.addAction(action)
@@ -2893,9 +2901,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     return
                 path = self.video
             if not exists(path) and not (mime == 'image' and path == self.video):
-                return log_on_statusbar(f'Image "{path}" no longer exists.')
+                return show_on_statusbar(f'Image "{path}" no longer exists.', 10000)
             if self.is_audio_without_cover_art:
-                return log_on_statusbar('You can only snapshot audio with cover art.')
+                if not can_load_cover_art():
+                    return show_on_statusbar('You have cover art detection disabled.', 10000)
+                return show_on_statusbar('You can only snapshot audio with cover art.', 10000)
 
             # I don't know how to jpeg-ify image data without saving/reopening so we need this to delete the excess file
             delete_path_anyway = False
@@ -2912,6 +2922,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             snapshot_needed = path == self.video and (mime == 'video' or mime == 'audio')
 
             # if we're watching a video or audio with cover art, snapshot the frame/cover art first
+            # NOTE: if the cover art is loaded but hidden, `self.snapshot()` will still get it
             if snapshot_needed:
                 path = self.snapshot(mode='full' if extended else 'quick', is_temp=True)
                 if path is None:                    # dialog cancelled (finally-statement ensures we unpause if needed)
@@ -2927,7 +2938,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             log_on_statusbar('Copying image data to clipboard...')
             if not self.actionCrop.isChecked():     # no crop - copy entire image/frame
                 if extended:
-                    try:    # if path still equals self.video, that means it wasn't snapshotted -> must be image
+                    try:    # if `path` still equals `self.video`, that means it wasn't snapshotted -> must be an image
                         if path == self.video: image = get_PIL_Image().fromqpixmap(image_player.pixmap())
                         else:                  image = get_PIL_Image().open(path)
                         if width or height:
@@ -2945,9 +2956,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     finally: image.close()
                 else:
                     if path == self.video:          # if a snapshot was needed earlier, this will never be True
-                        if self.is_gif: app.clipboard().setImage(image_player.gif.currentImage())         # setImage is faster
-                        else:           app.clipboard().setPixmap(image_player.pixmap())
-                    else:               app.clipboard().setImage(QtGui.QImage(path))
+                        if self.is_gif: app.clipboard().setImage(image_player.gif.currentImage())         # `setImage()` is faster
+                        else:           app.clipboard().setPixmap(image_player.pixmap())                  # <- doesn't matter how we access the...
+                    else:               app.clipboard().setImage(QtGui.QImage(path))                      # ...pixmap here, it'll always be valid
                 log_on_statusbar(f'Image data for "{os.path.basename(path)}" copied to clipboard.{temp_string}')
             else:                                   # crop image/frame and copy crop region
                 try:    # no with-statement here just in case Pillow doesn't close `image` when it gets reassigned
@@ -3116,33 +3127,34 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.vwidth = 16
                     self.vheight = 9
 
-                # no data provided OR art detected (see above), use TinyTag (fallback to music_tag if necessary)
-                if probe_data is None:
-                    try:                            # we need to avoid parsing probe file anyway, since we need to check for cover art
-                        try:
-                            tag = TinyTag.get(file, image=True)     # https://pypi.org/project/tinytag/0.18.0/
-                            cover_art = tag.get_image()
-                            if cover_art and settings.checkShowCoverArt.isChecked():
-                                play_image(cover_art, coverart=True, interactable=False)
-                                size = image_player.art.size()      # ^ cover art is bytes -> set to image_player's QPixmap, open QPixmap with PIL
-                                self.vwidth = size.width()
-                                self.vheight = size.height()
-                            else:
-                                self.vwidth = 16
-                                self.vheight = 9
-                            duration = tag.duration
-                        except:                                     # TinyTag is lightweight but cannot handle everything
-                            import music_tag                        # only import music_tag if we absolutely need to
+                # no data provided OR art detected (see above), use `TinyTag` (fallback to `music_tag` if necessary)
+                if probe_data is None:              # we need to avoid parsing probe file anyway, since we need to check for cover art
+                    try:
+                        try:                        # https://pypi.org/project/tinytag/0.18.0/
+                            tag = TinyTag.get(file, image=can_load_cover_art())
+                            art = self.cover_art_buffer = tag._image_data
+                            duration = tag.duration                 # ^ this will be None if there's no image (or `image` was False)
+                        except:
+                            logging.info('`TinyTag` failed to identify audio, resorting to `music_tag`...')
+                            import music_tag                        # only import `music_tag` if we absolutely need to
                             tag = music_tag.load_file(file)
-                            if 'artwork' in tag and settings.checkShowCoverArt.isChecked():
-                                art = tag['artwork'].first          # ↓ art.data is bytes -> set to image_player's QPixmap
-                                play_image(art.data, coverart=True, interactable=False)
-                                self.vwidth = art.width             # music_tag directly reports width/height of artwork
-                                self.vheight = art.height
-                            else:
-                                self.vwidth = 16
-                                self.vheight = 9
+                            if can_load_cover_art() and 'artwork' in tag:
+                                art = self.cover_art_buffer = tag['artwork'].first.data
+                            else:                                   # ^ NOTE: `.first` has its own width/height properties but this is cleaner
+                                art = self.cover_art_buffer = None
                             duration = tag['#length'].value
+
+                        # display cover art if it was loaded (NOTE: we can slightly optimize this...
+                        # ...for `music_tag`, but that's a rare scenario and this is way cleaner)
+                        if art and can_show_cover_art():
+                            play_image(art, coverart=True, interactable=False)
+                            size = image_player.art.size()
+                            self.vwidth = size.width()
+                            self.vheight = size.height()
+                        else:
+                            self.vwidth = 16        # NOTE: we don't need `else: play_image(None)` here because...
+                            self.vheight = 9        # ...it is already cleared automatically just before parsing
+
                         # TODO worth saving the cover art to a temp file for future use?
                         #image_player.art.save(os.path.join(constants.TEMP_DIR, f'{os.path.basename(file)}_{getctime(file)}.png'))
                     except:                                         # this is to handle things that wrongly report as audio, like .ogv files
@@ -3228,7 +3240,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.frame_count = 1
                     self.frame_rate = 1
                     self.frame_rate_rounded = 1
-                    self.delay = 0.2                # run update_slider_thread only 5 times/second
+                    self.delay = 0.2                # run `update_slider_thread()` only 5 times/second
                     self.ratio = get_ratio_string(self.vwidth, self.vheight)
 
             assert self.duration != 0, 'invalid duration'
@@ -3241,13 +3253,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self._open_cleanup_in_progress = False
             return 'parsing failed for unknown reason - see log file'
 
+    # >>> extra setup <<< (frame_rate_rounded, ratio, delay, etc. could be set down here, but it would be slower overall)
         # mark that cleanup is about to start - setting this here makes it impossible to leave `self.open()`...
         # ...with this being improperly set, avoiding scenarios where `self.open_in_progress` gets stuck on True
         self._open_cleanup_in_progress = True
 
-        # extra setup. frame_rate_rounded, ratio, delay, etc. could be set here, but it would be slower overall
         self.video = file                           # set media AFTER opening but BEFORE _open_cleanup_signal
         self.mime_type = mime
+        self.extension = extension
+        #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
+
+    # >>> alias setup <<< (this could be optimized by doing it above, but i don't FEEL like it)
         if base_mime == 'image':
             # see if this is an animated or static image
             is_gif = extension == 'gif' and self.frame_count_raw > 1
@@ -3262,17 +3278,15 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.is_gif = False
             self.is_static_image = False
 
-            # TODO: this is a little silly with the new `coverart` parameter we added to `play_image()`. change it?
             if mime == 'audio':
-                has_cover_art = bool(image_player.pixmap())
+                has_cover_art = bool(self.cover_art_buffer)
                 self.is_audio_with_cover_art = has_cover_art
                 self.is_audio_without_cover_art = not has_cover_art
             else:
                 self.is_audio_with_cover_art = False
                 self.is_audio_without_cover_art = False
 
-        self.extension = extension
-        #self.resolution_label = f'{self.vwidth:.0f}x{self.vheight:.0f}'
+        # emit event for player backend
         player.on_parse(file, base_mime, mime, extension)
         return 1
 
@@ -4386,8 +4400,13 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 except:
                     return log_on_statusbar(f'(!) Failed to delete last snapshot at "{cfg.last_snapshot_path}": {format_exc()}')
 
-            elif not video: return show_on_statusbar('No media is playing.', 10000)
-            elif self.is_audio_without_cover_art: return show_on_statusbar('You can only snapshot audio with cover art.', 10000)
+            # no media opened yet or this is audio with no cover art loaded
+            elif not video:
+                return show_on_statusbar('No media is playing.', 10000)
+            elif self.is_audio_without_cover_art:
+                if not can_load_cover_art():
+                    return show_on_statusbar('You have cover art detection disabled.', 10000)
+                return show_on_statusbar('You can only snapshot audio with cover art.', 10000)
 
         # >>> take new snapshot <<<
             is_gif = self.is_gif
@@ -4475,12 +4494,18 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 else:
                     ffmpeg(f'-i "{self.video}" -vf select=\'eq(n\\,{frame})\' -vsync 0 "{path}"')
             elif is_art:
+                if can_show_cover_art():                        # this probably can have a race condition, but who cares
+                    art = image_player.art
+                else:                                           # if cover art is loaded but hidden,...
+                    art = QtGui.QPixmap()                       # ...load it into a separate pixmap
+                    art.loadFromData(self.cover_art_buffer)     # (we could use `PIL` but this is simpler)
+
                 if width or height:
                     w = width or height * (self.vwidth / self.vheight)
                     h = height or width * (self.vheight / self.vwidth)
-                    image_player.art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
+                    art.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation).save(path, quality=quality)
                 else:
-                    image_player.art.save(path, quality=quality)
+                    art.save(path, quality=quality)
             else:
                 player.snapshot(path, frame, width, height)
 
@@ -8737,6 +8762,22 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 self.shortcuts[name][index].setKey(edit.keySequence())
 
 
+    def refresh_cover_art(self, show: bool):
+        ''' Toggles cover art on/off if there's any data in our buffer.
+            Updates `self.vwidth` and `self.vheight` accordingly. '''
+        if show:
+            if self.is_audio_with_cover_art:                    # do nothing if we want to show but have nothing in our buffer
+                try:
+                    play_image(self.cover_art_buffer, coverart=True, interactable=False)
+                    size = image_player.art.size()
+                    self.vwidth = size.width()
+                    self.vheight = size.height()
+                except:
+                    log_on_statusbar(f'(!) Unable to display the current media\'s cover art: {format_exc()}')
+        else:                                                   # ONLY clear cover art if `show` is False
+            play_image(None)                                    # NOTE: don't reset vwidth/vheight to 16/9
+
+
     def refresh_autoplay_button(self):
         ''' Updates the autoplay button's icon and check-state. '''
         if self.actionAutoplayShuffle.isChecked():              icon = 'autoplay_shuffle'
@@ -8937,8 +8978,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
     def is_snap_mode_enabled(self) -> bool:
         ''' Returns True if snap-modes can be used on the current mime type. '''
-        mime = self.mime_type
-        if mime == 'audio':   return self.is_audio_with_cover_art and settings.checkSnapArt.isChecked()
+        mime = self.mime_type                                   # ↓ don't snap if the cover art is hidden
+        if mime == 'audio':   return self.is_audio_with_cover_art and can_show_cover_art() and settings.checkSnapArt.isChecked()
         elif mime == 'video': return settings.checkSnapVideos.isChecked()
         elif self.is_gif:     return settings.checkSnapGifs.isChecked()
         else:                 return settings.checkSnapImages.isChecked()
@@ -9108,6 +9149,8 @@ if __name__ == "__main__":
         set_gif_position = image_player.gif.jumpToFrame
         set_current_time_text = gui.lineCurrentTime.setText
         current_time_lineedit_has_focus = gui.lineCurrentTime.hasFocus
+        can_load_cover_art = settings.checkLoadCoverArt.isChecked
+        can_show_cover_art = settings.checkShowCoverArt.isChecked
         parse_json = json.JSONDecoder(object_hook=None, object_pairs_hook=None).decode
         abspath = os.path.abspath
         exists = os.path.exists

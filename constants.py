@@ -101,6 +101,10 @@ class SetProgressContext(int):
     NAVIGATION_EXACT = 6
     SCRUB = 7
 
+
+class UndoType(int):
+    RENAME = 0
+
 # ---------------------
 
 TRIM_BUTTON_TOOLTIP_BASE = '''Click to set the starting position of a trim/

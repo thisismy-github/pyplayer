@@ -424,6 +424,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     settings.checkFocusOnEdit.toggled.connect(lambda state: settings.checkFocusIgnoreFullscreenEditsOnly.setEnabled(state and settings.checkFocusIgnoreFullscreen.isChecked()))
     settings.checkFocusIgnoreFullscreen.toggled.connect(lambda state: settings.checkFocusIgnoreFullscreenEditsOnly.setEnabled(state and settings.checkFocusOnEdit.isChecked()))
     settings.checkScaleFiltering.toggled.connect(self.gifPlayer.update)
+    settings.checkShowCoverArt.toggled.connect(self.refresh_cover_art)
     settings.checkTaskbarControls.toggled.connect(self.enable_taskbar_controls)
     settings.buttonHoverFontColor.clicked.connect(lambda: setattr(self.sliderProgress, 'hover_font_color', self.show_color_picker(button=settings.buttonHoverFontColor)))
     settings.checkZoomPrecise.toggled.connect(self.gifPlayer._updatePreciseZoom)

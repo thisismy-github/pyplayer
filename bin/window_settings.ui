@@ -74,8 +74,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>344</width>
-        <height>2744</height>
+        <width>403</width>
+        <height>3079</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -157,34 +157,6 @@
                 </widget>
                </item>
               </layout>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_49">
-               <property name="toolTip">
-                <string>The format to use for setting the title of the window. The
-following variables are replaced with their corresponding values:
-
-?base		The name of the media being played, path/extension not included.
-?name		The name of the media being played, path not included.
-?parent		The name of the media being played, parent folder included.
-?path		The name of the media being played, full path included.
-
-?ext		The file-extension of the media being played (MP4, WAV, etc.).
-?mime		The mime-type of the media being played (Video/Audio/Image).
-
-?paused		The pause-state of the media being played (▶/𝗜𝗜/■).
-?fps		The FPS of the media being played.
-?duration		The duration of the media being played.
-?size		The filesize of the media being played.
-?resolution		The dimensions of the media being played.
-?ratio		The aspect ratio of the media being played.
-?volume		The volume of the media being played.
-?speed		The playback speed of the media being played.</string>
-               </property>
-               <property name="text">
-                <string>Window title format</string>
-               </property>
-              </widget>
              </item>
              <item row="1" column="1">
               <widget class="QLineEdit" name="lineWindowTitleFormat">
@@ -285,10 +257,12 @@ and vice versa.</string>
              <item row="4" column="0">
               <widget class="QLabel" name="label_58">
                <property name="toolTip">
-                <string>The number of opened files to remember between sessions.
+                <string>The number of recently opened files to
+remember during and between sessions.
 
-Note: At 25 or less, recent files are validated on launch to
-make sure they still exist. Otherwise, they're loaded as-is.
+Note: At 25 or less, recent files are validated
+on launch to make sure they still exist. Above
+25, they're loaded as-is.
 
 Note: Lowering this value will not remove files
 from the existing list until you play a new file.</string>
@@ -301,10 +275,12 @@ from the existing list until you play a new file.</string>
              <item row="4" column="1">
               <widget class="QSpinBox" name="spinRecentFiles">
                <property name="toolTip">
-                <string>The number of opened files to remember between sessions.
+                <string>The number of recently opened files to
+remember during and between sessions.
 
-Note: At 25 or less, recent files are validated on launch to
-make sure they still exist. Otherwise, they're loaded as-is.
+Note: At 25 or less, recent files are validated
+on launch to make sure they still exist. Above
+25, they're loaded as-is.
 
 Note: Lowering this value will not remove files
 from the existing list until you play a new file.</string>
@@ -554,6 +530,34 @@ Note: Shift-right-clicking the player will always show the full menu.</string>
                </property>
                <property name="tristate">
                 <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_49">
+               <property name="toolTip">
+                <string>The format to use for setting the title of the window. The
+following variables are replaced with their corresponding values:
+
+?base		The name of the media being played, path/extension not included.
+?name		The name of the media being played, path not included.
+?parent		The name of the media being played, parent folder included.
+?path		The name of the media being played, full path included.
+
+?ext		The file-extension of the media being played (MP4, WAV, etc.).
+?mime		The mime-type of the media being played (Video/Audio/Image).
+
+?paused		The pause-state of the media being played (▶/𝗜𝗜/■).
+?fps		The FPS of the media being played.
+?duration		The duration of the media being played.
+?size		The filesize of the media being played.
+?resolution		The dimensions of the media being played.
+?ratio		The aspect ratio of the media being played.
+?volume		The volume of the media being played.
+?speed		The playback speed of the media being played.</string>
+               </property>
+               <property name="text">
+                <string>Window title format</string>
                </property>
               </widget>
              </item>
@@ -1189,20 +1193,24 @@ accident, but I couldn't let it go to waste.</string>
                       </widget>
                      </item>
                      <item row="3" column="1">
-                      <widget class="QCheckBox" name="checkShowCoverArt">
+                      <widget class="QCheckBox" name="checkLoadCoverArt">
                        <property name="toolTip">
-                        <string>If checked, audio files with embedded cover art
-will have their cover art displayed on the player.</string>
+                        <string>If checked, audio files with embedded cover
+art will have that art loaded into memory.
+
+Note: This setting has a neglible impact
+on opening speed compared to actually
+displaying the art.</string>
                        </property>
                        <property name="text">
-                        <string>Show cover art</string>
+                        <string>Detect cover art</string>
                        </property>
                        <property name="checked">
                         <bool>true</bool>
                        </property>
                       </widget>
                      </item>
-                     <item row="4" column="1">
+                     <item row="5" column="1">
                       <widget class="QCheckBox" name="checkScaleFiltering">
                        <property name="toolTip">
                         <string>If checked, scaled media will be &quot;smoothed&quot; using
@@ -1211,6 +1219,23 @@ nearest-neighbor scaling (when possible).</string>
                        </property>
                        <property name="text">
                         <string>Use bilinear filtering</string>
+                       </property>
+                       <property name="checked">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="4" column="1">
+                      <widget class="QCheckBox" name="checkShowCoverArt">
+                       <property name="toolTip">
+                        <string>If checked, audio files with embedded cover art loaded
+into memory will have that art displayed on the player.
+
+Note: This setting may impact opening speed by as
+much as 20% (which is still essentially nothing).</string>
+                       </property>
+                       <property name="text">
+                        <string>Show cover art</string>
                        </property>
                        <property name="checked">
                         <bool>true</bool>
@@ -3753,7 +3778,7 @@ Note: Don't use this if you don't know what you're doing.</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="0" colspan="2">
+             <item row="5" column="0" colspan="2">
               <widget class="QCheckBox" name="checkRenameMissingImages">
                <property name="toolTip">
                 <string>If checked, renaming an image file that doesn't
@@ -3771,7 +3796,7 @@ doesn't exist anymore will do nothing.</string>
                </property>
               </widget>
              </item>
-             <item row="5" column="0" colspan="2">
+             <item row="6" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsForceOnNoName">
                <property name="toolTip">
                 <string>If checked, saving an edit with no name specified in the
@@ -3789,7 +3814,7 @@ name as the source file, with &quot;_edited&quot; appended to it.</string>
                </property>
               </widget>
              </item>
-             <item row="6" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <widget class="QCheckBox" name="checkSaveAsUseMediaFolder">
                <property name="toolTip">
                 <string>If checked, the &quot;Save as...&quot; prompt will default to the current
@@ -3804,7 +3829,7 @@ the most recently accessed folder from any dialog.</string>
                </property>
               </widget>
              </item>
-             <item row="7" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <widget class="QCheckBox" name="checkCycleRememberOriginalPath">
                <property name="toolTip">
                 <string>Tristate:
@@ -3830,7 +3855,7 @@ next file that will play will still be file #6.</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <spacer name="verticalSpacer_12">
                <property name="orientation">
                 <enum>Qt::Vertical</enum>
@@ -3846,7 +3871,7 @@ next file that will play will still be file #6.</string>
                </property>
               </spacer>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <widget class="QGroupBox" name="groupBox_11">
                <property name="title">
                 <string>If a newly saved edit is not auto-opened...</string>
@@ -3889,7 +3914,7 @@ edit finishes but is not automatically opened.</string>
                </layout>
               </widget>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <spacer name="verticalSpacer_13">
                <property name="orientation">
                 <enum>Qt::Vertical</enum>
@@ -3905,7 +3930,7 @@ edit finishes but is not automatically opened.</string>
                </property>
               </spacer>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <widget class="QGroupBox" name="groupBox_10">
                <property name="title">
                 <string>If focus is not given after auto-opening an edit...</string>
@@ -4778,11 +4803,11 @@ oldest creation time will be used.</string>
                       </size>
                      </property>
                      <property name="toolTip">
-                      <string>If checked, always use the current media's creation and
-modified time if present in your concatentation list.</string>
+                      <string>If checked, always use the currently playing media's creation
+and modified time if present in your concatentation list.</string>
                      </property>
                      <property name="text">
-                      <string>Prefer the current media if present</string>
+                      <string>Prefer the currently playing media if present</string>
                      </property>
                     </widget>
                    </item>
@@ -6765,12 +6790,12 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>168</x>
-     <y>514</y>
+     <x>179</x>
+     <y>496</y>
     </hint>
     <hint type="destinationlabel">
-     <x>313</x>
-     <y>514</y>
+     <x>368</x>
+     <y>496</y>
     </hint>
    </hints>
   </connection>
@@ -6781,12 +6806,12 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>102</x>
-     <y>-496</y>
+     <x>105</x>
+     <y>-562</y>
     </hint>
     <hint type="destinationlabel">
-     <x>120</x>
-     <y>-496</y>
+     <x>249</x>
+     <y>-562</y>
     </hint>
    </hints>
   </connection>
@@ -6797,12 +6822,12 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>127</x>
-     <y>1170</y>
+     <x>141</x>
+     <y>1210</y>
     </hint>
     <hint type="destinationlabel">
-     <x>316</x>
-     <y>1171</y>
+     <x>371</x>
+     <y>1212</y>
     </hint>
    </hints>
   </connection>
@@ -6845,12 +6870,28 @@ mime type as the current media (video, audio, or image).</string>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>104</x>
-     <y>-357</y>
+     <x>107</x>
+     <y>-484</y>
     </hint>
     <hint type="destinationlabel">
-     <x>321</x>
-     <y>-357</y>
+     <x>376</x>
+     <y>-484</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkLoadCoverArt</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>checkShowCoverArt</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>192</x>
+     <y>371</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>208</x>
+     <y>395</y>
     </hint>
    </hints>
   </connection>

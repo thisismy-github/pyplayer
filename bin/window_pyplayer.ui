@@ -158,7 +158,16 @@
      <addaction name="actionDeleteImmediately"/>
      <addaction name="actionClearMarked"/>
     </widget>
+    <widget class="QMenu" name="menuUndo">
+     <property name="title">
+      <string>&amp;Undo...</string>
+     </property>
+     <property name="toolTipsVisible">
+      <bool>true</bool>
+     </property>
+    </widget>
     <addaction name="actionSettings"/>
+    <addaction name="menuUndo"/>
     <addaction name="separator"/>
     <addaction name="actionLoop"/>
     <addaction name="menuAutoplay"/>
