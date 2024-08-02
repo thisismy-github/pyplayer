@@ -6520,6 +6520,30 @@ mime type as the current media (video, audio, or image).</string>
                </property>
               </widget>
              </item>
+             <item row="42" column="0">
+              <widget class="QLabel" name="label_83">
+               <property name="text">
+                <string>Properties</string>
+               </property>
+              </widget>
+             </item>
+             <item row="42" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_54">
+               <property name="spacing">
+                <number>4</number>
+               </property>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="properties_">
+                 <property name="keySequence">
+                  <string>Alt+P</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QKeySequenceFlexibleEdit" name="properties"/>
+               </item>
+              </layout>
+             </item>
             </layout>
            </item>
            <item>

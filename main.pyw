@@ -179,7 +179,8 @@ from bin.window_settings import Ui_settingsDialog
 from util import (                                      # direct import time-sensitive utils for a very small optimization
     add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_font_path,
     get_hms, get_PIL_Image, get_ratio_string, get_unique_path, get_verbose_timestamp,
-    remove_dict_value, remove_dict_values, sanitize, scale, setctime, suspend_process, kill_process, file_is_hidden
+    open_properties, remove_dict_value, remove_dict_values, sanitize, scale, setctime,
+    suspend_process, kill_process, file_is_hidden
 )
 
 import os
@@ -1042,7 +1043,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_files: list[str] = []       # NOTE: the user-friendly list of recent files
         self.recent_edits: list[str] = []       # NOTE: a list of recent edit output destinations
         self.recent_globs: dict[str, int] = {}  # NOTE: recent searches in the output textbox (values are the last selected index for that search)
-        self.last_open_time: float = 0.0        # NOTE: the last time we COMPLETED opening a file (`end`)
+        self.last_open_time = 0.0               # NOTE: the last time we COMPLETED opening a file (`end`)
         self.move_destinations: list[str] = []  # NOTE: a list of destinations for the "Move to..." and "Open..." context menu actions
         self.undo_dict: dict[str, Undo] = {}    # NOTE: filenames with actions that can be undone (renaming, moving, etc.) to undo actions they're associated with
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
@@ -1815,6 +1816,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         # add labels with info about the current media, then show context menu
         if self.video:
             self.add_info_actions(context)
+            context.addSeparator()                      # ↓ TODO: reuse the hotkey lambda here? does it matter?
+            context.addAction('Properties', lambda: open_properties(self.video))
         context.exec(event.globalPos())
 
 
@@ -2146,7 +2149,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 submenu = QtW.QMenu(edit.get_progress_text(simple=True), context)
                 context.addMenu(submenu)
             else:
-                submenu = context          # for just one edit, show the submenu directly
+                submenu = context                           # for just one edit, show the submenu directly
 
             # resume/pause selected edit
             if not edit._is_paused:

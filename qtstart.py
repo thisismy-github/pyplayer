@@ -6,6 +6,7 @@
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets as QtW
 from PyQt5.QtCore import Qt
+import util
 import config
 import constants
 import qthelpers
@@ -267,6 +268,7 @@ def connect_shortcuts(self: QtW.QMainWindow):
         'cyclevideo':         lambda: self.cycle_track('video'),
         'snapshot':           lambda: self.snapshot(mode='full'),
         'quicksnapshot':      self.snapshot,
+        'properties':         lambda: util.open_properties(self.video),
     }
     self.shortcuts = {action_name: (QtW.QShortcut(self, context=3), QtW.QShortcut(self, context=3)) for action_name in shortcut_actions}
     #self.shortcuts = {action_name: (Qtself.QKeySequence(), Qtself.QKeySequence()) for action_name in shortcut_actions}

@@ -363,6 +363,25 @@ def get_verbose_timestamp(seconds: float) -> str:
         return ', '.join(deltaFormat).replace('and,', 'and')
 
 
+# From an "example" site: https://github.com/dgaponcic/security_policies/blob/master/admin.py
+# NOTE: Doing this through `ctypes` (https://stackoverflow.com/a/7986511) is somehow slower...
+# ...and doesn't work for special characters (like ？) no matter what encoding or flags I try
+def open_properties(path: str):
+    ''' Opens a properties dialog for `path`. Windows only. If `path` is
+        empty, the current working directory is used instead. If `path`
+        is invalid, Windows will display a warning dialog. '''
+    if not constants.IS_WINDOWS: return
+    from win32com.shell import shell, shellcon
+
+    logger.info(f'Opening properties dialog for "{path}"')
+    shell.ShellExecuteEx(
+        nShow=1,
+        fMask=shellcon.SEE_MASK_NOCLOSEPROCESS | shellcon.SEE_MASK_INVOKEIDLIST,
+        lpVerb='properties',
+        lpFile=path
+    )
+
+
 def remove_dict_value(dictionary: dict, value):
     ''' Safely removes `value` from `dictionary`.
         Returns as soon as `value` is found. '''
