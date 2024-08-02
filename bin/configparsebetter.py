@@ -22,7 +22,7 @@ TODO: errors with capitalization of options with dot notation?
 TODO: base load()'s type on fallback or do try/excepts with typecasts?
 TODO: function/attribute overhead stuff
 TODO: typecasting multi-type lists (hello,500 -> ['hello', 500])
-TODO: should "type(???) in __iterTypes" be a function with an isinstance for-loop?
+TODO: should "type(???) in ITERTYPES" be a function with an isinstance for-loop?
 TODO: change bsp to something readable
 TODO: make sure you can do load('lastdir', '.') and cfg.lastdir = '.'
           - these MUST do the same thing when you load for the first time
@@ -176,7 +176,7 @@ class BetterSectionProxy:
     def __setattr__(self, name, value):
         if name[:19] != '_BetterSectionProxy':    # TODO (below) redundant?
             # TODO the following commented out lines were commented out in twitch CPB (all lines were present)
-            #if type(value) in self.__parent._ConfigParseBetter__iterTypes:         # <-
+            #if type(value) in ITERTYPES:                                           # <-
             #    delimiter = self.__parent._ConfigParseBetter__defaultDelimiter     # <-
             #    self.__section[name] = delimiter.join(str(v) for v in value)       # <-
             #else:                                                                  # <-
@@ -432,7 +432,7 @@ class _ConfigParseBetter:
 
         # no delimiter set -> check if fallback is an iterable. if not, we can safely apply val_type to true_value
         if delimiter is None:
-            if fallback in ITERTYPES:           # no delimiter but fallback is an iterable for some reason TODO or type(fallback) in self.__iterTypes?
+            if fallback in ITERTYPES:           # no delimiter but fallback is an iterable for some reason TODO or type(fallback) in ITERTYPES?
                 delimiter = ','
             if val_type:                        # immediately cast to our manual `val_type` if there's no delimiter
                 true_value = val_type(true_value)
@@ -450,7 +450,7 @@ class _ConfigParseBetter:
             #_skip_first_element = fallback == ''    # TODO
             _empty_fallback = fallback == ''
             try:
-                #if delimiter_type in self.__iterTypes:  # we want the final value to be an array of some kind
+                #if delimiter_type in ITERTYPES:     # we want the final value to be an array of some kind
                 #    print('here!', delimiter_type, delimiter, value)
                 #    #joined_value = delimiter.join(str(v) for v in value)
                 #    #print('joined_value:', joined_value)
@@ -528,7 +528,7 @@ class _ConfigParseBetter:
                 print(f'Inner-load error - {traceback.format_exc()}')
                 try: true_value = value.split(delimiter)
                 except: true_value = value
-            if delimiter_type in self.__iterTypes:  # TODO should this be less strict?
+            if delimiter_type in ITERTYPES:         # TODO should this be less strict?
                 try:
                     #print('delimiter_type being applied', true_value, delimiter_type)
                     true_value = delimiter_type(true_value)
@@ -626,7 +626,7 @@ class _ConfigParseBetter:
     #                return section, section.getint(key, fallback=fallback)
     #            elif fallback_type == float:
     #                return section, section.getfloat(key, fallback=fallback)
-    #            elif fallback_type in self.__iterTypes:     # TODO: converting to string and back (bad and stupid)
+    #            elif fallback_type in ITERTYPES:             # TODO: converting to string and back (bad and stupid)
     #                delimiter = delimiter if delimiter is not None else ','
     #                fallback = delimiter.join(str(v) for v in fallback)
     #            #print(3, 'section', section, 'key', key, 'fallback', fallback, fallback_type)
@@ -654,7 +654,7 @@ class _ConfigParseBetter:
         if delimiter is None: delimiter = self.__defaultDelimiter
         if isinstance(values, GENERATOR_TYPE): values = tuple(values)           # turn generator into more flexible iterable
         if self.__autoUnpackLen1Lists:
-            if len(values) == 1 and type(values[0]) in self.__iterTypes:
+            if len(values) == 1 and type(values[0]) in ITERTYPES:
                 values = values[0]
 
         section = self.getSection(section)
@@ -842,7 +842,7 @@ class _ConfigParseBetter:
 
     def __setattr__(self, name, value):             # TODO horrific performance?
         if name[:18] != '_ConfigParseBetter':
-            if type(value) in self.__iterTypes:     # TODO is this part redundant?
+            if type(value) in ITERTYPES:            # TODO is this part redundant?
                 delimiter = self.__defaultDelimiter
                 casted_value = delimiter.join(str(v) for v in value)
             else:
@@ -950,7 +950,7 @@ class ConfigParseBetterQt(ConfigParseBetter):   # TODO support Pyside and other 
         from PyQt5.QtWidgets import QCheckBox, QLineEdit, QSlider, QDial, QComboBox, \
             QRadioButton, QPushButton, QSpinBox, QDoubleSpinBox, QGroupBox, QKeySequenceEdit
         from PyQt5.QtGui import QKeySequence
-        if type(ignore) not in self._ConfigParseBetter__iterTypes: ignore = (ignore,)    # ensure ignore parameter is an array
+        if type(ignore) not in ITERTYPES: ignore = (ignore,)    # ensure ignore parameter is an array
         section = self.getSection(section)
         if self._ConfigParseBetter__autosave:   # remember widget and parameters for autosaving later
             self.__widgets.append((widgets, children, recursive, ignore, extraWidgets, getComboText, section))
@@ -1022,7 +1022,7 @@ class ConfigParseBetterQt(ConfigParseBetter):   # TODO support Pyside and other 
     def saveQt(self, *widgets, children=True, recursive=True, ignore=tuple(), extraWidgets={}, getComboText=False, section=None):
         from PyQt5.QtWidgets import QCheckBox, QLineEdit, QSlider, QDial, QComboBox, \
             QRadioButton, QPushButton, QSpinBox, QDoubleSpinBox, QGroupBox, QKeySequenceEdit
-        if type(ignore) not in self._ConfigParseBetter__iterTypes: ignore = (ignore,)  # ensure ignore parameter is an array
+        if type(ignore) not in ITERTYPES: ignore = (ignore,)  # ensure ignore parameter is an array
         section = self.getSection(section)
 
         actionValue = lambda w, name: self.save(name, w.value(), section=section)

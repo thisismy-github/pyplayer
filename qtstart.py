@@ -327,6 +327,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionMinimize.triggered.connect(self.close)
     self.actionExit.triggered.connect(lambda: exit(self))
     self.actionSettings.triggered.connect(self.dialog_settings.exec)
+    self.menuUndo.aboutToShow.connect(self.refresh_undo_menu)
     self.actionLoop.triggered.connect(self.buttonLoop.setChecked)
     self.actionAutoplay.triggered.connect(self.refresh_autoplay_button)
     self.actionAutoplayShuffle.triggered.connect(self.refresh_autoplay_button)

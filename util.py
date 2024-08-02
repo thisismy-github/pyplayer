@@ -363,6 +363,29 @@ def get_verbose_timestamp(seconds: float) -> str:
         return ', '.join(deltaFormat).replace('and,', 'and')
 
 
+def remove_dict_value(dictionary: dict, value):
+    ''' Safely removes `value` from `dictionary`.
+        Returns as soon as `value` is found. '''
+    to_remove = None
+    for key, other_value in dictionary.items():
+        if other_value is value:
+            to_remove = key
+            break
+
+    try: del dictionary[to_remove]
+    except: pass
+
+
+def remove_dict_values(dictionary: dict, *values):
+    ''' Safely removes all `values` from `dictionary`. Casts `values` to a set,
+        loops over the dictionary exactly once, and does not return early. '''
+    value_set = set(values)
+    to_remove = [key for key, value in dictionary.items() if value in value_set]
+    for key in to_remove:
+        try: del dictionary[key]
+        except: pass
+
+
 def sanitize(filename: str, allow_reserved_words: bool = True, default: str = '') -> str:
     ''' A slightly more optimized version of `sanitize_filename.sanitize()`,
         with added parameters.

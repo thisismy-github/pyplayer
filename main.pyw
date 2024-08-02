@@ -179,7 +179,7 @@ from bin.window_settings import Ui_settingsDialog
 from util import (                                      # direct import time-sensitive utils for a very small optimization
     add_path_suffix, ffmpeg, ffmpeg_async, foreground_is_fullscreen, get_font_path,
     get_hms, get_PIL_Image, get_ratio_string, get_unique_path, get_verbose_timestamp,
-    sanitize, scale, setctime, suspend_process, kill_process, file_is_hidden
+    remove_dict_value, remove_dict_values, sanitize, scale, setctime, suspend_process, kill_process, file_is_hidden
 )
 
 import os
@@ -910,6 +910,33 @@ class Edit:
                     pass
 
 
+class Undo:
+    __slots__ = 'type', 'label', 'description', 'data'
+
+    def __init__(self, type_: constants.UndoType, label: str, description: str, data: dict):
+        self.type = type_
+        self.label = label
+        self.description = description
+        self.data = data
+
+        # TODO: add setting for max undos?
+        if len(gui.undo_dict) > 50:
+            for key in tuple(gui.undo_dict.items())[50:]:
+                try: del gui.undo_dict[key]
+                except: pass
+
+    # TODO: should we do this here, in `gui.refresh_undo_menu`, or save lambdas as a property (`undo.action()`)?
+    def execute(self):
+        ''' Uses `self.data` to undo an action as defined by `self.type`.
+            If successful, we remove ourselves from `gui.undo_dict`. '''
+        try:
+            if self.type == constants.UndoType.RENAME:
+                if gui.undo_rename(self):
+                    remove_dict_value(gui.undo_dict, self)
+        except:
+            log_on_statusbar(f'(!) Unexpected error while attempting undo: {format_exc()}')
+
+
 # ---------------------
 # Main GUI
 # ---------------------
@@ -1017,6 +1044,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_globs: dict[str, int] = {}  # NOTE: recent searches in the output textbox (values are the last selected index for that search)
         self.last_open_time: float = 0.0        # NOTE: the last time we COMPLETED opening a file (`end`)
         self.move_destinations: list[str] = []  # NOTE: a list of destinations for the "Move to..." and "Open..." context menu actions
+        self.undo_dict: dict[str, Undo] = {}    # NOTE: filenames with actions that can be undone (renaming, moving, etc.) to undo actions they're associated with
         self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
         self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
         self.extension_label = '?'
@@ -3898,6 +3926,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         delete_source_dir: bool = True,
         warn_on_replace: bool = True,
         warn_on_drive: bool = True,
+        undoable: bool = True
     ):
         ''' Renames the current media to `new_name`, restoring progress
             afterwards. If `new_name` is blank, `self.lineOutput` is used.
@@ -3906,7 +3935,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             folders left behind will be recursively deleted, super-rename-style
             (destination folders will always be created). `warn_on_replace` and
             `warn_on_drive` give the user a chance to cancel the rename rather
-            than replace an existing file or rename across drives. '''
+            than replace an existing file or rename across drives. If `undoable`
+            is True, an `Undo` object will be added to `self.undo_dict`. '''
 
         # prepare new name
         old_name = self.video
@@ -3997,6 +4027,17 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.lineOutput.setToolTip(f'{new_name}\n---\nEnter: Rename this file to whatever you\'ve entered.\nTab: View files similar to your entry (*/? supported).')
             self.lineOutput.clearFocus()            # clear focus so we can navigate/use hotkeys again
 
+            # create an `Undo` object with our old/new paths so we can undo this in the future
+            if undoable:
+                moved = os.path.basename(new_name) == os.path.basename(self.video)
+                label = 'Move' if moved else 'Rename'
+                self.undo_dict[new_name] = Undo(
+                    type_=constants.UndoType.RENAME,
+                    label=label,
+                    description=f'Moved\n"{self.video}"\nto\n"{os.path.dirname(new_name)}"' if moved else f'Renamed\n"{self.video}"\nto\n"{new_name}"',
+                    data={'new_path': new_name, 'old_path': self.video}
+                )
+
             self.video = new_name
             refresh_title()                         # update titlebar
         except:
@@ -4013,6 +4054,211 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             recent_files[index] = self.video        # don't use `new_name` here in case we failed to rename
         except:
             pass
+
+
+    def undo_rename(self, undo: Undo) -> bool | None:
+        ''' Undo a rename/move by restoring `undo.data['new_path']` to
+            its pre-rename path at `undo.data['old_path']`.Does not use
+            super-renaming - any directories that were specifically created
+            for the rename will not be deleted if they are left empty.
+
+            If `restored_name` is now occupied by a new file, but that file is
+            itself part of ANOTHER rename-undo, we will chain together these
+            undos until we either hit a dead-end (file is not part of an undo)
+            or we successfully find a chain that resolves all conflicts.
+            Includes multiple layers of defense and recovery in case of
+            disaster. Otherwise, we simply inform the user and give up.
+
+            NOTE: Un-renaming uses `self.rename()` where necessary.
+            NOTE: Returns True if the undo or undo-chain was successful. '''
+
+        verb = undo.label.lower()
+        current_name = undo.data['new_path']
+        restored_name = undo.data['old_path']
+        logging.info(f'Attempting to undo a rename from "{current_name}" back to "{restored_name}"')
+
+        def restore(old_path: str, new_path: str):
+            if old_path == self.video:
+                self.rename(
+                    new_path,
+                    sanitize=False,
+                    delete_source_dir=False,
+                    warn_on_replace=False,
+                    warn_on_drive=False,
+                    undoable=False
+                )
+            else:   # TODO: is there ever a scenario where the user might want to delete a destination that was created?
+                os.makedirs(os.path.dirname(new_path), exist_ok=True)
+                os.rename(old_path, new_path)
+
+        # make sure the file we're trying to undo still exists at its new, post-rename path
+        if not exists(current_name):
+            return log_on_statusbar(f'Cannot undo {verb}: File no longer exists.')
+
+        # our old path is free for the taking. restore normally and skip the next 150 lines
+        if not exists(restored_name):
+            restore(current_name, restored_name)
+
+        # oh, the path we're trying to restore to is being used by another file now?
+        # no biggie, i'm sure this won't take hundreds of lines to safely handle            
+        else:
+            undo_chain: list[tuple[str, str, Undo]] = [(current_name, restored_name, undo)]
+            please_dont_exist = restored_name
+
+            # follow our undo dictionary until we run out of rename-undos that can be chained together
+            # (e.g. we want to undo "test.mp3" back to "new.mp3" but it already exists - following...
+            # ...the undo dictionary gets us the following chain of undos that would resolve our...
+            # ...conflict: file5.mp3 -> file4.mp3; test.mp3 -> file5.mp3; new.mp3 -> test.mp3)
+            while please_dont_exist in self.undo_dict and exists(please_dont_exist):
+                chained_undo = self.undo_dict[please_dont_exist]
+                if chained_undo.type == constants.UndoType.RENAME:
+                    please_dont_exist = chained_undo.data['old_path']
+                    undo_chain.append((chained_undo.data['new_path'], please_dont_exist, chained_undo))
+                else:
+                    break       # TODO: does this make sense? come back to this if new undo types are added
+
+            # if our "restored_name" still exists, we either had no undos to fallback on or our undo...
+            # ...chain was never resolved (undos eventually pointed to a file that isn't part of an undo)
+            if exists(please_dont_exist):
+                return show_on_statusbar(f'Cannot undo {verb}: A new file is occupying the old path.')
+
+            # compile undo chain in a string so the user can understand what they're about to do before accepting
+            msg = f'You are trying to restore a file back to a path that is now occupied by a new file, which itself can be restored to an older path. Would you like to undo all {verb}s?'
+            chain_msg = '\n\n'.join(f'UNDO #{index}:\n"{name_from}" -> "{name_to}"' for index, (name_from, name_to) in enumerate(reversed(undo_chain), start=1))
+            logging.info(f'The following undo chain has been identified:\n\n{chain_msg}')
+            if qthelpers.getPopupOkCancel(
+                title=f'Undo {len(undo_chain)} {verb}s?',
+                text=msg,
+                textDetailed=chain_msg,
+                icon='warning',
+                **self.get_popup_location_kwargs()
+            ).exec() == QtW.QMessageBox.Ok:
+                try:
+                    logging.info('(Undo chain) Performing access-check before starting...')
+                    access_denied: list[str] = []
+                    for post_move, pre_move, _ in reversed(undo_chain):
+                        try:
+                            os.rename(post_move, post_move)
+                        except PermissionError:
+                            access_denied.append(post_move)
+                        except:
+                            return log_on_statusbar(f'(?) Unexpected error BEFORE starting undo chain. No files have been changed: {format_exc()}')
+
+                    # if files are in use, do NOT try again. opens up too many horrible possibilites
+                    # if the user wants to try again, the undo chain should resolve exactly the same way anyways
+                    if access_denied:
+                        qthelpers.getPopup(
+                            title='This is going to ruin the tour',
+                            text='Some files are currently in use.\nThe undo chain has been cancelled.',
+                            textDetailed='\n'.join(access_denied),
+                            icon='warning',
+                            **self.get_popup_location_kwargs()
+                        ).exec()
+                        return show_on_statusbar(f'Cannot undo {verb}: Files in the undo chain are being used by other processes.')
+                    logging.info('(Undo chain) Access-check successful. Starting undos...')
+
+                    # begin undo chain (NOTE: chain goes from final file to first file, so loop in reverse)
+                    start = get_time()
+                    successful_undos: list[tuple[str, str, Undo]] = []
+                    for index, (post_move, pre_move, chained_undo) in enumerate(reversed(undo_chain)):
+                        logging.info(f'(Undo chain) Restoring "{post_move}" to "{pre_move}"')
+                        while True:
+                            try:
+                                restore(post_move, pre_move)
+                                successful_undos.append((post_move, pre_move, chained_undo))
+                                break
+                            except PermissionError:
+                                logging.error(f'(!) Undo chain interrupted after {index} successful undo(s) by a PERMISSION ERROR??')
+                                sleep(0.0001)       # sleep very briefly to encourage `get_time()` to update
+                                prefix = f'Somehow, the following file started being used by another process\nin the last {get_time() - start:.5f} seconds.'
+
+                                # index 0 means we didn't do any undos yet, so it's safe to cancel automatically
+                                if index == 0:
+                                    suffix = 'Thankfully, no undos have occured yet.\nThe undo chain has been cancelled.'
+                                    qthelpers.getPopup(
+                                        title='Undo chain interrupted?',
+                                        text=f'{prefix} {suffix}',
+                                        textDetailed=post_move,
+                                        icon='warning',
+                                        **self.get_popup_location_kwargs()
+                                    ).exec()
+                                    return show_on_statusbar(f'Cannot undo {verb}: Files in the undo chain are being used by other processes.')
+
+                                suffix = (f'{index} undo(s) have already occured.\n\n'
+                                        '> Retry: Try the next undo again and continue normally (close\n'
+                                        'whatever is using the file first)\n\n'
+                                        '> Abort: Attempt to undo the undos we just undid by restoring\n'
+                                        f'the {index} undo(s) to their post-rename paths. This could make\n'
+                                        'things worse.\n\n'
+                                        '> Cancel: Leave the undo chain partially completed and do not\n'
+                                        'risk any further confusion.')
+
+                                russian_roulette = qthelpers.getPopupAbortRetryIgnore(
+                                    title='Undo chain interrupted!!',
+                                    text=f'{prefix} {suffix}',
+                                    textDetailed=post_move,
+                                    icon='critical',
+                                    **self.get_popup_location_kwargs()
+                                ).exec()
+
+                                if russian_roulette == QtW.QMessageBox.Retry:
+                                    logging.info('(Undo chain) Trying again...')
+                                    continue        # ↓ remove the successful undos from our dictionary (NOTE: don't bother w/ empty folder warning)
+                                elif russian_roulette == QtW.QMessageBox.Cancel:
+                                    remove_dict_values(self.undo_dict, *(_undo[-1] for _undo in successful_undos))
+                                    return log_on_statusbar(f'Failed to complete {len(undo_chain) - index}/{len(undo_chain)} undos.')
+                                else:               # ↓ we still need to loop in reverse
+                                    logging.info('(Undo chain) Trying to undo our undos...')
+                                    for _post_move, _pre_move in reversed(successful_undos):
+                                        logging.info(f'(Undo chain) UN-restoring "{_pre_move}" back to "{_post_move}"')
+                                        while True:
+                                            try:    # ↓ we're going BACK to our paths we just tried to undo
+                                                restore(_pre_move, _post_move)
+                                            except:
+                                                explanation = f'"{_post_move}" was restored to "{_pre_move}" as part of an undo, but this could not be reversed.'
+                                                if qthelpers.getPopupRetryCancel(
+                                                    title='Abject disaster',
+                                                    text='The following file could not have it\'s undo undone.\nYou can try again or give up. I\'m sorry.',
+                                                    textDetailed=f'{explanation}\n\nError: {format_exc()}',
+                                                    icon='critical',
+                                                    **self.get_popup_location_kwargs()
+                                                ).exec() == QtW.QMessageBox.Retry:
+                                                    logging.info('(Undo chain) User is a FIGHTER. Mama didn\'t raise no quitter.')
+                                                    continue
+                                                logging.error('(!) User has thrown in the towel. Can\'t blame them.')
+                                                return show_on_statusbar(f'Oops')
+                                    return log_on_statusbar('Somehow, we\'ve averted all disaster and brought about peace on Earth.')
+
+                    # check the folders of post-move paths and see if they're empty now, notifying the user
+                    empty_folders = []
+                    for (post_move, pre_move, _) in successful_undos:
+                        if not os.listdir(empty_folder := os.path.dirname(post_move)):
+                            logging.info(f'(Undo chain) An empty folder has been left behind at "{empty_folder}"')
+                            empty_folders.append(empty_folder)
+
+                    if len(empty_folders) == 1:
+                        log_on_statusbar(f'{len(undo_chain)} {verb}s successfully undone, leaving behind an empty folder at "{empty_folders[0]}"')
+                    elif len(empty_folders) > 1:
+                        log_on_statusbar(f'{len(undo_chain)} {verb}s successfully undone, leaving behind {len(empty_folders)} empty folders.')
+                    else:
+                        log_on_statusbar(f'{len(undo_chain)} {verb}s successfully undone.')
+
+                    # we... did it? the undo chain worked? remove all affected undos and return early
+                    remove_dict_values(self.undo_dict, *(_undo[-1] for _undo in successful_undos))
+                    return False                    # NOTE: return False here since we just removed the original undo
+
+                except:
+                    return log_on_statusbar(f'(!) Unexpected error while undoing {len(undo_chain)} {verb}s! View log to see which filenames may be mixed up. I\'m sorry: {format_exc()}')
+            else:
+                return show_on_statusbar(f'Cannot undo {verb}: A new file is occupying the old path.')
+
+        # warn user if an empty folder has been left behind (see TODO in `restore()`)
+        current_folder = os.path.dirname(current_name)
+        if not os.listdir(current_folder):
+            log_on_statusbar(f'Undo successful, but an empty folder has been left behind at "{current_folder}"')
+        else:
+            log_on_statusbar(f'Undo successful.')
+        return True
 
 
     def delete(self, *files: str, cycle: bool = True):
@@ -8348,6 +8594,25 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if len(self.recent_files) <= 25:
             self.menuRecent.addSeparator()
             self.menuRecent.addAction(self.actionClearRecent)   # add separator and clear action at bottom for shorter lists
+
+
+    def refresh_undo_menu(self):
+        ''' Generates undo action(s) for the undo menu, if necessary. '''
+        self.menuUndo.clear()
+        if not self.undo_dict:
+            return self.menuUndo.addAction('Nothing to undo').setEnabled(False)
+
+        # NOTE: signals must be wrapped in lambdas or they'll be considered "weak references" and crash
+        primary = tuple(self.undo_dict.values())[-1]            # stack -> last undo is the latest one
+        undo_action = self.menuUndo.addAction(f'Undo {primary.label}')
+        undo_action.setToolTip(primary.description)
+        undo_action.triggered.connect(lambda: primary.execute())
+
+        # if there's an undo specifically for this file that ISN'T the latest undo, add a second action
+        if (secondary := self.undo_dict.get(self.video)) and secondary is not primary:
+            undo_action = self.menuUndo.addAction(f'For this file: Undo {secondary.label}')
+            undo_action.setToolTip(secondary.description)
+            undo_action.triggered.connect(lambda: secondary.execute())
 
 
     def _refresh_title_slot(self):                              # TODO this could theoretically be much faster, but is it worth it?
