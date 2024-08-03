@@ -290,6 +290,18 @@ def connect_widget_signals(self: QtW.QMainWindow):
         self.save_progress_bar.setValue(value)
         self.save_progress_bar.setFormat(format)
 
+    def save_or_rename_or_open():
+        ''' If Shift is held, the currently entered output text is opened if it
+            points to an existing file. Otherwise, `self.save()` is called. '''
+        if self.app.keyboardModifiers() & Qt.ShiftModifier:
+            output, _, _ = self.get_output()
+            if output and os.path.exists(output):
+                self.open(file=output)
+            elif output:
+                self.statusbar.showMessage('Entered filename does not exist.')
+        else:
+            self.save()
+
     self._open_cleanup_signal.connect(self._open_cleanup_slot)
     self._open_signal.connect(lambda kwargs: self.open(**kwargs))
     self._open_external_command_signal.connect(self._open_external_command_slot)
@@ -385,7 +397,7 @@ def connect_widget_signals(self: QtW.QMainWindow):
     self.actionAboutQt.triggered.connect(lambda: QtW.QMessageBox.aboutQt(None, 'About Qt'))
     self.actionAbout.triggered.connect(self.show_about_dialog)
     #self.check_clamp.stateChanged.connect(self.clamp)
-    self.lineOutput.returnPressed.connect(self.save)
+    self.lineOutput.returnPressed.connect(save_or_rename_or_open)
     self.lineCurrentTime.returnPressed.connect(self.manually_update_current_time)
     self.spinHour.valueChanged.connect(self.update_time_spins)
     self.spinMinute.valueChanged.connect(self.update_time_spins)

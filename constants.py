@@ -107,6 +107,12 @@ class UndoType(int):
 
 # ---------------------
 
+OUTPUT_TEXTBOX_TOOLTIP_SUFFIX = '''
+---
+Enter: Rename this file to whatever you've entered.
+Shift + Enter: Open the entered file if it exists.
+Tab: View files similar to your entry (*/? supported).'''
+
 TRIM_BUTTON_TOOLTIP_BASE = '''Click to set the starting position of a trim/
 the point where the intro fade will stop.
 

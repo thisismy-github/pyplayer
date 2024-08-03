@@ -2702,51 +2702,73 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def open_folder(self, folder: str, mod: int = 0, focus_window: bool = True) -> str:
+        ''' Plays a file inside `folder`, returning the selected file, if any.
+            The method of choosing a file and whether Autoplay/shuffle mode are
+            altered depends on keyboard modifiers passed through `mod`, if any:
+
+            - `Alt` OR `Ctrl + Shift`: Enable autoplay, disable shuffle mode.
+                                       Plays the first valid file in the folder.
+            - `Ctrl`:                  Enable autoplay, enable shuffle mode.
+                                       Plays a random file in the folder.
+            - `Shift`:                 Disables autoplay, ignore shuffle mode.
+                                       Plays the first valid file in the folder.
+            - No modifiers:            Enable autoplay, keep current shuffle
+                                       mode setting (first file if disabled,
+                                       random file if enabled).
+
+            NOTE: `focus_window` may also be passed,
+            but is ignored if shuffle mode is used. '''
+
         try:
             folder = abspath(folder)                # ensure `folder` uses a standardized format
 
-            # no modifiers or (ONLY) shift held down (play first file with or without Autoplay)
-            if not mod or (mod & Qt.ShiftModifier and not mod & Qt.ControlModifier):
-                #skip_marked = self.checkSkipMarked.isChecked()
-                #marked = self.marked_for_deletion  # TODO see below
-                is_hidden = file_is_hidden
-                locked_files = self.locked_files
-                open = self.open
+            # no modifiers -> enable autoplay and keep current shuffle mode setting
+            enable_autoplay = True
+            enable_shuffle = self.actionAutoplayShuffle.isChecked()
 
-                start = get_time()
-                for filename in os.listdir(folder):
-                    file = f'{folder}{sep}{filename}'
+            if (mod & Qt.ControlModifier and mod & Qt.ShiftModifier) or mod & Qt.AltModifier:
+                enable_shuffle = False              # alt OR (ctrl+shift) -> autoplay, no shuffle
+            elif mod & Qt.ControlModifier:
+                enable_shuffle = True               # ctrl                -> autoplay, shuffle
+            if mod & Qt.ShiftModifier:
+                enable_autoplay = False             # shift               -> no autoplay (shuffle is irrelevant)
 
-                    # get mime type of file to verify this is actually playable and skip the extra setup done in open()
-                    try: mime, extension = filetype.match(file).mime.split('/')
-                    except: continue
-
-                    if is_hidden(file): continue
-                    if file in locked_files: continue
-                    #if skip_marked and file in marked: continue    # TODO should we do this here?
-
-                    if open(file, _from_cycle=True, mime=mime,
-                            extension=extension, focus_window=focus_window) != -1:
-                        logging.info(f'Found playable file in folder after {get_time() - start:.3f} seconds.')
-                        enabled = not (mod & Qt.ShiftModifier)
-                        verb = 'enabled' if enabled else 'disabled'
-                        self.actionAutoplay.setChecked(enabled)
-                        self.actionAutoplayShuffle.setChecked(False)
-                        self.refresh_autoplay_button()
-                        log_on_statusbar(f'Opened {filename} from folder {folder} and {verb} Autoplay.')
-                        return file
-                log_on_statusbar(f'No files in {folder} were playable.')
-
-            # ctrl or alt/ctrl+shift held down (play random file with or without Autoplay (in shuffle mode))
-            else:
-                enabled = not (mod & Qt.ShiftModifier or mod & Qt.AltModifier)
-                verb = 'enabled' if enabled else 'disabled'
-                self.actionAutoplay.setChecked(enabled)
-                self.actionAutoplayShuffle.setChecked(enabled)
-                file = self.shuffle_media(folder, autoplay=enabled)
-                if file is not None:
-                    log_on_statusbar(f'Randomly opened {os.path.basename(file)} from folder {folder} and {verb} Autoplay/shuffle mode.')
+        # update autoplay and shuffle mode, then play a random file if shuffle mode is active
+            self.actionAutoplay.setChecked(enable_autoplay)
+            if enable_autoplay:                     # ↓ only update shuffle mode if we're using autoplay
+                self.actionAutoplayShuffle.setChecked(enable_shuffle)
+                if enable_shuffle:
+                    file = self.shuffle_media(folder, autoplay=True)
+                    if file is not None:
+                        log_on_statusbar(f'Randomly opened {os.path.basename(file)} from folder {folder} (shuffle mode).')
                     return file
+
+        # no autoplay OR no shuffle mode -> play first file in folder regardless of autoplay setting
+            #skip_marked = self.checkSkipMarked.isChecked()
+            #marked = self.marked_for_deletion      # TODO see below
+            is_hidden = file_is_hidden
+            locked_files = self.locked_files
+            open = self.open
+
+            start = get_time()
+            for filename in os.listdir(folder):
+                file = f'{folder}{sep}{filename}'
+
+                # get mime type of file to verify this is actually playable and skip the extra setup done in open()
+                try: mime, extension = filetype.match(file).mime.split('/')
+                except: continue
+
+                if is_hidden(file): continue
+                if file in locked_files: continue
+                #if skip_marked and file in marked: continue    # TODO should we do this here?
+
+                if open(file, _from_cycle=True, mime=mime, extension=extension, focus_window=focus_window) != -1:
+                    logging.info(f'Found playable file in folder after {get_time() - start:.3f} seconds.')
+                    log_on_statusbar(f'Opened {filename} from folder {folder} ({"" if enable_autoplay else " no"} Autoplay).')
+                    return file                     # mention new autoplay state in log message ^
+
+            # if we haven't returned yet, we failed to play anything
+            log_on_statusbar(f'No files in {folder} were playable.')
 
         except:
             log_on_statusbar(f'(!) Failed while checking folder "{folder}" for openable media: {format_exc()}')
@@ -3515,8 +3537,8 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # set basename (w/o extension) as default output text,...
             # ...full basename as placeholder text, and update tooltip
             self.lineOutput.setText(splitext_media(basename)[0])
-            self.lineOutput.setPlaceholderText(basename)
-            self.lineOutput.setToolTip(f'{file}\n---\nEnter: Rename this file to whatever you\'ve entered.\nTab: View files similar to your entry (*/? supported).')
+            self.lineOutput.setPlaceholderText(basename)    # TODO: should these two lines be in cleanup anyway?
+            self.lineOutput.setToolTip(file + constants.OUTPUT_TEXTBOX_TOOLTIP_SUFFIX)
 
             # update delete-action's QToolButton. if we're holding del, auto-mark the file accordingly
             if self.mark_for_deletion_held_down:            # NOTE: we don't update the tooltip until we've release del
@@ -4041,7 +4063,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             # set output textbox to extension-less basename (same as in open())
             self.lineOutput.setText(basename_no_ext)
             self.lineOutput.setPlaceholderText(basename_no_ext + ext)
-            self.lineOutput.setToolTip(f'{new_name}\n---\nEnter: Rename this file to whatever you\'ve entered.\nTab: View files similar to your entry (*/? supported).')
+            self.lineOutput.setToolTip(new_name + constants.OUTPUT_TEXTBOX_TOOLTIP_SUFFIX)
             self.lineOutput.clearFocus()            # clear focus so we can navigate/use hotkeys again
 
             # create an `Undo` object with our old/new paths so we can undo this in the future
