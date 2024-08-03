@@ -1090,7 +1090,7 @@ Right-click for more options.</string>
              <number>2</number>
             </property>
             <item row="1" column="2">
-             <widget class="QSpinBoxPassthrough" name="spinSecond">
+             <widget class="QSpinBoxInputSignals" name="spinSecond">
               <property name="minimumSize">
                <size>
                 <width>32</width>
@@ -1112,7 +1112,7 @@ Right-click for more options.</string>
              </widget>
             </item>
             <item row="1" column="0">
-             <widget class="QSpinBoxPassthrough" name="spinHour">
+             <widget class="QSpinBoxInputSignals" name="spinHour">
               <property name="minimumSize">
                <size>
                 <width>32</width>
@@ -1131,7 +1131,7 @@ Right-click for more options.</string>
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QSpinBoxPassthrough" name="spinMinute">
+             <widget class="QSpinBoxInputSignals" name="spinMinute">
               <property name="minimumSize">
                <size>
                 <width>32</width>
@@ -1153,7 +1153,7 @@ Right-click for more options.</string>
              </widget>
             </item>
             <item row="2" column="0" colspan="3">
-             <widget class="QSpinBoxPassthrough" name="spinFrame">
+             <widget class="QSpinBoxInputSignals" name="spinFrame">
               <property name="minimumSize">
                <size>
                 <width>98</width>
@@ -1893,7 +1893,7 @@ type (video, audio, or image) as the file you started with.</string>
    <header>widgets</header>
   </customwidget>
   <customwidget>
-   <class>QSpinBoxPassthrough</class>
+   <class>QSpinBoxInputSignals</class>
    <extends>QSpinBox</extends>
    <header>widgets</header>
   </customwidget>

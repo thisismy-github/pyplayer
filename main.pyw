@@ -510,7 +510,7 @@ class Edit:
         # NOTE: on Windows, suspending a process STACKS!!! i.e. if you suspend a process...
         # ...twice, you must resume it twice -> ONLY suspend if `self._is_paused` will change
         if will_pause != self._is_paused:
-            self._is_paused = will_pause     # ↓ returns None if process hasn't terminated yet
+            self._is_paused = will_pause                # ↓ returns None if process hasn't terminated yet
             if self.process and self.process.poll() is None:
                 suspend_process(self.process, suspend=will_pause)
                 if self.has_priority:
@@ -523,8 +523,8 @@ class Edit:
         ''' Cancels this edit by killing its current FFmpeg process.
             Resumes process first if it was previously suspended. '''
         self._is_cancelled = True
-        if constants.IS_WINDOWS:
-            self._is_paused = False         # don't have to actually unpause unless we rely on stdout buffering
+        if constants.IS_WINDOWS:                        # NOTE: don't have to actually unpause on Windows...
+            self._is_paused = False                     # ...since we don't rely on stdout buffering
         else:
             self.pause(paused=False)
 
@@ -551,7 +551,7 @@ class Edit:
                 edit.has_priority = False
 
         self.has_priority = True
-        if self.frame == 0:                 # assume we haven't parsed any output yet
+        if self.frame == 0:                             # assume we haven't parsed any output yet
             gui.set_save_progress_value_and_format_signal.emit(0, self.start_text)
             refresh_title()
         else:
@@ -1038,28 +1038,28 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.video = ''
         self.video_original_path = ''
         self.locked_files: set[str] = set()
-        self.videos_opened = 0                  # NOTE: the actual number of files that have been opened this session
-        self.last_video = ''                    # NOTE: the actual last non-edited file played
-        self.recent_files: list[str] = []       # NOTE: the user-friendly list of recent files
-        self.recent_edits: list[str] = []       # NOTE: a list of recent edit output destinations
-        self.recent_globs: dict[str, int] = {}  # NOTE: recent searches in the output textbox (values are the last selected index for that search)
-        self.last_open_time = 0.0               # NOTE: the last time we COMPLETED opening a file (`end`)
-        self.move_destinations: list[str] = []  # NOTE: a list of destinations for the "Move to..." and "Open..." context menu actions
-        self.undo_dict: dict[str, Undo] = {}    # NOTE: filenames with actions that can be undone (renaming, moving, etc.) to undo actions they're associated with
-        self.mime_type = 'image'                # NOTE: defaults to 'image' so that pausing is disabled
-        self.extension = 'mp4'                  # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
-        self.extension_label = '?'
+        self.videos_opened = 0                          # the actual number of files that have been opened this session
+        self.last_video = ''                            # the actual last non-edited file played
+        self.recent_files: list[str] = []               # the user-friendly list of recent files
+        self.recent_edits: list[str] = []               # a list of recent edit output destinations
+        self.recent_searches: dict[str, int] = {}       # recent searches in the output textbox and the last selected index for that search
+        self.last_open_time = 0.0                       # the last time we COMPLETED opening a file (`end`)
+        self.move_destinations: list[str] = []          # a list of destinations for the "Move to..." and "Open..." context menu actions
+        self.undo_dict: dict[str, Undo] = {}            # filenames with actions that can be undone (renaming, moving, etc.) to undo actions they're associated with
+        self.mime_type = 'image'                        # NOTE: defaults to 'image' so that pausing is disabled
+        self.extension = 'mp4'                          # NOTE: should be lower and not include the period (i.e. "mp4", not ".MP4")
+        self.extension_label = '?'                      # the string used on the titlebar to reprsent the extension
         self.is_gif = False
         self.is_static_image = True
-        self.is_audio_with_cover_art = False    # NOTE: True if cover art is present in buffer, even if it's hidden
+        self.is_audio_with_cover_art = False            # NOTE: True if cover art is present in buffer, even if it's hidden
         self.is_audio_without_cover_art = False
-        self.clipboard_image_buffer = None
-        self.cover_art_buffer: bytes = None     # NOTE: used to store cover art in memory in case we want to load but not display it
-        #self.PIL_image = None                  # TODO: store images in memory for quick copying?
+        self.clipboard_image_buffer: bytes = None
+        self.cover_art_buffer: bytes = None             # used to store cover art in memory in case we want to load but not display it
+        #self.PIL_image = None                          # TODO: store images in memory for quick copying?
 
         self.delay = 0.0
-        self.frame_count = 1                    # NOTE: the frame count from 0, i.e. 8999 frames (never actually 0 though)
-        self.frame_count_raw = 1                # NOTE: the actual frame count, i.e. 9000 frames (DON'T use for calculations)
+        self.frame_count = 1                            # the frame count from 0, i.e. 8999 frames (never actually 0 though)
+        self.frame_count_raw = 1                        # the actual frame count, i.e. 9000 frames (DON'T use for calculations)
         self.frame_rate = 1
         self.frame_rate_rounded = 1
         self.duration = 0.0
@@ -1072,12 +1072,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.vsize = QtCore.QSize(1000, 1000)
         #self.resolution_label = '0x0'
         self.ratio = '0:0'
-        self.size_label = '0.00mb'              # NOTE: do NOT use `self.size` - this is reserved for Qt
+        self.size_label = '0.00mb'                      # NOTE: do NOT use `self.size` - this is reserved for Qt
         self.stat: os.stat_result = None
 
         self.frame_override = -1
         self.lock_progress_updates = False
-        self.lock_spin_updates = False
         self.lock_edit_priority = False
 
         self.open_in_progress = False
@@ -3630,9 +3629,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                     self.recent_files = recent_files[-max_len:]         # do NOT assign to the alias here
 
             # update UI with new media's duration
+            # TODO: would local and/or global aliases here be worth it?
             h, m, s, ms = get_hms(self.duration_rounded)
             self.labelMaxTime.setText(f'{m:02}:{s:02}.{ms:02}' if h == 0 else f'{h}:{m:02}:{s:02}')
-            self.spinHour.setEnabled(h != 0)                            # always leave spinSecond enabled
+            self.spinHour.setEnabled(h != 0)                            # always leave `spinSecond` enabled
             self.spinMinute.setEnabled(m != 0)
             if self.width() > 335: prefix = f'{self.frame_rate_rounded} FPS: '
             else:                  prefix = ''
@@ -3640,11 +3640,11 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             self.spinFrame.setMaximum(self.frame_count)
             self.spinFrame.setToolTip(f'Frame rate:\t{self.frame_rate}\nFrame count:\t{self.frame_count_raw}')
 
-            # refresh title (we have to refresh here instead of `_open_cleanup_slot`, I don't remember why lol)
+            # refresh title (we have to emit here instead of `_open_cleanup_slot`, I don't remember why lol)
             refresh_title()
 
             # log opening time. all done! (except for cleanup)
-            self.last_open_time = end = get_time()
+            self.last_open_time = end = get_time()                      # TODO: is using a local alias here worth it?
             logging.info(f'Initial media opening completed after {end - start:.4f} seconds.')
             return 1
 
@@ -5564,12 +5564,10 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         if not current_time_lineedit_has_focus():       # use cleaner format for time-strings on videos > 1 hour
             set_current_time_text(f'{m:02}:{s:02}.{ms:02}' if h == 0 else f'{h}:{m:02}:{s:02}')
 
-        self.lock_spin_updates = True                   # lock spins from actually updating player so we don't get recursion
         set_hour_spin(h)
         set_minute_spin(m)
         set_second_spin(s)
         set_frame_spin(frame)
-        self.lock_spin_updates = False                  # unlock spins so they can be edited by hand again
 
 
     def _update_progress_slot(self, frame: int):
@@ -5589,7 +5587,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             UI is reset to its previous state. '''
 
         # return if user is not manually setting the time spins
-        if self.lock_spin_updates or self.lock_progress_updates: return
+        if self.lock_progress_updates: return
         self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
 
         try:
@@ -5615,7 +5613,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
     def update_frame_spin(self, frame: int):
         ''' Sets progress to `frame` if media is paused. This is meant as a
             slot for `self.spinFrame` - Do not use this for frame seeking. '''
-        if not self.is_paused or self.lock_spin_updates or self.lock_progress_updates: return
+        if not self.is_paused or self.lock_progress_updates: return
         self.lock_progress_updates = True               # lock progress updates to prevent recursion errors from multiple elements updating at once
 
         try: player.set_frame(frame)
@@ -5697,7 +5695,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             else: new_frame = min(self.maximum, int(old_frame + self.frame_rate_rounded * seconds))
         else:                                           # NOTE: only wrap start-to-end if we're paused
             if old_frame == 0 and self.is_paused and settings.checkNavigationWrap.isChecked(): new_frame = self.frame_count
-            else: new_frame = max(self.minimum, int(old_frame + self.frame_rate_rounded * seconds))
+            else: new_frame = max(self.minimum, int(old_frame - self.frame_rate_rounded * seconds))
 
         # set progress to new frame while doing necessary adjustments/corrections/overrides
         set_and_update_progress(new_frame, SetProgressContext.NAVIGATION_RELATIVE)
@@ -9002,12 +9000,12 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
 
 
     def is_snap_mode_enabled(self) -> bool:
-        ''' Returns True if snap-modes can be used on the current mime type. '''
-        mime = self.mime_type                                   # ↓ don't snap if the cover art is hidden
-        if mime == 'audio':   return self.is_audio_with_cover_art and can_show_cover_art() and settings.checkSnapArt.isChecked()
-        elif mime == 'video': return settings.checkSnapVideos.isChecked()
-        elif self.is_gif:     return settings.checkSnapGifs.isChecked()
-        else:                 return settings.checkSnapImages.isChecked()
+        ''' Returns True if snap-modes can be used on the current mime type.
+            Does not snap audio if there is no currently visible cover art. '''
+        if self.mime_type == 'video':   return settings.checkSnapVideos.isChecked()
+        elif self.mime_type == 'audio': return self.is_audio_with_cover_art and can_show_cover_art() and settings.checkSnapArt.isChecked()
+        elif self.is_gif:               return settings.checkSnapGifs.isChecked()
+        else:                           return settings.checkSnapImages.isChecked()
 
 
     def snap_to_player_size(self, shrink: bool = False, force_instant_resize: bool = False):

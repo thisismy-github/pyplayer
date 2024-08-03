@@ -2062,7 +2062,6 @@ class QVideoPlayerLabel(QtW.QLabel):
         self.pixmapPos = QtCore.QPoint()                # local position of currently drawn QPixmap
         self.gifSize = QtCore.QSize()                   # gif's native size (not tracked by QMovie)
         self.gif.setCacheMode(QtGui.QMovie.CacheAll)    # required for jumpToFrame to work
-        self.image = self.art                           # alias for self.art's QPixmap
         self.isCoverArt = False
         self.filename = None
 
@@ -2868,7 +2867,7 @@ class QVideoSlider(QtW.QSlider):
         self.scrubbing = False
 
 
-    def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:  # https://stackoverflow.com/questions/52689047/moving-qslider-to-mouse-click-position
+    def pixelPosToRangeValue(self, pos: QtCore.QPoint) -> int:  # https://stackoverflow.com/a/52690011
         ''' Auto-magically detects the correct value to set the handle
             to based on a given `pos`. Works with horizontal and vertical
             sliders, with or without stylesheets. '''
@@ -2905,7 +2904,7 @@ class QVideoSlider(QtW.QSlider):
             return 0                                            # return 0 as a failsafe
 
 
-    def rangeValueToPixelPos(self, value: int) -> int:
+    def rangeValueToPixelPos(self, value: int) -> int:          # https://stackoverflow.com/a/52690011
         ''' Auto-magically detects the correct X/Y position to set the handle
             to based on a given `value`. Works with horizontal and vertical
             (...? see TODO below) sliders, with or without stylesheets. '''
@@ -4014,6 +4013,38 @@ class QWidgetPassthrough(QtW.QWidget):
 class QSpinBoxPassthrough(QtW.QSpinBox, QWidgetPassthrough): base = QtW.QSpinBox
 class QDockWidgetPassthrough(QtW.QDockWidget, QWidgetPassthrough): base = QtW.QDockWidget
 class QLineEditPassthrough(QtW.QLineEdit, QWidgetPassthrough): base = QtW.QLineEdit
+
+
+
+
+class QSpinBoxInputSignals(QSpinBoxPassthrough):
+    ''' `QSpinBoxPassthrough` that emits a `valueEdited` signal when the
+        value changes as a result of user input and a `valueStepped` signal
+        when `stepBy()` is called. Useful when you want a signal for value
+        changes that ignores programmatic changes. '''
+    valueEdited = QtCore.pyqtSignal(int)    # mirrors the `QLineEdit.textEdited` signal
+    valueStepped = QtCore.pyqtSignal(int)
+
+    def __init__(self, *args, **kwargs):
+        self._hasSuffix = False             # used for minor optimization
+        super().__init__(*args, **kwargs)
+        self.lineEdit().textEdited.connect(self._detectManualEdit)
+
+    def _detectManualEdit(self, text: str):
+        if self._hasSuffix:
+            real = text[len(self.prefix()):-len(self.suffix())]
+        else:                               # slicing to :0 results in an empty string
+            real = text[len(self.prefix()):]
+        if real and int(real) != self.value():
+            self.valueEdited.emit(int(real))
+
+    def setSuffix(self, suffix: str):
+        super().setSuffix(suffix)
+        self._hasSuffix = len(suffix) > 0
+
+    def stepBy(self, steps: int):
+        super().stepBy(steps)               # this updates `self.value()` immediately
+        self.valueStepped.emit(self.value())
 
 
 

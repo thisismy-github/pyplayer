@@ -305,7 +305,7 @@ def showWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
     if aggressive and platform.system() == 'Windows':
         try:                                # https://stackoverflow.com/a/61180328
             import win32com.client          # '+' actually represents a SHIFT press
-            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
+            win32com.client.Dispatch('WScript.Shell').SendKeys('+')
         except:
             pass
     window.activateWindow()                 # focus with Qt
@@ -325,7 +325,7 @@ def focusWindow(window: QtW.QWidget, aggressive: bool = False) -> None:
     if aggressive and platform.system() == 'Windows':
         try:                                # https://stackoverflow.com/a/61180328
             import win32com.client          # '+' actually represents a SHIFT press
-            win32com.client.Dispatch("WScript.Shell").SendKeys('+')
+            win32com.client.Dispatch('WScript.Shell').SendKeys('+')
         except:
             pass
     window.activateWindow()                 # focus with Qt
@@ -547,8 +547,12 @@ def getDialog(
             self.choice = choice
 
         # https://stackoverflow.com/questions/17451688/connecting-a-slot-to-a-button-in-qdialogbuttonbox
-        def addButtons(self, layout: QtW.QLayout, *buttons: QtW.QDialogButtonBox.StandardButton) -> QtW.QDialogButtonBox:
-            ''' Adds `QDialogButtonBox` to `layout` with a COMMA SEPARATED list
+        def addButtons(
+            self,
+            layout: QtW.QLayout,
+            *buttons: QtW.QDialogButtonBox.StandardButton | tuple[str | QtW.QAbstractButton, QtW.QDialogButtonBox.ButtonRole]
+        ) -> QtW.QDialogButtonBox:
+            ''' Adds `QDialogButtonBox` to `layout` with an arbitrary number
                 of `buttons`, connecting them to `self.select()` in order to
                 access the user's choice after execution. `QDialogButtonBox` is
                 connected to the `accept()` and `reject()` methods for a more
@@ -557,9 +561,11 @@ def getDialog(
             buttonBox.accepted.connect(self.accept)         # connect `buttonBox` to accept/reject in case we don't care about the buttons themselves
             buttonBox.rejected.connect(self.reject)
             for button in buttons:                          # connect buttons to a callback so we can access our selected button later
-                buttonBox.addButton(button)
-                buttonBox.button(button).clicked.connect(getButtonCallback(self, button))
-            if layout:                                      # ^ buttons cannot be connected directly
+                if isinstance(button, QtW.QDialogButtonBox.StandardButton):
+                    buttonBox.addButton(button).clicked.connect(getButtonCallback(self, button))
+                else:
+                    buttonBox.addButton(*button).clicked.connect(getButtonCallback(self, button[0]))
+            if layout:                                      # ^ first element gets passed (string or an actual button)
                 layout.addWidget(buttonBox)
             return buttonBox
 
@@ -612,7 +618,7 @@ def browseForDirectory(
     directory: str = None,
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
-) -> tuple[str, str]:
+) -> tuple[str | None, str]:
     try:                                                    # this can be done with one `if url` but it's not worth it
         directory = directory or lastdir
         _dir = (QFileDialog.getExistingDirectoryUrl if url else QFileDialog.getExistingDirectory)(
@@ -632,7 +638,7 @@ def browseForDirectory(
 
 def browseForFile(
     lastdir: str = '.',
-    caption: str = 'Select folder',
+    caption: str = 'Select file',
     filter: str = 'All files (*)',
     selectedFilter: str = '',
     returnFilter: bool = False,
@@ -640,7 +646,7 @@ def browseForFile(
     name: str = None,
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
-) -> tuple[QtCore.QUrl | str, str] | tuple[QtCore.QUrl | str, str, str]:
+) -> tuple[QtCore.QUrl | str | None, str] | tuple[QtCore.QUrl | str | None, str, str]:
     try:                                                    # this can be done with one `if url` but it's not worth it
         directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
         file, filter = (QFileDialog.getOpenFileUrl if url else QFileDialog.getOpenFileName)(
@@ -664,7 +670,7 @@ def browseForFile(
 
 def browseForFiles(
     lastdir: str = '.',
-    caption: str = 'Select folder',
+    caption: str = 'Select files',
     filter: str = 'All files (*)',
     selectedFilter: str = '',
     returnFilter: bool = False,
@@ -694,15 +700,14 @@ def browseForFiles(
 
 def saveFile(
     lastdir: str = '.',
-    caption: str = 'Select folder',
-    filter: str = 'All files (*)',
+    caption: str = 'Save file',
     selectedFilter: str = '',
     returnFilter: bool = False,
     directory: str = None,
     name: str = None,
     url: bool = False,
     lineEdit: QtW.QLineEdit = None
-) -> tuple[list[QtCore.QUrl] | list[str], str] | tuple[list[QtCore.QUrl] | list[str], str, str]:
+) -> tuple[QtCore.QUrl | str | None, str] | tuple[QtCore.QUrl | str | None, str, str]:
     try:                                                    # this can be done with one `if url` but it's not worth it
         directory = os.path.join(directory or lastdir, name) if name else (directory or lastdir)
         file, filter = (QFileDialog.getSaveFileUrl if url else QFileDialog.getSaveFileName)(
