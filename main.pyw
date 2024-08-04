@@ -1043,6 +1043,9 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         self.recent_files: list[str] = []               # the user-friendly list of recent files
         self.recent_edits: list[str] = []               # a list of recent edit output destinations
         self.recent_searches: dict[str, int] = {}       # recent searches in the output textbox and the last selected index for that search
+        self.last_search_open_prompt = ''               # the last prompt used to open a file through search
+        self.last_search_open_output = ''               # the text in the output textbox following our last search
+        self.last_search_open_time = 1.0                # the last time we opened a file through search
         self.last_open_time = 0.0                       # the last time we COMPLETED opening a file (`end`)
         self.move_destinations: list[str] = []          # a list of destinations for the "Move to..." and "Open..." context menu actions
         self.undo_dict: dict[str, Undo] = {}            # filenames with actions that can be undone (renaming, moving, etc.) to undo actions they're associated with
@@ -1500,134 +1503,7 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
                 if key == 16777216:                                     # esc (clear focus)
                     widget.clearFocus()
                 elif key == 16777217 and widget is self.lineOutput:     # tab (show similar files next to output text box)
-                    try:
-                        video = self.video
-                        recent_globs = self.recent_globs
-
-                        old_oscwd = os.getcwd()
-                        os.chdir(os.path.dirname(video))                # set CWD to self.video's folder -> allows things like abspath, '.', and '..'
-                        output = abspath(self.lineOutput.text().strip() or '*')
-                        dirname, basename = os.path.split(output)
-                        if '*' in output or '?' in output:              # search is a glob -> use as-is (plus a * at the end)
-                            output += '*'
-                            files = glob.glob(output)
-                            recent_globs.setdefault(output, 0)
-                        elif exists(output):                            # TODO: make this a setting
-                            files = [output]
-                        else:                                           # search is not a glob -> insert several *
-                            basename_no_ext, ext = os.path.splitext(basename)
-                            output = f'{dirname}{sep}*{basename_no_ext}*{ext}*'
-                            files = glob.glob(output)
-                            recent_globs.setdefault(output, 0)
-
-                        # overlay hidden combobox over textbox, fill it with our results, and display its dropdown
-                        # TODO: we SHOULD implement our own version with `QAbstractItemView` and stuff, but... lol
-                        if len(files) == 1 and files[0] == video:
-                            show_on_statusbar('No results')
-                        elif files:
-                            combo = QtW.QComboBox(self.lineOutput)
-                            combo.setModel(QtCore.QStringListModel())
-
-                            # limit max results if necessary and display count on statusbar
-                            max_count = 1000                            # too many results = tons of RAM + long population time
-                            max_threshold_count = max_count * 1.25      # allow some leniency, i.e. 1100 is okay, but 1500 becomes 1000
-                            if len(files) > max_threshold_count:
-                                show_on_statusbar(f'Results truncated from {len(files)} to {max_count}')
-                                files = files[:max_count]
-                            else:
-                                show_on_statusbar(f'Showing {len(files)} results')
-                            app.processEvents()
-
-                            def showPopup():
-                                qthelpers.setCursor(Qt.ArrowCursor)     # force cursor to arrow to hide VLC's loading icon bug
-                                QtW.QComboBox.showPopup(combo)
-                                self.vlc.idle_timeout_time = 0.0        # lock cursor so it doesn't enter bugged state while popup is open
-
-                                # HACK: change context of any shortcuts that use Up, Down, or Enter so that the UI doesn't...
-                                # ...eat those inputs. otherwise, you can't use the keyboard to navigate the combobox if it...
-                                # ...has a parent (we NEED a parent because the combobox is VERY broken without one (blame Qt))
-                                ignored_keys = (                        # major advantage over other workarounds: you can control...
-                                    QtGui.QKeySequence(Qt.Key_Up),      # ...the dropdown AND use other shortcuts at the same time
-                                    QtGui.QKeySequence(Qt.Key_Down),
-                                    QtGui.QKeySequence(Qt.Key_Enter)
-                                )
-                                for primary, secondary in self.shortcuts.values():
-                                    if primary.key() in ignored_keys or secondary.key() in ignored_keys:
-                                        primary.setContext(0)
-                                        secondary.setContext(0)
-
-                            def hidePopup():
-                                _combo = combo
-                                expected_count = getattr(combo, 'reopen_count', 0) + 1
-                                QtW.QComboBox.hidePopup(_combo)         # hide popup, then start a self-destruct timer
-                                QtCore.QTimer.singleShot(10000, lambda: cleanup(_combo, expected_count))
-
-                                # reuse `QMenu.hideEvent()` hack to hide cursor consistently (NOTE: the dropdown...
-                                # ...eats all mouse events while open, so this will NOT cause cursor flickers)
-                                self.vlc.reset_undermouse_state()
-
-                                # HACK: reverses the shortcut context hack (see above)
-                                ignored_keys = (
-                                    QtGui.QKeySequence(Qt.Key_Up),
-                                    QtGui.QKeySequence(Qt.Key_Down),
-                                    QtGui.QKeySequence(Qt.Key_Enter)
-                                )
-                                for primary, secondary in self.shortcuts.values():
-                                    if primary.key() in ignored_keys or secondary.key() in ignored_keys:
-                                        primary.setContext(3)
-                                        secondary.setContext(3)
-
-                            # delete the combobox if it hasn't been opened `expected_count` times...
-                            # ...after a delay. this ensures it gets deleted if we don't actually...
-                            # ...select anything (the `textActivated` signal fires AFTER `.hidePopup()`)
-                            def cleanup(combo: QtW.QComboBox, expected_count: int):
-                                if getattr(combo, 'reopen_count', 0) < expected_count:
-                                    combo.deleteLater()
-                                    gc.collect(generation=2)
-
-                            def select(text):
-                                old_count = getattr(combo, 'reopen_count', 0)
-                                setattr(combo, 'reopen_count', old_count + 1)
-                                path = f'{dirname}{sep}{text}'
-                                if path != self.video:                  # don't use local alias here
-                                    self.open(file=path)
-                                if len(files) > 1:                      # do NOT reopen popup if there was only one file to pick
-                                    combo.showPopup()                   # save search + our selected index (it's accurate here)
-                                    recent_globs[output] = combo.currentIndex()
-                                    if len(recent_globs) > 10:          # limit recent searches to the last 10
-                                        del recent_globs[recent_globs.keys()[0]]
-
-                            combo.showPopup = showPopup
-                            combo.hidePopup = hidePopup
-                            combo.textActivated.connect(select)
-
-                            # add basenames of every file to combobox
-                            prefix_size = len(dirname) + len(sep)
-                            combo.addItems(f[prefix_size:] for f in files)
-
-                            # force combobox to align with textbox and stretch to width of widest entry
-                            # NOTE: why don't setMinimumContentsLength and setSizeAdjustPolicy work?
-                            combo.setFixedHeight(self.lineOutput.height())
-                            combo.view().setMinimumWidth(combo.minimumSizeHint().width())
-                            combo.setMaxVisibleItems(9)                 # ^ https://stackoverflow.com/a/54005207
-
-                            # open dropdown, selecting/scrolling to old position if needed
-                            # TODO: should we check for `video in files` BEFORE truncating results?
-                            old_index = recent_globs.get(output) or (files.index(video) if video in files else 0)
-                            combo.setCurrentIndex(old_index)            # must set index BEFORE open, then scroll view AFTER open
-                            combo.showPopup()
-
-                            # `PositionAtCenter` is broken near the start, so only scroll if we're close...
-                            # ...to our visible limit (1 item away from the bottom/top of visible area)
-                            # NOTE: we do the reverse for items at the bottom by scrolling all the way down
-                            if old_index > combo.maxVisibleItems() - 2:
-                                near_center = old_index < (combo.count() - combo.maxVisibleItems() + 1)
-                                hint = QtW.QAbstractItemView.PositionAtCenter if near_center else QtW.QAbstractItemView.PositionAtTop
-                                combo.view().scrollTo(combo.model().createIndex(old_index, 0), hint)
-                    except:
-                        log_on_statusbar(f'(!) Failed to generate popup for similar files: {format_exc()}')
-                    finally:
-                        os.chdir(old_oscwd)
+                    self.search_files(auto_popup=True)
                 return
 
         # manually emit shortcuts if the main window isn't focused. `WidgetWithChildrenShortcut` (our...
@@ -2839,6 +2715,96 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
         dirname, basename = os.path.split(self.video)
         basename_no_ext = os.path.splitext(basename)[0]
         self.add_subtitle_files(*glob.glob(f'{dirname}{sep}{basename_no_ext}*.srt'))
+
+
+    def search_files(
+        self,
+        prompt: str = '',
+        folder: str = '',
+        auto_glob: bool = True,
+        auto_popup: bool = False
+    ) -> list[str] | None:
+        ''' Searches for `prompt` (or `self.lineOutput.text()`) relative to
+            `folder` (or `self.video`'s folder). If `prompt` doesn't exist,
+            `glob` is used to get results. If `auto_glob` is True, wildcards
+            will be inserted into `prompt` before searching. If `auto_popup`
+            is True, results are displayed under the output textbox in an
+            interactive combobox (maximum of ~1000 results). Otherwise, the
+            result list is returned. Automatically reuses previous prompts
+            and selected indexes when appropriate. '''
+        try:
+            old_oscwd = os.getcwd()
+            recent_searches = self.recent_searches
+
+            # decide where to search relative to, including fallback if we haven't opened anything yet
+            new_oscwd = folder or os.path.dirname(self.video)
+            if not new_oscwd:
+                if self.recent_files:                       # fallback to most recent file if we have one
+                    show_on_statusbar('(Searching relative to most recent file\'s folder)', 20000)
+                    new_oscwd = os.path.dirname(self.recent_files[-1])
+                else:                                       # fallback to pyplayer's folder otherwise
+                    show_on_statusbar('(Searching relative to installation folder)', 20000)
+                    new_oscwd = constants.CWD
+            os.chdir(new_oscwd)                             # this allows things like `abspath()`, '.', and '..'
+
+            # get search prompt from output textbox.
+            # get search text. if it's just the name of the media, check if we...
+            # ...just did a search to get here and reuse our last search if so
+            search = prompt or abspath(self.lineOutput.text().strip().strip('\'"') or '*')
+            dirname, basename = os.path.split(search)
+            if self.last_search_open_time == self.last_open_time and basename == self.last_search_open_output:
+                search = self.last_search_open_prompt       # same opening time + output text hasn't changed = reuse last prompt
+
+            if exists(search):                              # TODO: make this a setting?
+                files = [search]
+            else:
+                if auto_glob:
+                    if '*' in search or '?' in search:      # search is a glob -> use as-is, plus a * at the end
+                        search += '*'
+                    else:                                   # search is NOT a glob -> insert several *
+                        basename_no_ext, ext = os.path.splitext(basename)
+                        search = f'{dirname}{sep}*{basename_no_ext}*{ext}*'
+                files = glob.glob(search)                   # execute search, add it to our recent searches, and default...
+                recent_searches.setdefault(search, 0)       # ...the selected index to 0 if we haven't searched for it before
+
+            # overlay hidden combobox over textbox, fill it with our results, and display its dropdown
+            # NOTE: we SHOULD implement our own version with `QAbstractItemView` and stuff, but... lol
+            if not files:
+                show_on_statusbar('No results')
+            elif len(files) == 1 and files[0] == self.video:
+                show_on_statusbar('No results besides the currently open file')
+            elif files:
+                if not auto_popup:
+                    return files                            # return files if we don't want a popup
+                else:
+                    def select(combo: QtW.QComboBox, text: str):
+                        path = f'{dirname}{sep}{text}'
+                        if path != self.video:              # don't use local alias here
+                            self.open(file=path)            # ↓ save search, new output text, and timestamp
+                            self.last_search_open_prompt = search
+                            self.last_search_open_output = self.lineOutput.text()
+                            self.last_search_open_time = self.last_open_time
+                        if len(files) > 1:                  # do NOT reopen popup if there was only one file to pick
+                            combo.showPopup()               # save search + our selected index (it's accurate here)
+                            recent_searches[search] = combo.currentIndex()
+                            if len(recent_searches) > 10:   # limit recent searches to the last 10
+                                del recent_searches[recent_searches.keys()[0]]
+
+                    # TODO: should we see if `self.video` is in `files` BEFORE truncating results?
+                    old_index = recent_searches.get(search) or (files.index(self.video) if self.video in files else 0)
+
+                    self.show_search_popup(
+                        files,
+                        widget=self.lineOutput,
+                        item_labels=(f[len(dirname) + len(sep):] for f in files),
+                        max_visible=9,                      # ^ strip folders from file labels inside combobox
+                        selected_index=old_index,
+                        on_select=select
+                    )
+        except:
+            log_on_statusbar(f'(!) Failed to generate popup for similar files: {format_exc()}')
+        finally:
+            os.chdir(old_oscwd)                             # restore whatever folder `os` thinks we're in no matter what
 
 
     def explore(self, path: str = None, noun: str = 'Recent file'):
@@ -7638,6 +7604,115 @@ class GUI_Instance(QtW.QMainWindow, Ui_MainWindow):
             return dialog.choice
         except:
             log_on_statusbar(f'(!) DELETION PROMPT FAILED: {format_exc()}')
+
+
+    def show_search_popup(
+        self,
+        items: list[str],
+        widget: QtW.QWidget,
+        item_labels: list[str] = None,
+        max_visible: int = 9,
+        selected_index: int = 0,
+        on_select=None
+    ):
+        ''' Displays an interactive popup below `widget` populated by `items`.
+            If `item_labels` is provided, it will be used to populate the
+            combobox instead of `items` (Example usage: providing a generator
+            of custom names to avoid duplicating/editing a very large `items`).
+
+            Combobox will truncate `items` to roughly 1000 elements (with some
+            leniency - i.e. 1100 is okay, but 1500 becomes exactly 1000).
+
+            Combobox shows `max_visible` items at a time and starts off with
+            `selected_index` selected. `on_select` should be a slot that takes
+            a `QComboBox` and `str` as parameters. '''
+
+        combo = QtW.QComboBox(widget)
+        combo.setModel(QtCore.QStringListModel())
+
+        # limit max results if necessary and display count on statusbar
+        max_count = 1000                            # too many results = tons of RAM + long population time
+        max_threshold_count = max_count * 1.25      # allow some leniency, i.e. 1100 is okay, but 1500 becomes 1000
+        if len(items) > max_threshold_count:
+            show_on_statusbar(f'Results truncated from {len(items)} to {max_count}')
+            items = items[:max_count]
+        else:
+            show_on_statusbar(f'Showing {len(items)} result{"s" if len(items) != 1 else ""}')
+        app.processEvents()
+
+        def showPopup():
+            qthelpers.setCursor(Qt.ArrowCursor)     # force cursor to arrow to hide VLC's loading icon bug
+            QtW.QComboBox.showPopup(combo)
+            self.vlc.idle_timeout_time = 0.0        # lock cursor so it doesn't enter bugged state while popup is open
+
+            # HACK: change context of any shortcuts that use Up, Down, or Enter so that the UI doesn't...
+            # ...eat those inputs. otherwise, you can't use the keyboard to navigate the combobox if it...
+            # ...has a parent (we NEED a parent because the combobox is VERY broken without one (blame Qt))
+            ignored_keys = (                        # major advantage over other workarounds: you can control...
+                QtGui.QKeySequence(Qt.Key_Up),      # ...the dropdown AND use other shortcuts at the same time
+                QtGui.QKeySequence(Qt.Key_Down),
+                QtGui.QKeySequence(Qt.Key_Enter)
+            )
+            for primary, secondary in self.shortcuts.values():
+                if primary.key() in ignored_keys or secondary.key() in ignored_keys:
+                    primary.setContext(0)
+                    secondary.setContext(0)
+
+        def hidePopup():
+            _combo = combo
+            expected_count = getattr(combo, 'reopen_count', 0) + 1
+            QtW.QComboBox.hidePopup(_combo)         # hide popup, then start a self-destruct timer
+            QtCore.QTimer.singleShot(10000, lambda: cleanup(_combo, expected_count))
+
+            # reuse `QMenu.hideEvent()` hack to hide cursor consistently (NOTE: the dropdown...
+            # ...eats all mouse events while open, so this will NOT cause cursor flickers)
+            self.vlc.reset_undermouse_state()
+
+            # HACK: reverses the shortcut context hack (see above)
+            ignored_keys = (
+                QtGui.QKeySequence(Qt.Key_Up),
+                QtGui.QKeySequence(Qt.Key_Down),
+                QtGui.QKeySequence(Qt.Key_Enter)
+            )
+            for primary, secondary in self.shortcuts.values():
+                if primary.key() in ignored_keys or secondary.key() in ignored_keys:
+                    primary.setContext(3)
+                    secondary.setContext(3)
+
+        # delete the combobox if it hasn't been opened `expected_count` times...
+        # ...after a delay. this ensures it gets deleted if we don't actually...
+        # ...select anything (the `textActivated` signal fires AFTER `.hidePopup()`)
+        def cleanup(combo: QtW.QComboBox, expected_count: int):
+            if getattr(combo, 'reopen_count', 0) < expected_count:
+                combo.deleteLater()
+                gc.collect(generation=2)
+
+        combo.showPopup = showPopup
+        combo.hidePopup = hidePopup
+        combo.textActivated.connect(lambda: setattr(combo, 'reopen_count', getattr(combo, 'reopen_count', 0) + 1))
+        if on_select:
+            combo.textActivated.connect(lambda text: on_select(combo, text))
+
+        # add basenames of every file to combobox
+        combo.addItems(item_labels or items)
+
+        # force combobox to align with textbox and stretch to width of widest entry
+        # NOTE: why don't setMinimumContentsLength and setSizeAdjustPolicy work?
+        combo.setFixedHeight(self.lineOutput.height())
+        combo.view().setMinimumWidth(combo.minimumSizeHint().width())
+        combo.setMaxVisibleItems(max_visible)       # ^ https://stackoverflow.com/a/54005207
+
+        # open dropdown, selecting/scrolling to preferred position if needed
+        combo.setCurrentIndex(selected_index)       # must set index BEFORE open, then scroll view AFTER open
+        combo.showPopup()
+
+        # `PositionAtCenter` is broken near the start, so only scroll if we're close...
+        # ...to our visible limit (1 item away from the bottom/top of visible area)
+        # NOTE: we do the reverse for items at the bottom by scrolling all the way down
+        if selected_index > combo.maxVisibleItems() - 2:
+            near_center = selected_index < (combo.count() - combo.maxVisibleItems() + 1)
+            hint = QtW.QAbstractItemView.PositionAtCenter if near_center else QtW.QAbstractItemView.PositionAtTop
+            combo.view().scrollTo(combo.model().createIndex(selected_index, 0), hint)
 
 
     # -------------------------------
